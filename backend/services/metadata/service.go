@@ -2029,35 +2029,44 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			}
 		}
 
+		// Fall back to request TMDB ID for enrichment of cached entries that lack one
+		cachedTMDBID := cached.Title.TMDBID
+		if cachedTMDBID == 0 && req.TMDBID > 0 {
+			cachedTMDBID = req.TMDBID
+			cached.Title.TMDBID = req.TMDBID
+			log.Printf("[metadata] using request TMDB ID for cached series enrichment tvdbId=%d tmdbId=%d", tvdbID, req.TMDBID)
+			_ = s.cache.set(cacheID, cached)
+		}
+
 		// If cached data doesn't have credits, fetch them from TMDB
-		if cached.Title.Credits == nil && cached.Title.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-			log.Printf("[metadata] cached series missing credits, fetching from TMDB tvdbId=%d tmdbId=%d", tvdbID, cached.Title.TMDBID)
-			if credits, err := s.tmdb.fetchCredits(ctx, "series", cached.Title.TMDBID); err == nil && credits != nil && len(credits.Cast) > 0 {
+		if cached.Title.Credits == nil && cachedTMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+			log.Printf("[metadata] cached series missing credits, fetching from TMDB tvdbId=%d tmdbId=%d", tvdbID, cachedTMDBID)
+			if credits, err := s.tmdb.fetchCredits(ctx, "series", cachedTMDBID); err == nil && credits != nil && len(credits.Cast) > 0 {
 				cached.Title.Credits = credits
 				log.Printf("[metadata] credits added to cached series: %d cast members", len(credits.Cast))
 				// Update cache with enriched data
 				_ = s.cache.set(cacheID, cached)
 			} else if err != nil {
-				log.Printf("[metadata] failed to fetch credits for cached series tmdbId=%d err=%v", cached.Title.TMDBID, err)
+				log.Printf("[metadata] failed to fetch credits for cached series tmdbId=%d err=%v", cachedTMDBID, err)
 			}
 		}
 
 		// Only fetch logo if missing - don't replace existing poster to avoid visual flash
-		if cached.Title.Logo == nil && cached.Title.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-			if images, err := s.tmdb.fetchImages(ctx, "series", cached.Title.TMDBID); err == nil && images != nil {
+		if cached.Title.Logo == nil && cachedTMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+			if images, err := s.tmdb.fetchImages(ctx, "series", cachedTMDBID); err == nil && images != nil {
 				if images.Logo != nil {
 					cached.Title.Logo = images.Logo
-					log.Printf("[metadata] logo added to cached series tmdbId=%d", cached.Title.TMDBID)
+					log.Printf("[metadata] logo added to cached series tmdbId=%d", cachedTMDBID)
 					_ = s.cache.set(cacheID, cached)
 				}
 			}
 		}
 
 		// If cached data doesn't have genres, fetch them from TMDB
-		if len(cached.Title.Genres) == 0 && cached.Title.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-			if genres, err := s.tmdb.fetchSeriesGenres(ctx, cached.Title.TMDBID); err == nil && len(genres) > 0 {
+		if len(cached.Title.Genres) == 0 && cachedTMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+			if genres, err := s.tmdb.fetchSeriesGenres(ctx, cachedTMDBID); err == nil && len(genres) > 0 {
 				cached.Title.Genres = genres
-				log.Printf("[metadata] genres added to cached series tmdbId=%d", cached.Title.TMDBID)
+				log.Printf("[metadata] genres added to cached series tmdbId=%d", cachedTMDBID)
 				_ = s.cache.set(cacheID, cached)
 			}
 		}
@@ -2076,9 +2085,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		// If cached data doesn't have content rating, fetch from TMDB
-		if cached.Title.Certification == "" && cached.Title.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-			if s.enrichTVContentRating(ctx, &cached.Title, cached.Title.TMDBID) {
-				log.Printf("[metadata] content rating added to cached series tmdbId=%d rating=%s", cached.Title.TMDBID, cached.Title.Certification)
+		if cached.Title.Certification == "" && cachedTMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+			if s.enrichTVContentRating(ctx, &cached.Title, cachedTMDBID) {
+				log.Printf("[metadata] content rating added to cached series tmdbId=%d rating=%s", cachedTMDBID, cached.Title.Certification)
 				_ = s.cache.set(cacheID, cached)
 			}
 		}
@@ -2457,6 +2466,15 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 
 	log.Printf("[metadata] series details artwork summary tvdbId=%d seasons=%d episodesWithImages=%d episodesWithoutImages=%d", tvdbID, len(seasons), episodesWithImage, episodesWithoutImage)
 
+	// Fall back to request's TMDB ID when TVDB remote IDs didn't include one.
+	// This matches the movie enrichment pattern where req.TMDBID is used as fallback.
+	tmdbIDForEnrichment := seriesTitle.TMDBID
+	if tmdbIDForEnrichment == 0 && req.TMDBID > 0 {
+		tmdbIDForEnrichment = req.TMDBID
+		seriesTitle.TMDBID = req.TMDBID
+		log.Printf("[metadata] using request TMDB ID for series enrichment tvdbId=%d tmdbId=%d", tvdbID, req.TMDBID)
+	}
+
 	// Fetch ratings from MDBList if enabled and IMDB ID is available
 	if seriesTitle.IMDBID != "" && s.mdblist != nil && s.mdblist.IsEnabled() {
 		if ratings, err := s.mdblist.GetRatings(ctx, seriesTitle.IMDBID, "show"); err == nil && len(ratings) > 0 {
@@ -2467,19 +2485,19 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 	}
 
 	// Fetch cast credits from TMDB if configured
-	if seriesTitle.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-		if credits, err := s.tmdb.fetchCredits(ctx, "series", seriesTitle.TMDBID); err == nil && credits != nil && len(credits.Cast) > 0 {
+	if tmdbIDForEnrichment > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+		if credits, err := s.tmdb.fetchCredits(ctx, "series", tmdbIDForEnrichment); err == nil && credits != nil && len(credits.Cast) > 0 {
 			seriesTitle.Credits = credits
 			details.Title = seriesTitle // Update the details with credits
-			log.Printf("[metadata] fetched %d cast members for series tmdbId=%d", len(credits.Cast), seriesTitle.TMDBID)
+			log.Printf("[metadata] fetched %d cast members for series tmdbId=%d", len(credits.Cast), tmdbIDForEnrichment)
 		} else if err != nil {
-			log.Printf("[metadata] failed to fetch credits for series tmdbId=%d: %v", seriesTitle.TMDBID, err)
+			log.Printf("[metadata] failed to fetch credits for series tmdbId=%d: %v", tmdbIDForEnrichment, err)
 		}
 	}
 
 	// Fetch logo and textless poster from TMDB if configured
-	if seriesTitle.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-		if images, err := s.tmdb.fetchImages(ctx, "series", seriesTitle.TMDBID); err == nil && images != nil {
+	if tmdbIDForEnrichment > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+		if images, err := s.tmdb.fetchImages(ctx, "series", tmdbIDForEnrichment); err == nil && images != nil {
 			if images.Logo != nil {
 				seriesTitle.Logo = images.Logo
 				log.Printf("[metadata] fetched logo for series tmdbId=%d", seriesTitle.TMDBID)
@@ -2495,10 +2513,10 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 	}
 
 	// Fetch genres from TMDB if configured
-	if seriesTitle.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-		if genres, err := s.tmdb.fetchSeriesGenres(ctx, seriesTitle.TMDBID); err == nil && len(genres) > 0 {
+	if tmdbIDForEnrichment > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+		if genres, err := s.tmdb.fetchSeriesGenres(ctx, tmdbIDForEnrichment); err == nil && len(genres) > 0 {
 			seriesTitle.Genres = genres
-			log.Printf("[metadata] fetched %d genres for series tmdbId=%d", len(genres), seriesTitle.TMDBID)
+			log.Printf("[metadata] fetched %d genres for series tmdbId=%d", len(genres), tmdbIDForEnrichment)
 
 			// Also check for daily show genres from TMDB if not already detected
 			// "Talk" genre (ID 10767) indicates talk shows which use date-based naming
@@ -2514,14 +2532,14 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			}
 			details.Title = seriesTitle
 		} else if err != nil {
-			log.Printf("[metadata] failed to fetch genres for series tmdbId=%d: %v", seriesTitle.TMDBID, err)
+			log.Printf("[metadata] failed to fetch genres for series tmdbId=%d: %v", tmdbIDForEnrichment, err)
 		}
 	}
 
 	// Fetch TV content rating from TMDB if configured
-	if seriesTitle.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
-		if s.enrichTVContentRating(ctx, &seriesTitle, seriesTitle.TMDBID) {
-			log.Printf("[metadata] fetched content rating for series tmdbId=%d rating=%s", seriesTitle.TMDBID, seriesTitle.Certification)
+	if tmdbIDForEnrichment > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+		if s.enrichTVContentRating(ctx, &seriesTitle, tmdbIDForEnrichment) {
+			log.Printf("[metadata] fetched content rating for series tmdbId=%d rating=%s", tmdbIDForEnrichment, seriesTitle.Certification)
 			details.Title = seriesTitle
 		}
 	}

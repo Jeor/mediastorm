@@ -2009,12 +2009,15 @@ func (s *Service) syncHistoryBidirectional(task config.ScheduledTask, traktAccou
 		return toTraktResult, fmt.Errorf("local to trakt: %w", err)
 	}
 
-	// Sync partial playback positions (non-fatal errors)
+	// Sync partial playback positions (non-fatal errors).
+	// Push first, then pull — passing exported keys so the pull skips items
+	// we just pushed (their Trakt paused_at is artificially fresh).
 	if !dryRun {
-		if err := s.syncPlaybackToTrakt(traktAccount, profileID); err != nil {
+		justExported, err := s.syncPlaybackToTrakt(traktAccount, profileID)
+		if err != nil {
 			log.Printf("[scheduler] Warning: sync playback to Trakt failed: %v", err)
 		}
-		if err := s.syncPlaybackFromTrakt(traktAccount, profileID); err != nil {
+		if err := s.syncPlaybackFromTrakt(traktAccount, profileID, justExported); err != nil {
 			log.Printf("[scheduler] Warning: sync playback from Trakt failed: %v", err)
 		}
 	}
@@ -2031,20 +2034,22 @@ func (s *Service) syncHistoryBidirectional(task config.ScheduledTask, traktAccou
 // syncPlaybackToTrakt exports partial playback progress (1-80%) to Trakt via scrobble/pause.
 // Trakt requires scrobble/stop for progress above ~80%, so we cap at 80% here.
 // Items at 90%+ are already handled by the existing watch history sync.
-func (s *Service) syncPlaybackToTrakt(traktAccount *config.TraktAccount, profileID string) error {
+// Returns the set of exported item keys (mediaType:itemID) so the caller can
+// exclude them from a subsequent pull to avoid the push→pull timestamp round-trip.
+func (s *Service) syncPlaybackToTrakt(traktAccount *config.TraktAccount, profileID string) (map[string]bool, error) {
+	exported := make(map[string]bool)
 	if s.historyService == nil {
-		return nil
+		return exported, nil
 	}
 
 	items, err := s.historyService.ListPlaybackProgress(profileID)
 	if err != nil {
-		return fmt.Errorf("list playback progress: %w", err)
+		return exported, fmt.Errorf("list playback progress: %w", err)
 	}
 
 	s.traktClient.UpdateCredentials(traktAccount.ClientID, traktAccount.ClientSecret)
 	accessToken := traktAccount.AccessToken
 
-	exported := 0
 	for _, item := range items {
 		// Only sync items with meaningful partial progress
 		// Trakt requires scrobble/stop above ~80%, so cap at 80% for pause-based sync
@@ -2089,23 +2094,39 @@ func (s *Service) syncPlaybackToTrakt(traktAccount *config.TraktAccount, profile
 			log.Printf("[scheduler] Failed to sync playback for %s %s: %v", item.MediaType, item.ItemID, err)
 			continue
 		}
-		exported++
+		exported[strings.ToLower(item.MediaType)+":"+strings.ToLower(item.ItemID)] = true
 	}
 
-	if exported > 0 {
-		log.Printf("[scheduler] Exported %d partial playback positions to Trakt", exported)
+	if len(exported) > 0 {
+		log.Printf("[scheduler] Exported %d partial playback positions to Trakt", len(exported))
 	}
-	return nil
+	return exported, nil
 }
 
 // syncPlaybackFromTrakt imports partial playback progress from Trakt to local storage.
-func (s *Service) syncPlaybackFromTrakt(traktAccount *config.TraktAccount, profileID string) error {
+// justExported contains item keys that were just pushed to Trakt in this sync cycle;
+// those are skipped to avoid the push→pull round-trip that would bump all timestamps to "now".
+func (s *Service) syncPlaybackFromTrakt(traktAccount *config.TraktAccount, profileID string, justExported map[string]bool) error {
 	if s.historyService == nil {
 		return nil
 	}
 
 	s.traktClient.UpdateCredentials(traktAccount.ClientID, traktAccount.ClientSecret)
 	accessToken := traktAccount.AccessToken
+
+	// Build a reverse index from IMDB ID → local itemID for existing movie progress.
+	// Trakt often doesn't return TVDB IDs, so we need IMDB as a bridge to find
+	// local entries that use TVDB-prefixed IDs.
+	imdbToLocalID := make(map[string]string)
+	if allProgress, err := s.historyService.ListPlaybackProgress(profileID); err == nil {
+		for _, p := range allProgress {
+			if p.MediaType == "movie" && p.ExternalIDs != nil {
+				if imdbID, ok := p.ExternalIDs["imdb"]; ok && imdbID != "" {
+					imdbToLocalID[imdbID] = p.ItemID
+				}
+			}
+		}
+	}
 
 	imported := 0
 
@@ -2122,23 +2143,99 @@ func (s *Service) syncPlaybackFromTrakt(traktAccount *config.TraktAccount, profi
 				continue
 			}
 
-			// Check if local progress exists and is newer
-			localProgress, err := s.historyService.GetPlaybackProgress(profileID, update.MediaType, update.ItemID)
-			if err == nil && localProgress != nil {
+			// Build all possible ID variants for this item (TVDB, TMDB, IMDB).
+			// The same movie/episode may exist locally under a different provider ID.
+			// Trakt often lacks TVDB IDs, so also check via IMDB reverse index.
+			altIDs := alternateItemIDs(update.MediaType, update.ItemID, update.ExternalIDs)
+			if update.MediaType == "movie" {
+				if imdbID, ok := update.ExternalIDs["imdb"]; ok && imdbID != "" {
+					if localID, found := imdbToLocalID[imdbID]; found {
+						// Add the local ID variant if not already present
+						alreadyHave := false
+						for _, a := range altIDs {
+							if strings.EqualFold(a, localID) {
+								alreadyHave = true
+								break
+							}
+						}
+						if !alreadyHave {
+							altIDs = append(altIDs, localID)
+						}
+					}
+				}
+			}
+
+			// Skip items we just pushed to Trakt in this sync cycle — their
+			// paused_at on Trakt is artificially fresh from the ScrobblePause call.
+			exported := false
+			for _, aid := range altIDs {
+				exportKey := strings.ToLower(update.MediaType) + ":" + strings.ToLower(aid)
+				if justExported[exportKey] {
+					exported = true
+					break
+				}
+			}
+			if exported {
+				continue
+			}
+
+			// Check if local progress exists under any provider ID variant.
+			// If found under a different ID, use that ID so we update the existing
+			// entry instead of creating a duplicate.
+			var localProgress *models.PlaybackProgress
+			for _, aid := range altIDs {
+				lp, lpErr := s.historyService.GetPlaybackProgress(profileID, update.MediaType, aid)
+				if lpErr == nil && lp != nil {
+					localProgress = lp
+					if aid != update.ItemID {
+						update.ItemID = aid
+					}
+					break
+				}
+			}
+
+			if localProgress != nil {
 				// If local progress is newer (or same), skip
 				if !localProgress.UpdatedAt.Before(traktItem.PausedAt) {
 					continue
 				}
 			}
 
-			// Import from Trakt — need local duration to compute a meaningful position
-			if localProgress == nil || localProgress.Duration <= 0 {
-				// No local duration reference — skip (will import on next sync if duration becomes available)
-				continue
+			// If local progress exists, only import if Trakt progress meaningfully differs.
+			// This prevents the push→pull round-trip from bumping timestamps on every sync.
+			if localProgress != nil && localProgress.Duration > 0 {
+				traktPosition := (traktItem.Progress / 100) * localProgress.Duration
+				positionDelta := traktPosition - localProgress.Position
+				if positionDelta < 0 {
+					positionDelta = -positionDelta
+				}
+				percentDelta := (positionDelta / localProgress.Duration) * 100
+				if percentDelta < 2.0 {
+					continue
+				}
+				update.Duration = localProgress.Duration
+				update.Position = traktPosition
+			} else {
+				// No local progress — create a new entry from Trakt.
+				// First check if the item exists in watch history under a different
+				// provider ID, so we use the same ID and avoid duplicates.
+				for _, aid := range altIDs {
+					if aid == update.ItemID {
+						continue
+					}
+					wh, whErr := s.historyService.GetWatchHistoryItem(profileID, update.MediaType, aid)
+					if whErr == nil && wh != nil {
+						update.ItemID = aid
+						break
+					}
+				}
+				// Use a nominal duration of 100 so that position = percent directly.
+				// The real duration will be set when the user actually plays the content.
+				update.Duration = 100
+				update.Position = traktItem.Progress
+				log.Printf("[scheduler] Creating new local progress from Trakt: %s %q at %.1f%%",
+					update.MediaType, update.ItemID, traktItem.Progress)
 			}
-
-			update.Duration = localProgress.Duration
-			update.Position = (traktItem.Progress / 100) * localProgress.Duration
 			update.IsPaused = true
 
 			if _, err := s.historyService.UpdatePlaybackProgress(profileID, *update); err != nil {
@@ -2164,13 +2261,14 @@ func (s *Service) traktPlaybackItemToUpdate(item trakt.PlaybackItem) *models.Pla
 
 	if item.Type == "movie" && item.Movie != nil {
 		ids := trakt.IDsToMap(item.Movie.IDs)
+		// Use prefixed IDs to match the player's format (e.g. "tmdb:movie:603")
 		var itemID string
-		if tmdbID, ok := ids["tmdb"]; ok && tmdbID != "" {
-			itemID = tmdbID
+		if tvdbID, ok := ids["tvdb"]; ok && tvdbID != "" {
+			itemID = fmt.Sprintf("tvdb:movie:%s", tvdbID)
+		} else if tmdbID, ok := ids["tmdb"]; ok && tmdbID != "" {
+			itemID = fmt.Sprintf("tmdb:movie:%s", tmdbID)
 		} else if imdbID, ok := ids["imdb"]; ok && imdbID != "" {
 			itemID = imdbID
-		} else if tvdbID, ok := ids["tvdb"]; ok && tvdbID != "" {
-			itemID = tvdbID
 		}
 		if itemID == "" {
 			return nil
@@ -2211,6 +2309,40 @@ func (s *Service) traktPlaybackItemToUpdate(item trakt.PlaybackItem) *models.Pla
 	}
 
 	return update
+}
+
+// alternateItemIDs returns all possible ID variants for a movie or episode,
+// so we can find existing local progress regardless of which provider ID was used.
+func alternateItemIDs(mediaType, primaryID string, externalIDs map[string]string) []string {
+	ids := []string{primaryID}
+	if externalIDs == nil {
+		return ids
+	}
+	seen := map[string]bool{strings.ToLower(primaryID): true}
+
+	add := func(id string) {
+		lower := strings.ToLower(id)
+		if !seen[lower] {
+			seen[lower] = true
+			ids = append(ids, id)
+		}
+	}
+
+	if mediaType == "movie" {
+		if v, ok := externalIDs["tvdb"]; ok && v != "" {
+			add(fmt.Sprintf("tvdb:movie:%s", v))
+		}
+		if v, ok := externalIDs["tmdb"]; ok && v != "" {
+			add(fmt.Sprintf("tmdb:movie:%s", v))
+		}
+		if v, ok := externalIDs["imdb"]; ok && v != "" {
+			add(v)
+		}
+	}
+	// For episodes, the itemID encodes season/episode so alternates would need
+	// the same S##E## suffix — not worth the complexity since shows rarely differ.
+
+	return ids
 }
 
 // externalIDsToSyncIDs converts map[string]string external IDs to trakt.SyncIDs.
@@ -2271,14 +2403,15 @@ func (s *Service) traktHistoryItemToUpdate(item trakt.HistoryItem, watched *bool
 	if item.Type == "movie" && item.Movie != nil {
 		ids := trakt.IDsToMap(item.Movie.IDs)
 
-		// Prefer TMDB > IMDB > TVDB as itemID
+		// Use prefixed IDs to match the player's format (e.g. "tvdb:movie:603")
+		// Prefer TVDB > TMDB > IMDB to match the player's primary ID source.
 		var itemID string
-		if tmdbID, ok := ids["tmdb"]; ok && tmdbID != "" {
-			itemID = tmdbID
+		if tvdbID, ok := ids["tvdb"]; ok && tvdbID != "" {
+			itemID = fmt.Sprintf("tvdb:movie:%s", tvdbID)
+		} else if tmdbID, ok := ids["tmdb"]; ok && tmdbID != "" {
+			itemID = fmt.Sprintf("tmdb:movie:%s", tmdbID)
 		} else if imdbID, ok := ids["imdb"]; ok && imdbID != "" {
 			itemID = imdbID
-		} else if tvdbID, ok := ids["tvdb"]; ok && tvdbID != "" {
-			itemID = tvdbID
 		}
 		if itemID == "" {
 			return nil

@@ -440,7 +440,6 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 	hiddenSeriesIDs := make(map[string]bool)
 	for _, prog := range progressItems {
 		if prog.HiddenFromContinueWatching {
-			log.Printf("[history] buildCW: found hidden progress entry itemID=%q seriesID=%q mediaType=%q", prog.ItemID, prog.SeriesID, prog.MediaType)
 			// Add both the itemID (for movies) and seriesID (for episodes)
 			if prog.ItemID != "" {
 				hiddenSeriesIDs[prog.ItemID] = true
@@ -465,10 +464,6 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 			}
 		}
 	}
-	if len(hiddenSeriesIDs) > 0 {
-		log.Printf("[history] buildCW: hiddenSeriesIDs=%v", hiddenSeriesIDs)
-	}
-
 	// Map of seriesID -> in-progress episode (0-90% watched)
 	// Note: Check both MediaType=="episode" AND presence of season/episode numbers
 	// (in case mediaType wasn't properly set but it has episode data)
@@ -568,15 +563,6 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 		if prog.MediaType == "movie" && prog.PercentWatched >= 5 && prog.PercentWatched < 90 {
 			moviesToProcess = append(moviesToProcess, prog)
 		}
-	}
-
-	log.Printf("[history] continue watching: %d series to process, %d movies to process, %d hidden IDs", len(seriesInfo), len(moviesToProcess), len(hiddenSeriesIDs))
-	for sid := range seriesInfo {
-		source := "watch-history"
-		if _, inProg := inProgressBySeriesCache[sid]; inProg {
-			source = "in-progress"
-		}
-		log.Printf("[history] buildCW: series %q (%s) passed hidden filter (source: %s)", seriesInfo[sid].SeriesName, sid, source)
 	}
 
 	// === PARALLEL METADATA LOOKUPS ===
@@ -727,6 +713,13 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 					// Use metadata year if available
 					if seriesDetails.Title.Year > 0 {
 						state.Year = seriesDetails.Title.Year
+					}
+
+					// Enrich next episode with metadata (title, overview, runtime, air date)
+					// when the playback progress entry doesn't have them.
+					if state.NextEpisode != nil {
+						enrichEpisodeFromMetadata(state.NextEpisode, seriesDetails)
+						state.LastWatched = *state.NextEpisode
 					}
 
 					// Calculate episode counts for series completion tracking
@@ -925,23 +918,6 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 		return continueWatching[i].UpdatedAt.After(continueWatching[j].UpdatedAt)
 	})
 
-	// Log final sorted continue watching list with positions and timestamps
-	log.Printf("[history] === Continue Watching final order (%d items) ===", len(continueWatching))
-	for i, item := range continueWatching {
-		source := "completed-eps"
-		if item.PercentWatched > 0 && item.PercentWatched < 90 {
-			source = "in-progress"
-		}
-		nextInfo := "no-next"
-		if item.NextEpisode != nil {
-			nextInfo = fmt.Sprintf("next=S%02dE%02d", item.NextEpisode.SeasonNumber, item.NextEpisode.EpisodeNumber)
-		}
-		log.Printf("[history]   #%d %q (%s) updatedAt=%s %s [%s]",
-			i+1, item.SeriesTitle, item.SeriesID,
-			item.UpdatedAt.Format(time.RFC3339),
-			nextInfo, source)
-	}
-
 	return continueWatching, nil
 }
 
@@ -1046,12 +1022,8 @@ func (s *Service) getSeriesMetadataWithCache(ctx context.Context, seriesID, seri
 
 	// Check cache validity
 	if exists && time.Now().Before(cached.expiresAt) {
-		log.Printf("[history] using cached series metadata seriesId=%s name=%q hasPoster=%v hasBackdrop=%v",
-			seriesID, seriesName, cached.details.Title.Poster != nil, cached.details.Title.Backdrop != nil)
 		return cached.details, nil
 	}
-
-	log.Printf("[history] fetching fresh series metadata seriesId=%s name=%q", seriesID, seriesName)
 
 	if metadataSvc == nil {
 		return nil, fmt.Errorf("metadata service not available")
@@ -1535,6 +1507,36 @@ func resolveCanonicalID(canonical map[string]string, seriesID string) string {
 
 // countTotalEpisodes counts the total number of released episodes in a series,
 // excluding specials (season 0). Only counts episodes that have aired.
+// enrichEpisodeFromMetadata fills in missing episode fields (title, overview,
+// runtime, air date) from series metadata.
+func enrichEpisodeFromMetadata(ref *models.EpisodeReference, details *models.SeriesDetails) {
+	if ref == nil || details == nil {
+		return
+	}
+	for _, season := range details.Seasons {
+		for _, ep := range season.Episodes {
+			if ep.SeasonNumber == ref.SeasonNumber && ep.EpisodeNumber == ref.EpisodeNumber {
+				if ref.Title == "" {
+					ref.Title = ep.Name
+				}
+				if ref.Overview == "" {
+					ref.Overview = ep.Overview
+				}
+				if ref.RuntimeMinutes == 0 && ep.Runtime > 0 {
+					ref.RuntimeMinutes = ep.Runtime
+				}
+				if ref.AirDate == "" {
+					ref.AirDate = ep.AiredDate
+				}
+				if ref.EpisodeID == "" {
+					ref.EpisodeID = ep.ID
+				}
+				return
+			}
+		}
+	}
+}
+
 func countTotalEpisodes(seriesDetails *models.SeriesDetails) int {
 	if seriesDetails == nil {
 		return 0

@@ -39,8 +39,10 @@ type Service struct {
 	wg      sync.WaitGroup
 
 	// Task state tracking (in-memory, not persisted)
-	taskRunning map[string]bool
-	taskMu      sync.RWMutex
+	taskRunning        map[string]bool
+	taskMu             sync.RWMutex
+	lastFullSyncTimes  map[string]time.Time // tracks last full Trakt history sync per task ID
+	lastFullSyncTimesMu sync.Mutex
 }
 
 // SyncResult contains the result of a sync operation including dry run details
@@ -60,11 +62,12 @@ func NewService(
 	watchlistService *watchlist.Service,
 ) *Service {
 	return &Service{
-		configManager:    configManager,
-		plexClient:       plexClient,
-		traktClient:      traktClient,
-		watchlistService: watchlistService,
-		taskRunning:      make(map[string]bool),
+		configManager:     configManager,
+		plexClient:        plexClient,
+		traktClient:       traktClient,
+		watchlistService:  watchlistService,
+		taskRunning:       make(map[string]bool),
+		lastFullSyncTimes: make(map[string]time.Time),
 	}
 }
 
@@ -1729,13 +1732,28 @@ func (s *Service) syncTraktHistoryToLocal(task config.ScheduledTask, traktAccoun
 	historySvc := s.historyService
 	s.mu.RUnlock()
 
-	// Determine incremental cursor: lastRunAt - 5min safety buffer
+	// Determine incremental cursor: lastRunAt - 5min safety buffer.
+	// Periodically (every 6h) do a full sync to catch backdated watches.
+	// Trakt's start_at filters by watched_at (event time), so manually-added
+	// watches with a past watched_at are missed by incremental syncs.
+	const fullSyncInterval = 6 * time.Hour
 	var since time.Time
-	if task.LastRunAt != nil {
+	isFullSync := false
+
+	s.lastFullSyncTimesMu.Lock()
+	lastFull, ok := s.lastFullSyncTimes[task.ID]
+	s.lastFullSyncTimesMu.Unlock()
+
+	if !ok || time.Since(lastFull) >= fullSyncInterval {
+		// Full sync: fetch all history from the past year
+		since = time.Now().UTC().AddDate(-1, 0, 0)
+		isFullSync = true
+		log.Printf("[scheduler] Performing full Trakt history reconciliation (last full sync: %v)", lastFull)
+	} else if task.LastRunAt != nil {
 		since = task.LastRunAt.Add(-5 * time.Minute)
 	}
 
-	log.Printf("[scheduler] Fetching Trakt watch history since=%v", since)
+	log.Printf("[scheduler] Fetching Trakt watch history since=%v (fullSync=%v)", since, isFullSync)
 
 	items, err := s.traktClient.GetWatchHistorySince(traktAccount.AccessToken, since)
 	if err != nil {
@@ -1795,6 +1813,13 @@ func (s *Service) syncTraktHistoryToLocal(task config.ScheduledTask, traktAccoun
 		}
 		result.Count = imported
 		log.Printf("[scheduler] Imported %d/%d unique items from Trakt history", imported, len(updates))
+	}
+
+	if isFullSync {
+		s.lastFullSyncTimesMu.Lock()
+		s.lastFullSyncTimes[task.ID] = time.Now().UTC()
+		s.lastFullSyncTimesMu.Unlock()
+		log.Printf("[scheduler] Full Trakt history reconciliation complete, next in %v", fullSyncInterval)
 	}
 
 	return result, nil

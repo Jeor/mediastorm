@@ -671,11 +671,16 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 				}
 
 				// For in-progress, use the in-progress episode as both last and next
+				// Copy ExternalIDs to avoid concurrent map writes from parallel goroutines
+				extIDs := make(map[string]string, len(t.inProgress.ExternalIDs))
+				for k, v := range t.inProgress.ExternalIDs {
+					extIDs[k] = v
+				}
 				state = models.SeriesWatchState{
 					SeriesID:    t.seriesID,
 					SeriesTitle: t.inProgress.SeriesName,
 					Year:        t.inProgress.Year,
-					ExternalIDs: t.inProgress.ExternalIDs,
+					ExternalIDs: extIDs,
 					UpdatedAt:   updatedAt,
 					LastWatched: *nextEpisode,
 					NextEpisode: nextEpisode,
@@ -759,11 +764,16 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 					return
 				}
 
+				// Copy ExternalIDs to avoid concurrent map writes from parallel goroutines
+				extIDs := make(map[string]string, len(mostRecentEpisode.ExternalIDs))
+				for k, v := range mostRecentEpisode.ExternalIDs {
+					extIDs[k] = v
+				}
 				state = models.SeriesWatchState{
 					SeriesID:    t.seriesID,
 					SeriesTitle: mostRecentEpisode.SeriesName,
 					Year:        mostRecentEpisode.Year,
-					ExternalIDs: mostRecentEpisode.ExternalIDs,
+					ExternalIDs: extIDs,
 					UpdatedAt:   mostRecentEpisode.WatchedAt,
 					LastWatched: s.convertToEpisodeRef(mostRecentEpisode),
 					NextEpisode: nextEpisode,

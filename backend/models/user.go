@@ -19,7 +19,7 @@ type User struct {
 	Name           string    `json:"name"`
 	Color          string    `json:"color,omitempty"`
 	IconURL        string    `json:"iconUrl,omitempty"`        // Local path to downloaded profile icon image (set via admin UI)
-	PinHash        string    `json:"-"`                        // bcrypt hash of PIN, excluded from JSON (security)
+	PinHash        string    `json:"pinHash,omitempty"`        // bcrypt hash of PIN — persisted to disk, stripped from API responses by MarshalJSON
 	TraktAccountID string    `json:"traktAccountId,omitempty"` // ID of the linked Trakt account (from config.TraktAccount)
 	PlexAccountID  string    `json:"plexAccountId,omitempty"`  // ID of the linked Plex account (from config.PlexAccount)
 	IsKidsProfile  bool      `json:"isKidsProfile"`            // Whether this is a kids profile with content restrictions
@@ -43,17 +43,20 @@ func (u User) HasIcon() bool {
 	return u.IconURL != ""
 }
 
-// MarshalJSON implements custom JSON marshaling to include the computed hasPin field.
+// MarshalJSON implements custom JSON marshaling to include the computed hasPin field
+// and strip the pinHash so it is never exposed in API responses.
 func (u User) MarshalJSON() ([]byte, error) {
 	type UserAlias User // prevent recursion
 	return json.Marshal(&struct {
 		UserAlias
-		HasPin         bool   `json:"hasPin"`
-		HasIcon        bool   `json:"hasIcon"`
-		TraktAccountID string `json:"traktAccountId,omitempty"`
-		PlexAccountID  string `json:"plexAccountId,omitempty"`
+		PinHash        *struct{} `json:"pinHash,omitempty"` // shadow to exclude from output (nil + omitempty = dropped)
+		HasPin         bool      `json:"hasPin"`
+		HasIcon        bool      `json:"hasIcon"`
+		TraktAccountID string    `json:"traktAccountId,omitempty"`
+		PlexAccountID  string    `json:"plexAccountId,omitempty"`
 	}{
 		UserAlias:      UserAlias(u),
+		PinHash:        nil,
 		HasPin:         u.HasPin(),
 		HasIcon:        u.HasIcon(),
 		TraktAccountID: u.TraktAccountID,

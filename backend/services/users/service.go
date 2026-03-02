@@ -1122,9 +1122,13 @@ func (s *Service) load() error {
 }
 
 func (s *Service) saveLocked() error {
-	users := make([]models.User, 0, len(s.users))
+	// diskUser bypasses User.MarshalJSON so that PinHash is persisted to disk.
+	// MarshalJSON strips PinHash for API security, but we need it on disk.
+	type diskUser models.User
+
+	users := make([]diskUser, 0, len(s.users))
 	for _, user := range s.users {
-		users = append(users, user)
+		users = append(users, diskUser(user))
 	}
 
 	sort.Slice(users, func(i, j int) bool {

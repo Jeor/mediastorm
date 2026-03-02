@@ -603,8 +603,8 @@ func (s *Service) Trending(ctx context.Context, mediaType string) ([]models.Tren
 		progressLabel = "Trending Movies"
 	}
 
-	// v5: MDBList-only, language-aware cache key
-	key := cacheKey("mdblist", "trending", label, "v5", s.client.language)
+	// v6: added genre hydration from TVDB
+	key := cacheKey("mdblist", "trending", label, "v6", s.client.language)
 	// Use a detached context for enrichment so work completes even if the
 	// HTTP client disconnects — results are cached for future requests.
 	enrichCtx := context.Background()
@@ -976,6 +976,13 @@ func (s *Service) enrichMovieTVDB(title *models.Title, movie mdblistMovie) {
 			if tvdbDetails.Score > 0 {
 				title.Popularity = tvdbDetails.Score
 			}
+			// Fetch extended data for artwork and genres
+			if ext, err := s.client.movieExtended(*movie.TVDBID, []string{"artwork"}); err == nil {
+				applyTVDBArtworks(title, ext.Artworks)
+				if genres := tvdbGenreNames(ext.Genres); len(genres) > 0 {
+					title.Genres = genres
+				}
+			}
 			found = true
 		}
 	} else {
@@ -1029,6 +1036,10 @@ func (s *Service) enrichMovieTVDB(title *models.Title, movie mdblistMovie) {
 			title.Overview = searchResult.Overview
 		}
 
+		if len(searchResult.Genres) > 0 {
+			title.Genres = searchResult.Genres
+		}
+
 		if img := newTVDBImage(searchResult.ImageURL, "poster", 0, 0); img != nil {
 			title.Poster = img
 		}
@@ -1040,6 +1051,11 @@ func (s *Service) enrichMovieTVDB(title *models.Title, movie mdblistMovie) {
 		if title.TVDBID > 0 {
 			if ext, err := s.client.movieExtended(title.TVDBID, []string{"artwork"}); err == nil {
 				applyTVDBArtworks(title, ext.Artworks)
+				if len(title.Genres) == 0 {
+					if genres := tvdbGenreNames(ext.Genres); len(genres) > 0 {
+						title.Genres = genres
+					}
+				}
 			}
 			// Fetch translations for the user's language (authoritative, overrides search result)
 			if translation, err := s.client.movieTranslations(title.TVDBID, s.client.language); err == nil && translation != nil {
@@ -1413,6 +1429,9 @@ func (s *Service) enrichSeriesTVDB(title *models.Title, tvShow mdblistTVShow) {
 			title.Status = ext.Status.Name
 			found = true
 			applyTVDBArtworks(title, ext.Artworks)
+			if genres := tvdbGenreNames(ext.Genres); len(genres) > 0 {
+				title.Genres = genres
+			}
 
 			if trans != nil {
 				if trans.Name != "" {
@@ -1445,6 +1464,10 @@ func (s *Service) enrichSeriesTVDB(title *models.Title, tvShow mdblistTVShow) {
 				title.Overview = result.Overviews[lang3]
 			}
 
+			if len(result.Genres) > 0 {
+				title.Genres = result.Genres
+			}
+
 			if title.IMDBID == "" {
 				for _, remote := range result.RemoteIDs {
 					id := strings.TrimSpace(remote.ID)
@@ -1469,6 +1492,11 @@ func (s *Service) enrichSeriesTVDB(title *models.Title, tvShow mdblistTVShow) {
 				if title.Poster == nil || title.Backdrop == nil {
 					if ext, err := s.cachedSeriesExtended(title.TVDBID, []string{"artworks"}); err == nil {
 						applyTVDBArtworks(title, ext.Artworks)
+						if len(title.Genres) == 0 {
+							if genres := tvdbGenreNames(ext.Genres); len(genres) > 0 {
+								title.Genres = genres
+							}
+						}
 					}
 				}
 				// Fetch translations for the user's language
@@ -5444,6 +5472,10 @@ func (s *Service) enrichCustomListItem(ctx context.Context, item mdblistItem) mo
 			// If TVDB didn't provide a translated overview, try TMDB
 			if !gotTranslatedOverview {
 				s.maybeHydrateOverviewFromTMDB(ctx, &title, tmdbID)
+			}
+			// Hydrate genres/runtime from TMDB if missing
+			if len(title.Genres) == 0 || title.RuntimeMinutes == 0 {
+				s.maybeHydrateMovieArtworkFromTMDB(ctx, &title, models.MovieDetailsQuery{TMDBID: int64(tmdbID)})
 			}
 		}
 	}

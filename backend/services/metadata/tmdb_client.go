@@ -34,6 +34,36 @@ const (
 	tmdbLogoSize     = "w500"
 )
 
+// TMDB genre ID → name maps (standard IDs that rarely change)
+var tmdbMovieGenres = map[int]string{
+	28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
+	99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History",
+	27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Sci-Fi",
+	10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western",
+}
+
+var tmdbTVGenres = map[int]string{
+	10759: "Action & Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
+	99: "Documentary", 18: "Drama", 10751: "Family", 10762: "Kids", 9648: "Mystery",
+	10763: "News", 10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap",
+	10767: "Talk", 10768: "War & Politics", 37: "Western",
+}
+
+// resolveGenreIDs maps TMDB genre IDs to genre names.
+func resolveGenreIDs(ids []int, mediaType string) []string {
+	lookup := tmdbMovieGenres
+	if mediaType == "tv" {
+		lookup = tmdbTVGenres
+	}
+	var names []string
+	for _, id := range ids {
+		if name, ok := lookup[id]; ok {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 type tmdbClient struct {
 	apiKey   string
 	language string
@@ -1967,6 +1997,7 @@ func (c *tmdbClient) discoverByGenre(ctx context.Context, mediaType string, genr
 			VoteAverage      float64 `json:"vote_average"`
 			FirstAirDate     string  `json:"first_air_date"`
 			ReleaseDate      string  `json:"release_date"`
+			GenreIDs         []int   `json:"genre_ids"`
 		} `json:"results"`
 		TotalResults int `json:"total_results"`
 	}
@@ -1999,6 +2030,9 @@ func (c *tmdbClient) discoverByGenre(ctx context.Context, mediaType string, genr
 			title.Backdrop = backdrop
 		}
 		title.Popularity = scoreFallback(r.Popularity, r.VoteAverage)
+		if genres := resolveGenreIDs(r.GenreIDs, apiMediaType); len(genres) > 0 {
+			title.Genres = genres
+		}
 		titles = append(titles, title)
 	}
 

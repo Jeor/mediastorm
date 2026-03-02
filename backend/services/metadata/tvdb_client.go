@@ -528,6 +528,24 @@ type tvdbOriginalNetwork struct {
 	Country string `json:"country"`
 }
 
+type tvdbGenre struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+func tvdbGenreNames(genres []tvdbGenre) []string {
+	if len(genres) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(genres))
+	for _, g := range genres {
+		if g.Name != "" {
+			names = append(names, g.Name)
+		}
+	}
+	return names
+}
+
 type tvdbSeriesExtendedData struct {
 	ID              int64              `json:"id"`
 	Name            string             `json:"name"`
@@ -544,6 +562,7 @@ type tvdbSeriesExtendedData struct {
 	Episodes        []tvdbEpisode      `json:"episodes"`
 	Trailers        []tvdbTrailer      `json:"trailers"`
 	Artworks        []tvdbArtwork      `json:"artworks"`
+	Genres          []tvdbGenre        `json:"genres"`
 	RemoteIDs       []struct {
 		ID         string `json:"id"`
 		Type       int    `json:"type"`
@@ -564,6 +583,7 @@ type tvdbMovieExtendedData struct {
 	Year      tvdbYear      `json:"year"`
 	Trailers  []tvdbTrailer `json:"trailers"`
 	Artworks  []tvdbArtwork `json:"artworks"`
+	Genres    []tvdbGenre   `json:"genres"`
 	RemoteIDs []struct {
 		ID         string `json:"id"`
 		Type       int    `json:"type"`

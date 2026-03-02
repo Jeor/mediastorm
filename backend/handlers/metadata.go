@@ -921,6 +921,18 @@ func (h *MetadataHandler) CuratedList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enrich with watch state if user context is available
+	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
+	if userID != "" && h.HistoryService != nil {
+		wh, whErr := h.HistoryService.ListWatchHistory(userID)
+		if whErr == nil {
+			cw, _ := h.HistoryService.ListSeriesStates(userID)
+			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
+			idx := buildWatchStateIndex(wh, cw, pp)
+			enrichTrendingItems(items, idx)
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"items": items})
 }

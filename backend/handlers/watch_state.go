@@ -108,7 +108,7 @@ func (idx *watchStateIndex) compute(mediaType, itemID string) (string, *int) {
 		if m.watched || m.percent >= 90 {
 			return "complete", nil
 		}
-		if m.percent > 0 {
+		if m.percent >= 5 {
 			return "partial", nil
 		}
 		return "none", nil

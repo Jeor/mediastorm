@@ -3579,6 +3579,18 @@ func (h *AdminUIHandler) CreateUserAccount(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Auto-create a default profile for the new account
+	if h.usersService != nil {
+		if _, err := h.usersService.CreateForAccount(account.ID, req.Username); err != nil {
+			fmt.Printf("Warning: failed to auto-create profile for account %s: %v\n", account.ID, err)
+		}
+	}
+
+	profiles := []models.User{}
+	if h.usersService != nil {
+		profiles = h.usersService.ListForAccount(account.ID)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(AdminAccountWithProfiles{
@@ -3587,7 +3599,7 @@ func (h *AdminUIHandler) CreateUserAccount(w http.ResponseWriter, r *http.Reques
 		IsMaster:  account.IsMaster,
 		CreatedAt: account.CreatedAt,
 		UpdatedAt: account.UpdatedAt,
-		Profiles:  []models.User{},
+		Profiles:  profiles,
 	})
 }
 
@@ -4009,6 +4021,13 @@ func (h *AdminUIHandler) RegisterWithInvitation(w http.ResponseWriter, r *http.R
 		w.WriteHeader(status)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
+	}
+
+	// Auto-create a default profile for the new account
+	if h.usersService != nil {
+		if _, err := h.usersService.CreateForAccount(account.ID, req.Username); err != nil {
+			fmt.Printf("Warning: failed to auto-create profile for account %s: %v\n", account.ID, err)
+		}
 	}
 
 	// Mark the invitation as used

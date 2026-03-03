@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -83,6 +84,11 @@ func (h *AccountsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
+	}
+
+	// Auto-create a default profile for the new account
+	if _, err := h.users.CreateForAccount(account.ID, req.Username); err != nil {
+		log.Printf("Warning: failed to auto-create profile for account %s: %v", account.ID, err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

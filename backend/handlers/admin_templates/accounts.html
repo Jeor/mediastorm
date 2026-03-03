@@ -791,7 +791,7 @@ async function changePassword(e, accountId) {
 }
 
 async function deleteAccount(accountId, username) {
-    if (!confirm(`Delete account "${username}"? Profiles will be reassigned to the admin account.`)) return;
+    if (!confirm(`Delete account "${username}"? Associated profiles will be left unassigned and can be reassigned from the admin panel.`)) return;
     try {
         const res = await fetch(basePath + '/api/accounts?accountId=' + accountId, { method: 'DELETE' });
         if (!res.ok) throw new Error(await res.text());

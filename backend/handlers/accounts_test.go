@@ -132,6 +132,41 @@ func TestAccountsList_EnrichesWithProfiles(t *testing.T) {
 	}
 }
 
+func TestAccountsCreate_AutoCreatesProfile(t *testing.T) {
+	handler, _, _, usersSvc := setupAccountsHandler(t)
+
+	reqBody := handlers.CreateAccountRequest{
+		Username: "profileuser",
+		Password: "password123",
+	}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/accounts", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	handler.Create(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp models.Account
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// Verify a profile was auto-created for the new account
+	profiles := usersSvc.ListForAccount(resp.ID)
+	if len(profiles) != 1 {
+		t.Fatalf("expected 1 auto-created profile, got %d", len(profiles))
+	}
+
+	if profiles[0].Name != "profileuser" {
+		t.Errorf("expected profile name 'profileuser', got %q", profiles[0].Name)
+	}
+}
+
 func TestAccountsCreate_Success(t *testing.T) {
 	handler, accountsSvc, _, _ := setupAccountsHandler(t)
 

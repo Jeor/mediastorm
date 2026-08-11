@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -2343,6 +2344,170 @@ func TestSyncEquivalentEpisodeWatchHistorySkipsAdjacentAbsoluteEpisodeInSameSeri
 	}
 	if target.ExternalIDs["episodeTvdb"] != "85754" {
 		t.Fatalf("expected adjacent episode to keep its episode IDs, got %#v", target.ExternalIDs)
+	}
+}
+
+func TestSyncEquivalentEpisodeWatchHistorySkipsStaleAbsoluteCollisionInSameSeries(t *testing.T) {
+	older := time.Date(2026, 8, 11, 21, 0, 0, 0, time.UTC)
+	completedAt := time.Date(2026, 8, 11, 22, 2, 12, 0, time.UTC)
+	sourceKey := "episode:tmdb:tv:4629:s04e11"
+	targetKey := "episode:tmdb:tv:4629:s04e12"
+	perUser := map[string]models.WatchHistoryItem{
+		sourceKey: {
+			ID:            sourceKey,
+			MediaType:     "episode",
+			ItemID:        "tmdb:tv:4629:s04e11",
+			Name:          "Point of No Return",
+			SeriesID:      "tmdb:tv:4629",
+			SeriesName:    "Stargate SG-1",
+			SeasonNumber:  4,
+			EpisodeNumber: 11,
+			Watched:       true,
+			WatchedAt:     completedAt,
+			UpdatedAt:     completedAt,
+			ExternalIDs: map[string]string{
+				"imdb":            "tt0118480",
+				"tmdb":            "4629",
+				"tvdb":            "72449",
+				"episodeTvdb":     "85827",
+				"absoluteEpisode": "77",
+			},
+		},
+		targetKey: {
+			ID:            targetKey,
+			MediaType:     "episode",
+			ItemID:        "tmdb:tv:4629:s04e12",
+			Name:          "Tangent",
+			SeriesID:      "tmdb:tv:4629",
+			SeriesName:    "Stargate SG-1",
+			SeasonNumber:  4,
+			EpisodeNumber: 12,
+			Watched:       false,
+			WatchedAt:     older,
+			UpdatedAt:     older,
+			ExternalIDs: map[string]string{
+				"imdb":        "tt0118480",
+				"tmdb":        "4629",
+				"tvdb":        "72449",
+				"episodeTvdb": "85828",
+				// Stale metadata collides with the freshly resolved E11 absolute number.
+				"absoluteEpisode": "77",
+			},
+		},
+	}
+
+	syncEquivalentEpisodeWatchHistoryLocked(perUser, sourceKey, perUser[sourceKey])
+
+	target := perUser[targetKey]
+	if target.Watched {
+		t.Fatalf("expected adjacent episode with a different episode ID to remain unwatched: %+v", target)
+	}
+	if !target.UpdatedAt.Equal(older) {
+		t.Fatalf("expected adjacent episode updatedAt %s, got %s", older, target.UpdatedAt)
+	}
+	if target.ExternalIDs["episodeTvdb"] != "85828" {
+		t.Fatalf("expected adjacent episode to keep its episode ID, got %#v", target.ExternalIDs)
+	}
+}
+
+func TestUpdateWatchHistoryDoesNotPropagateStaleAbsoluteCollision(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	userID := "user-stale-absolute-collision"
+	older := time.Date(2026, 8, 11, 21, 0, 0, 0, time.UTC)
+	completedAt := time.Date(2026, 8, 11, 22, 2, 12, 0, time.UTC)
+	unwatched := false
+	watched := true
+	showIDs := map[string]string{
+		"imdb": "tt0118480",
+		"tmdb": "4629",
+		"tvdb": "72449",
+	}
+
+	episode12IDs := maps.Clone(showIDs)
+	episode12IDs["episodeTvdb"] = "85828"
+	episode12IDs["absoluteEpisode"] = "77"
+	if _, err := svc.UpdateWatchHistory(userID, models.WatchHistoryUpdate{
+		MediaType:     "episode",
+		ItemID:        "tmdb:tv:4629:s04e12",
+		Name:          "Tangent",
+		Watched:       &unwatched,
+		WatchedAt:     older,
+		SeriesID:      "tmdb:tv:4629",
+		SeriesName:    "Stargate SG-1",
+		SeasonNumber:  4,
+		EpisodeNumber: 12,
+		ExternalIDs:   episode12IDs,
+	}); err != nil {
+		t.Fatalf("UpdateWatchHistory() E12 error = %v", err)
+	}
+
+	episode11IDs := maps.Clone(showIDs)
+	episode11IDs["episodeTvdb"] = "85827"
+	episode11IDs["absoluteEpisode"] = "77"
+	if _, err := svc.UpdateWatchHistory(userID, models.WatchHistoryUpdate{
+		MediaType:     "episode",
+		ItemID:        "tmdb:tv:4629:s04e11",
+		Name:          "Point of No Return",
+		Watched:       &watched,
+		WatchedAt:     completedAt,
+		SeriesID:      "tmdb:tv:4629",
+		SeriesName:    "Stargate SG-1",
+		SeasonNumber:  4,
+		EpisodeNumber: 11,
+		ExternalIDs:   episode11IDs,
+	}); err != nil {
+		t.Fatalf("UpdateWatchHistory() E11 error = %v", err)
+	}
+
+	episode12, err := svc.GetWatchHistoryItem(userID, "episode", "tmdb:tv:4629:s04e12")
+	if err != nil {
+		t.Fatalf("GetWatchHistoryItem() E12 error = %v", err)
+	}
+	if episode12 == nil {
+		t.Fatal("expected E12 history row")
+	}
+	if episode12.Watched {
+		t.Fatalf("expected E12 to remain unwatched after E11 completion: %+v", episode12)
+	}
+	if !episode12.UpdatedAt.Equal(older) {
+		t.Fatalf("expected E12 updatedAt %s, got %s", older, episode12.UpdatedAt)
+	}
+}
+
+func TestSyncEquivalentEpisodeWatchHistorySkipsAbsoluteCollisionWithMissingEpisodeID(t *testing.T) {
+	older := time.Date(2026, 6, 10, 23, 30, 26, 0, time.UTC)
+	completedAt := time.Date(2026, 8, 8, 14, 24, 29, 0, time.UTC)
+	sourceKey := "episode:tmdb:tv:4629:s01e09"
+	targetKey := "episode:tmdb:tv:4629:s01e10"
+	perUser := map[string]models.WatchHistoryItem{
+		sourceKey: {
+			ID: sourceKey, MediaType: "episode", ItemID: "tmdb:tv:4629:s01e09",
+			SeriesID: "tmdb:tv:4629", SeriesName: "Stargate SG-1",
+			SeasonNumber: 1, EpisodeNumber: 9, Watched: true, WatchedAt: completedAt, UpdatedAt: completedAt,
+			ExternalIDs: map[string]string{
+				"imdb": "tt0118480", "tmdb": "4629", "tvdb": "72449",
+				"episodeTvdb": "85758", "absoluteEpisode": "9",
+			},
+		},
+		targetKey: {
+			ID: targetKey, MediaType: "episode", ItemID: "tmdb:tv:4629:s01e10",
+			SeriesID: "tmdb:tv:4629", SeriesName: "Stargate SG-1",
+			SeasonNumber: 1, EpisodeNumber: 10, Watched: false, WatchedAt: older, UpdatedAt: older,
+			ExternalIDs: map[string]string{
+				"imdb": "tt0118480", "tmdb": "4629", "tvdb": "72449", "absoluteEpisode": "9",
+			},
+		},
+	}
+
+	syncEquivalentEpisodeWatchHistoryLocked(perUser, sourceKey, perUser[sourceKey])
+
+	if target := perUser[targetKey]; target.Watched || !target.UpdatedAt.Equal(older) {
+		t.Fatalf("expected incomplete adjacent row to remain unchanged: %+v", target)
 	}
 }
 

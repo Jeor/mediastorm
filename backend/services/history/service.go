@@ -4019,8 +4019,25 @@ func watchHistoryEquivalentEpisodeIDsMatch(candidate, item models.WatchHistoryIt
 	if !watchHistoryAbsoluteEpisodeDuplicateMatch(candidate.EpisodeNumber, item.EpisodeNumber, candidate.ExternalIDs, item.ExternalIDs) {
 		return false
 	}
-	return hasMatchingEpisodeScopedExternalID(candidate.ExternalIDs, item.ExternalIDs) ||
-		hasMatchingExternalID(candidate.ExternalIDs, item.ExternalIDs)
+	// Different episode numbers are aliases when an episode-scoped provider ID
+	// agrees. If both rows carry episode IDs and they disagree, show-level IDs
+	// merely prove that the rows belong to the same series; they must not merge
+	// adjacent episodes whose stale absolute numbers happen to collide.
+	if hasMatchingEpisodeScopedExternalID(candidate.ExternalIDs, item.ExternalIDs) {
+		return true
+	}
+	if hasEpisodeScopedExternalIDs(candidate.ExternalIDs) && hasEpisodeScopedExternalIDs(item.ExternalIDs) {
+		return false
+	}
+
+	// Preserve compatibility with legacy absolute-number rows that predate
+	// episode-scoped IDs (for example S23E1164 versus S23E09, abs 1164). This
+	// requires one row's episode number to be the other's absolute number; equal
+	// absolute metadata alone is not enough.
+	candidateAbsolute, candidateHasAbsolute := positiveExternalIDInt(candidate.ExternalIDs, "absoluteEpisode")
+	itemAbsolute, itemHasAbsolute := positiveExternalIDInt(item.ExternalIDs, "absoluteEpisode")
+	return (itemHasAbsolute && !candidateHasAbsolute && candidate.EpisodeNumber == itemAbsolute) ||
+		(candidateHasAbsolute && !itemHasAbsolute && item.EpisodeNumber == candidateAbsolute)
 }
 
 func hasMatchingEpisodeScopedExternalID(a, b map[string]string) bool {

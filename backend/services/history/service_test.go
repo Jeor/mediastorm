@@ -678,6 +678,64 @@ func TestUpdatePlaybackProgressEndedStopsRealtimeSession(t *testing.T) {
 	}
 }
 
+func TestUpdatePlaybackProgressEnrichesRealtimeIdentityFromWatchHistory(t *testing.T) {
+	svc, err := NewService(t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	userID := "user-one-piece"
+	svc.watchHistory[userID] = map[string]models.WatchHistoryItem{
+		"episode:tmdb:tv:37854:s23e18": {
+			ID:            "episode:tmdb:tv:37854:s23e18",
+			MediaType:     "episode",
+			ItemID:        "tmdb:tv:37854:s23e18",
+			SeriesID:      "tmdb:tv:37854",
+			SeasonNumber:  23,
+			EpisodeNumber: 18,
+			Watched:       true,
+			ExternalIDs: map[string]string{
+				"imdb":        "tt0388629",
+				"tmdb":        "37854",
+				"tvdb":        "81797",
+				"episodeTvdb": "11908333",
+			},
+		},
+	}
+
+	scrobbler := newCaptureRealTimeScrobbler()
+	svc.SetTraktRealTimeScrobbler(scrobbler)
+	_, err = svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+		MediaType:     "episode",
+		ItemID:        "tvdb:series:81797:s23e18",
+		SeriesID:      "tvdb:series:81797",
+		SeriesName:    "One Piece",
+		EpisodeName:   "A Nightmarish Game",
+		SeasonNumber:  23,
+		EpisodeNumber: 18,
+		Position:      140,
+		Duration:      1400,
+		ExternalIDs: map[string]string{
+			"imdb": "tt0388629",
+			"tvdb": "81797",
+		},
+	})
+	if err != nil {
+		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+	}
+
+	select {
+	case update := <-scrobbler.handleCalls:
+		if update.ExternalIDs["tmdb"] != "37854" {
+			t.Fatalf("realtime update was not enriched with TMDB identity: %+v", update.ExternalIDs)
+		}
+		if update.SeriesID != "tmdb:tv:37854" {
+			t.Fatalf("realtime update kept non-canonical series ID %q", update.SeriesID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for realtime progress update")
+	}
+}
+
 func TestContinueWatchingWithoutMetadata(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)

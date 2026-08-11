@@ -4502,6 +4502,27 @@ func playbackProgressUpdateIdentity(update models.PlaybackProgressUpdate) mediai
 	})
 }
 
+// enrichPlaybackProgressFromHistoryLocked restores provider mappings that a
+// player heartbeat does not carry. Details and sync imports often establish a
+// richer canonical identity before playback begins; retaining those mappings
+// keeps real-time scrobblers addressable for older and provider-specific
+// clients without making the live path perform a remote metadata lookup.
+func (s *Service) enrichPlaybackProgressFromHistoryLocked(userID string, update models.PlaybackProgressUpdate) models.PlaybackProgressUpdate {
+	perUser := s.watchHistory[userID]
+	if len(perUser) == 0 {
+		return update
+	}
+
+	identity := playbackProgressUpdateIdentity(update)
+	_, item, found := bestWatchHistoryImportMatchLocked(perUser, identity)
+	if !found {
+		return update
+	}
+
+	update.ExternalIDs = unionExternalIDs(item.ExternalIDs, update.ExternalIDs)
+	return normalizePlaybackProgressUpdate(update)
+}
+
 // canonicalWatchHistorySurvivor decides which storage key a matched watch-history
 // row keeps when an update arrives under a different identity key. The stored
 // row wins when its provider form is preferred (mirrors ImportWatchHistory's
@@ -4735,6 +4756,7 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 	if err := ctx.Err(); err != nil {
 		return models.PlaybackProgress{}, err
 	}
+	update = s.enrichPlaybackProgressFromHistoryLocked(userID, update)
 
 	perUser := s.ensurePlaybackProgressUserLocked(userID)
 	staleWatchedEpisodeUpdate := s.isWatchedEpisodeProgressUpdateLocked(userID, update)

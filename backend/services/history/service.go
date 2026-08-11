@@ -1222,12 +1222,15 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 				// already in history (S23E08) instead of resurfacing as "next up".
 				inProgressSeason, inProgressEpisode := numbering.canonical(t.inProgress.SeasonNumber, t.inProgress.EpisodeNumber)
 				var latestWatchedAt time.Time
+				var matchingWatchedAt time.Time
 				var furthestSeason, furthestEpisode int
 				haveFurthest := false
 				for _, ep := range t.episodes {
 					watchedSeason, watchedEpisode := numbering.canonical(ep.SeasonNumber, ep.EpisodeNumber)
 					if watchedSeason == inProgressSeason && watchedEpisode == inProgressEpisode {
-						inProgressAlreadyWatched = true
+						if at := watchHistoryActivityTime(ep); at.After(matchingWatchedAt) {
+							matchingWatchedAt = at
+						}
 					}
 					if ep.WatchedAt.After(latestWatchedAt) {
 						latestWatchedAt = ep.WatchedAt
@@ -1237,6 +1240,12 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 						haveFurthest = true
 					}
 				}
+				// A watched-history row only makes progress stale when that watched
+				// event is at least as new as the progress heartbeat. If playback
+				// starts again later, it is a rewatch and the partially watched
+				// episode must replace the on-deck episode as the resume target.
+				inProgressAlreadyWatched = !matchingWatchedAt.IsZero() &&
+					!t.inProgress.UpdatedAt.After(matchingWatchedAt)
 				if !inProgressAlreadyWatched && haveFurthest &&
 					compareEpisodeOrder(furthestSeason, furthestEpisode, inProgressSeason, inProgressEpisode) > 0 &&
 					!t.inProgress.UpdatedAt.After(latestWatchedAt) {
@@ -1274,7 +1283,8 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 							continue
 						}
 						for _, ek := range episodeKeys {
-							if _, ok := watchedEpisodeProviderTokens[idType+":"+strings.ToLower(idValue)+":"+ek]; ok {
+							if watchedAt, ok := watchedEpisodeProviderTokens[idType+":"+strings.ToLower(idValue)+":"+ek]; ok &&
+								!t.inProgress.UpdatedAt.After(watchedAt) {
 								inProgressAlreadyWatched = true
 								break
 							}

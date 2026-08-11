@@ -3434,9 +3434,9 @@ func TestContinueWatching_IgnoresVisibleSeriesMarkerRows(t *testing.T) {
 // =============================================================================
 // Episode state invariant tests
 //
-// An episode must only ever be in one state: unwatched, watching (has progress),
-// or watched. Stale progress entries must be cleaned up when an episode is
-// marked as watched, regardless of ID format mismatches.
+// Progress that predates a watched event is stale and must be cleaned up when
+// an episode is marked watched, regardless of ID format mismatches. Progress
+// created after that event represents a rewatch and remains resumable.
 // =============================================================================
 
 func TestEpisodeState_ImportClearsProgressSameIDs(t *testing.T) {
@@ -3712,6 +3712,68 @@ func TestEpisodeState_ContinueWatchingSkipsWatchedInProgress(t *testing.T) {
 	t.Fatal("Test Show not found in continue watching")
 }
 
+func TestEpisodeState_ContinueWatchingResumesNewerPartialRewatch(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	seriesID := "tvdb:series:12345"
+	userID := "user-cw-rewatch"
+	watchedAt := time.Now().UTC().Add(-time.Hour)
+	progressAt := watchedAt.Add(30 * time.Minute)
+
+	svc.SetMetadataService(&mockMetadataService{
+		seriesDetails: &models.SeriesDetails{
+			Title: models.Title{ID: seriesID, Name: "Test Show", TVDBID: 12345},
+			Seasons: []models.SeriesSeason{{
+				Number: 1,
+				Episodes: []models.SeriesEpisode{
+					{ID: "ep-7", Name: "Ep 7", SeasonNumber: 1, EpisodeNumber: 7, AiredDate: "2025-02-12"},
+					{ID: "ep-8", Name: "Ep 8", SeasonNumber: 1, EpisodeNumber: 8, AiredDate: "2025-02-19"},
+				},
+			}},
+		},
+	})
+
+	watched := true
+	if _, err := svc.UpdateWatchHistory(userID, models.WatchHistoryUpdate{
+		MediaType: "episode", ItemID: seriesID + ":s01e07", Name: "Ep 7",
+		Watched: &watched, WatchedAt: watchedAt, SeriesID: seriesID,
+		SeriesName: "Test Show", SeasonNumber: 1, EpisodeNumber: 7,
+		ExternalIDs: map[string]string{"tvdb": "12345"},
+	}); err != nil {
+		t.Fatalf("UpdateWatchHistory() error = %v", err)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+		MediaType: "episode", ItemID: seriesID + ":s01e07", Position: 1200, Duration: 2400,
+		Timestamp: progressAt, SeriesID: seriesID, SeriesName: "Test Show",
+		EpisodeName: "Ep 7", SeasonNumber: 1, EpisodeNumber: 7,
+		ExternalIDs: map[string]string{"tvdb": "12345"},
+	}); err != nil {
+		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+	}
+
+	items, err := svc.ListContinueWatching(userID)
+	if err != nil {
+		t.Fatalf("ListContinueWatching() error = %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 continue watching item, got %d: %+v", len(items), items)
+	}
+	if items[0].NextEpisode == nil || items[0].NextEpisode.SeasonNumber != 1 || items[0].NextEpisode.EpisodeNumber != 7 {
+		t.Fatalf("expected partial rewatch S01E07 to replace on-deck S01E08, got %+v", items[0].NextEpisode)
+	}
+	if items[0].PercentWatched != 50 || items[0].ResumePercent != 50 {
+		t.Fatalf("expected 50%% rewatch progress, got percent=%.2f resume=%.2f", items[0].PercentWatched, items[0].ResumePercent)
+	}
+	if !items[0].UpdatedAt.Equal(progressAt) {
+		t.Fatalf("expected ordering timestamp %s, got %s", progressAt, items[0].UpdatedAt)
+	}
+}
+
 func TestContinueWatchingNormalizesLegacyAbsoluteNextEpisode(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
@@ -3823,7 +3885,7 @@ func TestContinueWatching_AbsoluteNumberedInProgressTreatedAsWatched(t *testing.
 		ItemID:        seriesID + ":s23e1163",
 		Position:      900,
 		Duration:      1200,
-		Timestamp:     time.Date(2026, 6, 4, 2, 3, 20, 0, time.UTC),
+		Timestamp:     time.Date(2026, 6, 4, 1, 40, 20, 0, time.UTC),
 		SeriesID:      seriesID,
 		SeriesName:    "One Piece",
 		SeasonNumber:  23,

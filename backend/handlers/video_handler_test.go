@@ -638,6 +638,20 @@ func TestComposeMetadataResponseIncludesDolbyVisionConfiguration(t *testing.T) {
 	}
 }
 
+func TestComposeMetadataResponseIncludesAudioProfile(t *testing.T) {
+	meta := &ffprobeOutput{Streams: []ffprobeStream{{
+		Index: 1, CodecType: "audio", CodecName: "eac3", Profile: "E-AC-3+Atmos",
+	}}}
+
+	response := composeMetadataResponse(meta, "/movie.mkv", audioPlan{})
+	if len(response.AudioStreams) != 1 {
+		t.Fatalf("audio stream count = %d, want 1", len(response.AudioStreams))
+	}
+	if got := response.AudioStreams[0].Profile; got != "E-AC-3+Atmos" {
+		t.Fatalf("audio profile = %q, want %q", got, "E-AC-3+Atmos")
+	}
+}
+
 // --- isDolbyVisionProfile7 tests ---
 
 func TestIsDolbyVisionProfile7(t *testing.T) {

@@ -1488,6 +1488,7 @@ func playbackAudioTracksFromStreams(streams []AudioStreamInfo) []playback.AudioT
 			Index:    stream.Index,
 			Language: stream.Language,
 			Codec:    stream.Codec,
+			Profile:  stream.Profile,
 			Title:    stream.Title,
 		}
 	}
@@ -2266,6 +2267,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 					Index:    s.Index,
 					Language: s.Language,
 					Codec:    s.Codec,
+					Profile:  s.Profile,
 					Title:    s.Title,
 				}
 			}

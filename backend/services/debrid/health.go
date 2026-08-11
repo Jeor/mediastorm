@@ -196,6 +196,7 @@ type AudioTrackInfo struct {
 	Index    int    `json:"index"`
 	Language string `json:"language"`
 	Codec    string `json:"codec"`
+	Profile  string `json:"profile,omitempty"`
 	Title    string `json:"title,omitempty"`
 }
 
@@ -1615,6 +1616,7 @@ func (s *HealthService) probeAllTracks(ctx context.Context, streamURL string) (*
 			Index       int               `json:"index"`
 			CodecType   string            `json:"codec_type"`
 			CodecName   string            `json:"codec_name"`
+			Profile     string            `json:"profile"`
 			Tags        map[string]string `json:"tags"`
 			Disposition map[string]int    `json:"disposition"`
 		} `json:"streams"`
@@ -1641,6 +1643,7 @@ func (s *HealthService) probeAllTracks(ctx context.Context, streamURL string) (*
 				Index:    stream.Index,
 				Language: lang,
 				Codec:    codec,
+				Profile:  strings.TrimSpace(stream.Profile),
 				Title:    title,
 			})
 

@@ -22,6 +22,7 @@ import (
 type audioStreamInfo struct {
 	Index    int
 	Codec    string
+	Profile  string
 	Language string
 	Title    string
 }
@@ -370,6 +371,7 @@ func (m *HLSManager) parseUnifiedProbeOutput(output []byte) (*UnifiedProbeResult
 			result.AudioStreams = append(result.AudioStreams, audioStreamInfo{
 				Index:    stream.Index,
 				Codec:    codec,
+				Profile:  strings.TrimSpace(stream.Profile),
 				Language: lang,
 				Title:    title,
 			})

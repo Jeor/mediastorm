@@ -3486,6 +3486,7 @@ func composeMetadataResponse(meta *ffprobeOutput, sanitizedPath string, plan aud
 				SampleRate:    parseInt(stream.SampleRate),
 				BitRate:       getStreamBitrate(stream.BitRate, stream.Tags),
 				ChannelLayout: strings.TrimSpace(stream.ChannelLayout),
+				Profile:       strings.TrimSpace(stream.Profile),
 				Language:      normalizeTag(stream.Tags, "language"),
 				Title:         normalizeTag(stream.Tags, "title"),
 				Disposition:   stream.Disposition,
@@ -3768,6 +3769,7 @@ type audioStreamSummary struct {
 	SampleRate    int            `json:"sampleRate,omitempty"`
 	BitRate       int64          `json:"bitRate,omitempty"`
 	ChannelLayout string         `json:"channelLayout,omitempty"`
+	Profile       string         `json:"profile,omitempty"`
 	Language      string         `json:"language,omitempty"`
 	Title         string         `json:"title,omitempty"`
 	Disposition   map[string]int `json:"disposition,omitempty"`
@@ -5958,6 +5960,8 @@ func (h *VideoHandler) ProbeVideoMetadata(ctx context.Context, path string) (*Vi
 		case "audio":
 			info := AudioStreamInfo{
 				Index:    stream.Index,
+				Codec:    strings.ToLower(strings.TrimSpace(stream.CodecName)),
+				Profile:  strings.TrimSpace(stream.Profile),
 				Language: normalizeTag(stream.Tags, "language"),
 				Title:    normalizeTag(stream.Tags, "title"),
 			}
@@ -6115,6 +6119,7 @@ func (h *VideoHandler) ProbeVideoFull(ctx context.Context, path string) (*VideoF
 			info := AudioStreamInfo{
 				Index:    s.Index,
 				Codec:    codec,
+				Profile:  strings.TrimSpace(s.Profile),
 				Language: normalizeTag(s.Tags, "language"),
 				Title:    normalizeTag(s.Tags, "title"),
 			}
@@ -6210,6 +6215,7 @@ func (h *VideoHandler) unifiedProbeToVideoFull(cached *UnifiedProbeResult) *Vide
 		result.AudioStreams = append(result.AudioStreams, AudioStreamInfo{
 			Index:    as.Index,
 			Codec:    as.Codec,
+			Profile:  as.Profile,
 			Language: as.Language,
 			Title:    as.Title,
 		})
@@ -6256,6 +6262,7 @@ func (h *VideoHandler) videoFullToUnifiedProbe(result *VideoFullResult) *Unified
 		cached.AudioStreams = append(cached.AudioStreams, audioStreamInfo{
 			Index:    as.Index,
 			Codec:    as.Codec,
+			Profile:  as.Profile,
 			Language: as.Language,
 			Title:    as.Title,
 		})

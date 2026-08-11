@@ -9,6 +9,7 @@ import (
 type AudioStreamInfo struct {
 	Index    int
 	Codec    string
+	Profile  string
 	Language string
 	Title    string
 }

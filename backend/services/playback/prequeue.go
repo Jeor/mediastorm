@@ -79,10 +79,11 @@ type PrequeueResponse struct {
 
 // AudioTrackInfo represents an audio track with metadata
 type AudioTrackInfo struct {
-	Index    int    `json:"index"`    // Track index (ffprobe stream index)
-	Language string `json:"language"` // Language code (e.g., "eng", "spa")
-	Codec    string `json:"codec"`    // Codec name (e.g., "aac", "ac3", "truehd")
-	Title    string `json:"title"`    // Track title/name
+	Index    int    `json:"index"`             // Track index (ffprobe stream index)
+	Language string `json:"language"`          // Language code (e.g., "eng", "spa")
+	Codec    string `json:"codec"`             // Codec name (e.g., "aac", "ac3", "truehd")
+	Profile  string `json:"profile,omitempty"` // FFmpeg/ffprobe codec profile (for example E-AC-3+Atmos)
+	Title    string `json:"title"`             // Track title/name
 }
 
 // SubtitleTrackInfo represents a subtitle track with metadata

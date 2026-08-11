@@ -93,6 +93,7 @@ frontend/build-1760379785308.apk
 *.pyc
 .venv
 TODO
+/docs/todo-data/TODO.md
 
 .pids
 -

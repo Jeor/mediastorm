@@ -260,6 +260,10 @@ func TestAdminToolsProvidesFocusedTasksAndIntegrationsViews(t *testing.T) {
 	for _, marker := range []string{
 		`id="tasksPageHost"`,
 		`id="integrationsPageHost"`,
+		`href="https://trakt.tv/"`,
+		`href="https://mdblist.com/"`,
+		`href="https://simkl.com/"`,
+		`href="https://scrob.app/"`,
 		`id="taskProfileFilter"`,
 		`const isTasksPage =`,
 		`const isIntegrationsPage =`,

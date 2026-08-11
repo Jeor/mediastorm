@@ -3955,6 +3955,13 @@
         return div.innerHTML;
     }
 
+    function scheduledTaskErrorSummary(error) {
+        const message = String(error || '').trim();
+        const legacyDetail = message.indexOf(' (first error:');
+        const summary = legacyDetail >= 0 ? message.slice(0, legacyDetail) : message;
+        return summary.length > 240 ? `${summary.slice(0, 237)}...` : summary;
+    }
+
     // Legacy compatibility - redirect old function calls
     function loadTraktStatus() { loadTraktAccounts(); }
     function saveTraktCredentials() { showAddTraktAccountForm(); }
@@ -5389,7 +5396,7 @@
                             <span class="text-muted" style="font-size: 0.8125rem;">Last: ${lastRunLabel}</span>
                             ${task.itemsImported > 0 && task.type !== 'backup' ? `<span class="text-muted" style="font-size: 0.8125rem;">${task.itemsImported} items ${task.type === 'prewarm' ? 'warmed' : 'synced'}</span>` : ''}
                             ${task.dryRunDetails ? `<button class="btn btn-sm" onclick="showDryRunResults('${task.id}')" style="padding: 0.15rem 0.5rem; font-size: 0.75rem; background: rgba(99, 102, 241, 0.2); color: var(--accent);">View Dry Run Results</button>` : ''}
-                            ${task.lastError ? `<span style="color: var(--danger); font-size: 0.8125rem;">${escapeHtml(task.lastError)}</span>` : ''}
+                            ${task.lastError ? `<span style="color: var(--danger); font-size: 0.8125rem;">${escapeHtml(scheduledTaskErrorSummary(task.lastError))}</span>` : ''}
                         </div>
                         <div class="task-card-actions" style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                             <button class="btn btn-sm btn-secondary" onclick="runScheduledTaskNow('${task.id}')" ${task.lastStatus === 'running' ? 'disabled' : ''}>

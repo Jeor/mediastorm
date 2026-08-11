@@ -139,6 +139,22 @@ func TestWatchEventIncludesSeasonZero(t *testing.T) {
 	}
 }
 
+func TestRemoveHistoryByIDUsesScrobMediaID(t *testing.T) {
+	client := NewClientWithHTTPClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/proxy/history/item" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if r.URL.Query().Get("id") != "9433" || r.URL.Query().Get("media_type") != "episode" || r.URL.Query().Get("tmdb_id") != "" {
+			t.Fatalf("query=%v", r.URL.Query())
+		}
+		return jsonResponse(200, `{"status":"ok"}`), nil
+	})})
+
+	if err := client.RemoveHistoryByID(context.Background(), "https://scrob.example", "api-key", "jwt", 9433, "episode"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestManualSessionLifecycle(t *testing.T) {
 	step := 0
 	client := NewClientWithHTTPClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {

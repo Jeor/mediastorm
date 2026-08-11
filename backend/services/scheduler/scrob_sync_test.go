@@ -108,3 +108,46 @@ func TestCanonicalizeProviderEpisodeBackfillsResolvedIDs(t *testing.T) {
 		t.Fatalf("episode IDs=%v", episodeIDs)
 	}
 }
+
+func TestScrobAliasCleanupMediaRequiresCanonicalizedMatchingTitle(t *testing.T) {
+	remote := map[string][]scrob.Media{
+		"episode:37854:23:18": {
+			{ID: 9433, Type: "episode", Title: "A Nightmarish Game - The Dark Plot of the Knights of God", ShowTMDBID: 37854, SeasonNumber: 23, EpisodeNumber: 18},
+			{ID: 9999, Type: "episode", Title: "A Different Episode", ShowTMDBID: 37854, SeasonNumber: 23, EpisodeNumber: 18},
+		},
+	}
+	aliases := map[string]struct{}{"episode:37854:23:18": {}}
+	canonicalCandidates := map[string]int{"episode:37854:23:1173": 0}
+	got := scrobAliasCleanupMedia(
+		"A Nightmarish Game - The Dark Plot of the Knights of God",
+		"episode:37854:23:1173",
+		aliases,
+		canonicalCandidates,
+		remote,
+	)
+	if len(got) != 1 || got[0].ID != 9433 {
+		t.Fatalf("cleanups=%+v", got)
+	}
+}
+
+func TestScrobAliasCleanupMediaPreservesAnotherCanonicalCandidate(t *testing.T) {
+	aliasKey := "episode:37854:23:18"
+	got := scrobAliasCleanupMedia(
+		"Episode",
+		"episode:37854:23:1173",
+		map[string]struct{}{aliasKey: {}},
+		map[string]int{aliasKey: 1, "episode:37854:23:1173": 0},
+		map[string][]scrob.Media{aliasKey: {{ID: 9433, Type: "episode", Title: "Episode"}}},
+	)
+	if len(got) != 0 {
+		t.Fatalf("cleanups=%+v", got)
+	}
+}
+
+func TestScrobExportPartialErrorOmitsUpstreamResponse(t *testing.T) {
+	err := scrobExportPartialError(1269, 1276, 6, "episode", "Living the Life of 1%")
+	want := `Scrob export synced 1269 of 1276 changes; 6 failed. First failure: episode "Living the Life of 1%". See backend logs for details`
+	if err.Error() != want {
+		t.Fatalf("error=%q", err)
+	}
+}

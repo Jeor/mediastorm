@@ -181,10 +181,10 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	if err != nil {
 		return result, fmt.Errorf("fetch Scrob history for deduplication: %w", err)
 	}
-	remoteByKey := make(map[string]int)
+	remoteByKey := make(map[string][]scrob.Media)
 	for _, event := range remote {
 		if key := scrobRemoteKey(event.Media); key != "" {
-			remoteByKey[key] = event.Media.TMDBID
+			remoteByKey[key] = appendUniqueScrobMedia(remoteByKey[key], event.Media)
 		}
 	}
 	s.mu.RLock()
@@ -202,10 +202,13 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		since = task.LastRunAt.Add(-5 * time.Minute)
 	}
 	type outbound struct {
-		item         models.WatchHistoryItem
-		event        scrob.WatchEvent
-		key          string
-		removeTMDBID int
+		item             models.WatchHistoryItem
+		event            scrob.WatchEvent
+		key              string
+		aliasKeys        map[string]struct{}
+		removeMediaID    int
+		remove           bool
+		requiresPresence string
 	}
 	var candidates []outbound
 	candidateByKey := make(map[string]int)
@@ -216,14 +219,22 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		if !since.IsZero() && !item.Watched && item.UpdatedAt.Before(since) {
 			continue
 		}
+		originalItem := item
 		item = enrichScrobExportEpisode(ctx, metadataSvc, metadataCache, item)
 		event, key, ok := localItemToScrob(item)
 		if !ok {
 			continue
 		}
-		candidate := outbound{item: item, event: event, key: key}
+		candidate := outbound{item: item, event: event, key: key, aliasKeys: make(map[string]struct{})}
+		if _, originalKey, originalOK := localItemToScrob(originalItem); originalOK && originalKey != key {
+			candidate.aliasKeys[originalKey] = struct{}{}
+		}
 		if index, duplicate := candidateByKey[key]; duplicate {
+			for aliasKey := range candidate.aliasKeys {
+				candidates[index].aliasKeys[aliasKey] = struct{}{}
+			}
 			if scrobHistoryItemChangedAt(item).After(scrobHistoryItemChangedAt(candidates[index].item)) {
+				candidate.aliasKeys = candidates[index].aliasKeys
 				candidates[index] = candidate
 			}
 			continue
@@ -232,19 +243,37 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		candidates = append(candidates, candidate)
 	}
 	changes := make([]outbound, 0, len(candidates))
+	aliasCleanups := make([]outbound, 0)
 	for _, candidate := range candidates {
-		remoteTMDBID, exists := remoteByKey[candidate.key]
-		if candidate.item.Watched == exists {
+		remoteItems := remoteByKey[candidate.key]
+		exists := len(remoteItems) > 0
+		if candidate.item.Watched && !exists {
+			changes = append(changes, candidate)
+		} else if !candidate.item.Watched && exists {
+			for _, remoteItem := range remoteItems {
+				removal := candidate
+				removal.remove = true
+				removal.removeMediaID = remoteItem.ID
+				changes = append(changes, removal)
+			}
+		}
+		if !candidate.item.Watched {
 			continue
 		}
-		candidate.removeTMDBID = remoteTMDBID
-		changes = append(changes, candidate)
+		for _, alias := range scrobAliasCleanupMedia(candidate.item.Name, candidate.key, candidate.aliasKeys, candidateByKey, remoteByKey) {
+			aliasCleanups = append(aliasCleanups, outbound{
+				item:  models.WatchHistoryItem{MediaType: alias.Type, Name: alias.Title},
+				event: scrob.WatchEvent{MediaType: alias.Type}, key: candidate.key,
+				remove: true, removeMediaID: alias.ID, requiresPresence: candidate.key,
+			})
+		}
 	}
+	changes = append(changes, aliasCleanups...)
 
 	if dryRun {
 		for _, change := range changes {
 			d := config.DryRunItem{Name: change.item.Name, MediaType: change.item.MediaType, ID: change.item.ItemID}
-			if change.item.Watched {
+			if !change.remove {
 				result.ToAdd = append(result.ToAdd, d)
 			} else {
 				result.ToRemove = append(result.ToRemove, d)
@@ -273,19 +302,32 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		return result, err
 	}
 	failed := 0
-	var firstFailure error
+	firstFailureSet := false
+	firstFailureType, firstFailureName := "", ""
+	presentKeys := make(map[string]struct{}, len(remoteByKey))
+	for key, media := range remoteByKey {
+		if len(media) > 0 {
+			presentKeys[key] = struct{}{}
+		}
+	}
 	for _, change := range changes {
-		if change.item.Watched {
+		if change.requiresPresence != "" {
+			if _, present := presentKeys[change.requiresPresence]; !present {
+				continue
+			}
+		}
+		if !change.remove {
 			err = client.AddHistory(ctx, account.BaseURL, account.APIKey, token, change.event)
-		} else if change.removeTMDBID > 0 {
-			err = client.RemoveHistory(ctx, account.BaseURL, account.APIKey, token, change.removeTMDBID, change.event.MediaType)
+		} else if change.removeMediaID > 0 {
+			err = client.RemoveHistoryByID(ctx, account.BaseURL, account.APIKey, token, change.removeMediaID, change.event.MediaType)
 		} else {
 			continue
 		}
 		if err != nil {
 			failure := fmt.Errorf("sync %s %q to Scrob: %w", change.item.MediaType, change.item.Name, err)
-			if firstFailure == nil {
-				firstFailure = failure
+			if !firstFailureSet {
+				firstFailureSet = true
+				firstFailureType, firstFailureName = change.item.MediaType, change.item.Name
 			}
 			failed++
 			log.Printf("[scheduler] Scrob export skipped item after error: %v", failure)
@@ -294,11 +336,14 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 			}
 			continue
 		}
+		if !change.remove {
+			presentKeys[change.key] = struct{}{}
+		}
 		result.Count++
 	}
 	if failed > 0 {
 		log.Printf("[scheduler] Scrob export completed partially: synced=%d failed=%d total=%d", result.Count, failed, len(changes))
-		return result, fmt.Errorf("Scrob export synced %d of %d changes; %d failed (first error: %w)", result.Count, len(changes), failed, firstFailure)
+		return result, scrobExportPartialError(result.Count, len(changes), failed, firstFailureType, firstFailureName)
 	}
 	if isFull {
 		s.lastFullSyncTimesMu.Lock()
@@ -306,6 +351,48 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		s.lastFullSyncTimesMu.Unlock()
 	}
 	return result, nil
+}
+
+func appendUniqueScrobMedia(items []scrob.Media, candidate scrob.Media) []scrob.Media {
+	for _, item := range items {
+		if item.ID == candidate.ID {
+			return items
+		}
+	}
+	return append(items, candidate)
+}
+
+func scrobAliasCleanupMedia(title, canonicalKey string, aliasKeys map[string]struct{}, canonicalCandidates map[string]int, remoteByKey map[string][]scrob.Media) []scrob.Media {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return nil
+	}
+	var cleanups []scrob.Media
+	for aliasKey := range aliasKeys {
+		if aliasKey == canonicalKey {
+			continue
+		}
+		if _, isCanonicalCandidate := canonicalCandidates[aliasKey]; isCanonicalCandidate {
+			continue
+		}
+		for _, remote := range remoteByKey[aliasKey] {
+			if remote.ID > 0 && strings.EqualFold(strings.TrimSpace(remote.Title), title) {
+				cleanups = append(cleanups, remote)
+			}
+		}
+	}
+	return cleanups
+}
+
+func scrobExportPartialError(synced, total, failed int, mediaType, name string) error {
+	item := strings.TrimSpace(mediaType)
+	if strings.TrimSpace(name) != "" {
+		item += fmt.Sprintf(" %q", strings.TrimSpace(name))
+	}
+	if item == "" {
+		item = "item"
+	}
+	return fmt.Errorf("Scrob export synced %d of %d changes; %d failed. First failure: %s. See backend logs for details", synced, total, failed, item)
 }
 
 func scrobHistoryItemChangedAt(item models.WatchHistoryItem) time.Time {

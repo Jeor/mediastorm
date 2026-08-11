@@ -302,6 +302,14 @@ func (c *Client) RemoveHistory(ctx context.Context, baseURL, apiKey, token strin
 	return c.doJSON(ctx, http.MethodDelete, baseURL, path, apiKey, token, nil)
 }
 
+// RemoveHistoryByID removes history for Scrob's internal media row. Unlike a
+// TMDB-ID deletion, this also works for legacy TVDB-sourced episode aliases
+// whose media row has no TMDB episode ID.
+func (c *Client) RemoveHistoryByID(ctx context.Context, baseURL, apiKey, token string, mediaID int, mediaType string) error {
+	path := "/history/item?id=" + strconv.Itoa(mediaID) + "&media_type=" + url.QueryEscape(mediaType)
+	return c.doJSON(ctx, http.MethodDelete, baseURL, path, apiKey, token, nil)
+}
+
 func (c *Client) StartSession(ctx context.Context, baseURL, apiKey, token string, session ManualSessionStart) (ManualSessionResponse, error) {
 	var response ManualSessionResponse
 	err := c.doJSONResponse(ctx, http.MethodPost, baseURL, "/history/session/start", apiKey, token, session, &response)

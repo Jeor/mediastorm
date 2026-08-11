@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -47,5 +48,63 @@ func TestScrobEventToUpdateSkipsIncomplete(t *testing.T) {
 	watched := true
 	if got := scrobEventToUpdate(scrob.HistoryEvent{Completed: false, Media: scrob.Media{Type: "movie", TMDBID: 550}}, &watched); got != nil {
 		t.Fatalf("got=%+v", got)
+	}
+}
+
+func TestEnrichScrobExportEpisodeCanonicalizesProviderNumbering(t *testing.T) {
+	details := &models.SeriesDetails{
+		Title: models.Title{TMDBID: 37854, TVDBID: 81797, IMDBID: "tt0388629"},
+		Seasons: []models.SeriesSeason{{Number: 23, Episodes: []models.SeriesEpisode{{
+			ID: "tvdb:episode:11898626", TMDBID: 7550159, TMDBSeasonNumber: 23, TMDBEpisodeNumber: 1172, TVDBID: 11898626, Name: "Elbaph",
+			SeasonNumber: 23, EpisodeNumber: 17, AbsoluteEpisodeNumber: 1172,
+		}}}},
+	}
+	metadataSvc := &fakeSchedulerMetadataService{details: details}
+	tests := []struct {
+		name     string
+		season   int
+		episode  int
+		external map[string]string
+	}{
+		{name: "season order", season: 23, episode: 17},
+		{name: "absolute order", season: 1, episode: 1172},
+		{name: "hybrid order", season: 23, episode: 1172},
+		{name: "explicit absolute", season: 1, episode: 1, external: map[string]string{"absoluteEpisode": "1172"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			external := map[string]string{"tmdb": "37854", "tvdb": "81797"}
+			for key, value := range tc.external {
+				external[key] = value
+			}
+			item := enrichScrobExportEpisode(context.Background(), metadataSvc, make(map[string]*models.SeriesDetails), models.WatchHistoryItem{
+				MediaType: "episode", SeriesID: "tmdb:tv:37854", SeasonNumber: tc.season, EpisodeNumber: tc.episode,
+				ExternalIDs: external,
+			})
+			if item.SeasonNumber != 23 || item.EpisodeNumber != 1172 {
+				t.Fatalf("coordinates=%d:%d", item.SeasonNumber, item.EpisodeNumber)
+			}
+			if item.ExternalIDs["episodeTmdb"] != "7550159" || item.ExternalIDs["episodeTvdb"] != "11898626" || item.ExternalIDs["absoluteEpisode"] != "1172" {
+				t.Fatalf("ids=%v", item.ExternalIDs)
+			}
+		})
+	}
+}
+
+func TestCanonicalizeProviderEpisodeBackfillsResolvedIDs(t *testing.T) {
+	svc := &Service{metadataService: &fakeSchedulerMetadataService{details: &models.SeriesDetails{
+		Seasons: []models.SeriesSeason{{Episodes: []models.SeriesEpisode{{
+			TMDBID: 7124432, TVDBID: 11898626, SeasonNumber: 23, EpisodeNumber: 17, AbsoluteEpisodeNumber: 1172,
+		}}}},
+	}}}
+	episodeIDs := map[string]string{}
+	season, episode, absolute, _ := svc.canonicalizeProviderEpisode(
+		"test", map[string]string{"tmdb": "37854"}, episodeIDs, 23, 17, 0, "Elbaph",
+	)
+	if season != 23 || episode != 17 || absolute != 1172 {
+		t.Fatalf("coordinates=%d:%d absolute=%d", season, episode, absolute)
+	}
+	if episodeIDs["tmdb"] != "7124432" || episodeIDs["tvdb"] != "11898626" {
+		t.Fatalf("episode IDs=%v", episodeIDs)
 	}
 }

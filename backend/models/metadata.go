@@ -118,6 +118,9 @@ type YouTubeVideoSearchResult struct {
 
 type SeriesEpisode struct {
 	ID                    string `json:"id"`
+	TMDBID                int64  `json:"tmdbId,omitempty"`
+	TMDBSeasonNumber      int    `json:"tmdbSeasonNumber,omitempty"`
+	TMDBEpisodeNumber     int    `json:"tmdbEpisodeNumber,omitempty"`
 	TVDBID                int64  `json:"tvdbId,omitempty"`
 	Name                  string `json:"name"`
 	Overview              string `json:"overview"`
@@ -143,9 +146,10 @@ type SeriesSeason struct {
 }
 
 type SeriesDetails struct {
-	Title           Title          `json:"title"`
-	Seasons         []SeriesSeason `json:"seasons"`
-	PreferredSeason *int           `json:"preferredSeason,omitempty"`
+	Title               Title          `json:"title"`
+	Seasons             []SeriesSeason `json:"seasons"`
+	PreferredSeason     *int           `json:"preferredSeason,omitempty"`
+	EpisodeTMDBEnriched bool           `json:"episodeTmdbEnriched,omitempty"`
 	// AvailableOrderings lists every TVDB season-ordering for this series
 	// (official, dvd, absolute, alternate, regional, …). Populated only when
 	// more than one ordering exists so the client can offer a switcher.

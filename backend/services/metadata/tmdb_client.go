@@ -1259,8 +1259,9 @@ func (c *tmdbClient) seriesDetailsWithSeasons(ctx context.Context, tmdbID int64)
 
 	title.Status = models.SeriesReleaseStatusFromSeasons(seasons)
 	return &models.SeriesDetails{
-		Title:   *title,
-		Seasons: seasons,
+		Title:               *title,
+		Seasons:             seasons,
+		EpisodeTMDBEnriched: true,
 	}, nil
 }
 
@@ -1386,13 +1387,16 @@ func (c *tmdbClient) seriesSeasonDetails(ctx context.Context, tmdbID int64, summ
 			episodeID = fmt.Sprintf("tmdb:tv:%d:s%02de%02d", tmdbID, seasonNumber, episodeNumber)
 		}
 		episode := models.SeriesEpisode{
-			ID:            episodeID,
-			Name:          strings.TrimSpace(ep.Name),
-			Overview:      strings.TrimSpace(ep.Overview),
-			SeasonNumber:  seasonNumber,
-			EpisodeNumber: episodeNumber,
-			AiredDate:     strings.TrimSpace(ep.AirDate),
-			Runtime:       ep.Runtime,
+			ID:                episodeID,
+			TMDBID:            ep.ID,
+			TMDBSeasonNumber:  seasonNumber,
+			TMDBEpisodeNumber: episodeNumber,
+			Name:              strings.TrimSpace(ep.Name),
+			Overview:          strings.TrimSpace(ep.Overview),
+			SeasonNumber:      seasonNumber,
+			EpisodeNumber:     episodeNumber,
+			AiredDate:         strings.TrimSpace(ep.AirDate),
+			Runtime:           ep.Runtime,
 		}
 		if episode.Name == "" && episodeNumber > 0 {
 			episode.Name = fmt.Sprintf("Episode %d", episodeNumber)

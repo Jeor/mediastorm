@@ -1626,13 +1626,14 @@ func TestSearchTMDBVoteCountBoostsCanonicalMatch(t *testing.T) {
 	}
 }
 
-func TestPreferTMDBEpisodeImagesOverridesTVDBStills(t *testing.T) {
+func TestEnrichTMDBEpisodeMetadataRetainsIDsAndOverridesTVDBStills(t *testing.T) {
 	httpc := &http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			if req.URL.Path == "/3/tv/42/season/1" {
 				body := bytes.NewBufferString(`{"id":1001,"name":"Season 1","season_number":1,"episodes":[
 					{"id":5001,"name":"Pilot","season_number":1,"episode_number":1,"still_path":"/tmdb-pilot.jpg"},
-					{"id":5002,"name":"Second","season_number":1,"episode_number":2}
+					{"id":5002,"name":"Second","season_number":1,"episode_number":2},
+					{"id":6172,"name":"Absolute","season_number":1,"episode_number":1172}
 				]}`)
 				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(body), Header: make(http.Header)}, nil
 			}
@@ -1652,7 +1653,7 @@ func TestPreferTMDBEpisodeImagesOverridesTVDBStills(t *testing.T) {
 			{
 				Number:       1,
 				Name:         "Season 1",
-				EpisodeCount: 2,
+				EpisodeCount: 3,
 				Episodes: []models.SeriesEpisode{
 					{
 						ID:            "tvdb:episode:1",
@@ -1666,12 +1667,20 @@ func TestPreferTMDBEpisodeImagesOverridesTVDBStills(t *testing.T) {
 						EpisodeNumber: 2,
 						Image:         &models.Image{URL: "https://artworks.thetvdb.com/banners/tvdb-second.jpg", Type: "still"},
 					},
+					{
+						ID:                    "tvdb:episode:3",
+						Name:                  "Absolute",
+						SeasonNumber:          1,
+						EpisodeNumber:         17,
+						AbsoluteEpisodeNumber: 1172,
+					},
 				},
 			},
 		},
 	}
 
-	if !service.preferTMDBEpisodeImages(context.Background(), &details, 42) {
+	changed, complete := service.enrichTMDBEpisodeMetadata(context.Background(), &details, 42)
+	if !changed || !complete {
 		t.Fatal("expected TMDB episode image enrichment to change the details")
 	}
 
@@ -1686,10 +1695,20 @@ func TestPreferTMDBEpisodeImagesOverridesTVDBStills(t *testing.T) {
 	if gotPilotImage.Type != "still" {
 		t.Fatalf("expected TMDB pilot image type still, got %q", gotPilotImage.Type)
 	}
+	if got := details.Seasons[0].Episodes[0].TMDBID; got != 5001 {
+		t.Fatalf("expected first episode TMDB ID 5001, got %d", got)
+	}
 
 	gotSecondImage := details.Seasons[0].Episodes[1].Image
 	if gotSecondImage == nil || gotSecondImage.URL != "https://artworks.thetvdb.com/banners/tvdb-second.jpg" {
 		t.Fatalf("expected second episode to keep TVDB image when TMDB still is missing, got %#v", gotSecondImage)
+	}
+	if got := details.Seasons[0].Episodes[1].TMDBID; got != 5002 {
+		t.Fatalf("expected second episode TMDB ID 5002 even without TMDB artwork, got %d", got)
+	}
+	absoluteEpisode := details.Seasons[0].Episodes[2]
+	if absoluteEpisode.TMDBID != 6172 || absoluteEpisode.TMDBSeasonNumber != 1 || absoluteEpisode.TMDBEpisodeNumber != 1172 {
+		t.Fatalf("expected absolute-number crosswalk to retain TMDB identity, got %+v", absoluteEpisode)
 	}
 }
 

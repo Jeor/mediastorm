@@ -3579,7 +3579,7 @@ func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.Seri
 	if req.TMDBID <= 0 || s.tmdb == nil || !s.tmdb.isConfigured() {
 		return nil, cause
 	}
-	cacheID := cacheKey("tmdb", "series", "details-fallback", "v3", s.client.language, strconv.FormatInt(req.TMDBID, 10))
+	cacheID := cacheKey("tmdb", "series", "details-fallback", "v4", s.client.language, strconv.FormatInt(req.TMDBID, 10))
 	var cached models.SeriesDetails
 	if ok, _ := s.cache.get(cacheID, &cached); ok && strings.TrimSpace(cached.Title.Name) != "" {
 		normalizeSeriesDetailsReleaseStatus(&cached)
@@ -4311,8 +4311,13 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 	}
 	s.backfillSeriesIMDBID(ctx, &seriesTitle, req)
 	details.Title = seriesTitle
-	if tmdbIDForEnrichment > 0 && s.preferTMDBEpisodeImages(ctx, &details, tmdbIDForEnrichment) {
-		log.Printf("[metadata] applied TMDB episode stills tvdbId=%d tmdbId=%d", tvdbID, tmdbIDForEnrichment)
+	if tmdbIDForEnrichment > 0 {
+		if changed, complete := s.enrichTMDBEpisodeMetadata(ctx, &details, tmdbIDForEnrichment); changed {
+			log.Printf("[metadata] applied TMDB episode metadata tvdbId=%d tmdbId=%d", tvdbID, tmdbIDForEnrichment)
+			details.EpisodeTMDBEnriched = complete
+		} else if complete {
+			details.EpisodeTMDBEnriched = true
+		}
 	}
 
 	// Fetch ratings from MDBList if enabled and IMDB ID is available.
@@ -4430,19 +4435,37 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 	return &details, nil
 }
 
-func (s *Service) preferTMDBEpisodeImages(ctx context.Context, details *models.SeriesDetails, tmdbID int64) bool {
-	if details == nil || tmdbID <= 0 || s.tmdb == nil || !s.tmdb.isConfigured() || len(details.Seasons) == 0 {
+func (s *Service) enrichCachedTMDBEpisodeMetadata(ctx context.Context, details *models.SeriesDetails, requestedTMDBID int64) bool {
+	if details == nil || details.EpisodeTMDBEnriched || s.tmdb == nil || !s.tmdb.isConfigured() {
 		return false
 	}
+	tmdbID := details.Title.TMDBID
+	if tmdbID <= 0 {
+		tmdbID = requestedTMDBID
+	}
+	if tmdbID <= 0 {
+		return false
+	}
+	changed, complete := s.enrichTMDBEpisodeMetadata(ctx, details, tmdbID)
+	if complete {
+		details.EpisodeTMDBEnriched = true
+	}
+	return changed || complete
+}
 
-	type seasonImageResult struct {
+func (s *Service) enrichTMDBEpisodeMetadata(ctx context.Context, details *models.SeriesDetails, tmdbID int64) (changed bool, complete bool) {
+	if details == nil || tmdbID <= 0 || s.tmdb == nil || !s.tmdb.isConfigured() || len(details.Seasons) == 0 {
+		return false, false
+	}
+
+	type seasonEpisodeResult struct {
 		seasonNumber int
-		images       map[int]models.Image
+		episodes     []models.SeriesEpisode
 		err          error
 	}
 
 	seasonCount := 0
-	results := make(chan seasonImageResult, len(details.Seasons))
+	results := make(chan seasonEpisodeResult, len(details.Seasons))
 	sem := make(chan struct{}, 5)
 	var wg sync.WaitGroup
 
@@ -4466,23 +4489,23 @@ func (s *Service) preferTMDBEpisodeImages(ctx context.Context, details *models.S
 				EpisodeCount: episodeCount,
 			})
 			if err != nil {
-				results <- seasonImageResult{seasonNumber: seasonNumber, err: err}
+				results <- seasonEpisodeResult{seasonNumber: seasonNumber, err: err}
 				return
 			}
 
-			images := make(map[int]models.Image)
+			episodes := make([]models.SeriesEpisode, 0, len(tmdbSeason.Episodes))
 			for _, episode := range tmdbSeason.Episodes {
-				if episode.EpisodeNumber <= 0 || episode.Image == nil || strings.TrimSpace(episode.Image.URL) == "" {
+				if episode.EpisodeNumber <= 0 {
 					continue
 				}
-				images[episode.EpisodeNumber] = *episode.Image
+				episodes = append(episodes, episode)
 			}
-			results <- seasonImageResult{seasonNumber: seasonNumber, images: images}
+			results <- seasonEpisodeResult{seasonNumber: seasonNumber, episodes: episodes}
 		}()
 	}
 
 	if seasonCount == 0 {
-		return false
+		return false, false
 	}
 
 	go func() {
@@ -4490,45 +4513,78 @@ func (s *Service) preferTMDBEpisodeImages(ctx context.Context, details *models.S
 		close(results)
 	}()
 
-	imagesBySeason := make(map[int]map[int]models.Image)
+	var tmdbEpisodes []models.SeriesEpisode
+	failedSeasons := 0
 	for result := range results {
 		if result.err != nil {
-			log.Printf("[metadata] TMDB episode image fetch failed tmdbId=%d season=%d err=%v", tmdbID, result.seasonNumber, result.err)
+			failedSeasons++
+			log.Printf("[metadata] TMDB episode metadata fetch failed tmdbId=%d season=%d err=%v", tmdbID, result.seasonNumber, result.err)
 			continue
 		}
-		if len(result.images) > 0 {
-			imagesBySeason[result.seasonNumber] = result.images
+		if len(result.episodes) > 0 {
+			tmdbEpisodes = append(tmdbEpisodes, result.episodes...)
 		}
 	}
-	if len(imagesBySeason) == 0 {
-		return false
+	if len(tmdbEpisodes) == 0 {
+		return false, failedSeasons == 0
 	}
 
-	changed := 0
+	changeCount := 0
 	for i := range details.Seasons {
-		seasonImages := imagesBySeason[details.Seasons[i].Number]
-		if len(seasonImages) == 0 {
-			continue
-		}
 		for j := range details.Seasons[i].Episodes {
 			episode := &details.Seasons[i].Episodes[j]
-			tmdbImage, ok := seasonImages[episode.EpisodeNumber]
-			if !ok || strings.TrimSpace(tmdbImage.URL) == "" {
+			tmdbEpisode := matchTMDBEpisodeMetadata(*episode, tmdbEpisodes)
+			if tmdbEpisode == nil {
 				continue
 			}
-			if episode.Image != nil && episode.Image.URL == tmdbImage.URL {
-				continue
+			if tmdbEpisode.TMDBID > 0 && episode.TMDBID != tmdbEpisode.TMDBID {
+				episode.TMDBID = tmdbEpisode.TMDBID
+				changeCount++
 			}
-			image := tmdbImage
-			episode.Image = &image
-			changed++
+			if episode.TMDBSeasonNumber != tmdbEpisode.SeasonNumber || episode.TMDBEpisodeNumber != tmdbEpisode.EpisodeNumber {
+				episode.TMDBSeasonNumber = tmdbEpisode.SeasonNumber
+				episode.TMDBEpisodeNumber = tmdbEpisode.EpisodeNumber
+				changeCount++
+			}
+			if tmdbEpisode.Image != nil && strings.TrimSpace(tmdbEpisode.Image.URL) != "" &&
+				(episode.Image == nil || episode.Image.URL != tmdbEpisode.Image.URL) {
+				image := *tmdbEpisode.Image
+				episode.Image = &image
+				changeCount++
+			}
 		}
 	}
 
-	if changed > 0 {
-		log.Printf("[metadata] preferred TMDB episode stills tmdbId=%d changed=%d", tmdbID, changed)
+	if changeCount > 0 {
+		log.Printf("[metadata] enriched TMDB episode metadata tmdbId=%d changed=%d", tmdbID, changeCount)
 	}
-	return changed > 0
+	return changeCount > 0, failedSeasons == 0
+}
+
+func matchTMDBEpisodeMetadata(episode models.SeriesEpisode, candidates []models.SeriesEpisode) *models.SeriesEpisode {
+	var absolute, airedDate, title *models.SeriesEpisode
+	for i := range candidates {
+		candidate := &candidates[i]
+		if candidate.SeasonNumber == episode.SeasonNumber && candidate.EpisodeNumber == episode.EpisodeNumber {
+			return candidate
+		}
+		if absolute == nil && episode.AbsoluteEpisodeNumber > 0 && candidate.EpisodeNumber == episode.AbsoluteEpisodeNumber {
+			absolute = candidate
+		}
+		if airedDate == nil && strings.TrimSpace(episode.AiredDate) != "" && candidate.AiredDate == episode.AiredDate {
+			airedDate = candidate
+		}
+		if title == nil && strings.TrimSpace(episode.Name) != "" && strings.EqualFold(strings.TrimSpace(candidate.Name), strings.TrimSpace(episode.Name)) {
+			title = candidate
+		}
+	}
+	if absolute != nil {
+		return absolute
+	}
+	if airedDate != nil {
+		return airedDate
+	}
+	return title
 }
 
 // populateAiredDateTimeUTC sets AiredDateTimeUTC on every episode using the
@@ -4576,9 +4632,7 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	fullCacheID := seriesDetailsCacheKey(s.client.language, tvdbID, req.SeasonType)
 	var fullCached models.SeriesDetails
 	if ok, _ := s.cache.get(fullCacheID, &fullCached); ok && len(fullCached.Seasons) > 0 {
-		if models.NormalizeReleaseAbsoluteEpisodeNumbers(&fullCached) {
-			_ = s.cache.set(fullCacheID, fullCached)
-		}
+		cacheChanged := models.NormalizeReleaseAbsoluteEpisodeNumbers(&fullCached)
 		log.Printf("[metadata] series details lite full-cache hit tvdbId=%d seasons=%d", tvdbID, len(fullCached.Seasons))
 		if seriesTMDBIDMismatch(fullCached.Title, req.TMDBID) {
 			log.Printf("[metadata] lite full-cache tmdb mismatch tvdbId=%d cachedTmdbId=%d requestedTmdbId=%d; using TMDB fallback",
@@ -4586,6 +4640,12 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 			return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("tvdb tmdb mismatch"))
 		}
 		if s.backfillSeriesIMDBID(ctx, &fullCached.Title, req) {
+			cacheChanged = true
+		}
+		if !fullCached.EpisodeTMDBEnriched && s.enrichCachedTMDBEpisodeMetadata(ctx, &fullCached, req.TMDBID) {
+			cacheChanged = true
+		}
+		if cacheChanged {
 			_ = s.cache.set(fullCacheID, fullCached)
 		}
 		return &fullCached, nil
@@ -4599,9 +4659,7 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	var cached models.SeriesDetails
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached.Seasons) > 0 {
 		normalizeSeriesDetailsReleaseStatus(&cached)
-		if models.NormalizeReleaseAbsoluteEpisodeNumbers(&cached) {
-			_ = s.cache.set(cacheID, cached)
-		}
+		cacheChanged := models.NormalizeReleaseAbsoluteEpisodeNumbers(&cached)
 		log.Printf("[metadata] series details lite cache hit tvdbId=%d seasons=%d", tvdbID, len(cached.Seasons))
 		if seriesTMDBIDMismatch(cached.Title, req.TMDBID) {
 			log.Printf("[metadata] lite cache tmdb mismatch tvdbId=%d cachedTmdbId=%d requestedTmdbId=%d; using TMDB fallback",
@@ -4609,6 +4667,12 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 			return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("tvdb tmdb mismatch"))
 		}
 		if s.backfillSeriesIMDBID(ctx, &cached.Title, req) {
+			cacheChanged = true
+		}
+		if !cached.EpisodeTMDBEnriched && s.enrichCachedTMDBEpisodeMetadata(ctx, &cached, req.TMDBID) {
+			cacheChanged = true
+		}
+		if cacheChanged {
 			_ = s.cache.set(cacheID, cached)
 		}
 		return &cached, nil
@@ -4925,8 +4989,13 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	}
 	s.backfillSeriesIMDBID(ctx, &seriesTitle, req)
 	details.Title = seriesTitle
-	if tmdbIDForEnrichment > 0 && s.preferTMDBEpisodeImages(ctx, &details, tmdbIDForEnrichment) {
-		log.Printf("[metadata] lite: applied TMDB episode stills tvdbId=%d tmdbId=%d", tvdbID, tmdbIDForEnrichment)
+	if tmdbIDForEnrichment > 0 {
+		if changed, complete := s.enrichTMDBEpisodeMetadata(ctx, &details, tmdbIDForEnrichment); changed {
+			log.Printf("[metadata] lite: applied TMDB episode metadata tvdbId=%d tmdbId=%d", tvdbID, tmdbIDForEnrichment)
+			details.EpisodeTMDBEnriched = complete
+		} else if complete {
+			details.EpisodeTMDBEnriched = true
+		}
 	}
 	if tmdbIDForEnrichment > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
 		if images, err := s.cachedFetchImages(ctx, "series", tmdbIDForEnrichment); err == nil && images != nil {

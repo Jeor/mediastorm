@@ -187,6 +187,10 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 			remoteByKey[key] = event.Media.TMDBID
 		}
 	}
+	s.mu.RLock()
+	metadataSvc := s.metadataService
+	s.mu.RUnlock()
+	metadataCache := make(map[string]*models.SeriesDetails)
 
 	exportKey := task.ID + ":scrob_export"
 	s.lastFullSyncTimesMu.Lock()
@@ -203,7 +207,8 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		key          string
 		removeTMDBID int
 	}
-	var changes []outbound
+	var candidates []outbound
+	candidateByKey := make(map[string]int)
 	for _, item := range items {
 		if !since.IsZero() && item.Watched && item.WatchedAt.Before(since) {
 			continue
@@ -211,15 +216,29 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		if !since.IsZero() && !item.Watched && item.UpdatedAt.Before(since) {
 			continue
 		}
+		item = enrichScrobExportEpisode(ctx, metadataSvc, metadataCache, item)
 		event, key, ok := localItemToScrob(item)
 		if !ok {
 			continue
 		}
-		remoteTMDBID, exists := remoteByKey[key]
-		if item.Watched == exists {
+		candidate := outbound{item: item, event: event, key: key}
+		if index, duplicate := candidateByKey[key]; duplicate {
+			if scrobHistoryItemChangedAt(item).After(scrobHistoryItemChangedAt(candidates[index].item)) {
+				candidates[index] = candidate
+			}
 			continue
 		}
-		changes = append(changes, outbound{item: item, event: event, key: key, removeTMDBID: remoteTMDBID})
+		candidateByKey[key] = len(candidates)
+		candidates = append(candidates, candidate)
+	}
+	changes := make([]outbound, 0, len(candidates))
+	for _, candidate := range candidates {
+		remoteTMDBID, exists := remoteByKey[candidate.key]
+		if candidate.item.Watched == exists {
+			continue
+		}
+		candidate.removeTMDBID = remoteTMDBID
+		changes = append(changes, candidate)
 	}
 
 	if dryRun {
@@ -287,6 +306,134 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		s.lastFullSyncTimesMu.Unlock()
 	}
 	return result, nil
+}
+
+func scrobHistoryItemChangedAt(item models.WatchHistoryItem) time.Time {
+	if !item.UpdatedAt.IsZero() {
+		return item.UpdatedAt
+	}
+	return item.WatchedAt
+}
+
+func enrichScrobExportEpisode(ctx context.Context, metadataSvc schedulerMetadataService, cache map[string]*models.SeriesDetails, item models.WatchHistoryItem) models.WatchHistoryItem {
+	if item.MediaType != "episode" || metadataSvc == nil {
+		return item
+	}
+	ext := mediaidentity.EnrichShowExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs)
+	query, cacheKey := scrobSeriesDetailsQuery(ext)
+	if cacheKey == "" {
+		return item
+	}
+	details, cached := cache[cacheKey]
+	if !cached {
+		var err error
+		details, err = metadataSvc.SeriesDetailsLite(ctx, query)
+		if err != nil {
+			log.Printf("[scheduler] Scrob export: unable to enrich %s S%02dE%02d: %v", cacheKey, item.SeasonNumber, item.EpisodeNumber, err)
+		}
+		cache[cacheKey] = details
+	}
+	if details == nil {
+		return item
+	}
+	match := matchScrobExportEpisode(details, item)
+	if match == nil {
+		return item
+	}
+
+	item.ExternalIDs = cloneStringMap(ext)
+	if item.ExternalIDs == nil {
+		item.ExternalIDs = make(map[string]string)
+	}
+	if details.Title.TMDBID > 0 {
+		item.ExternalIDs["tmdb"] = strconv.FormatInt(details.Title.TMDBID, 10)
+	}
+	if details.Title.TVDBID > 0 {
+		item.ExternalIDs["tvdb"] = strconv.FormatInt(details.Title.TVDBID, 10)
+	}
+	if details.Title.IMDBID != "" {
+		item.ExternalIDs["imdb"] = details.Title.IMDBID
+	}
+	if match.TMDBID > 0 {
+		item.ExternalIDs["episodeTmdb"] = strconv.FormatInt(match.TMDBID, 10)
+	}
+	if match.TVDBID > 0 {
+		item.ExternalIDs["episodeTvdb"] = strconv.FormatInt(match.TVDBID, 10)
+	}
+	if match.AbsoluteEpisodeNumber > 0 {
+		item.ExternalIDs["absoluteEpisode"] = strconv.Itoa(match.AbsoluteEpisodeNumber)
+	}
+	item.SeasonNumber = match.SeasonNumber
+	item.EpisodeNumber = match.EpisodeNumber
+	if match.TMDBSeasonNumber >= 0 && match.TMDBEpisodeNumber > 0 {
+		item.SeasonNumber = match.TMDBSeasonNumber
+		item.EpisodeNumber = match.TMDBEpisodeNumber
+	}
+	if strings.TrimSpace(item.Name) == "" && strings.TrimSpace(match.Name) != "" {
+		item.Name = match.Name
+	}
+	return item
+}
+
+func scrobSeriesDetailsQuery(ext map[string]string) (models.SeriesDetailsQuery, string) {
+	var query models.SeriesDetailsQuery
+	if id := scrobPositiveID(ext["tmdb"]); id > 0 {
+		query.TMDBID = int64(id)
+	}
+	if id := scrobPositiveID(ext["tvdb"]); id > 0 {
+		query.TVDBID = int64(id)
+	}
+	query.IMDBID = strings.TrimSpace(ext["imdb"])
+	switch {
+	case query.TVDBID > 0:
+		query.TitleID = fmt.Sprintf("tvdb:series:%d", query.TVDBID)
+		return query, query.TitleID
+	case query.TMDBID > 0:
+		query.TitleID = fmt.Sprintf("tmdb:tv:%d", query.TMDBID)
+		return query, query.TitleID
+	case query.IMDBID != "":
+		query.TitleID = "imdb:" + query.IMDBID
+		return query, query.TitleID
+	default:
+		return query, ""
+	}
+}
+
+func matchScrobExportEpisode(details *models.SeriesDetails, item models.WatchHistoryItem) *models.SeriesEpisode {
+	if details == nil {
+		return nil
+	}
+	episodeTMDBID := scrobPositiveID(item.ExternalIDs["episodeTmdb"])
+	episodeTVDBID := scrobPositiveID(item.ExternalIDs["episodeTvdb"])
+	absoluteEpisode := scrobPositiveID(item.ExternalIDs["absoluteEpisode"])
+	var exact, explicitAbsolute, inferredAbsolute *models.SeriesEpisode
+	for _, season := range details.Seasons {
+		for i := range season.Episodes {
+			episode := &season.Episodes[i]
+			if episodeTMDBID > 0 && episode.TMDBID == int64(episodeTMDBID) {
+				return episode
+			}
+			if episodeTVDBID > 0 && episode.TVDBID == int64(episodeTVDBID) {
+				return episode
+			}
+			if exact == nil && episode.SeasonNumber == item.SeasonNumber && episode.EpisodeNumber == item.EpisodeNumber {
+				exact = episode
+			}
+			if explicitAbsolute == nil && absoluteEpisode > 0 && episode.AbsoluteEpisodeNumber == absoluteEpisode {
+				explicitAbsolute = episode
+			}
+			if inferredAbsolute == nil && episode.AbsoluteEpisodeNumber > 0 && episode.AbsoluteEpisodeNumber == item.EpisodeNumber {
+				inferredAbsolute = episode
+			}
+		}
+	}
+	if exact != nil {
+		return exact
+	}
+	if explicitAbsolute != nil {
+		return explicitAbsolute
+	}
+	return inferredAbsolute
 }
 
 func scrobRemoteKey(media scrob.Media) string {

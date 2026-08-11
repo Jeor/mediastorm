@@ -4044,6 +4044,7 @@ func (s *Service) canonicalizeProviderEpisode(provider string, showIDs map[strin
 	for _, season := range details.Seasons {
 		for _, localEpisode := range season.Episodes {
 			if localEpisode.SeasonNumber == originalSeason && localEpisode.EpisodeNumber == originalEpisode {
+				addResolvedEpisodeExternalIDs(episodeIDs, localEpisode)
 				if localEpisode.AbsoluteEpisodeNumber > 0 {
 					absoluteEpisode = localEpisode.AbsoluteEpisodeNumber
 				}
@@ -4070,6 +4071,7 @@ func (s *Service) canonicalizeProviderEpisode(provider string, showIDs map[strin
 				continue
 			}
 
+			addResolvedEpisodeExternalIDs(episodeIDs, localEpisode)
 			if localEpisode.AbsoluteEpisodeNumber > 0 {
 				absoluteEpisode = localEpisode.AbsoluteEpisodeNumber
 			}
@@ -4084,6 +4086,7 @@ func (s *Service) canonicalizeProviderEpisode(provider string, showIDs map[strin
 		}
 	}
 	if absoluteMatch != nil {
+		addResolvedEpisodeExternalIDs(episodeIDs, *absoluteMatch)
 		if absoluteMatch.AbsoluteEpisodeNumber > 0 {
 			absoluteEpisode = absoluteMatch.AbsoluteEpisodeNumber
 		}
@@ -4098,6 +4101,18 @@ func (s *Service) canonicalizeProviderEpisode(provider string, showIDs map[strin
 	}
 
 	return seasonNumber, episodeNumber, absoluteEpisode, episodeTitle
+}
+
+func addResolvedEpisodeExternalIDs(episodeIDs map[string]string, episode models.SeriesEpisode) {
+	if episodeIDs == nil {
+		return
+	}
+	if episode.TMDBID > 0 && strings.TrimSpace(episodeIDs["tmdb"]) == "" {
+		episodeIDs["tmdb"] = strconv.FormatInt(episode.TMDBID, 10)
+	}
+	if episode.TVDBID > 0 && strings.TrimSpace(episodeIDs["tvdb"]) == "" {
+		episodeIDs["tvdb"] = strconv.FormatInt(episode.TVDBID, 10)
+	}
 }
 
 func cloneStringMap(values map[string]string) map[string]string {

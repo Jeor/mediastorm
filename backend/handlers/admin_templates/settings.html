@@ -44,16 +44,36 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
 }
-.user-editable-setting-control {
-    display: flex;
+.setting-field-title {
+    display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    margin-top: 0.5rem;
-    color: var(--text-secondary);
-    font-size: 0.74rem;
+    gap: 0.35rem;
+}
+.user-editable-setting-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    opacity: 0.55;
     cursor: pointer;
 }
-.user-editable-setting-control input { margin: 0; }
+.user-editable-setting-toggle:hover,
+.user-editable-setting-toggle:focus-visible {
+    color: var(--text-secondary);
+    opacity: 1;
+    background: var(--bg-tertiary);
+}
+.user-editable-setting-toggle.enabled {
+    color: var(--accent);
+    opacity: 1;
+}
+.user-editable-setting-toggle svg { width: 13px; height: 13px; }
 
 .nested-settings-panel {
     margin-top: 1rem;
@@ -3362,26 +3382,35 @@
         obj[globalKeys[globalKeys.length - 1]] = value;
     }
 
-    function setUserEditableSetting(path, enabled) {
+    function toggleUserEditableSetting(path, button) {
         if (!isAdmin || selectedUserId || selectedClientId) return;
         if (!currentSettings.ui) currentSettings.ui = {};
         const paths = new Set(Array.isArray(currentSettings.ui.userEditableSettings)
             ? currentSettings.ui.userEditableSettings
             : []);
+        const enabled = !paths.has(path);
         if (enabled) paths.add(path);
         else paths.delete(path);
         currentSettings.ui.userEditableSettings = Array.from(paths).sort();
+        button.classList.toggle('enabled', enabled);
+        button.setAttribute('aria-pressed', String(enabled));
+        button.setAttribute('aria-label', enabled ? 'Shown in frontend settings' : 'Show in frontend settings');
+        button.title = enabled ? 'Shown in frontend settings' : 'Show in frontend settings';
     }
 
-    function renderUserEditableSettingControl(fieldDef) {
+    function renderUserEditableSettingToggle(fieldDef) {
         if (!isAdmin || selectedUserId || selectedClientId || !fieldDef.userEditableEligible) return '';
         const path = fieldDef.userEditablePath || '';
         if (!path) return '';
         const selected = Array.isArray(currentSettings.ui?.userEditableSettings) &&
             currentSettings.ui.userEditableSettings.includes(path);
-        return '<label class="user-editable-setting-control" onclick="event.stopPropagation()">' +
-            '<input type="checkbox" '+(selected ? 'checked' : '')+' onchange="setUserEditableSetting(\''+path+'\', this.checked)">' +
-            '<span>Show in frontend settings</span></label>';
+        const label = selected ? 'Shown in frontend settings' : 'Show in frontend settings';
+        return '<button type="button" class="user-editable-setting-toggle'+(selected ? ' enabled' : '')+'" ' +
+            'aria-pressed="'+String(selected)+'" aria-label="'+label+'" title="'+label+'" ' +
+            'onclick="event.preventDefault(); event.stopPropagation(); toggleUserEditableSetting(\''+path+'\', this)">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+                '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>' +
+            '</svg></button>';
     }
 
     function ensureProfileLiveSourceOverride() {
@@ -10014,7 +10043,7 @@
                     group: fieldDef.group || '',
                     groupLabel: fieldDef.groupLabel || '',
                     groupDescription: fieldDef.groupDescription || '',
-                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label"><span>'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderUserEditableSettingControl(fieldDef)+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
             .filter(Boolean);

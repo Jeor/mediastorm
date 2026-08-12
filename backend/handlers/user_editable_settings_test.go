@@ -1,6 +1,10 @@
 package handlers
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestUserEditableSettingsSchemaEligibility(t *testing.T) {
 	playback := SettingsSchema["playback"].(map[string]interface{})
@@ -40,5 +44,26 @@ func TestFilterUserEditableSettings(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("filterUserEditableSettings() = %#v, want %#v", got, want)
 		}
+	}
+}
+
+func TestSettingsTemplateUsesCompactEditablePencilToggle(t *testing.T) {
+	source, err := os.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	template := string(source)
+	for _, expected := range []string{
+		"user-editable-setting-toggle",
+		"renderUserEditableSettingToggle(fieldDef)",
+		`aria-pressed="`,
+		`<path d="M12 20h9"/>`,
+	} {
+		if !strings.Contains(template, expected) {
+			t.Fatalf("settings template missing %q", expected)
+		}
+	}
+	if strings.Contains(template, "user-editable-setting-control") {
+		t.Fatal("settings template should not render the old full-width editable checkbox")
 	}
 }

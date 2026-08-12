@@ -66,23 +66,15 @@ func (e *HistoryEvent) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	value := strings.TrimSpace(*raw.WatchedAt)
-	parsed, err := parseScrobTimestamp(value)
-	if err != nil {
-		return fmt.Errorf("invalid Scrob watched_at timestamp %q", value)
-	}
-	e.WatchedAt = &parsed
-	return nil
-}
-
-func parseScrobTimestamp(value string) (time.Time, error) {
-	value = strings.TrimSpace(value)
 	for _, layout := range []string{time.RFC3339Nano, "2006-01-02T15:04:05.999999999", "2006-01-02T15:04:05"} {
 		parsed, err := time.Parse(layout, value)
 		if err == nil {
-			return parsed.UTC(), nil
+			parsed = parsed.UTC()
+			e.WatchedAt = &parsed
+			return nil
 		}
 	}
-	return time.Time{}, errors.New("invalid timestamp")
+	return fmt.Errorf("invalid Scrob watched_at timestamp %q", value)
 }
 
 type Media struct {
@@ -96,44 +88,6 @@ type Media struct {
 	ShowTitle     string `json:"show_title"`
 	ShowTMDBID    int    `json:"show_tmdb_id"`
 	ShowTVDBID    int    `json:"show_tvdb_id"`
-	Runtime       int    `json:"runtime"`
-}
-
-type ContinueWatchingResponse struct {
-	Items []PlaybackProgressEvent `json:"continue_watching"`
-}
-
-type PlaybackProgressEvent struct {
-	ID              int       `json:"id"`
-	ProgressSeconds int       `json:"progress_seconds"`
-	ProgressPercent float64   `json:"progress_percent"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	Media           Media     `json:"media"`
-}
-
-// UnmarshalJSON accepts Scrob's timezone-less UTC updated_at timestamps.
-func (e *PlaybackProgressEvent) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		ID              int     `json:"id"`
-		ProgressSeconds int     `json:"progress_seconds"`
-		ProgressPercent float64 `json:"progress_percent"`
-		UpdatedAt       string  `json:"updated_at"`
-		Media           Media   `json:"media"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	e.ID, e.ProgressSeconds, e.ProgressPercent, e.Media = raw.ID, raw.ProgressSeconds, raw.ProgressPercent, raw.Media
-	e.UpdatedAt = time.Time{}
-	if strings.TrimSpace(raw.UpdatedAt) == "" {
-		return nil
-	}
-	parsed, err := parseScrobTimestamp(raw.UpdatedAt)
-	if err != nil {
-		return fmt.Errorf("invalid Scrob updated_at timestamp %q", raw.UpdatedAt)
-	}
-	e.UpdatedAt = parsed
-	return nil
 }
 
 type WatchEvent struct {
@@ -217,33 +171,6 @@ func (c *Client) GetHistory(ctx context.Context, baseURL, apiKey string) ([]Hist
 		}
 	}
 	return all, nil
-}
-
-// GetContinueWatching returns Scrob's durable, partially watched items. Scrob
-// reports progress as a fraction between zero and one.
-func (c *Client) GetContinueWatching(ctx context.Context, baseURL, apiKey string) ([]PlaybackProgressEvent, error) {
-	baseURL, err := normalizeBaseURL(baseURL)
-	if err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(apiKey) == "" {
-		return nil, errors.New("Scrob API key is required")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/history/continue-watching", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("X-Api-Key", apiKey)
-	req.Header.Set("Accept", "application/json")
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetch Scrob continue watching: %w", err)
-	}
-	var payload ContinueWatchingResponse
-	if err := decodeResponse(resp, &payload); err != nil {
-		return nil, fmt.Errorf("fetch Scrob continue watching: %w", err)
-	}
-	return payload.Items, nil
 }
 
 // TestConnection validates the instance URL and API key without downloading a

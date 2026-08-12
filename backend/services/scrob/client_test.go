@@ -37,28 +37,6 @@ func TestGetHistoryPaginatesAndUsesAPIKey(t *testing.T) {
 	}
 }
 
-func TestGetContinueWatchingUsesAPIKey(t *testing.T) {
-	client := NewClientWithHTTPClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		if r.Method != http.MethodGet || r.URL.Path != "/api/proxy/history/continue-watching" {
-			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
-		}
-		if r.Header.Get("X-Api-Key") != "secret" {
-			t.Fatal("missing API key")
-		}
-		return jsonResponse(200, `{"continue_watching":[{"id":1,"progress_seconds":600,"progress_percent":0.25,"updated_at":"2026-08-12T12:34:56.123456","media":{"tmdb_id":550,"type":"movie","runtime":40}}]}`), nil
-	})})
-	items, err := client.GetContinueWatching(context.Background(), "https://scrob.example", "secret")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(items) != 1 || items[0].ProgressPercent != 0.25 || items[0].Media.TMDBID != 550 || items[0].Media.Runtime != 40 {
-		t.Fatalf("items=%+v", items)
-	}
-	if got := items[0].UpdatedAt; !got.Equal(time.Date(2026, 8, 12, 12, 34, 56, 123456000, time.UTC)) {
-		t.Fatalf("updatedAt=%v", got)
-	}
-}
-
 func TestLoginAndAddHistory(t *testing.T) {
 	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {

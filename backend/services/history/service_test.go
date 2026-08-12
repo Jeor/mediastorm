@@ -679,36 +679,6 @@ func TestUpdatePlaybackProgressEndedStopsRealtimeSession(t *testing.T) {
 	}
 }
 
-func TestImportPlaybackProgressSuppressesRealtimeScrobble(t *testing.T) {
-	svc, err := NewService(t.TempDir())
-	if err != nil {
-		t.Fatalf("NewService() error = %v", err)
-	}
-	scrobbler := newCaptureRealTimeScrobbler()
-	svc.SetTraktRealTimeScrobbler(scrobbler)
-	when := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
-	progress, err := svc.ImportPlaybackProgress("user", models.PlaybackProgressUpdate{
-		MediaType: "movie", ItemID: "tmdb:movie:550", MovieName: "Fight Club",
-		Position: 1800, Duration: 7200, Timestamp: when, IsPaused: true,
-		ExternalIDs: map[string]string{"tmdb": "550"},
-	})
-	if err != nil {
-		t.Fatalf("ImportPlaybackProgress() error = %v", err)
-	}
-	if progress.PercentWatched != 25 || !progress.UpdatedAt.Equal(when) {
-		t.Fatalf("progress=%+v", progress)
-	}
-	select {
-	case update := <-scrobbler.handleCalls:
-		t.Fatalf("unexpected realtime scrobble: %#v", update)
-	case update := <-scrobbler.stopCalls:
-		t.Fatalf("unexpected realtime stop: %#v", update)
-	case update := <-scrobbler.clearCalls:
-		t.Fatalf("unexpected realtime clear: %#v", update)
-	case <-time.After(50 * time.Millisecond):
-	}
-}
-
 func TestUpdatePlaybackProgressEnrichesRealtimeIdentityFromWatchHistory(t *testing.T) {
 	svc, err := NewService(t.TempDir())
 	if err != nil {

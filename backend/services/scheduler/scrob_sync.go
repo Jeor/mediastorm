@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -88,38 +87,6 @@ func (s *Service) syncScrobHistoryToLocal(account *config.ScrobAccount, profileI
 	if err != nil {
 		return result, fmt.Errorf("fetch Scrob history: %w", err)
 	}
-	remoteProgress, err := client.GetContinueWatching(ctx, account.BaseURL, account.APIKey)
-	if err != nil {
-		return result, fmt.Errorf("fetch Scrob continue watching: %w", err)
-	}
-	localProgress, err := historySvc.ListPlaybackProgress(profileID)
-	if err != nil {
-		return result, fmt.Errorf("list local playback progress: %w", err)
-	}
-	localHistory, err := historySvc.ListWatchHistory(profileID)
-	if err != nil {
-		return result, fmt.Errorf("list local watch history: %w", err)
-	}
-	localProgressByKey := make(map[string]models.PlaybackProgress)
-	for _, progress := range localProgress {
-		if key := localPlaybackProgressScrobKey(progress); key != "" {
-			existing, ok := localProgressByKey[key]
-			if !ok || progress.UpdatedAt.After(existing.UpdatedAt) {
-				localProgressByKey[key] = progress
-			}
-		}
-	}
-	localHistoryByKey := make(map[string]time.Time)
-	for _, item := range localHistory {
-		_, key, ok := localItemToScrob(item)
-		if !ok {
-			continue
-		}
-		changedAt := scrobHistoryItemChangedAt(item)
-		if changedAt.After(localHistoryByKey[key]) {
-			localHistoryByKey[key] = changedAt
-		}
-	}
 
 	watched := true
 	seen := make(map[string]struct{})
@@ -140,129 +107,18 @@ func (s *Service) syncScrobHistoryToLocal(account *config.ScrobAccount, profileI
 			updates = append(updates, *update)
 		}
 	}
-	if !dryRun && len(updates) > 0 {
+	if dryRun {
+		result.Count = len(result.ToAdd)
+		return result, nil
+	}
+	if len(updates) > 0 {
 		result.Count, err = historySvc.ImportWatchHistory(profileID, updates)
 		if err != nil {
 			return result, fmt.Errorf("import Scrob watch history: %w", err)
 		}
 	}
-	partialImported := 0
-	for _, remote := range remoteProgress {
-		update, key, ok := scrobProgressToUpdate(remote)
-		if !ok {
-			continue
-		}
-		if local, exists := localProgressByKey[key]; exists {
-			// Local wins exact ties. A missing remote timestamp is never allowed
-			// to overwrite known local progress.
-			if !scrobRemoteProgressIsNewer(remote.UpdatedAt, local.UpdatedAt) {
-				continue
-			}
-		}
-		if localChangedAt, exists := localHistoryByKey[key]; exists &&
-			!scrobRemoteProgressIsNewer(remote.UpdatedAt, localChangedAt) {
-			continue
-		}
-		if dryRun {
-			result.ToAdd = append(result.ToAdd, config.DryRunItem{Name: scrobProgressName(remote), MediaType: update.MediaType, ID: update.ItemID})
-			partialImported++
-			continue
-		}
-		if _, err := historySvc.ImportPlaybackProgress(profileID, update); err != nil {
-			return result, fmt.Errorf("import Scrob playback progress for %s: %w", update.ItemID, err)
-		}
-		partialImported++
-	}
-	if dryRun {
-		result.Count = len(result.ToAdd)
-		return result, nil
-	}
-	result.Count += partialImported
-	log.Printf("[scheduler] Imported %d completed history items and %d playback positions from Scrob", result.Count-partialImported, partialImported)
+	log.Printf("[scheduler] Imported %d/%d unique items from Scrob history", result.Count, len(updates))
 	return result, nil
-}
-
-func scrobProgressToUpdate(progress scrob.PlaybackProgressEvent) (models.PlaybackProgressUpdate, string, bool) {
-	percent := progress.ProgressPercent * 100
-	if percent <= 5 || percent >= 90 {
-		return models.PlaybackProgressUpdate{}, "", false
-	}
-	m := progress.Media
-	duration := float64(max(0, m.Runtime) * 60)
-	position := float64(max(0, progress.ProgressSeconds))
-	if duration > 0 && position <= 0 {
-		position = duration * progress.ProgressPercent
-	}
-	updated := models.PlaybackProgressUpdate{
-		MediaType: m.Type, Position: position, Duration: duration, PercentWatched: percent,
-		Timestamp: progress.UpdatedAt, IsPaused: true,
-	}
-	switch m.Type {
-	case "movie":
-		if m.TMDBID <= 0 {
-			return models.PlaybackProgressUpdate{}, "", false
-		}
-		id := strconv.Itoa(m.TMDBID)
-		updated.ItemID = "tmdb:movie:" + id
-		updated.MovieName = m.Title
-		updated.ExternalIDs = map[string]string{"tmdb": id}
-		if len(m.ReleaseDate) >= 4 {
-			updated.Year, _ = strconv.Atoi(m.ReleaseDate[:4])
-		}
-		return updated, fmt.Sprintf("movie:%d", m.TMDBID), true
-	case "episode":
-		if m.ShowTMDBID <= 0 || m.SeasonNumber < 0 || m.EpisodeNumber <= 0 {
-			return models.PlaybackProgressUpdate{}, "", false
-		}
-		showID := strconv.Itoa(m.ShowTMDBID)
-		seriesID := "tmdb:tv:" + showID
-		updated.ItemID = fmt.Sprintf("%s:s%02de%02d", seriesID, m.SeasonNumber, m.EpisodeNumber)
-		updated.SeriesID = seriesID
-		updated.SeriesName = m.ShowTitle
-		updated.EpisodeName = m.Title
-		updated.SeasonNumber = m.SeasonNumber
-		updated.EpisodeNumber = m.EpisodeNumber
-		updated.ExternalIDs = map[string]string{"tmdb": showID}
-		if m.TMDBID > 0 {
-			updated.ExternalIDs["episodeTmdb"] = strconv.Itoa(m.TMDBID)
-		}
-		if m.ShowTVDBID > 0 {
-			updated.ExternalIDs["tvdb"] = strconv.Itoa(m.ShowTVDBID)
-		}
-		return updated, fmt.Sprintf("episode:%d:%d:%d", m.ShowTMDBID, m.SeasonNumber, m.EpisodeNumber), true
-	default:
-		return models.PlaybackProgressUpdate{}, "", false
-	}
-}
-
-func scrobProgressName(progress scrob.PlaybackProgressEvent) string {
-	if strings.TrimSpace(progress.Media.ShowTitle) != "" && progress.Media.Type == "episode" {
-		return progress.Media.ShowTitle + " — " + progress.Media.Title
-	}
-	return progress.Media.Title
-}
-
-func localPlaybackProgressScrobKey(progress models.PlaybackProgress) string {
-	switch progress.MediaType {
-	case "movie":
-		id := scrobPositiveID(progress.ExternalIDs["tmdb"])
-		if id == 0 {
-			id = scrobIDFromItem(progress.ItemID, "tmdb:movie:")
-		}
-		if id == 0 {
-			id = scrobIDFromItem(progress.ItemID, "tmdb:")
-		}
-		if id > 0 {
-			return fmt.Sprintf("movie:%d", id)
-		}
-	case "episode":
-		ext := mediaidentity.EnrichShowExternalIDs(progress.SeriesID, progress.ItemID, progress.ExternalIDs)
-		showID := scrobPositiveID(ext["tmdb"])
-		if showID > 0 && progress.SeasonNumber >= 0 && progress.EpisodeNumber > 0 {
-			return fmt.Sprintf("episode:%d:%d:%d", showID, progress.SeasonNumber, progress.EpisodeNumber)
-		}
-	}
-	return ""
 }
 
 func scrobEventToUpdate(event scrob.HistoryEvent, watched *bool) *models.WatchHistoryUpdate {
@@ -316,10 +172,6 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	if err != nil {
 		return result, fmt.Errorf("list local history: %w", err)
 	}
-	continueWatching, err := historySvc.ListContinueWatching(profileID)
-	if err != nil {
-		return result, fmt.Errorf("list local continue watching: %w", err)
-	}
 	// Initial exports may contain thousands of plays and Scrob currently accepts
 	// them one at a time. Keep enough headroom for a full backfill; later runs
 	// deduplicate against remote history and are substantially shorter.
@@ -329,20 +181,10 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	if err != nil {
 		return result, fmt.Errorf("fetch Scrob history for deduplication: %w", err)
 	}
-	remoteProgress, err := client.GetContinueWatching(ctx, account.BaseURL, account.APIKey)
-	if err != nil {
-		return result, fmt.Errorf("fetch Scrob continue watching for deduplication: %w", err)
-	}
 	remoteByKey := make(map[string][]scrob.Media)
 	for _, event := range remote {
 		if key := scrobRemoteKey(event.Media); key != "" {
 			remoteByKey[key] = appendUniqueScrobMedia(remoteByKey[key], event.Media)
-		}
-	}
-	remoteProgressByKey := make(map[string]scrob.PlaybackProgressEvent)
-	for _, progress := range remoteProgress {
-		if key := scrobRemoteKey(progress.Media); key != "" {
-			remoteProgressByKey[key] = progress
 		}
 	}
 	s.mu.RLock()
@@ -428,33 +270,6 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	}
 	changes = append(changes, aliasCleanups...)
 
-	type partialOutbound struct {
-		state    models.SeriesWatchState
-		start    scrob.ManualSessionStart
-		key      string
-		progress float64
-	}
-	partialChanges := make([]partialOutbound, 0, len(continueWatching))
-	for _, state := range continueWatching {
-		start, key, progress, ok := continueWatchingToScrobSession(state)
-		if !ok {
-			continue
-		}
-		updatedAt := state.ResumeUpdatedAt
-		if updatedAt.IsZero() {
-			updatedAt = state.UpdatedAt
-		}
-		if remoteItem, exists := remoteProgressByKey[key]; exists {
-			if scrobRemoteProgressIsNewer(remoteItem.UpdatedAt, updatedAt) {
-				continue
-			}
-			if math.Abs(remoteItem.ProgressPercent*100-progress) < 0.5 {
-				continue
-			}
-		}
-		partialChanges = append(partialChanges, partialOutbound{state: state, start: start, key: key, progress: progress})
-	}
-
 	if dryRun {
 		for _, change := range changes {
 			d := config.DryRunItem{Name: change.item.Name, MediaType: change.item.MediaType, ID: change.item.ItemID}
@@ -464,15 +279,10 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 				result.ToRemove = append(result.ToRemove, d)
 			}
 		}
-		for _, change := range partialChanges {
-			result.ToAdd = append(result.ToAdd, config.DryRunItem{
-				Name: change.state.SeriesTitle, MediaType: change.start.MediaType, ID: change.state.SeriesID,
-			})
-		}
 		result.Count = len(result.ToAdd) + len(result.ToRemove)
 		return result, nil
 	}
-	if len(changes) == 0 && len(partialChanges) == 0 {
+	if len(changes) == 0 {
 		if isFull {
 			s.lastFullSyncTimesMu.Lock()
 			s.lastFullSyncTimes[exportKey] = time.Now().UTC()
@@ -531,41 +341,9 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		}
 		result.Count++
 	}
-	for _, change := range partialChanges {
-		started, startErr := client.StartSession(ctx, account.BaseURL, account.APIKey, token, change.start)
-		if startErr == nil {
-			runtime := change.start.Runtime
-			if runtime <= 0 {
-				runtime = started.Runtime
-			}
-			if runtime <= 0 {
-				startErr = errors.New("Scrob returned no runtime for partial progress")
-			} else {
-				position := int(math.Round(float64(runtime*60) * change.progress / 100))
-				startErr = client.UpdateSession(ctx, account.BaseURL, account.APIKey, token, started.SessionKey, scrob.ManualSessionUpdate{
-					ProgressSeconds: position,
-					State:           "paused",
-				})
-			}
-		}
-		if startErr != nil {
-			if !firstFailureSet {
-				firstFailureSet = true
-				firstFailureType, firstFailureName = change.start.MediaType, change.state.SeriesTitle
-			}
-			failed++
-			log.Printf("[scheduler] Scrob partial-progress export skipped %s %q: %v", change.start.MediaType, change.state.SeriesTitle, startErr)
-			if ctx.Err() != nil {
-				return result, fmt.Errorf("Scrob export stopped after syncing %d of %d changes: %w", result.Count, len(changes)+len(partialChanges), ctx.Err())
-			}
-			continue
-		}
-		result.Count++
-	}
 	if failed > 0 {
-		total := len(changes) + len(partialChanges)
-		log.Printf("[scheduler] Scrob export completed partially: synced=%d failed=%d total=%d", result.Count, failed, total)
-		return result, scrobExportPartialError(result.Count, total, failed, firstFailureType, firstFailureName)
+		log.Printf("[scheduler] Scrob export completed partially: synced=%d failed=%d total=%d", result.Count, failed, len(changes))
+		return result, scrobExportPartialError(result.Count, len(changes), failed, firstFailureType, firstFailureName)
 	}
 	if isFull {
 		s.lastFullSyncTimesMu.Lock()
@@ -573,56 +351,6 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		s.lastFullSyncTimesMu.Unlock()
 	}
 	return result, nil
-}
-
-func scrobRemoteProgressIsNewer(remoteUpdatedAt, localUpdatedAt time.Time) bool {
-	return !remoteUpdatedAt.IsZero() && localUpdatedAt.Before(remoteUpdatedAt)
-}
-
-// continueWatchingToScrobSession converts the public Continue Watching payload
-// into Scrob's manual-session API. Completed-series "next up" entries carry no
-// resume percentage and are intentionally excluded.
-func continueWatchingToScrobSession(state models.SeriesWatchState) (scrob.ManualSessionStart, string, float64, bool) {
-	progress := state.ResumePercent
-	if progress == 0 {
-		progress = state.PercentWatched
-	}
-	if progress <= 5 || progress >= 90 {
-		return scrob.ManualSessionStart{}, "", progress, false
-	}
-
-	if state.NextEpisode == nil {
-		tmdbID := scrobPositiveID(state.ExternalIDs["tmdb"])
-		if tmdbID == 0 {
-			tmdbID = scrobIDFromItem(state.SeriesID, "tmdb:movie:")
-		}
-		if tmdbID == 0 {
-			tmdbID = scrobIDFromItem(state.SeriesID, "tmdb:")
-		}
-		if tmdbID == 0 {
-			return scrob.ManualSessionStart{}, "", progress, false
-		}
-		return scrob.ManualSessionStart{
-			TMDBID: tmdbID, MediaType: "movie", Title: state.SeriesTitle, Runtime: state.LastWatched.RuntimeMinutes,
-		}, fmt.Sprintf("movie:%d", tmdbID), progress, true
-	}
-
-	showTMDBID := scrobPositiveID(state.ExternalIDs["tmdb"])
-	if showTMDBID == 0 {
-		showTMDBID = scrobIDFromItem(state.SeriesID, "tmdb:tv:")
-	}
-	if showTMDBID == 0 {
-		return scrob.ManualSessionStart{}, "", progress, false
-	}
-	episode := state.NextEpisode
-	if episode.EpisodeNumber <= 0 || episode.SeasonNumber < 0 {
-		return scrob.ManualSessionStart{}, "", progress, false
-	}
-	seasonNumber, episodeNumber := episode.SeasonNumber, episode.EpisodeNumber
-	return scrob.ManualSessionStart{
-		MediaType: "episode", Title: episode.Title, Runtime: episode.RuntimeMinutes,
-		ShowTMDBID: showTMDBID, SeasonNumber: &seasonNumber, EpisodeNumber: &episodeNumber,
-	}, fmt.Sprintf("episode:%d:%d:%d", showTMDBID, seasonNumber, episodeNumber), progress, true
 }
 
 func appendUniqueScrobMedia(items []scrob.Media, candidate scrob.Media) []scrob.Media {

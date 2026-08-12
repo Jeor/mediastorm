@@ -36,7 +36,6 @@ type SeriesWatchState struct {
 	WatchedEpisodes map[string]EpisodeReference `json:"watchedEpisodes,omitempty"`
 	PercentWatched  float64                     `json:"percentWatched,omitempty"`
 	ResumePercent   float64                     `json:"resumePercent,omitempty"`
-	ResumeUpdatedAt time.Time                   `json:"resumeUpdatedAt,omitempty"`
 
 	// Episode counts for tracking series completion (excludes specials/season 0)
 	WatchedEpisodeCount int `json:"watchedEpisodeCount,omitempty"` // Number of episodes user has watched

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1364,16 +1363,15 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 					extIDs[k] = v
 				}
 				state = models.SeriesWatchState{
-					SeriesID:        t.seriesID,
-					SeriesTitle:     t.inProgress.SeriesName,
-					Year:            t.inProgress.Year,
-					ExternalIDs:     extIDs,
-					UpdatedAt:       updatedAt,
-					LastWatched:     *nextEpisode,
-					NextEpisode:     nextEpisode,
-					PercentWatched:  t.inProgress.PercentWatched,
-					ResumePercent:   t.inProgress.PercentWatched,
-					ResumeUpdatedAt: t.inProgress.UpdatedAt,
+					SeriesID:       t.seriesID,
+					SeriesTitle:    t.inProgress.SeriesName,
+					Year:           t.inProgress.Year,
+					ExternalIDs:    extIDs,
+					UpdatedAt:      updatedAt,
+					LastWatched:    *nextEpisode,
+					NextEpisode:    nextEpisode,
+					PercentWatched: t.inProgress.PercentWatched,
+					ResumePercent:  t.inProgress.PercentWatched,
 				}
 
 				// Use full series details for poster, backdrop, IDs, and episode counts
@@ -1549,19 +1547,16 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 
 			// Build the movie state with metadata
 			movieState := models.SeriesWatchState{
-				SeriesID:        p.ItemID,
-				SeriesTitle:     p.MovieName,
-				Year:            p.Year,
-				ExternalIDs:     p.ExternalIDs,
-				UpdatedAt:       p.UpdatedAt,
-				PercentWatched:  p.PercentWatched,
-				ResumePercent:   p.PercentWatched,
-				ResumeUpdatedAt: p.UpdatedAt,
+				SeriesID:       p.ItemID,
+				SeriesTitle:    p.MovieName,
+				Year:           p.Year,
+				ExternalIDs:    p.ExternalIDs,
+				UpdatedAt:      p.UpdatedAt,
+				PercentWatched: p.PercentWatched,
 				// For movies, use LastWatched to store movie info with metadata overview
 				LastWatched: models.EpisodeReference{
-					Title:          p.MovieName,
-					Overview:       "", // Will be populated from metadata below
-					RuntimeMinutes: int(math.Ceil(p.Duration / 60)),
+					Title:    p.MovieName,
+					Overview: "", // Will be populated from metadata below
 				},
 				NextEpisode: nil, // nil indicates this is a movie resume, not a series
 			}
@@ -1574,9 +1569,6 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 				if movieDetails.Overview != "" {
 					movieState.Overview = movieDetails.Overview
 					movieState.LastWatched.Overview = movieDetails.Overview
-				}
-				if movieDetails.RuntimeMinutes > 0 {
-					movieState.LastWatched.RuntimeMinutes = movieDetails.RuntimeMinutes
 				}
 				movieState.Status = movieDetails.Status
 				movieState.LifecycleStatus = movieDetails.LifecycleStatus
@@ -4703,17 +4695,6 @@ func (s *Service) UpdatePlaybackProgress(userID string, update models.PlaybackPr
 	return s.UpdatePlaybackProgressContext(context.Background(), userID, update)
 }
 
-type playbackProgressContextKey string
-
-const suppressRealtimeScrobbleKey playbackProgressContextKey = "suppress-realtime-scrobble"
-
-// ImportPlaybackProgress persists progress received from a sync provider
-// without echoing the imported heartbeat back through real-time scrobblers.
-func (s *Service) ImportPlaybackProgress(userID string, update models.PlaybackProgressUpdate) (models.PlaybackProgress, error) {
-	ctx := context.WithValue(context.Background(), suppressRealtimeScrobbleKey, true)
-	return s.UpdatePlaybackProgressContext(ctx, userID, update)
-}
-
 // acquirePlaybackProgressGate keeps heartbeat writers out of the shared history
 // mutex queue until they are the next writer. Unlike sync.RWMutex.Lock, the gate
 // wait is interruptible, so disconnected clients disappear immediately instead
@@ -4969,8 +4950,7 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 
 	// Grab real-time scrobbler reference while holding the lock
 	rtScrobbler := s.traktRTScrobbler
-	allowRealtimeScrobble := !excludeFromHistoryShelves && !isLiveTVRecordingProgressUpdate(update) &&
-		ctx.Value(suppressRealtimeScrobbleKey) != true
+	allowRealtimeScrobble := !excludeFromHistoryShelves && !isLiveTVRecordingProgressUpdate(update)
 	// Disable realtime scrobbling for episodes under a non-official ordering
 	// (season/episode numbers don't match the canonical order used for sync).
 	if allowRealtimeScrobble && update.MediaType == "episode" {

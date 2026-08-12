@@ -67,7 +67,8 @@ func TestSettingsHandler_GetSettings(t *testing.T) {
 
 	var got struct {
 		config.Settings
-		UserEditableSettings []string `json:"userEditableSettings"`
+		UserEditableSettings       []string                             `json:"userEditableSettings"`
+		UserEditableSettingsSchema map[string]UserEditableSettingSchema `json:"userEditableSettingsSchema"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
@@ -86,6 +87,9 @@ func TestSettingsHandler_GetSettings(t *testing.T) {
 	}
 	if len(got.UserEditableSettings) != 1 || got.UserEditableSettings[0] != "playback.preferredPlayer" {
 		t.Fatalf("unexpected user-editable settings projection: %#v", got.UserEditableSettings)
+	}
+	if schema := got.UserEditableSettingsSchema["playback.preferredPlayer"]; schema.Type != "select" || schema.Label != "Preferred Player" {
+		t.Fatalf("unexpected user-editable schema: %#v", schema)
 	}
 }
 

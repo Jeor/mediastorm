@@ -25,6 +25,7 @@ type fakeUserSettingsService struct {
 	getWithDefaultsErr error
 	lastDefaults       models.UserSettings
 	updateErr          error
+	updatedSettings    models.UserSettings
 	deleteErr          error
 }
 
@@ -38,6 +39,7 @@ func (f *fakeUserSettingsService) GetWithDefaults(userID string, defaults models
 }
 
 func (f *fakeUserSettingsService) Update(userID string, settings models.UserSettings) error {
+	f.updatedSettings = settings
 	return f.updateErr
 }
 
@@ -178,6 +180,59 @@ func TestUserSettingsHandler_PutSettings_InvalidJSON(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUserSettingsHandler_PatchFrontendSetting_PreservesOtherOverrides(t *testing.T) {
+	settingsSvc := &fakeUserSettingsService{
+		getSettings: &models.UserSettings{
+			Playback: models.PlaybackSettings{PreferredPlayer: "native", SubtitleSize: 1.25},
+		},
+	}
+	usersSvc := &fakeUserExistsService{exists: true}
+	cfgMgr := config.NewManager(t.TempDir() + "/settings.json")
+	cfg := config.DefaultSettings()
+	cfg.UI.UserEditableSettings = []string{"playback.preferredPlayer"}
+	if err := cfgMgr.Save(cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	h := handlers.NewUserSettingsHandler(settingsSvc, usersSvc, cfgMgr)
+
+	r := userSettingsRequest(http.MethodPatch, "/", map[string]any{
+		"path": "playback.preferredPlayer", "value": "vlc",
+	}, map[string]string{"userID": "u1"})
+	w := httptest.NewRecorder()
+	h.PatchFrontendSetting(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s, want 200", w.Code, w.Body.String())
+	}
+	if got := settingsSvc.updatedSettings.Playback.PreferredPlayer; got != "vlc" {
+		t.Fatalf("preferredPlayer = %q, want vlc", got)
+	}
+	if got := settingsSvc.updatedSettings.Playback.SubtitleSize; got != 1.25 {
+		t.Fatalf("subtitleSize = %v, want preserved 1.25", got)
+	}
+}
+
+func TestUserSettingsHandler_PatchFrontendSetting_RejectsUnexposedPath(t *testing.T) {
+	settingsSvc := &fakeUserSettingsService{}
+	cfgMgr := config.NewManager(t.TempDir() + "/settings.json")
+	cfg := config.DefaultSettings()
+	cfg.UI.UserEditableSettings = []string{"playback.preferredPlayer"}
+	if err := cfgMgr.Save(cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	h := handlers.NewUserSettingsHandler(settingsSvc, &fakeUserExistsService{exists: true}, cfgMgr)
+
+	r := userSettingsRequest(http.MethodPatch, "/", map[string]any{
+		"path": "display.enableAnimations", "value": false,
+	}, map[string]string{"userID": "u1"})
+	w := httptest.NewRecorder()
+	h.PatchFrontendSetting(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s, want 400", w.Code, w.Body.String())
 	}
 }
 

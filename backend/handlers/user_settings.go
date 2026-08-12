@@ -127,6 +127,69 @@ func (h *UserSettingsHandler) PutSettings(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(settings)
 }
 
+// PatchFrontendSetting updates one admin-exposed profile setting without
+// replacing the rest of the profile's override document.
+func (h *UserSettingsHandler) PatchFrontendSetting(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	patch, err := decodeFrontendSettingPatch(json.NewDecoder(r.Body), h.ConfigManager)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	current, err := h.Service.Get(userID)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	raw, err := json.Marshal(current)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	raw, err = patchJSONObject(raw, patch.Path, patch.Value, patch.Reset)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var next models.UserSettings
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&next); err != nil {
+		writeJSONError(w, "setting is not supported for profile overrides", http.StatusBadRequest)
+		return
+	}
+	if err := validateUserFilterTerms("filtering", &next.Filtering); err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := h.Service.Update(userID, next); err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var previous models.UserSettings
+	if current != nil {
+		previous = *current
+	}
+	if !reflect.DeepEqual(previous.Filtering, next.Filtering) || !reflect.DeepEqual(previous.Ranking, next.Ranking) {
+		if h.PrequeueStore != nil {
+			h.PrequeueStore.DeleteByUser(userID)
+		}
+		if h.SearchCache != nil {
+			h.SearchCache.ClearSearchCache()
+		}
+	}
+	effective, err := h.Service.GetWithDefaults(userID, h.getDefaultsFromGlobal())
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(effective)
+}
+
 func (h *UserSettingsHandler) Options(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

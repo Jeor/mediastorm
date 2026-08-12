@@ -134,8 +134,9 @@ func (h *SettingsHandler) SetSearchCacheClearer(sc SearchCacheClearer) {
 // SettingsResponse wraps config.Settings with additional runtime information.
 type SettingsResponse struct {
 	config.Settings
-	DemoMode             bool     `json:"demoMode"`
-	UserEditableSettings []string `json:"userEditableSettings"`
+	DemoMode                   bool                                 `json:"demoMode"`
+	UserEditableSettings       []string                             `json:"userEditableSettings"`
+	UserEditableSettingsSchema map[string]UserEditableSettingSchema `json:"userEditableSettingsSchema"`
 }
 
 // LiveSettingsWithEffectiveURL wraps LiveSettings with a computed effective URL.
@@ -220,11 +221,13 @@ func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	redactSettings(&s)
 
 	// Build response with computed effective playlist URL
+	editableSettings := filterUserEditableSettings(s.UI.UserEditableSettings)
 	resp := SettingsResponseWithLive{
 		SettingsResponse: SettingsResponse{
-			Settings:             s,
-			DemoMode:             h.DemoMode,
-			UserEditableSettings: filterUserEditableSettings(s.UI.UserEditableSettings),
+			Settings:                   s,
+			DemoMode:                   h.DemoMode,
+			UserEditableSettings:       editableSettings,
+			UserEditableSettingsSchema: userEditableSettingsSchema(editableSettings),
 		},
 		Live: LiveSettingsWithEffectiveURL{
 			LiveSettings:         s.Live,

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"novastream/config"
 	"novastream/internal/auth"
 	"novastream/models"
 	"novastream/services/client_settings"
@@ -71,6 +72,11 @@ type ClientsHandler struct {
 	pendingMessages []pendingClientMessage
 	pingMu          sync.RWMutex
 	messageMu       sync.Mutex
+	configManager   *config.Manager
+}
+
+func (h *ClientsHandler) SetConfigManager(manager *config.Manager) {
+	h.configManager = manager
 }
 
 const pingExpiry = 30 * time.Second // Pings expire after 30 seconds
@@ -524,6 +530,72 @@ func (h *ClientsHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(settings)
+}
+
+// PatchFrontendSetting updates one admin-exposed device override without
+// replacing adaptive measurements or other device-specific values.
+func (h *ClientsHandler) PatchFrontendSetting(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clientID := strings.TrimSpace(vars["clientID"])
+	if clientID == "" {
+		writeJSONError(w, "client id is required", http.StatusBadRequest)
+		return
+	}
+	client, ok := h.getAuthorizedClient(w, r, clientID)
+	if !ok {
+		return
+	}
+	userID, err := h.resolveSettingsUserID(r, client)
+	if err != nil {
+		if errors.Is(err, errSettingsProfileForbidden) {
+			writeJSONError(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	patch, err := decodeFrontendSettingPatch(json.NewDecoder(r.Body), h.configManager)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	path, supported := clientSettingPath(patch.Path)
+	if !supported {
+		writeJSONError(w, "setting is not supported for device overrides", http.StatusBadRequest)
+		return
+	}
+	current, err := h.settings.Get(clientID, userID)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	raw, err := json.Marshal(current)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	raw, err = patchJSONObject(raw, path, patch.Value, patch.Reset)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var next models.ClientFilterSettings
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&next); err != nil {
+		writeJSONError(w, "setting is not supported for device overrides", http.StatusBadRequest)
+		return
+	}
+	if err := validateClientFilterTerms("filtering", &next); err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := h.settings.Update(clientID, userID, next); err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(next)
 }
 
 // ResetSettings handles DELETE /api/clients/{clientID}/settings?userId=

@@ -530,6 +530,7 @@ func main() {
 	}
 	clearLegacyAppearanceOverridesOnce(settings.Cache.Directory, userSettingsService, clientSettingsService)
 	clientsHandler := handlers.NewClientsHandler(clientsService, clientSettingsService, userService)
+	clientsHandler.SetConfigManager(cfgManager)
 
 	// Wire up user settings to services for per-user settings
 	debridSearchService.SetUserSettingsProvider(userSettingsService)

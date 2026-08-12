@@ -63,11 +63,17 @@
     opacity: 0.55;
     cursor: pointer;
 }
-.user-editable-setting-toggle:hover,
 .user-editable-setting-toggle:focus-visible {
     color: var(--text-secondary);
     opacity: 1;
     background: var(--bg-tertiary);
+}
+@media (hover: hover) and (pointer: fine) {
+    .user-editable-setting-toggle:hover {
+        color: var(--text-secondary);
+        opacity: 1;
+        background: var(--bg-tertiary);
+    }
 }
 .user-editable-setting-toggle.enabled {
     color: var(--accent);

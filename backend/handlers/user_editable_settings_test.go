@@ -58,6 +58,7 @@ func TestSettingsTemplateUsesCompactEditablePencilToggle(t *testing.T) {
 		"renderUserEditableSettingToggle(fieldDef)",
 		`aria-pressed="`,
 		`<path d="M12 20h9"/>`,
+		"@media (hover: hover) and (pointer: fine)",
 	} {
 		if !strings.Contains(template, expected) {
 			t.Fatalf("settings template missing %q", expected)
@@ -65,5 +66,8 @@ func TestSettingsTemplateUsesCompactEditablePencilToggle(t *testing.T) {
 	}
 	if strings.Contains(template, "user-editable-setting-control") {
 		t.Fatal("settings template should not render the old full-width editable checkbox")
+	}
+	if strings.Contains(template, ".user-editable-setting-toggle:hover,\n.user-editable-setting-toggle:focus-visible") {
+		t.Fatal("touchscreen hover styling must not share the keyboard focus rule")
 	}
 }

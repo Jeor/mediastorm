@@ -128,8 +128,11 @@ frontend/
 # GitHub Actions (no longer used)
 .github/
 
-# Planning/tracking docs
-docs/
+# Local-only branding, planning, and operations
+/mediastorm-square.png
+/mediastorm-tv.jpg
+/docs/
+/ops/macos/
 .monitoring/
 monitor.sh
 

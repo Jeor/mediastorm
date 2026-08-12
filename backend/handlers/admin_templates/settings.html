@@ -44,6 +44,16 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
 }
+.user-editable-setting-control {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.user-editable-setting-control input { margin: 0; }
 
 .nested-settings-panel {
     margin-top: 1rem;
@@ -3350,6 +3360,28 @@
             obj = obj[globalKeys[i]];
         }
         obj[globalKeys[globalKeys.length - 1]] = value;
+    }
+
+    function setUserEditableSetting(path, enabled) {
+        if (!isAdmin || selectedUserId || selectedClientId) return;
+        if (!currentSettings.ui) currentSettings.ui = {};
+        const paths = new Set(Array.isArray(currentSettings.ui.userEditableSettings)
+            ? currentSettings.ui.userEditableSettings
+            : []);
+        if (enabled) paths.add(path);
+        else paths.delete(path);
+        currentSettings.ui.userEditableSettings = Array.from(paths).sort();
+    }
+
+    function renderUserEditableSettingControl(fieldDef) {
+        if (!isAdmin || selectedUserId || selectedClientId || !fieldDef.userEditableEligible) return '';
+        const path = fieldDef.userEditablePath || '';
+        if (!path) return '';
+        const selected = Array.isArray(currentSettings.ui?.userEditableSettings) &&
+            currentSettings.ui.userEditableSettings.includes(path);
+        return '<label class="user-editable-setting-control" onclick="event.stopPropagation()">' +
+            '<input type="checkbox" '+(selected ? 'checked' : '')+' onchange="setUserEditableSetting(\''+path+'\', this.checked)">' +
+            '<span>Show in frontend settings</span></label>';
     }
 
     function ensureProfileLiveSourceOverride() {
@@ -9982,7 +10014,7 @@
                     group: fieldDef.group || '',
                     groupLabel: fieldDef.groupLabel || '',
                     groupDescription: fieldDef.groupDescription || '',
-                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label"><span>'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label"><span>'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderUserEditableSettingControl(fieldDef)+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
             .filter(Boolean);

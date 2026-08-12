@@ -1206,15 +1206,18 @@ type AnimeFilteringSettings struct {
 
 // UISettings captures user interface preferences shared with the clients.
 type UISettings struct {
-	LoadingAnimationEnabled                   bool   `json:"loadingAnimationEnabled"`
-	NavigationTabVisibilityIncludesSystemTabs bool   `json:"navigationTabVisibilityIncludesSystemTabs,omitempty"`
-	NavigationTabVisibilityIncludesWatchlist  bool   `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
-	OnboardingCompleted                       bool   `json:"onboardingCompleted,omitempty"`
-	OnboardingSkipped                         bool   `json:"onboardingSkipped,omitempty"`
-	OnboardingCompletedAt                     string `json:"onboardingCompletedAt,omitempty"`
-	OnboardingSkippedAt                       string `json:"onboardingSkippedAt,omitempty"`
-	AdminWalkthroughDismissed                 bool   `json:"adminWalkthroughDismissed,omitempty"`
-	AdminWalkthroughDismissedAt               string `json:"adminWalkthroughDismissedAt,omitempty"`
+	LoadingAnimationEnabled                   bool `json:"loadingAnimationEnabled"`
+	NavigationTabVisibilityIncludesSystemTabs bool `json:"navigationTabVisibilityIncludesSystemTabs,omitempty"`
+	NavigationTabVisibilityIncludesWatchlist  bool `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
+	// UserEditableSettings is the server-owner allowlist of global setting paths
+	// that may be presented in authenticated client settings screens.
+	UserEditableSettings        []string `json:"userEditableSettings,omitempty"`
+	OnboardingCompleted         bool     `json:"onboardingCompleted,omitempty"`
+	OnboardingSkipped           bool     `json:"onboardingSkipped,omitempty"`
+	OnboardingCompletedAt       string   `json:"onboardingCompletedAt,omitempty"`
+	OnboardingSkippedAt         string   `json:"onboardingSkippedAt,omitempty"`
+	AdminWalkthroughDismissed   bool     `json:"adminWalkthroughDismissed,omitempty"`
+	AdminWalkthroughDismissedAt string   `json:"adminWalkthroughDismissedAt,omitempty"`
 }
 
 // DisplaySettings controls UI display preferences.

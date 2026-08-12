@@ -36,6 +36,11 @@ func (m *mockSearchCacheClearer) ClearSearchCache() {
 func TestSettingsHandler_GetSettings(t *testing.T) {
 	cfg := config.Settings{
 		Server: config.ServerSettings{Host: "127.0.0.1", Port: 9999},
+		UI: config.UISettings{UserEditableSettings: []string{
+			"playback.preferredPlayer",
+			"server.port",
+			"playback.preferredPlayer",
+		}},
 		Usenet: []config.UsenetSettings{
 			{Name: "Test", Host: "news.example", Port: 563, SSL: true, Username: "user", Password: "pass", Connections: 16, Enabled: true},
 		},
@@ -60,7 +65,10 @@ func TestSettingsHandler_GetSettings(t *testing.T) {
 		t.Fatalf("unexpected content-type %q", got)
 	}
 
-	var got config.Settings
+	var got struct {
+		config.Settings
+		UserEditableSettings []string `json:"userEditableSettings"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
@@ -75,6 +83,9 @@ func TestSettingsHandler_GetSettings(t *testing.T) {
 	// Credentials are always redacted — even for master accounts
 	if got.Usenet[0].Password != "••••••••" {
 		t.Fatalf("expected password to be redacted, got %q", got.Usenet[0].Password)
+	}
+	if len(got.UserEditableSettings) != 1 || got.UserEditableSettings[0] != "playback.preferredPlayer" {
+		t.Fatalf("unexpected user-editable settings projection: %#v", got.UserEditableSettings)
 	}
 }
 

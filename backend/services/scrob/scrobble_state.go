@@ -20,11 +20,12 @@ type realtimeSession struct {
 	lastSent     time.Time
 	lastActivity time.Time
 	paused       bool
+	position     float64
+	progress     float64
 }
 
-// ScrobbleStateTracker mirrors local playback into Scrob's Now Playing list.
-// Completed history is still written by Scrobbler, so stopping a session only
-// removes its transient Now Playing row.
+// ScrobbleStateTracker mirrors local playback into Scrob's Now Playing and
+// Continue Watching models. Completed history is still written by Scrobbler.
 type ScrobbleStateTracker struct {
 	mu              sync.Mutex
 	sessions        map[string]*realtimeSession
@@ -51,7 +52,7 @@ func realtimeSessionKey(userID string, update models.PlaybackProgressUpdate) str
 	return userID + ":" + update.MediaType + ":" + strings.ToLower(update.ItemID)
 }
 
-func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models.PlaybackProgressUpdate, _ float64) {
+func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models.PlaybackProgressUpdate, percentWatched float64) {
 	if !t.scrobbler.IsEnabledForUser(userID) {
 		return
 	}
@@ -121,14 +122,54 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	}
 	session.lastSent = now
 	session.paused = update.IsPaused
+	session.position = update.Position
+	session.progress = percentWatched
 }
 
-func (t *ScrobbleStateTracker) StopSession(userID string, update models.PlaybackProgressUpdate, _ float64) {
-	t.stop(realtimeSessionKey(userID, update))
+func (t *ScrobbleStateTracker) StopSession(userID string, update models.PlaybackProgressUpdate, percentWatched float64) {
+	key := realtimeSessionKey(userID, update)
+	if percentWatched > 5 && percentWatched < 90 {
+		// Scrob persists Continue Watching from session updates in this range.
+		// Deleting the session also deletes that progress, so leave the remote
+		// session paused and only release our local tracker state.
+		t.pauseAndRelease(key, update.Position)
+		return
+	}
+	t.stop(key)
 }
 
 func (t *ScrobbleStateTracker) ClearSession(userID string, update models.PlaybackProgressUpdate) {
 	t.stop(realtimeSessionKey(userID, update))
+}
+
+func (t *ScrobbleStateTracker) pauseAndRelease(key string, position float64) {
+	t.mu.Lock()
+	session := t.sessions[key]
+	delete(t.sessions, key)
+	t.mu.Unlock()
+	if session == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	err := t.client.UpdateSession(ctx, session.account.BaseURL, session.account.APIKey, session.token, session.remoteKey, ManualSessionUpdate{
+		ProgressSeconds: max(0, int(math.Round(position))),
+		State:           "paused",
+	})
+	cancel()
+	if isUnauthorized(err) {
+		ctx, cancel = context.WithTimeout(context.Background(), 45*time.Second)
+		if token, loginErr := t.scrobbler.login(ctx, &session.account); loginErr == nil {
+			err = t.client.UpdateSession(ctx, session.account.BaseURL, session.account.APIKey, token, session.remoteKey, ManualSessionUpdate{
+				ProgressSeconds: max(0, int(math.Round(position))), State: "paused",
+			})
+		} else {
+			err = loginErr
+		}
+		cancel()
+	}
+	if err != nil {
+		log.Printf("[scrob-now-playing] preserve partial progress failed for %s: %v", key, err)
+	}
 }
 
 func (t *ScrobbleStateTracker) stop(key string) {
@@ -185,7 +226,18 @@ func (t *ScrobbleStateTracker) cleanupStaleSessions() {
 	t.mu.Unlock()
 	for _, key := range stale {
 		log.Printf("[scrob-now-playing] cleaning up stale session: %s", key)
-		t.stop(key)
+		t.mu.Lock()
+		session := t.sessions[key]
+		progress, position := 0.0, 0.0
+		if session != nil {
+			progress, position = session.progress, session.position
+		}
+		t.mu.Unlock()
+		if session != nil && progress > 5 && progress < 90 {
+			t.pauseAndRelease(key, position)
+		} else {
+			t.stop(key)
+		}
 	}
 }
 

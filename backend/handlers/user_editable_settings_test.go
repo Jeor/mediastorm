@@ -59,6 +59,9 @@ func TestSettingsTemplateUsesCompactEditablePencilToggle(t *testing.T) {
 		`aria-pressed="`,
 		`<path d="M12 20h9"/>`,
 		"@media (hover: hover) and (pointer: fine)",
+		`aria-label="How settings scopes work"`,
+		"Server defaults → Person → Device",
+		"Pencil icons appear only while viewing",
 	} {
 		if !strings.Contains(template, expected) {
 			t.Fatalf("settings template missing %q", expected)

@@ -253,6 +253,10 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if !settings.Playback.DisablePrequeue {
 			settings.Playback.DisablePrequeue = defaults.Playback.DisablePrequeue
 		}
+		if settings.Playback.PrerollMode == "" {
+			settings.Playback.PrerollMode = defaults.Playback.PrerollMode
+			settings.Playback.PrerollAssetID = defaults.Playback.PrerollAssetID
+		}
 		if settings.Playback.StreamMigrationEnabled == nil {
 			settings.Playback.StreamMigrationEnabled = defaults.Playback.StreamMigrationEnabled
 		}
@@ -630,6 +634,9 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Playback.MatchFrameRate != nil ||
 		s.Playback.LiveClosedCaptionExtraction != nil ||
 		s.Playback.DisablePrequeue {
+		return false
+	}
+	if s.Playback.PrerollMode != "" || s.Playback.PrerollAssetID != "" {
 		return false
 	}
 

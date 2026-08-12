@@ -46,6 +46,7 @@ var userEditableFields = map[string]map[string]struct{}{
 		"subtitleOutlineColor", "subtitleOutlineWeight", "subtitleBackgroundEnabled", "subtitleBackgroundColor",
 		"subtitleBackgroundOpacity", "seekForwardSeconds", "seekBackwardSeconds", "forceAacTranscoding",
 		"autoPlayTrailersTV", "rewindOnResumeFromPause", "rewindOnPlaybackStart", "disablePrequeue",
+		"prerollMode", "prerollAssetId",
 		"ignoreDolbyVisionCompatibilityCheck", "streamMigrationEnabled", "creditsDetectionEnabled",
 		"creditsAutoSkip", "matchFrameRate", "liveClosedCaptionExtraction", "maxConcurrentStreams",
 		"maxResultsPerResolution",
@@ -74,7 +75,7 @@ var deviceEditableFields = map[string]map[string]struct{}{
 	"filtering.usenet": userEditableFields["filtering.usenet"],
 	"animeFiltering":   userEditableFields["animeFiltering"],
 	"ranking":          fieldSet("newestReleaseFirst"),
-	"playback":         fieldSet("preferredPlayer", "preferredAudioLanguage", "preferredSubtitleLanguage", "allowedTrackLanguages", "preferredSubtitleMode", "pauseWhenAppInactive", "useLoadingScreen", "subtitleSize", "subtitleUseCropDetectPosition", "subtitleColor", "subtitleOpacity", "subtitleFont", "subtitleBold", "subtitleOutlineEnabled", "subtitleOutlineColor", "subtitleOutlineWeight", "subtitleBackgroundEnabled", "subtitleBackgroundColor", "subtitleBackgroundOpacity", "seekForwardSeconds", "seekBackwardSeconds", "forceAacTranscoding", "autoPlayTrailersTV", "rewindOnResumeFromPause", "rewindOnPlaybackStart", "disablePrequeue", "ignoreDolbyVisionCompatibilityCheck", "streamMigrationEnabled", "creditsDetectionEnabled", "creditsAutoSkip", "matchFrameRate", "liveClosedCaptionExtraction", "maxResultsPerResolution"),
+	"playback":         fieldSet("preferredPlayer", "preferredAudioLanguage", "preferredSubtitleLanguage", "allowedTrackLanguages", "preferredSubtitleMode", "pauseWhenAppInactive", "useLoadingScreen", "subtitleSize", "subtitleUseCropDetectPosition", "subtitleColor", "subtitleOpacity", "subtitleFont", "subtitleBold", "subtitleOutlineEnabled", "subtitleOutlineColor", "subtitleOutlineWeight", "subtitleBackgroundEnabled", "subtitleBackgroundColor", "subtitleBackgroundOpacity", "seekForwardSeconds", "seekBackwardSeconds", "forceAacTranscoding", "autoPlayTrailersTV", "rewindOnResumeFromPause", "rewindOnPlaybackStart", "disablePrequeue", "prerollMode", "prerollAssetId", "ignoreDolbyVisionCompatibilityCheck", "streamMigrationEnabled", "creditsDetectionEnabled", "creditsAutoSkip", "matchFrameRate", "liveClosedCaptionExtraction", "maxResultsPerResolution"),
 	"display":          fieldSet("navigationTabVisibility", "includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists", "includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "bypassFilteringForAioStreamsOnly", "disableMobileTopCarousel", "hideContinueWatchingHeroMetadata", "moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "enableAnimations", "enableHeroArtPanning", "enableHeroArtRotation", "blurUnwatchedEpisodeThumbnails", "blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews", "blurUnwatchedEpisodeOverviewsIncludeCurrent"),
 	"network":          nil,
 }

@@ -1477,6 +1477,8 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			RewindOnResumeFromPause:       globalSettings.Playback.RewindOnResumeFromPause,
 			RewindOnPlaybackStart:         globalSettings.Playback.RewindOnPlaybackStart,
 			DisablePrequeue:               globalSettings.Playback.DisablePrequeue,
+			PrerollMode:                   globalSettings.Playback.PrerollMode,
+			PrerollAssetID:                globalSettings.Playback.PrerollAssetID,
 			StreamMigrationEnabled:        models.BoolPtr(globalSettings.Playback.StreamMigrationEnabled),
 			IgnoreDVCompatibilityCheck:    models.BoolPtr(globalSettings.Playback.IgnoreDVCompatibilityCheck),
 			CreditsDetectionEnabled:       models.BoolPtr(globalSettings.Playback.CreditsDetectionEnabled),

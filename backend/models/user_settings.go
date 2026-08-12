@@ -413,6 +413,8 @@ type PlaybackSettings struct {
 	RewindOnResumeFromPause       int      `json:"rewindOnResumeFromPause,omitempty"`             // Seconds to rewind when unpausing (default 0)
 	RewindOnPlaybackStart         int      `json:"rewindOnPlaybackStart,omitempty"`               // Seconds to rewind when resuming from saved progress (default 0)
 	DisablePrequeue               bool     `json:"disablePrequeue,omitempty"`                     // Disable automatic stream pre-loading
+	PrerollMode                   string   `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, default, or custom override
+	PrerollAssetID                string   `json:"prerollAssetId,omitempty"`                      // Content hash used when prerollMode is custom
 	StreamMigrationEnabled        *bool    `json:"streamMigrationEnabled,omitempty"`              // Switch to the next ranked stream when native playback cannot sustain the current stream
 	IgnoreDVCompatibilityCheck    *bool    `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"` // Skip Android display DV capability check before playback
 	CreditsDetectionEnabled       *bool    `json:"creditsDetectionEnabled,omitempty"`             // Enable on-device credits detection/OCR during playback

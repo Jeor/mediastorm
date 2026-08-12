@@ -444,6 +444,8 @@ type PlaybackSettings struct {
 	RewindOnResumeFromPause       int                       `json:"rewindOnResumeFromPause"`             // Seconds to rewind when unpausing (default 0)
 	RewindOnPlaybackStart         int                       `json:"rewindOnPlaybackStart"`               // Seconds to rewind when resuming from saved progress (default 0)
 	DisablePrequeue               bool                      `json:"disablePrequeue"`                     // Disable automatic prequeue on page load (streams only resolve when Play is pressed)
+	PrerollMode                   string                    `json:"prerollMode,omitempty"`               // disabled, default, or custom
+	PrerollAssetID                string                    `json:"prerollAssetId,omitempty"`            // Content hash used when prerollMode is custom
 	StreamMigrationEnabled        bool                      `json:"streamMigrationEnabled"`              // Switch to the next ranked stream when native playback cannot sustain the current stream
 	IgnoreDVCompatibilityCheck    bool                      `json:"ignoreDolbyVisionCompatibilityCheck"` // Skip Android display DV capability check before playback
 	CreditsDetectionEnabled       bool                      `json:"creditsDetectionEnabled"`             // Enable on-device credits detection/OCR during playback
@@ -481,6 +483,19 @@ func (p *PlaybackSettings) NormalizeAllowedTrackLanguages() {
 		return
 	}
 	p.AllowedTrackLanguages = cleaned
+}
+
+func (p *PlaybackSettings) NormalizePreroll() {
+	p.PrerollMode = strings.ToLower(strings.TrimSpace(p.PrerollMode))
+	switch p.PrerollMode {
+	case "default":
+		p.PrerollAssetID = ""
+	case "custom":
+		p.PrerollAssetID = strings.ToLower(strings.TrimSpace(p.PrerollAssetID))
+	default:
+		p.PrerollMode = "disabled"
+		p.PrerollAssetID = ""
+	}
 }
 
 // LiveTVFilterSettings controls backend-side filtering for Live TV channels.
@@ -1772,7 +1787,7 @@ func DefaultSettings() Settings {
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
-		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: true, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
+		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: true, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
 		Live:      LiveSettings{Mode: "m3u", PlaylistURL: "", MaxStreams: 0, PlaylistCacheTTLHours: 24},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
@@ -2271,6 +2286,7 @@ func (m *Manager) Load() (Settings, error) {
 	s.Metadata.NormalizeAISettings()
 	s.Metadata.NormalizeLanguages()
 	s.Playback.NormalizeAllowedTrackLanguages()
+	s.Playback.NormalizePreroll()
 
 	if !s.Transmux.Enabled && strings.TrimSpace(s.Transmux.FFmpegPath) == "" && strings.TrimSpace(s.Transmux.FFprobePath) == "" {
 		s.Transmux = TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls"}
@@ -2758,6 +2774,7 @@ func (m *Manager) Save(s Settings) error {
 	s.Metadata.NormalizeAISettings()
 	s.Metadata.NormalizeLanguages()
 	s.Playback.NormalizeAllowedTrackLanguages()
+	s.Playback.NormalizePreroll()
 	if err := s.Server.NormalizeAllowedPrivateMediaOrigins(); err != nil {
 		return err
 	}

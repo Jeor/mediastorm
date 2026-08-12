@@ -852,6 +852,7 @@ func main() {
 	imageHandler := handlers.NewImageHandler(settings.Cache.Directory)
 	settingsHandler.SetImageHandler(imageHandler)                // Enable clearing image cache
 	settingsHandler.SetPrequeueStore(prequeueHandler.GetStore()) // Clear prequeue when ShowParsedBadges changes
+	prerollHandler := handlers.NewPrerollHandler(settings.Cache.Directory)
 
 	recordingsHandler := handlers.NewRecordingsHandler(recordingsService, userService)
 
@@ -921,6 +922,7 @@ func main() {
 		detailsBundleHandler,
 		calendarHandler,
 		remoteAccessHandler,
+		prerollHandler,
 		accountsService,
 		sessionsService,
 		userService,

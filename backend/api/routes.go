@@ -122,6 +122,7 @@ func Register(
 	detailsBundleHandler *handlers.DetailsBundleHandler,
 	calendarHandler *handlers.CalendarHandler,
 	remoteAccessHandler *handlers.RemoteAccessHandler,
+	prerollHandler *handlers.PrerollHandler,
 	accountsSvc *accounts.Service,
 	sessionsSvc *sessions.Service,
 	usersSvc *users.Service,
@@ -351,6 +352,14 @@ func Register(
 	protected.HandleFunc("/playback/resolve", handleOptions).Methods(http.MethodOptions)
 	protected.HandleFunc("/playback/resolve-batch", playbackHandler.ResolveBatch).Methods(http.MethodPost)
 	protected.HandleFunc("/playback/resolve-batch", handleOptions).Methods(http.MethodOptions)
+	if prerollHandler != nil {
+		protected.HandleFunc("/preroll/manifest", prerollHandler.Manifest).Methods(http.MethodGet)
+		protected.HandleFunc("/preroll/manifest", prerollHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/preroll/assets", prerollHandler.Upload).Methods(http.MethodPost)
+		protected.HandleFunc("/preroll/assets", prerollHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/preroll/assets/{assetID}", prerollHandler.Serve).Methods(http.MethodGet, http.MethodHead)
+		protected.HandleFunc("/preroll/assets/{assetID}", prerollHandler.Options).Methods(http.MethodOptions)
+	}
 	protected.HandleFunc("/playback/queue/{queueID}", playbackHandler.QueueStatus).Methods(http.MethodGet)
 	protected.HandleFunc("/playback/queue/{queueID}", handleOptions).Methods(http.MethodOptions)
 	if badStreamsHandler != nil {

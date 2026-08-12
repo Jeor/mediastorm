@@ -152,6 +152,8 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			RewindOnResumeFromPause:       g.Playback.RewindOnResumeFromPause,
 			RewindOnPlaybackStart:         g.Playback.RewindOnPlaybackStart,
 			DisablePrequeue:               g.Playback.DisablePrequeue,
+			PrerollMode:                   g.Playback.PrerollMode,
+			PrerollAssetID:                g.Playback.PrerollAssetID,
 			StreamMigrationEnabled:        models.BoolPtr(g.Playback.StreamMigrationEnabled),
 			IgnoreDVCompatibilityCheck:    models.BoolPtr(g.Playback.IgnoreDVCompatibilityCheck),
 			CreditsDetectionEnabled:       models.BoolPtr(g.Playback.CreditsDetectionEnabled),
@@ -421,6 +423,10 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if !eff.Playback.DisablePrequeue {
 		eff.Playback.DisablePrequeue = g.Playback.DisablePrequeue
+	}
+	if eff.Playback.PrerollMode == "" {
+		eff.Playback.PrerollMode = g.Playback.PrerollMode
+		eff.Playback.PrerollAssetID = g.Playback.PrerollAssetID
 	}
 	if eff.Playback.StreamMigrationEnabled == nil {
 		eff.Playback.StreamMigrationEnabled = models.BoolPtr(g.Playback.StreamMigrationEnabled)
@@ -785,6 +791,11 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 	}
 	if p.DisablePrequeue && p.DisablePrequeue == g.DisablePrequeue {
 		p.DisablePrequeue = false
+		changed = true
+	}
+	if p.PrerollMode != "" && p.PrerollMode == g.PrerollMode && p.PrerollAssetID == g.PrerollAssetID {
+		p.PrerollMode = ""
+		p.PrerollAssetID = ""
 		changed = true
 	}
 	if p.IgnoreDVCompatibilityCheck != nil && *p.IgnoreDVCompatibilityCheck == g.IgnoreDVCompatibilityCheck {
@@ -1244,6 +1255,14 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	if cs.DisablePrequeue != nil && *cs.DisablePrequeue == eff.Playback.DisablePrequeue {
 		cs.DisablePrequeue = nil
 		changed = true
+	}
+	if cs.PrerollMode != nil && *cs.PrerollMode == eff.Playback.PrerollMode {
+		assetMatches := cs.PrerollAssetID == nil || *cs.PrerollAssetID == eff.Playback.PrerollAssetID
+		if assetMatches {
+			cs.PrerollMode = nil
+			cs.PrerollAssetID = nil
+			changed = true
+		}
 	}
 	if cs.MaxResultsPerResolution != nil && eff.Playback.MaxResultsPerResolution != nil && *cs.MaxResultsPerResolution == *eff.Playback.MaxResultsPerResolution {
 		cs.MaxResultsPerResolution = nil

@@ -658,6 +658,7 @@ func Register(
 	profileProtected.HandleFunc("/{userID}/settings", userSettingsHandler.GetSettings).Methods(http.MethodGet)
 	profileProtected.HandleFunc("/{userID}/settings", userSettingsHandler.PutSettings).Methods(http.MethodPut)
 	profileProtected.HandleFunc("/{userID}/settings/frontend", userSettingsHandler.PatchFrontendSetting).Methods(http.MethodPatch)
+	profileProtected.HandleFunc("/{userID}/settings/frontend", userSettingsHandler.GetFrontendSettingState).Methods(http.MethodGet)
 	profileProtected.HandleFunc("/{userID}/settings/frontend", userSettingsHandler.Options).Methods(http.MethodOptions)
 	profileProtected.HandleFunc("/{userID}/settings", userSettingsHandler.Options).Methods(http.MethodOptions)
 

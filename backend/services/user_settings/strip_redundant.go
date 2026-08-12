@@ -161,16 +161,20 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			MaxResultsPerResolution:       models.IntPtr(g.Playback.MaxResultsPerResolution),
 		},
 		Filtering: models.FilterSettings{
-			MaxSizeMovieGB:         models.FloatPtr(g.Filtering.MaxSizeMovieGB),
-			MaxSizeEpisodeGB:       models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:          g.Filtering.MaxResolution,
-			HDRDVPolicy:            models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
-			RequiredTerms:          g.Filtering.RequiredTerms,
-			FilterOutTerms:         g.Filtering.FilterOutTerms,
-			PreferredTerms:         g.Filtering.PreferredTerms,
-			NonPreferredTerms:      g.Filtering.NonPreferredTerms,
-			DownloadPreferredTerms: g.Filtering.DownloadPreferredTerms,
-			UnknownTrackPolicy:     string(g.Filtering.UnknownTrackPolicy),
+			MaxSizeMovieGB:             models.FloatPtr(g.Filtering.MaxSizeMovieGB),
+			MaxSizeEpisodeGB:           models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
+			MaxResolution:              g.Filtering.MaxResolution,
+			HDRDVPolicy:                models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
+			RequiredTerms:              g.Filtering.RequiredTerms,
+			FilterOutTerms:             g.Filtering.FilterOutTerms,
+			PreferredTerms:             g.Filtering.PreferredTerms,
+			NonPreferredTerms:          g.Filtering.NonPreferredTerms,
+			DownloadPreferredTerms:     g.Filtering.DownloadPreferredTerms,
+			PreferredScraper:           models.StringPtr(g.Filtering.PreferredScraper),
+			ServicePriority:            models.StringPtr(string(g.Filtering.ServicePriority)),
+			UnknownTrackPolicy:         string(g.Filtering.UnknownTrackPolicy),
+			AdaptivePlaybackEnabled:    models.BoolPtr(g.Filtering.AdaptivePlaybackEnabled),
+			AdaptiveTargetBufferFactor: models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor),
 		},
 		AnimeFiltering: models.AnimeFilteringSettings{
 			AnimeLanguageEnabled:   models.BoolPtr(g.AnimeFiltering.AnimeLanguageEnabled),
@@ -465,8 +469,20 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.Filtering.DownloadPreferredTerms == nil {
 		eff.Filtering.DownloadPreferredTerms = g.Filtering.DownloadPreferredTerms
 	}
+	if eff.Filtering.PreferredScraper == nil {
+		eff.Filtering.PreferredScraper = models.StringPtr(g.Filtering.PreferredScraper)
+	}
+	if eff.Filtering.ServicePriority == nil {
+		eff.Filtering.ServicePriority = models.StringPtr(string(g.Filtering.ServicePriority))
+	}
 	if eff.Filtering.UnknownTrackPolicy == "" {
 		eff.Filtering.UnknownTrackPolicy = string(g.Filtering.UnknownTrackPolicy)
+	}
+	if eff.Filtering.AdaptivePlaybackEnabled == nil {
+		eff.Filtering.AdaptivePlaybackEnabled = models.BoolPtr(g.Filtering.AdaptivePlaybackEnabled)
+	}
+	if eff.Filtering.AdaptiveTargetBufferFactor == nil {
+		eff.Filtering.AdaptiveTargetBufferFactor = models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor)
 	}
 	if eff.Display.BypassFilteringForAIOStreamsOnly == nil {
 		eff.Display.BypassFilteringForAIOStreamsOnly = models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly)
@@ -820,8 +836,24 @@ func stripFiltering(f *models.FilterSettings, g config.FilterSettings) bool {
 		f.DownloadPreferredTerms = nil
 		changed = true
 	}
+	if f.PreferredScraper != nil && *f.PreferredScraper == g.PreferredScraper {
+		f.PreferredScraper = nil
+		changed = true
+	}
+	if f.ServicePriority != nil && *f.ServicePriority == string(g.ServicePriority) {
+		f.ServicePriority = nil
+		changed = true
+	}
 	if f.UnknownTrackPolicy != "" && f.UnknownTrackPolicy == string(g.UnknownTrackPolicy) {
 		f.UnknownTrackPolicy = ""
+		changed = true
+	}
+	if f.AdaptivePlaybackEnabled != nil && *f.AdaptivePlaybackEnabled == g.AdaptivePlaybackEnabled {
+		f.AdaptivePlaybackEnabled = nil
+		changed = true
+	}
+	if f.AdaptiveTargetBufferFactor != nil && *f.AdaptiveTargetBufferFactor == g.AdaptiveTargetBufferFactor {
+		f.AdaptiveTargetBufferFactor = nil
 		changed = true
 	}
 	return changed

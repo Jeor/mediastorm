@@ -234,8 +234,20 @@ func applyUserFilterOverrides(dst *models.FilterSettings, src models.FilterSetti
 	if src.DownloadPreferredTerms != nil {
 		dst.DownloadPreferredTerms = src.DownloadPreferredTerms
 	}
+	if src.PreferredScraper != nil {
+		dst.PreferredScraper = src.PreferredScraper
+	}
+	if src.ServicePriority != nil {
+		dst.ServicePriority = src.ServicePriority
+	}
 	if src.UnknownTrackPolicy != "" {
 		dst.UnknownTrackPolicy = src.UnknownTrackPolicy
+	}
+	if src.AdaptivePlaybackEnabled != nil {
+		dst.AdaptivePlaybackEnabled = src.AdaptivePlaybackEnabled
+	}
+	if src.AdaptiveTargetBufferFactor != nil {
+		dst.AdaptiveTargetBufferFactor = src.AdaptiveTargetBufferFactor
 	}
 }
 
@@ -312,14 +324,18 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 	bypassForAIO := globalSettings.Display.BypassFilteringForAIOStreamsOnly
 	// Start with global settings (as pointers)
 	filterSettings := models.FilterSettings{
-		MaxSizeMovieGB:    models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:  models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:     globalSettings.Filtering.MaxResolution,
-		HDRDVPolicy:       models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:     globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:    globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:    globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms: globalSettings.Filtering.NonPreferredTerms,
+		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:              globalSettings.Filtering.MaxResolution,
+		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
+		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
 	}
 	splitByService := globalSettings.Filtering.SplitByService
 	var profileDebridFilter *models.FilterSettings
@@ -334,6 +350,7 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 		} else if userSettings != nil {
 			log.Printf("[debrid] using per-user filtering settings for user %s", userID)
 			profileFiltering := userSettings.Filtering
+			applyUserFilterOverrides(&filterSettings, profileFiltering)
 			if profileFiltering.MaxSizeMovieGB != nil {
 				filterSettings.MaxSizeMovieGB = profileFiltering.MaxSizeMovieGB
 			}
@@ -434,8 +451,8 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 	// Adaptive playback overlays transient size/HDR caps derived from this
 	// device's reported throughput + display capability.
 	models.ComputeAdaptiveCaps(
-		globalSettings.Filtering.AdaptivePlaybackEnabled,
-		globalSettings.Filtering.AdaptiveTargetBufferFactor,
+		models.BoolVal(filterSettings.AdaptivePlaybackEnabled, globalSettings.Filtering.AdaptivePlaybackEnabled),
+		models.FloatVal(filterSettings.AdaptiveTargetBufferFactor, globalSettings.Filtering.AdaptiveTargetBufferFactor),
 		adaptivePlayback,
 		time.Now(),
 	).ApplyTo(&filterSettings)

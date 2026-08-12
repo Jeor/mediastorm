@@ -82,6 +82,36 @@ func (h *UserSettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(settings)
 }
 
+// GetFrontendSettingState reports which exposed fields are stored as profile
+// overrides. Effective values alone cannot distinguish inheritance from an
+// explicit override with the same value as the server default.
+func (h *UserSettingsHandler) GetFrontendSettingState(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	paths, err := frontendEditablePaths(h.ConfigManager)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	current, err := h.Service.Get(userID)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	overridden := make([]string, 0, len(paths))
+	if current != nil {
+		for _, path := range paths {
+			if jsonModelPathOverridden(current, path) {
+				overridden = append(overridden, path)
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(frontendSettingState{OverriddenPaths: overridden})
+}
+
 // PutSettings updates the user's settings.
 func (h *UserSettingsHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.requireUser(w, r)
@@ -271,16 +301,20 @@ func (h *UserSettingsHandler) getDefaultsFromGlobal() models.UserSettings {
 			HomeHeroScale:                   models.FloatPtr(globalSettings.HomeShelves.HomeHeroScale),
 		},
 		Filtering: models.FilterSettings{
-			MaxSizeMovieGB:         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-			MaxSizeEpisodeGB:       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:          globalSettings.Filtering.MaxResolution,
-			HDRDVPolicy:            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-			RequiredTerms:          globalSettings.Filtering.RequiredTerms,
-			FilterOutTerms:         globalSettings.Filtering.FilterOutTerms,
-			PreferredTerms:         globalSettings.Filtering.PreferredTerms,
-			NonPreferredTerms:      globalSettings.Filtering.NonPreferredTerms,
-			DownloadPreferredTerms: globalSettings.Filtering.DownloadPreferredTerms,
-			UnknownTrackPolicy:     string(globalSettings.Filtering.UnknownTrackPolicy),
+			MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+			MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+			MaxResolution:              globalSettings.Filtering.MaxResolution,
+			HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+			RequiredTerms:              globalSettings.Filtering.RequiredTerms,
+			FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
+			PreferredTerms:             globalSettings.Filtering.PreferredTerms,
+			NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
+			DownloadPreferredTerms:     globalSettings.Filtering.DownloadPreferredTerms,
+			PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
+			ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+			UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
+			AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+			AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
 		},
 		Display: models.DisplaySettings{
 			BadgeVisibility:                  globalSettings.Display.BadgeVisibility,

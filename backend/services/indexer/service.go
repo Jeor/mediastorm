@@ -236,16 +236,20 @@ type effectiveRankingBundle struct {
 
 func filterSettingsFromConfig(in config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
-		MaxSizeMovieGB:         models.FloatPtr(in.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:       models.FloatPtr(in.MaxSizeEpisodeGB),
-		MaxResolution:          in.MaxResolution,
-		HDRDVPolicy:            models.HDRDVPolicy(in.HDRDVPolicy),
-		RequiredTerms:          append([]string(nil), in.RequiredTerms...),
-		FilterOutTerms:         append([]string(nil), in.FilterOutTerms...),
-		PreferredTerms:         append([]string(nil), in.PreferredTerms...),
-		NonPreferredTerms:      append([]string(nil), in.NonPreferredTerms...),
-		DownloadPreferredTerms: append([]string(nil), in.DownloadPreferredTerms...),
-		UnknownTrackPolicy:     string(in.UnknownTrackPolicy),
+		MaxSizeMovieGB:             models.FloatPtr(in.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:           models.FloatPtr(in.MaxSizeEpisodeGB),
+		MaxResolution:              in.MaxResolution,
+		HDRDVPolicy:                models.HDRDVPolicy(in.HDRDVPolicy),
+		RequiredTerms:              append([]string(nil), in.RequiredTerms...),
+		FilterOutTerms:             append([]string(nil), in.FilterOutTerms...),
+		PreferredTerms:             append([]string(nil), in.PreferredTerms...),
+		NonPreferredTerms:          append([]string(nil), in.NonPreferredTerms...),
+		DownloadPreferredTerms:     append([]string(nil), in.DownloadPreferredTerms...),
+		PreferredScraper:           models.StringPtr(in.PreferredScraper),
+		ServicePriority:            models.StringPtr(string(in.ServicePriority)),
+		UnknownTrackPolicy:         string(in.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:    models.BoolPtr(in.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor: models.FloatPtr(in.AdaptiveTargetBufferFactor),
 	}
 }
 
@@ -277,8 +281,20 @@ func applyUserFilterOverrides(dst *models.FilterSettings, src models.FilterSetti
 	if src.DownloadPreferredTerms != nil {
 		dst.DownloadPreferredTerms = src.DownloadPreferredTerms
 	}
+	if src.PreferredScraper != nil {
+		dst.PreferredScraper = src.PreferredScraper
+	}
+	if src.ServicePriority != nil {
+		dst.ServicePriority = src.ServicePriority
+	}
 	if src.UnknownTrackPolicy != "" {
 		dst.UnknownTrackPolicy = src.UnknownTrackPolicy
+	}
+	if src.AdaptivePlaybackEnabled != nil {
+		dst.AdaptivePlaybackEnabled = src.AdaptivePlaybackEnabled
+	}
+	if src.AdaptiveTargetBufferFactor != nil {
+		dst.AdaptiveTargetBufferFactor = src.AdaptiveTargetBufferFactor
 	}
 }
 
@@ -334,16 +350,20 @@ func filterBundleForService(bundle effectiveFilterBundle, serviceType models.Con
 func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSettings config.Settings) (models.FilterSettings, models.AnimeFilteringSettings, effectiveOverrides) {
 	// Start with global settings (as pointers)
 	filterSettings := models.FilterSettings{
-		MaxSizeMovieGB:         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:          globalSettings.Filtering.MaxResolution,
-		HDRDVPolicy:            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:          globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:         globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:         globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms:      globalSettings.Filtering.NonPreferredTerms,
-		DownloadPreferredTerms: globalSettings.Filtering.DownloadPreferredTerms,
-		UnknownTrackPolicy:     string(globalSettings.Filtering.UnknownTrackPolicy),
+		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:              globalSettings.Filtering.MaxResolution,
+		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
+		DownloadPreferredTerms:     globalSettings.Filtering.DownloadPreferredTerms,
+		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
 	}
 	overrides := effectiveOverrides{
 		BypassFilteringForAIOStreamsOnly: models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
@@ -389,9 +409,7 @@ func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSett
 			if profileFiltering.DownloadPreferredTerms != nil {
 				filterSettings.DownloadPreferredTerms = profileFiltering.DownloadPreferredTerms
 			}
-			if profileFiltering.UnknownTrackPolicy != "" {
-				filterSettings.UnknownTrackPolicy = profileFiltering.UnknownTrackPolicy
-			}
+			applyUserFilterOverrides(&filterSettings, profileFiltering)
 			if userSettings.Display.BypassFilteringForAIOStreamsOnly != nil {
 				overrides.BypassFilteringForAIOStreamsOnly = userSettings.Display.BypassFilteringForAIOStreamsOnly
 			}
@@ -463,8 +481,8 @@ func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSett
 			// the global toggle; computed on the fly and never persisted into the
 			// flat filter fields.
 			models.ComputeAdaptiveCaps(
-				globalSettings.Filtering.AdaptivePlaybackEnabled,
-				globalSettings.Filtering.AdaptiveTargetBufferFactor,
+				models.BoolVal(filterSettings.AdaptivePlaybackEnabled, globalSettings.Filtering.AdaptivePlaybackEnabled),
+				models.FloatVal(filterSettings.AdaptiveTargetBufferFactor, globalSettings.Filtering.AdaptiveTargetBufferFactor),
 				clientSettings.AdaptivePlayback,
 				time.Now(),
 			).ApplyTo(&filterSettings)
@@ -532,8 +550,8 @@ func (s *Service) getEffectiveFilterBundle(userID, clientID string, globalSettin
 	}
 
 	caps := models.ComputeAdaptiveCaps(
-		globalSettings.Filtering.AdaptivePlaybackEnabled,
-		globalSettings.Filtering.AdaptiveTargetBufferFactor,
+		models.BoolVal(base.AdaptivePlaybackEnabled, globalSettings.Filtering.AdaptivePlaybackEnabled),
+		models.FloatVal(base.AdaptiveTargetBufferFactor, globalSettings.Filtering.AdaptiveTargetBufferFactor),
 		adaptivePlayback,
 		time.Now(),
 	)
@@ -1141,13 +1159,13 @@ func (s *Service) buildScoringContextWithCriteria(opts SearchOptions, settings c
 
 	return ScoringContext{
 		RankingCriteria:        rankingCriteria,
-		ServicePriority:        settings.Filtering.ServicePriority,
+		ServicePriority:        config.StreamingServicePriority(models.StringVal(filterSettings.ServicePriority, string(settings.Filtering.ServicePriority))),
 		PreferredTerms:         preferredTerms,
 		NonPreferredTerms:      nonPreferredTerms,
 		DownloadPreferredTerms: filter.CompileTerms(filterSettings.DownloadPreferredTerms),
 		UseDownloadRanking:     opts.UseDownloadRanking,
 		PreferredLang:          s.getEffectiveMetadataLanguage(opts.UserID, settings),
-		PreferredScraper:       settings.Filtering.PreferredScraper,
+		PreferredScraper:       models.StringVal(filterSettings.PreferredScraper, settings.Filtering.PreferredScraper),
 	}
 }
 
@@ -1603,7 +1621,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 	} else {
 		ctx := s.buildScoringContextWithCriteria(opts, settings, filterSettings, animeSettings, rankingBundle.Default)
 		scoringCtx = &ctx
-		log.Printf("[indexer] Ranking %d results per service, then merging with %d overall criteria, ServicePriority=%q, downloadRanking=%v", len(aggregated), len(scoringCtx.RankingCriteria), settings.Filtering.ServicePriority, opts.UseDownloadRanking)
+		log.Printf("[indexer] Ranking %d results per service, then merging with %d overall criteria, ServicePriority=%q, downloadRanking=%v", len(aggregated), len(scoringCtx.RankingCriteria), scoringCtx.ServicePriority, opts.UseDownloadRanking)
 		sortResultsByRankingBundle(aggregated, *scoringCtx, rankingBundle)
 	}
 

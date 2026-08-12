@@ -368,16 +368,20 @@ type prequeueScopeSignature struct {
 
 func configFilterToUserFilter(f config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
-		MaxSizeMovieGB:         models.FloatPtr(f.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:       models.FloatPtr(f.MaxSizeEpisodeGB),
-		MaxResolution:          f.MaxResolution,
-		HDRDVPolicy:            models.HDRDVPolicy(f.HDRDVPolicy),
-		RequiredTerms:          append([]string(nil), f.RequiredTerms...),
-		FilterOutTerms:         append([]string(nil), f.FilterOutTerms...),
-		PreferredTerms:         append([]string(nil), f.PreferredTerms...),
-		NonPreferredTerms:      append([]string(nil), f.NonPreferredTerms...),
-		DownloadPreferredTerms: append([]string(nil), f.DownloadPreferredTerms...),
-		UnknownTrackPolicy:     string(f.UnknownTrackPolicy),
+		MaxSizeMovieGB:             models.FloatPtr(f.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:           models.FloatPtr(f.MaxSizeEpisodeGB),
+		MaxResolution:              f.MaxResolution,
+		HDRDVPolicy:                models.HDRDVPolicy(f.HDRDVPolicy),
+		RequiredTerms:              append([]string(nil), f.RequiredTerms...),
+		FilterOutTerms:             append([]string(nil), f.FilterOutTerms...),
+		PreferredTerms:             append([]string(nil), f.PreferredTerms...),
+		NonPreferredTerms:          append([]string(nil), f.NonPreferredTerms...),
+		DownloadPreferredTerms:     append([]string(nil), f.DownloadPreferredTerms...),
+		PreferredScraper:           models.StringPtr(f.PreferredScraper),
+		ServicePriority:            models.StringPtr(string(f.ServicePriority)),
+		UnknownTrackPolicy:         string(f.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:    models.BoolPtr(f.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor: models.FloatPtr(f.AdaptiveTargetBufferFactor),
 	}
 }
 
@@ -540,8 +544,8 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 				adaptive = clientSettings.AdaptivePlayback
 			}
 			models.ComputeAdaptiveCaps(
-				globalSettings.Filtering.AdaptivePlaybackEnabled,
-				globalSettings.Filtering.AdaptiveTargetBufferFactor,
+				models.BoolVal(effective.Filtering.AdaptivePlaybackEnabled, globalSettings.Filtering.AdaptivePlaybackEnabled),
+				models.FloatVal(effective.Filtering.AdaptiveTargetBufferFactor, globalSettings.Filtering.AdaptiveTargetBufferFactor),
 				adaptive,
 				time.Now(),
 			).ApplyTo(&effective.Filtering)

@@ -227,7 +227,7 @@ func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 			Settings:                   s,
 			DemoMode:                   h.DemoMode,
 			UserEditableSettings:       editableSettings,
-			UserEditableSettingsSchema: userEditableSettingsSchema(editableSettings),
+			UserEditableSettingsSchema: userEditableSettingsSchemaForSettings(editableSettings, s),
 		},
 		Live: LiveSettingsWithEffectiveURL{
 			LiveSettings:         s.Live,

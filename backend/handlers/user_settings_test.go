@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"novastream/config"
@@ -233,6 +234,64 @@ func TestUserSettingsHandler_PatchFrontendSetting_RejectsUnexposedPath(t *testin
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, body = %s, want 400", w.Code, w.Body.String())
+	}
+}
+
+func TestUserSettingsHandler_PatchFrontendSetting_SupportsNestedProfileField(t *testing.T) {
+	settingsSvc := &fakeUserSettingsService{}
+	cfgMgr := config.NewManager(t.TempDir() + "/settings.json")
+	cfg := config.DefaultSettings()
+	cfg.UI.UserEditableSettings = []string{"filtering.debrid.hdrDvPolicy"}
+	if err := cfgMgr.Save(cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	h := handlers.NewUserSettingsHandler(settingsSvc, &fakeUserExistsService{exists: true}, cfgMgr)
+
+	r := userSettingsRequest(http.MethodPatch, "/", map[string]any{
+		"path": "filtering.debrid.hdrDvPolicy", "value": "hdr",
+	}, map[string]string{"userID": "u1"})
+	w := httptest.NewRecorder()
+	h.PatchFrontendSetting(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s, want 200", w.Code, w.Body.String())
+	}
+	if settingsSvc.updatedSettings.Filtering.Debrid == nil || settingsSvc.updatedSettings.Filtering.Debrid.HDRDVPolicy != models.HDRDVPolicyIncludeHDR {
+		t.Fatalf("nested filtering override was not saved: %#v", settingsSvc.updatedSettings.Filtering.Debrid)
+	}
+}
+
+func TestUserSettingsHandler_GetFrontendSettingState(t *testing.T) {
+	settingsSvc := &fakeUserSettingsService{getSettings: &models.UserSettings{
+		Playback: models.PlaybackSettings{PreferredPlayer: "vlc"},
+		Display:  models.DisplaySettings{EnableAnimations: models.BoolPtr(false)},
+	}}
+	cfgMgr := config.NewManager(t.TempDir() + "/settings.json")
+	cfg := config.DefaultSettings()
+	cfg.UI.UserEditableSettings = []string{
+		"playback.preferredPlayer",
+		"playback.subtitleSize",
+		"display.enableAnimations",
+	}
+	if err := cfgMgr.Save(cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	h := handlers.NewUserSettingsHandler(settingsSvc, &fakeUserExistsService{exists: true}, cfgMgr)
+	r := userSettingsRequest(http.MethodGet, "/", nil, map[string]string{"userID": "u1"})
+	w := httptest.NewRecorder()
+	h.GetFrontendSettingState(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+	}
+	var state struct {
+		OverriddenPaths []string `json:"overriddenPaths"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&state); err != nil {
+		t.Fatalf("decode state: %v", err)
+	}
+	want := []string{"display.enableAnimations", "playback.preferredPlayer"}
+	if !reflect.DeepEqual(state.OverriddenPaths, want) {
+		t.Fatalf("overridden paths = %#v, want %#v", state.OverriddenPaths, want)
 	}
 }
 

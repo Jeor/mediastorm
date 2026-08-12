@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"novastream/config"
@@ -16,6 +17,21 @@ type frontendSettingPatch struct {
 	Reset bool            `json:"reset,omitempty"`
 }
 
+type frontendSettingState struct {
+	OverriddenPaths []string `json:"overriddenPaths"`
+}
+
+func frontendEditablePaths(manager *config.Manager) ([]string, error) {
+	if manager == nil {
+		return nil, errors.New("settings configuration is unavailable")
+	}
+	settings, err := manager.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load settings configuration: %w", err)
+	}
+	return filterUserEditableSettings(settings.UI.UserEditableSettings), nil
+}
+
 func decodeFrontendSettingPatch(decoder *json.Decoder, manager *config.Manager) (frontendSettingPatch, error) {
 	var patch frontendSettingPatch
 	if err := decoder.Decode(&patch); err != nil {
@@ -25,15 +41,12 @@ func decodeFrontendSettingPatch(decoder *json.Decoder, manager *config.Manager) 
 	if patch.Path == "" {
 		return patch, errors.New("setting path is required")
 	}
-	if manager == nil {
-		return patch, errors.New("settings configuration is unavailable")
-	}
-	settings, err := manager.Load()
+	paths, err := frontendEditablePaths(manager)
 	if err != nil {
-		return patch, fmt.Errorf("load settings configuration: %w", err)
+		return patch, err
 	}
 	allowed := false
-	for _, path := range filterUserEditableSettings(settings.UI.UserEditableSettings) {
+	for _, path := range paths {
 		if path == patch.Path {
 			allowed = true
 			break
@@ -51,6 +64,50 @@ func decodeFrontendSettingPatch(decoder *json.Decoder, manager *config.Manager) 
 		}
 	}
 	return patch, nil
+}
+
+func jsonModelPathOverridden(model interface{}, path string) bool {
+	value := reflect.ValueOf(model)
+	for value.IsValid() && (value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface) {
+		if value.IsNil() {
+			return false
+		}
+		value = value.Elem()
+	}
+	parts := strings.Split(path, ".")
+	for index, part := range parts {
+		if !value.IsValid() || value.Kind() != reflect.Struct {
+			return false
+		}
+		fieldIndex := -1
+		typeOfValue := value.Type()
+		for i := 0; i < typeOfValue.NumField(); i++ {
+			jsonName := strings.Split(typeOfValue.Field(i).Tag.Get("json"), ",")[0]
+			if jsonName == part {
+				fieldIndex = i
+				break
+			}
+		}
+		if fieldIndex < 0 {
+			return false
+		}
+		value = value.Field(fieldIndex)
+		if index == len(parts)-1 {
+			switch value.Kind() {
+			case reflect.Pointer, reflect.Interface, reflect.Map, reflect.Slice:
+				return !value.IsNil()
+			default:
+				return !value.IsZero()
+			}
+		}
+		for value.IsValid() && (value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface) {
+			if value.IsNil() {
+				return false
+			}
+			value = value.Elem()
+		}
+	}
+	return false
 }
 
 func patchJSONObject(document []byte, path string, value json.RawMessage, reset bool) ([]byte, error) {
@@ -102,7 +159,7 @@ func clientSettingPath(globalPath string) (string, bool) {
 		return "", false
 	}
 	switch section {
-	case "filtering", "playback", "display", "network":
+	case "filtering", "animeFiltering", "playback", "display", "network":
 		return field, true
 	case "ranking":
 		if field == "newestReleaseFirst" {

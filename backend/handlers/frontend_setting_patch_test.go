@@ -3,7 +3,29 @@ package handlers
 import (
 	"encoding/json"
 	"testing"
+
+	"novastream/models"
 )
+
+func TestJSONModelPathOverridden(t *testing.T) {
+	settings := models.UserSettings{
+		Playback:  models.PlaybackSettings{PreferredPlayer: "vlc"},
+		Filtering: models.FilterSettings{AdaptivePlaybackEnabled: models.BoolPtr(false)},
+		Display: models.DisplaySettings{
+			EnableAnimations: models.BoolPtr(false),
+		},
+	}
+	for _, path := range []string{"playback.preferredPlayer", "display.enableAnimations", "filtering.adaptivePlaybackEnabled"} {
+		if !jsonModelPathOverridden(settings, path) {
+			t.Fatalf("%s should be reported as overridden", path)
+		}
+	}
+	for _, path := range []string{"playback.subtitleSize", "display.hideDetailsPoster", "ranking.newestReleaseFirst"} {
+		if jsonModelPathOverridden(settings, path) {
+			t.Fatalf("%s should be reported as inherited", path)
+		}
+	}
+}
 
 func TestPatchJSONObjectPreservesSiblings(t *testing.T) {
 	raw, err := patchJSONObject(
@@ -59,5 +81,11 @@ func TestClientSettingPathRejectsProfileOnlySettings(t *testing.T) {
 	}
 	if got, ok := clientSettingPath("display.enableAnimations"); !ok || got != "enableAnimations" {
 		t.Fatalf("clientSettingPath() = %q, %v", got, ok)
+	}
+	if got, ok := clientSettingPath("filtering.debrid.hdrDvPolicy"); !ok || got != "debrid.hdrDvPolicy" {
+		t.Fatalf("nested clientSettingPath() = %q, %v", got, ok)
+	}
+	if got, ok := clientSettingPath("animeFiltering.animePreferredLanguage"); !ok || got != "animePreferredLanguage" {
+		t.Fatalf("anime clientSettingPath() = %q, %v", got, ok)
 	}
 }

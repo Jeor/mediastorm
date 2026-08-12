@@ -268,6 +268,18 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Metadata.PrimaryLanguage == "" {
 			settings.Metadata.PrimaryLanguage = defaults.Metadata.PrimaryLanguage
 		}
+		if settings.Filtering.PreferredScraper == nil {
+			settings.Filtering.PreferredScraper = defaults.Filtering.PreferredScraper
+		}
+		if settings.Filtering.ServicePriority == nil {
+			settings.Filtering.ServicePriority = defaults.Filtering.ServicePriority
+		}
+		if settings.Filtering.AdaptivePlaybackEnabled == nil {
+			settings.Filtering.AdaptivePlaybackEnabled = defaults.Filtering.AdaptivePlaybackEnabled
+		}
+		if settings.Filtering.AdaptiveTargetBufferFactor == nil {
+			settings.Filtering.AdaptiveTargetBufferFactor = defaults.Filtering.AdaptiveTargetBufferFactor
+		}
 
 		// Fill in missing Display fields from defaults without overwriting explicit user overrides.
 		if settings.Display.BadgeVisibility == nil {
@@ -645,7 +657,11 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Filtering.PreferredTerms != nil ||
 		s.Filtering.NonPreferredTerms != nil ||
 		s.Filtering.DownloadPreferredTerms != nil ||
+		s.Filtering.PreferredScraper != nil ||
+		s.Filtering.ServicePriority != nil ||
 		s.Filtering.UnknownTrackPolicy != "" ||
+		s.Filtering.AdaptivePlaybackEnabled != nil ||
+		s.Filtering.AdaptiveTargetBufferFactor != nil ||
 		s.Filtering.SplitByService != nil ||
 		s.Filtering.Debrid != nil ||
 		s.Filtering.Usenet != nil {

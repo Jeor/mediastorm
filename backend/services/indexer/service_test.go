@@ -1672,6 +1672,27 @@ func TestPerResolutionLimiting(t *testing.T) {
 	})
 }
 
+func TestApplyUserFilterOverridesIncludesProfileRankingAndAdaptiveFields(t *testing.T) {
+	dst := models.FilterSettings{
+		PreferredScraper:           models.StringPtr("global"),
+		ServicePriority:            models.StringPtr("none"),
+		AdaptivePlaybackEnabled:    models.BoolPtr(false),
+		AdaptiveTargetBufferFactor: models.FloatPtr(0.7),
+	}
+	applyUserFilterOverrides(&dst, models.FilterSettings{
+		PreferredScraper:           models.StringPtr("Comet"),
+		ServicePriority:            models.StringPtr("debrid"),
+		AdaptivePlaybackEnabled:    models.BoolPtr(true),
+		AdaptiveTargetBufferFactor: models.FloatPtr(0.55),
+	})
+	if models.StringVal(dst.PreferredScraper, "") != "Comet" || models.StringVal(dst.ServicePriority, "") != "debrid" {
+		t.Fatalf("ranking fields were not applied: %#v", dst)
+	}
+	if !models.BoolVal(dst.AdaptivePlaybackEnabled, false) || models.FloatVal(dst.AdaptiveTargetBufferFactor, 0) != 0.55 {
+		t.Fatalf("adaptive fields were not applied: %#v", dst)
+	}
+}
+
 func TestComparePreferredScraper(t *testing.T) {
 	torrentio := models.NZBResult{Title: "Movie.2160p", Indexer: "Torrentio"}
 	jackett := models.NZBResult{Title: "Movie.2160p", Indexer: "Jackett"}

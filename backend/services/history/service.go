@@ -58,6 +58,10 @@ type TraktScrobbler interface {
 	ScrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string, watchedAt time.Time) error
 	// ScrobbleEpisode syncs a watched episode to Trakt using show TVDB ID + season/episode for a specific user.
 	ScrobbleEpisode(userID string, showTVDBID, season, episode int, watchedAt time.Time, externalIDs map[string]string) error
+	// UnscrobbleMovie removes a movie's watched state for a specific user.
+	UnscrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string) error
+	// UnscrobbleEpisode removes an episode's watched state for a specific user.
+	UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error
 	// IsEnabled returns whether scrobbling is enabled for any account.
 	IsEnabled() bool
 	// IsEnabledForUser returns whether scrobbling is enabled for a specific user.
@@ -418,6 +422,47 @@ func (s *Service) doScrobble(scrobbler TraktScrobbler, userID string, item model
 			}()
 		} else {
 			log.Printf("[trakt] skipping episode scrobble: missing show IDs (tvdb=%d tmdb=%d imdb=%q), season=%d, or episode=%d", tvdbID, tmdbID, imdbID, item.SeasonNumber, item.EpisodeNumber)
+		}
+	}
+}
+
+// doUnscrobble removes an item's watched state from all enabled providers.
+// Provider calls run asynchronously, matching watched scrobble behavior.
+func (s *Service) doUnscrobble(scrobbler TraktScrobbler, userID string, item models.WatchHistoryItem) {
+	if scrobbler == nil || !scrobbler.IsEnabledForUser(userID) {
+		return
+	}
+
+	externalIDs := mediaidentity.EnrichShowExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs)
+	var tmdbID, tvdbID int
+	var imdbID string
+	if externalIDs != nil {
+		tmdbID, _ = strconv.Atoi(externalIDs["tmdb"])
+		tvdbID, _ = strconv.Atoi(externalIDs["tvdb"])
+		imdbID = externalIDs["imdb"]
+	}
+
+	switch item.MediaType {
+	case "movie":
+		if tmdbID > 0 || tvdbID > 0 || imdbID != "" {
+			go func() {
+				if err := scrobbler.UnscrobbleMovie(userID, tmdbID, tvdbID, imdbID); err != nil {
+					log.Printf("[history] failed to sync unwatched movie %s for user %s: %v", item.Name, userID, err)
+				}
+			}()
+		}
+	case "episode":
+		if s.seriesOrderingIsAlternate(userID, tvdbID) {
+			log.Printf("[history] skipping episode unwatch sync: alternate ordering active for series tvdb=%d user=%s", tvdbID, userID)
+			return
+		}
+		if (tvdbID > 0 || tmdbID > 0 || imdbID != "") && item.SeasonNumber > 0 && item.EpisodeNumber > 0 {
+			season, episode := item.SeasonNumber, item.EpisodeNumber
+			go func() {
+				if err := scrobbler.UnscrobbleEpisode(userID, tvdbID, season, episode, externalIDs); err != nil {
+					log.Printf("[history] failed to sync unwatched episode %s S%02dE%02d for user %s: %v", item.SeriesName, season, episode, userID, err)
+				}
+			}()
 		}
 	}
 }
@@ -3011,6 +3056,7 @@ func (s *Service) ToggleWatched(userID string, update models.WatchHistoryUpdate)
 	key, normalizedItemID := canonicalWatchHistorySurvivor(item, exists, identity, &update)
 
 	now := time.Now().UTC()
+	wasAlreadyWatched := exists && item.Watched
 	if !exists {
 		// Create new item marked as watched
 		item = models.WatchHistoryItem{
@@ -3098,6 +3144,8 @@ func (s *Service) ToggleWatched(userID string, update models.WatchHistoryUpdate)
 	// Note: doScrobble is safe to call while holding lock since it spawns goroutines
 	if item.Watched {
 		s.doScrobble(scrobbler, userID, item)
+	} else if wasAlreadyWatched {
+		s.doUnscrobble(scrobbler, userID, item)
 	}
 
 	return item, nil
@@ -3238,6 +3286,8 @@ func (s *Service) UpdateWatchHistory(userID string, update models.WatchHistoryUp
 	// is updated again (e.g. metadata refresh, redundant API calls).
 	if update.Watched != nil && *update.Watched && !wasAlreadyWatched {
 		s.doScrobble(scrobbler, userID, item)
+	} else if update.Watched != nil && !*update.Watched && wasAlreadyWatched {
+		s.doUnscrobble(scrobbler, userID, item)
 	}
 
 	return item, nil
@@ -3453,6 +3503,8 @@ func (s *Service) BulkUpdateWatchHistory(userID string, updates []models.WatchHi
 	for i, update := range updates {
 		if update.Watched != nil && *update.Watched && !wasAlreadyWatched[i] {
 			s.doScrobble(scrobbler, userID, results[i])
+		} else if update.Watched != nil && !*update.Watched && wasAlreadyWatched[i] {
+			s.doUnscrobble(scrobbler, userID, results[i])
 		}
 	}
 

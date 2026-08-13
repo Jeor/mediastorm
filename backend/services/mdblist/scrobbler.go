@@ -149,6 +149,44 @@ func (s *Scrobbler) ScrobbleEpisode(userID string, showTVDBID, season, episode i
 	return err
 }
 
+func (s *Scrobbler) UnscrobbleMovie(userID string, tmdbID, _ int, imdbID string) error {
+	account := s.getAccountForUser(userID)
+	if account == nil || account.APIKey == "" {
+		return nil
+	}
+	s.client.UpdateAPIKey(account.APIKey)
+	if tmdbID <= 0 && imdbID == "" {
+		return nil
+	}
+	return s.client.SyncUnwatched(SyncWatchedRequest{Movies: []SyncWatchedMovieItem{{
+		IDs: ScrobbleIDs{IMDB: imdbID, TMDB: tmdbID},
+	}}})
+}
+
+func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error {
+	account := s.getAccountForUser(userID)
+	if account == nil || account.APIKey == "" {
+		return nil
+	}
+	ids := resolveShowScrobbleIDs(externalIDs)
+	if ids == (ScrobbleIDs{}) || season <= 0 || episode <= 0 {
+		log.Printf("[mdblist-scrobble] episode unwatch skipped for user %s (s%02de%02d) — no MDBList-compatible show IDs (tvdb=%d)", userID, season, episode, showTVDBID)
+		return nil
+	}
+	s.client.UpdateAPIKey(account.APIKey)
+	result, err := s.client.SyncUnwatchedDetailed(syncWatchedEpisodeRequest(ids, season, episode, ""))
+	if err != nil || result.NotFoundEpisodes == 0 {
+		return err
+	}
+	absolute := absoluteEpisodeFromExternalIDs(externalIDs)
+	if absolute <= 0 || absolute == episode {
+		return nil
+	}
+	log.Printf("[mdblist-scrobble] seasonal unwatch s%02de%02d not found; retrying hybrid absolute e%d", season, episode, absolute)
+	_, err = s.client.SyncUnwatchedDetailed(syncWatchedEpisodeRequest(ids, season, absolute, ""))
+	return err
+}
+
 func syncWatchedEpisodeRequest(ids ScrobbleIDs, season, episode int, watchedAt string) SyncWatchedRequest {
 	return SyncWatchedRequest{
 		Shows: []SyncWatchedShowItem{{

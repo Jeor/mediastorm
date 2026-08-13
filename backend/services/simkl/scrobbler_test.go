@@ -1,9 +1,15 @@
 package simkl
 
 import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"novastream/config"
 	"novastream/models"
 )
 
@@ -79,5 +85,39 @@ func TestShowSyncIDs(t *testing.T) {
 				t.Fatalf("showSyncIDs() = %+v, want %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+type mockSimklUserService struct{ users map[string]models.User }
+
+func (m *mockSimklUserService) Get(id string) (models.User, bool) {
+	u, ok := m.users[id]
+	return u, ok
+}
+
+func TestUnscrobbleEpisodeRemovesSimklHistory(t *testing.T) {
+	var body SyncHistoryRequest
+	client := NewClient()
+	client.SetHTTPClientForTest(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path != "/sync/history/remove" {
+			t.Fatalf("path = %s", req.URL.Path)
+		}
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{}`)), Header: make(http.Header)}, nil
+	})})
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Simkl: config.SimklSettings{Accounts: []config.SimklAccount{{ID: "simkl-1", ClientID: "client-id", AccessToken: "token"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	scrobbler := NewScrobbler(client, mgr)
+	scrobbler.SetUserService(&mockSimklUserService{users: map[string]models.User{"user-1": {ID: "user-1", SimklAccountID: "simkl-1"}}})
+
+	if err := scrobbler.UnscrobbleEpisode("user-1", 153021, 1, 3, map[string]string{"tmdb": "1402"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Shows) != 1 || body.Shows[0].IDs.TVDB != 153021 || len(body.Shows[0].Seasons) != 1 || len(body.Shows[0].Seasons[0].Episodes) != 1 || body.Shows[0].Seasons[0].Episodes[0].Number != 3 {
+		t.Fatalf("body=%+v", body)
 	}
 }

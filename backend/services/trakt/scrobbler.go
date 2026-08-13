@@ -147,6 +147,65 @@ func (s *Scrobbler) ScrobbleEpisode(userID string, showTVDBID, season, episode i
 	return s.client.AddEpisodeToHistoryForShow(accessToken, showIDs, season, absoluteEpisode, watchedAtStr, episodeIDs)
 }
 
+func (s *Scrobbler) UnscrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string) error {
+	if !s.IsEnabledForUser(userID) {
+		return nil
+	}
+	accessToken, err := s.getAccessTokenForUser(userID)
+	if err != nil || accessToken == "" {
+		return err
+	}
+	account := s.getAccountForUser(userID)
+	if account != nil {
+		s.client.UpdateCredentials(account.ClientID, account.ClientSecret)
+	}
+	_, err = s.client.RemoveFromHistory(accessToken, SyncHistoryRequest{Movies: []SyncMovie{{
+		IDs: SyncIDs{TMDB: tmdbID, TVDB: tvdbID, IMDB: imdbID},
+	}}})
+	return err
+}
+
+func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error {
+	if !s.IsEnabledForUser(userID) {
+		return nil
+	}
+	showIDs := ShowSyncIDs(showTVDBID, externalIDs)
+	if showIDs == (SyncIDs{}) || season <= 0 || episode <= 0 {
+		return nil
+	}
+	accessToken, err := s.getAccessTokenForUser(userID)
+	if err != nil || accessToken == "" {
+		return err
+	}
+	account := s.getAccountForUser(userID)
+	if account != nil {
+		s.client.UpdateCredentials(account.ClientID, account.ClientSecret)
+	}
+	resp, err := s.client.RemoveFromHistory(accessToken, SyncHistoryRequest{Shows: []SyncShow{{
+		IDs: showIDs,
+		Seasons: []SyncSeason{{Number: season, Episodes: []SyncEpisode{{
+			Number: episode,
+			IDs:    episodeSyncIDs(externalIDs),
+		}}}},
+	}}})
+	if err != nil || resp == nil || len(resp.NotFound.Shows) == 0 {
+		return err
+	}
+	absoluteEpisode := traktAbsoluteEpisodeNumber(episode, externalIDs)
+	if absoluteEpisode == episode {
+		return nil
+	}
+	log.Printf("[trakt] canonical history removal failed for S%02dE%02d; retrying absolute episode %d", season, episode, absoluteEpisode)
+	_, err = s.client.RemoveFromHistory(accessToken, SyncHistoryRequest{Shows: []SyncShow{{
+		IDs: showIDs,
+		Seasons: []SyncSeason{{Number: season, Episodes: []SyncEpisode{{
+			Number: absoluteEpisode,
+			IDs:    episodeSyncIDs(externalIDs),
+		}}}},
+	}}})
+	return err
+}
+
 // ShowSyncIDs builds show-level Trakt sync IDs from an explicit TVDB ID plus
 // whatever show identifiers are present in an external-ID map. Episodes from
 // tmdb-only metadata sources must still be addressable on Trakt.

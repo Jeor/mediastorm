@@ -44,6 +44,32 @@ func (m *MultiScrobbler) ScrobbleEpisode(userID string, showTVDBID, season, epis
 	return firstErr
 }
 
+func (m *MultiScrobbler) UnscrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string) error {
+	var firstErr error
+	for _, s := range m.scrobblers {
+		if err := s.UnscrobbleMovie(userID, tmdbID, tvdbID, imdbID); err != nil {
+			log.Printf("[multi-scrobbler] movie unscrobble error: %v", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
+}
+
+func (m *MultiScrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error {
+	var firstErr error
+	for _, s := range m.scrobblers {
+		if err := s.UnscrobbleEpisode(userID, showTVDBID, season, episode, externalIDs); err != nil {
+			log.Printf("[multi-scrobbler] episode unscrobble error: %v", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
+}
+
 func (m *MultiScrobbler) IsEnabled() bool {
 	for _, s := range m.scrobblers {
 		if s.IsEnabled() {

@@ -140,6 +140,37 @@ func (s *Scrobbler) ScrobbleEpisode(userID string, showTVDBID, season, episode i
 	return nil
 }
 
+func (s *Scrobbler) UnscrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string) error {
+	account := s.getAccountForUser(userID)
+	if account == nil || account.ClientID == "" || account.AccessToken == "" {
+		return nil
+	}
+	ids := IDs{TMDB: tmdbID, TVDB: tvdbID, IMDB: imdbID}
+	if ids == (IDs{}) {
+		return nil
+	}
+	return s.client.RemoveFromHistory(account.ClientID, account.AccessToken, SyncHistoryRequest{
+		Movies: []SyncHistoryMovie{{IDs: ids}},
+	})
+}
+
+func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error {
+	account := s.getAccountForUser(userID)
+	if account == nil || account.ClientID == "" || account.AccessToken == "" {
+		return nil
+	}
+	ids := showSyncIDs(showTVDBID, externalIDs)
+	if ids == (IDs{}) || season <= 0 || episode <= 0 {
+		return nil
+	}
+	return s.client.RemoveFromHistory(account.ClientID, account.AccessToken, SyncHistoryRequest{
+		Shows: []SyncHistoryShow{{
+			IDs:     ids,
+			Seasons: []SyncHistorySeason{{Number: season, Episodes: []SyncHistoryEpisode{{Number: episode}}}},
+		}},
+	})
+}
+
 // showSyncIDs builds show-level Simkl IDs from the explicit TVDB ID plus any
 // show identifiers in the external-ID map, so tvdb-less episodes still sync.
 func showSyncIDs(showTVDBID int, externalIDs map[string]string) IDs {

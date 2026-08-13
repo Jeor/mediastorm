@@ -1468,6 +1468,138 @@ type mockTraktScrobbler struct {
 	episodeCalls int
 }
 
+type watchedStateSyncCall struct {
+	action    string
+	mediaType string
+	season    int
+	episode   int
+}
+
+type watchedStateSyncScrobbler struct {
+	calls chan watchedStateSyncCall
+}
+
+func (s *watchedStateSyncScrobbler) ScrobbleMovie(string, int, int, string, time.Time) error {
+	s.calls <- watchedStateSyncCall{action: "watched", mediaType: "movie"}
+	return nil
+}
+
+func (s *watchedStateSyncScrobbler) ScrobbleEpisode(_ string, _ int, season, episode int, _ time.Time, _ map[string]string) error {
+	s.calls <- watchedStateSyncCall{action: "watched", mediaType: "episode", season: season, episode: episode}
+	return nil
+}
+
+func (s *watchedStateSyncScrobbler) UnscrobbleMovie(string, int, int, string) error {
+	s.calls <- watchedStateSyncCall{action: "unwatched", mediaType: "movie"}
+	return nil
+}
+
+func (s *watchedStateSyncScrobbler) UnscrobbleEpisode(_ string, _ int, season, episode int, _ map[string]string) error {
+	s.calls <- watchedStateSyncCall{action: "unwatched", mediaType: "episode", season: season, episode: episode}
+	return nil
+}
+
+func (s *watchedStateSyncScrobbler) IsEnabled() bool              { return true }
+func (s *watchedStateSyncScrobbler) IsEnabledForUser(string) bool { return true }
+
+func waitForWatchedStateSyncCall(t *testing.T, calls <-chan watchedStateSyncCall) watchedStateSyncCall {
+	t.Helper()
+	select {
+	case call := <-calls:
+		return call
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for watched-state sync")
+		return watchedStateSyncCall{}
+	}
+}
+
+func TestManualUnwatchSyncsProvidersOnRealTransitions(t *testing.T) {
+	newService := func(t *testing.T) (*Service, *watchedStateSyncScrobbler) {
+		t.Helper()
+		svc, err := NewService(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		scrobbler := &watchedStateSyncScrobbler{calls: make(chan watchedStateSyncCall, 10)}
+		svc.SetTraktScrobbler(scrobbler)
+		return svc, scrobbler
+	}
+
+	t.Run("direct update", func(t *testing.T) {
+		svc, scrobbler := newService(t)
+		watched, unwatched := true, false
+		update := models.WatchHistoryUpdate{MediaType: "movie", ItemID: "tmdb:movie:550", Watched: &watched, ExternalIDs: map[string]string{"tmdb": "550"}}
+		if _, err := svc.UpdateWatchHistory("user-1", update); err != nil {
+			t.Fatal(err)
+		}
+		_ = waitForWatchedStateSyncCall(t, scrobbler.calls)
+
+		update.Watched = &unwatched
+		if _, err := svc.UpdateWatchHistory("user-1", update); err != nil {
+			t.Fatal(err)
+		}
+		if call := waitForWatchedStateSyncCall(t, scrobbler.calls); call.action != "unwatched" || call.mediaType != "movie" {
+			t.Fatalf("call=%+v", call)
+		}
+
+		if _, err := svc.UpdateWatchHistory("user-1", update); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case call := <-scrobbler.calls:
+			t.Fatalf("redundant unwatch unexpectedly synced: %+v", call)
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
+
+	t.Run("toggle", func(t *testing.T) {
+		svc, scrobbler := newService(t)
+		watched := true
+		update := models.WatchHistoryUpdate{MediaType: "movie", ItemID: "tmdb:movie:105", Watched: &watched, ExternalIDs: map[string]string{"tmdb": "105"}}
+		if _, err := svc.UpdateWatchHistory("user-1", update); err != nil {
+			t.Fatal(err)
+		}
+		_ = waitForWatchedStateSyncCall(t, scrobbler.calls)
+		if _, err := svc.ToggleWatched("user-1", update); err != nil {
+			t.Fatal(err)
+		}
+		if call := waitForWatchedStateSyncCall(t, scrobbler.calls); call.action != "unwatched" {
+			t.Fatalf("call=%+v", call)
+		}
+	})
+
+	t.Run("bulk episodes", func(t *testing.T) {
+		svc, scrobbler := newService(t)
+		watched, unwatched := true, false
+		updates := []models.WatchHistoryUpdate{
+			{MediaType: "episode", ItemID: "tvdb:series:121361:s01e01", Watched: &watched, SeriesID: "tvdb:series:121361", SeasonNumber: 1, EpisodeNumber: 1, ExternalIDs: map[string]string{"tvdb": "121361"}},
+			{MediaType: "episode", ItemID: "tvdb:series:121361:s01e02", Watched: &watched, SeriesID: "tvdb:series:121361", SeasonNumber: 1, EpisodeNumber: 2, ExternalIDs: map[string]string{"tvdb": "121361"}},
+		}
+		if _, err := svc.BulkUpdateWatchHistory("user-1", updates); err != nil {
+			t.Fatal(err)
+		}
+		_ = waitForWatchedStateSyncCall(t, scrobbler.calls)
+		_ = waitForWatchedStateSyncCall(t, scrobbler.calls)
+		for i := range updates {
+			updates[i].Watched = &unwatched
+		}
+		if _, err := svc.BulkUpdateWatchHistory("user-1", updates); err != nil {
+			t.Fatal(err)
+		}
+		seen := map[int]bool{}
+		for range updates {
+			call := waitForWatchedStateSyncCall(t, scrobbler.calls)
+			if call.action != "unwatched" || call.mediaType != "episode" || call.season != 1 {
+				t.Fatalf("call=%+v", call)
+			}
+			seen[call.episode] = true
+		}
+		if !seen[1] || !seen[2] {
+			t.Fatalf("episodes=%v", seen)
+		}
+	})
+}
+
 func (m *mockTraktScrobbler) ScrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string, watchedAt time.Time) error {
 	m.movieCalls++
 	return nil
@@ -1475,6 +1607,12 @@ func (m *mockTraktScrobbler) ScrobbleMovie(userID string, tmdbID, tvdbID int, im
 
 func (m *mockTraktScrobbler) ScrobbleEpisode(userID string, showTVDBID, season, episode int, watchedAt time.Time, externalIDs map[string]string) error {
 	m.episodeCalls++
+	return nil
+}
+
+func (m *mockTraktScrobbler) UnscrobbleMovie(string, int, int, string) error { return nil }
+
+func (m *mockTraktScrobbler) UnscrobbleEpisode(string, int, int, int, map[string]string) error {
 	return nil
 }
 
@@ -6150,6 +6288,12 @@ func (c *captureTraktScrobbler) ScrobbleEpisode(userID string, showTVDBID, seaso
 		episode:    episode,
 		externalID: cloned,
 	}
+	return nil
+}
+
+func (c *captureTraktScrobbler) UnscrobbleMovie(string, int, int, string) error { return nil }
+
+func (c *captureTraktScrobbler) UnscrobbleEpisode(string, int, int, int, map[string]string) error {
 	return nil
 }
 

@@ -140,6 +140,21 @@ func (c *ScrobbleClient) SyncWatched(req SyncWatchedRequest) error {
 
 // SyncWatchedDetailed sends a batch of watched items and returns not_found info.
 func (c *ScrobbleClient) SyncWatchedDetailed(req SyncWatchedRequest) (SyncWatchedResult, error) {
+	return c.syncWatchedDetailed("/sync/watched", req)
+}
+
+// SyncUnwatched removes watched state while preserving MDBList play history.
+func (c *ScrobbleClient) SyncUnwatched(req SyncWatchedRequest) error {
+	_, err := c.SyncUnwatchedDetailed(req)
+	return err
+}
+
+// SyncUnwatchedDetailed removes watched state and returns unmatched episodes.
+func (c *ScrobbleClient) SyncUnwatchedDetailed(req SyncWatchedRequest) (SyncWatchedResult, error) {
+	return c.syncWatchedDetailed("/sync/watched/remove", req)
+}
+
+func (c *ScrobbleClient) syncWatchedDetailed(path string, req SyncWatchedRequest) (SyncWatchedResult, error) {
 	var result SyncWatchedResult
 	apiKey := c.getAPIKey()
 	if apiKey == "" {
@@ -151,7 +166,7 @@ func (c *ScrobbleClient) SyncWatchedDetailed(req SyncWatchedRequest) (SyncWatche
 		return result, fmt.Errorf("marshal sync request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/sync/watched?apikey=%s", baseURL, apiKey)
+	url := fmt.Sprintf("%s%s?apikey=%s", baseURL, path, apiKey)
 	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return result, fmt.Errorf("create sync request: %w", err)
@@ -160,13 +175,13 @@ func (c *ScrobbleClient) SyncWatchedDetailed(req SyncWatchedRequest) (SyncWatche
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return result, fmt.Errorf("sync watched: %w", err)
+		return result, fmt.Errorf("sync watched state: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 	if resp.StatusCode >= 400 {
-		return result, fmt.Errorf("mdblist sync/watched returned %d: %s", resp.StatusCode, string(respBody))
+		return result, fmt.Errorf("mdblist %s returned %d: %s", path, resp.StatusCode, string(respBody))
 	}
 
 	var parsed struct {

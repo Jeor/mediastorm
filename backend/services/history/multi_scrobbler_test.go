@@ -9,11 +9,13 @@ import (
 
 // mockScrobbler is a test double for TraktScrobbler.
 type mockScrobbler struct {
-	enabled        bool
-	enabledForUser map[string]bool
-	movieCalls     int
-	episodeCalls   int
-	returnErr      error
+	enabled         bool
+	enabledForUser  map[string]bool
+	movieCalls      int
+	episodeCalls    int
+	movieRemovals   int
+	episodeRemovals int
+	returnErr       error
 }
 
 func (m *mockScrobbler) ScrobbleMovie(userID string, tmdbID, tvdbID int, imdbID string, watchedAt time.Time) error {
@@ -23,6 +25,16 @@ func (m *mockScrobbler) ScrobbleMovie(userID string, tmdbID, tvdbID int, imdbID 
 
 func (m *mockScrobbler) ScrobbleEpisode(userID string, showTVDBID, season, episode int, watchedAt time.Time, externalIDs map[string]string) error {
 	m.episodeCalls++
+	return m.returnErr
+}
+
+func (m *mockScrobbler) UnscrobbleMovie(string, int, int, string) error {
+	m.movieRemovals++
+	return m.returnErr
+}
+
+func (m *mockScrobbler) UnscrobbleEpisode(string, int, int, int, map[string]string) error {
+	m.episodeRemovals++
 	return m.returnErr
 }
 
@@ -89,6 +101,22 @@ func TestMultiScrobbler_FansOutEpisode(t *testing.T) {
 	}
 	if s2.episodeCalls != 1 {
 		t.Errorf("expected 1 call to s2, got %d", s2.episodeCalls)
+	}
+}
+
+func TestMultiScrobbler_FansOutUnscrobbles(t *testing.T) {
+	s1 := &mockScrobbler{}
+	s2 := &mockScrobbler{}
+	multi := NewMultiScrobbler(s1, s2)
+
+	if err := multi.UnscrobbleMovie("user1", 105, 0, "tt0088763"); err != nil {
+		t.Fatal(err)
+	}
+	if err := multi.UnscrobbleEpisode("user1", 75897, 2, 5, nil); err != nil {
+		t.Fatal(err)
+	}
+	if s1.movieRemovals != 1 || s2.movieRemovals != 1 || s1.episodeRemovals != 1 || s2.episodeRemovals != 1 {
+		t.Fatalf("unexpected removal calls: s1=%+v s2=%+v", s1, s2)
 	}
 }
 

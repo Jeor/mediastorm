@@ -523,3 +523,49 @@ func TestDirectCastCopyWideningRequiresMatchingProof(t *testing.T) {
 		})
 	}
 }
+
+// A compatibility cast session must hand the receiver stereo AAC, because this is the
+// session the app's cast path creates and the only reason its audio is audible.
+//
+// The failure this pins down: the cast path used to hand over the source URL, so a BluRay
+// rip reached the receiver as MKV with AC-3/E-AC-3. A Default Media Receiver decodes the
+// H.264 video in that container and silently drops the audio, which presents as a cast
+// that plays picture with no sound. Routing through an HLS session is the fix; the audio
+// normalisation asserted here is what makes that routing worth anything.
+//
+// Note that this holds with or without `forceAAC`: the compatibility ladder always
+// re-encodes audio. The flag rides along to pin the intent, not to cause it.
+func TestCompatibilityCastForcesStereoAACForUndecodableAudio(t *testing.T) {
+	args, _ := runCastArgPlanTest(t, &HLSSession{
+		ID:           "compat-cast-forceaac",
+		Path:         "movie.mkv",
+		OriginalPath: "movie.mkv",
+		OutputDir:    t.TempDir(),
+		CastMode:     true,
+		// No DirectCastMode and no PlaybackTarget: precisely what the client sends.
+		ProbeData: &UnifiedProbeResult{
+			Duration:     120,
+			VideoCodec:   "h264",
+			VideoPixFmt:  "yuv420p",
+			VideoProfile: "High",
+			VideoWidth:   1920,
+			VideoHeight:  1080,
+			VideoLevel:   41,
+			AvgFrameRate: "24000/1001",
+			AudioStreams: []audioStreamInfo{{Index: 1, Codec: "eac3"}},
+		},
+	}, true)
+
+	if !argPair(args, "-c:a:0", "aac") {
+		t.Fatalf("compatibility cast did not transcode E-AC-3 to AAC; a receiver plays this silently; args=%v", args)
+	}
+	if !argPair(args, "-ac:a:0", "2") {
+		t.Fatalf("compatibility cast audio must be stereo; receivers reject multichannel AAC; args=%v", args)
+	}
+	if argPair(args, "-c:a:0", "copy") {
+		t.Fatalf("compatibility cast must never copy audio the receiver cannot decode; args=%v", args)
+	}
+	if !argPair(args, "-hls_segment_type", "mpegts") {
+		t.Fatalf("cast/forceAAC sessions must use MPEG-TS segments; args=%v", args)
+	}
+}

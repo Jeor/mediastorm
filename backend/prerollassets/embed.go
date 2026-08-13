@@ -6,5 +6,5 @@ import _ "embed"
 // client. It is intentionally embedded so Docker and standalone builds behave
 // identically and never depend on a host filesystem path.
 //
-//go:embed default.mp4
+//go:embed upscaled-video.mp4
 var DefaultVideo []byte

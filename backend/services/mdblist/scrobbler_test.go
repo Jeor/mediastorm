@@ -118,21 +118,36 @@ func TestScrobbleEpisodeSyncWatchedUsesExternalShowIDsAndCanonicalEpisode(t *tes
 
 func TestUnscrobbleEpisodeUsesWatchedRemoveWithoutDeletingPlays(t *testing.T) {
 	var body SyncWatchedRequest
+	var removedPlayIDs []int
 	client := NewScrobbleClient("")
 	client.httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.Path != "/sync/watched/remove" {
+		switch req.URL.Path {
+		case "/sync/watched/remove":
+			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"deleted":{"episodes":1}}`)), Header: make(http.Header)}, nil
+		case "/sync/watched":
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"episodes":[{"play_id":42,"episode":{"season":2,"number":13,"ids":{"tvdb":11532947},"show":{"ids":{"imdb":"tt31938062"}}}}],"pagination":{"has_more":false}}`)), Header: make(http.Header)}, nil
+		case "/sync/watched/plays/remove":
+			var payload struct {
+				PlayIDs []int `json:"play_ids"`
+			}
+			if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			removedPlayIDs = payload.PlayIDs
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"removed":[42]}`)), Header: make(http.Header)}, nil
+		default:
 			t.Fatalf("path = %s", req.URL.Path)
+			return nil, nil
 		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			t.Fatal(err)
-		}
-		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"deleted":{"episodes":1}}`)), Header: make(http.Header)}, nil
 	})}
 	mgr := newTestConfigManager(t, config.Settings{MDBList: config.MDBListSettings{Enabled: true, Accounts: []config.MDBListAccount{{ID: "mdb1", APIKey: "test-key"}}}})
 	scrobbler := NewScrobbler(client, mgr)
 	scrobbler.SetUserService(&mockMDBListUserService{users: map[string]models.User{"user1": {ID: "user1", MdblistAccountID: "mdb1"}}})
 
-	if err := scrobbler.UnscrobbleEpisode("user1", 448176, 2, 13, map[string]string{"imdb": "tt31938062"}); err != nil {
+	if err := scrobbler.UnscrobbleEpisode("user1", 448176, 2, 13, map[string]string{"imdb": "tt31938062", "episodeTvdb": "11532947"}); err != nil {
 		t.Fatal(err)
 	}
 	if len(body.Shows) != 1 || body.Shows[0].IDs.IMDB != "tt31938062" || len(body.Shows[0].Seasons) != 1 || len(body.Shows[0].Seasons[0].Episodes) != 1 {
@@ -141,6 +156,9 @@ func TestUnscrobbleEpisodeUsesWatchedRemoveWithoutDeletingPlays(t *testing.T) {
 	episode := body.Shows[0].Seasons[0].Episodes[0]
 	if episode.Number != 13 || episode.WatchedAt != "" {
 		t.Fatalf("episode=%+v", episode)
+	}
+	if len(removedPlayIDs) != 1 || removedPlayIDs[0] != 42 {
+		t.Fatalf("removedPlayIDs=%v", removedPlayIDs)
 	}
 }
 

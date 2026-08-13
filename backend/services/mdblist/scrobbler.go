@@ -158,9 +158,13 @@ func (s *Scrobbler) UnscrobbleMovie(userID string, tmdbID, _ int, imdbID string)
 	if tmdbID <= 0 && imdbID == "" {
 		return nil
 	}
-	return s.client.SyncUnwatched(SyncWatchedRequest{Movies: []SyncWatchedMovieItem{{
-		IDs: ScrobbleIDs{IMDB: imdbID, TMDB: tmdbID},
-	}}})
+	ids := ScrobbleIDs{IMDB: imdbID, TMDB: tmdbID}
+	if err := s.client.SyncUnwatched(SyncWatchedRequest{Movies: []SyncWatchedMovieItem{{
+		IDs: ids,
+	}}}); err != nil {
+		return err
+	}
+	return s.client.RemoveMoviePlays(ids)
 }
 
 func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error {
@@ -175,16 +179,21 @@ func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode
 	}
 	s.client.UpdateAPIKey(account.APIKey)
 	result, err := s.client.SyncUnwatchedDetailed(syncWatchedEpisodeRequest(ids, season, episode, ""))
-	if err != nil || result.NotFoundEpisodes == 0 {
+	if err != nil {
 		return err
 	}
-	absolute := absoluteEpisodeFromExternalIDs(externalIDs)
-	if absolute <= 0 || absolute == episode {
-		return nil
+	if result.NotFoundEpisodes > 0 {
+		absolute := absoluteEpisodeFromExternalIDs(externalIDs)
+		if absolute > 0 && absolute != episode {
+			log.Printf("[mdblist-scrobble] seasonal unwatch s%02de%02d not found; retrying hybrid absolute e%d", season, episode, absolute)
+			if _, err = s.client.SyncUnwatchedDetailed(syncWatchedEpisodeRequest(ids, season, absolute, "")); err != nil {
+				return err
+			}
+		}
 	}
-	log.Printf("[mdblist-scrobble] seasonal unwatch s%02de%02d not found; retrying hybrid absolute e%d", season, episode, absolute)
-	_, err = s.client.SyncUnwatchedDetailed(syncWatchedEpisodeRequest(ids, season, absolute, ""))
-	return err
+	episodeTMDB, _ := strconv.Atoi(externalIDs["episodeTmdb"])
+	episodeTVDB, _ := strconv.Atoi(externalIDs["episodeTvdb"])
+	return s.client.RemoveEpisodePlays(ids, season, episode, episodeTMDB, episodeTVDB)
 }
 
 func syncWatchedEpisodeRequest(ids ScrobbleIDs, season, episode int, watchedAt string) SyncWatchedRequest {

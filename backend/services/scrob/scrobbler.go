@@ -90,8 +90,49 @@ func (s *Scrobbler) UnscrobbleMovie(userID string, tmdbID, _ int, _ string) erro
 	return s.remove(userID, tmdbID, "movie")
 }
 
-func (s *Scrobbler) UnscrobbleEpisode(userID string, _ int, _, _ int, externalIDs map[string]string) error {
-	return s.remove(userID, positiveInt(externalIDs["episodeTmdb"]), "episode")
+func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode int, externalIDs map[string]string) error {
+	return s.unscrobbleEpisode(userID, showTVDBID, positiveInt(externalIDs["tmdb"]), positiveInt(externalIDs["episodeTmdb"]), season, episode)
+}
+
+func (s *Scrobbler) unscrobbleEpisode(userID string, showTVDBID, showTMDBID, episodeTMDBID, season, episode int) error {
+	if episodeTMDBID > 0 {
+		return s.remove(userID, episodeTMDBID, "episode")
+	}
+	account := s.getAccountForUser(userID)
+	if !scrobAccountCanPush(account) || season < 0 || episode <= 0 {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	history, err := s.client.GetHistory(ctx, account.BaseURL, account.APIKey)
+	if err != nil {
+		return err
+	}
+	mediaID := 0
+	for _, event := range history {
+		media := event.Media
+		if media.Type != "episode" || media.SeasonNumber != season || media.EpisodeNumber != episode {
+			continue
+		}
+		if showTMDBID > 0 && media.ShowTMDBID != showTMDBID {
+			continue
+		}
+		if showTMDBID <= 0 && showTVDBID > 0 && media.ShowTVDBID != showTVDBID {
+			continue
+		}
+		mediaID = media.ID
+		if mediaID > 0 {
+			break
+		}
+	}
+	if mediaID <= 0 {
+		return nil
+	}
+	token, err := s.login(ctx, account)
+	if err != nil {
+		return err
+	}
+	return s.client.RemoveHistoryByID(ctx, account.BaseURL, account.APIKey, token, mediaID, "episode")
 }
 
 func (s *Scrobbler) remove(userID string, tmdbID int, mediaType string) error {

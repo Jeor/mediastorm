@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -109,6 +110,36 @@ type SyncWatchedRequest struct {
 	Shows  []SyncWatchedShowItem  `json:"shows,omitempty"`
 }
 
+type watchedPlayIDs struct {
+	IMDB string `json:"imdb,omitempty"`
+	TMDB int    `json:"tmdb,omitempty"`
+	TVDB int    `json:"tvdb,omitempty"`
+}
+
+type watchedPlaysResponse struct {
+	Movies []struct {
+		PlayID int `json:"play_id"`
+		Movie  struct {
+			IDs watchedPlayIDs `json:"ids"`
+		} `json:"movie"`
+	} `json:"movies"`
+	Episodes []struct {
+		PlayID  int `json:"play_id"`
+		Episode struct {
+			Season int            `json:"season"`
+			Number int            `json:"number"`
+			IDs    watchedPlayIDs `json:"ids"`
+			Show   struct {
+				IDs watchedPlayIDs `json:"ids"`
+			} `json:"show"`
+		} `json:"episode"`
+	} `json:"episodes"`
+	Pagination struct {
+		HasMore    bool   `json:"has_more"`
+		NextCursor string `json:"next_cursor"`
+	} `json:"pagination"`
+}
+
 // ScrobbleStart sends a scrobble/start event.
 func (c *ScrobbleClient) ScrobbleStart(req ScrobbleRequest) error {
 	return c.scrobble("start", req)
@@ -203,6 +234,106 @@ func (c *ScrobbleClient) syncWatchedDetailed(path string, req SyncWatchedRequest
 		}
 	}
 	return result, nil
+}
+
+// RemoveMoviePlays removes all retained MDBList play-history rows for a movie.
+func (c *ScrobbleClient) RemoveMoviePlays(ids ScrobbleIDs) error {
+	return c.removeMatchingPlays("movie", func(play watchedPlaysResponse, index int) bool {
+		return watchedPlayIDsMatch(play.Movies[index].Movie.IDs, ids)
+	})
+}
+
+// RemoveEpisodePlays removes all retained MDBList play-history rows for an episode.
+func (c *ScrobbleClient) RemoveEpisodePlays(showIDs ScrobbleIDs, season, episode, episodeTMDB, episodeTVDB int) error {
+	return c.removeMatchingPlays("episode", func(play watchedPlaysResponse, index int) bool {
+		candidate := play.Episodes[index].Episode
+		if episodeTMDB > 0 && candidate.IDs.TMDB == episodeTMDB {
+			return true
+		}
+		if episodeTVDB > 0 && candidate.IDs.TVDB == episodeTVDB {
+			return true
+		}
+		return candidate.Season == season && candidate.Number == episode && watchedPlayIDsMatch(candidate.Show.IDs, showIDs)
+	})
+}
+
+func (c *ScrobbleClient) removeMatchingPlays(mediaType string, matches func(watchedPlaysResponse, int) bool) error {
+	apiKey := c.getAPIKey()
+	if apiKey == "" {
+		return fmt.Errorf("mdblist API key not configured")
+	}
+	var playIDs []int
+	cursor := ""
+	for {
+		query := url.Values{"apikey": {apiKey}, "mediatype": {mediaType}, "plays": {"all"}, "limit": {"1000"}}
+		if cursor != "" {
+			query.Set("cursor", cursor)
+		}
+		httpReq, err := http.NewRequest(http.MethodGet, baseURL+"/sync/watched?"+query.Encode(), nil)
+		if err != nil {
+			return fmt.Errorf("create watched plays request: %w", err)
+		}
+		resp, err := c.httpClient.Do(httpReq)
+		if err != nil {
+			return fmt.Errorf("list watched plays: %w", err)
+		}
+		var page watchedPlaysResponse
+		if resp.StatusCode >= 400 {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+			resp.Body.Close()
+			return fmt.Errorf("mdblist list watched plays returned %d: %s", resp.StatusCode, string(body))
+		}
+		err = json.NewDecoder(resp.Body).Decode(&page)
+		resp.Body.Close()
+		if err != nil {
+			return fmt.Errorf("decode watched plays: %w", err)
+		}
+		if mediaType == "movie" {
+			for i := range page.Movies {
+				if page.Movies[i].PlayID > 0 && matches(page, i) {
+					playIDs = append(playIDs, page.Movies[i].PlayID)
+				}
+			}
+		} else {
+			for i := range page.Episodes {
+				if page.Episodes[i].PlayID > 0 && matches(page, i) {
+					playIDs = append(playIDs, page.Episodes[i].PlayID)
+				}
+			}
+		}
+		if !page.Pagination.HasMore || page.Pagination.NextCursor == "" {
+			break
+		}
+		cursor = page.Pagination.NextCursor
+	}
+	if len(playIDs) == 0 {
+		return nil
+	}
+	body, err := json.Marshal(struct {
+		PlayIDs []int `json:"play_ids"`
+	}{PlayIDs: playIDs})
+	if err != nil {
+		return err
+	}
+	httpReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/sync/watched/plays/remove?apikey=%s", baseURL, url.QueryEscape(apiKey)), bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create remove watched plays request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("remove watched plays: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		responseBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		return fmt.Errorf("mdblist remove watched plays returned %d: %s", resp.StatusCode, string(responseBody))
+	}
+	return nil
+}
+
+func watchedPlayIDsMatch(candidate watchedPlayIDs, wanted ScrobbleIDs) bool {
+	return (wanted.TMDB > 0 && candidate.TMDB == wanted.TMDB) || (wanted.IMDB != "" && candidate.IMDB == wanted.IMDB)
 }
 
 // ErrScrobble400 is returned for 400 responses so callers can detect bad requests.

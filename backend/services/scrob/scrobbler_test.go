@@ -62,3 +62,31 @@ func TestUnscrobbleEpisodeDeletesByEpisodeTMDBID(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnscrobbleEpisodeLooksUpScrobMediaIDWhenEpisodeTMDBIDMissing(t *testing.T) {
+	client := NewClientWithHTTPClient(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.Path {
+		case "/api/proxy/history":
+			return jsonResponse(http.StatusOK, `{"page":1,"total_pages":1,"results":[{"id":3404,"media":{"id":10997,"type":"episode","show_tmdb_id":4629,"show_tvdb_id":72449,"season_number":4,"episode_number":13}}]}`), nil
+		case "/api/proxy/auth/login":
+			return jsonResponse(http.StatusOK, `{"access_token":"jwt"}`), nil
+		case "/api/proxy/history/item":
+			if req.Method != http.MethodDelete || req.URL.Query().Get("id") != "10997" || req.URL.Query().Get("media_type") != "episode" {
+				t.Fatalf("request=%s %s query=%v", req.Method, req.URL.Path, req.URL.Query())
+			}
+			return jsonResponse(http.StatusOK, `{"status":"ok"}`), nil
+		default:
+			t.Fatalf("unexpected path %s", req.URL.Path)
+			return nil, nil
+		}
+	})})
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Scrob: config.ScrobSettings{Accounts: []config.ScrobAccount{{ID: "scrob-1", BaseURL: "https://scrob.example", APIKey: "key", Username: "user", Password: "pass"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	scrobbler := NewScrobbler(client, mgr)
+	scrobbler.SetUserService(&mockScrobUserService{users: map[string]models.User{"user-1": {ID: "user-1", ScrobAccountID: "scrob-1"}}})
+	if err := scrobbler.UnscrobbleEpisode("user-1", 72449, 4, 13, map[string]string{"tmdb": "4629"}); err != nil {
+		t.Fatal(err)
+	}
+}

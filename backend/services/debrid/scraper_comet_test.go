@@ -181,6 +181,48 @@ func TestCometSearchWithIMDBID(t *testing.T) {
 	}
 }
 
+func TestCometSearchExtractsDebridProvider(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"streams": [
+				{
+					"name": "[RD⬇️] Comet 2160p",
+					"title": "Movie.2026.2160p",
+					"url": "https://comet.example/playback/token",
+					"behaviorHints": {
+						"filename": "Movie.2026.2160p.mkv",
+						"bingeGroup": "comet|realdebrid|abc123"
+					}
+				}
+			]
+		}`))
+	}))
+	defer server.Close()
+
+	scraper := NewCometScraper(nil, server.URL, "", "Comet")
+	results, err := scraper.Search(context.Background(), SearchRequest{
+		Parsed: ParsedQuery{Title: "Movie", MediaType: MediaTypeMovie},
+		IMDBID: "tt1234567",
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("results = %d, want 1", len(results))
+	}
+	if got := results[0].Attributes["debridProvider"]; got != "realdebrid" {
+		t.Fatalf("debridProvider = %q, want realdebrid", got)
+	}
+}
+
+func TestParseCometDebridProviderFallsBackToNameBadge(t *testing.T) {
+	if got := parseCometDebridProvider(nil, "[PM⚡] Comet 1080p"); got != "premiumize" {
+		t.Fatalf("provider = %q, want premiumize", got)
+	}
+}
+
 func TestCometSearchTVWithSeasonEpisode(t *testing.T) {
 	var capturedPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

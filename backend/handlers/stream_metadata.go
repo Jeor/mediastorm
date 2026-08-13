@@ -11,6 +11,7 @@ import (
 // This lets dashboards render exact titles and progress without reparsing filenames.
 type StreamMediaMetadata struct {
 	SourceServiceType    string
+	DebridProvider       string
 	MediaType            string
 	ItemID               string
 	Title                string
@@ -33,6 +34,7 @@ func parseStreamMediaMetadata(r *http.Request) StreamMediaMetadata {
 	q := r.URL.Query()
 	meta := StreamMediaMetadata{
 		SourceServiceType:    normalizeStreamSourceServiceType(q.Get("sourceServiceType")),
+		DebridProvider:       normalizeStreamDebridProvider(q.Get("debridProvider")),
 		MediaType:            strings.ToLower(strings.TrimSpace(q.Get("mediaType"))),
 		ItemID:               strings.ToLower(strings.TrimSpace(q.Get("itemId"))),
 		Title:                strings.TrimSpace(q.Get("title")),
@@ -92,6 +94,9 @@ func addStreamMediaMetadataParams(values url.Values, meta StreamMediaMetadata) {
 	if serviceType := normalizeStreamSourceServiceType(meta.SourceServiceType); serviceType != "" {
 		values.Set("sourceServiceType", serviceType)
 	}
+	if provider := normalizeStreamDebridProvider(meta.DebridProvider); provider != "" {
+		values.Set("debridProvider", provider)
+	}
 	if meta.MediaType != "" {
 		values.Set("mediaType", meta.MediaType)
 	}
@@ -148,6 +153,35 @@ func normalizeStreamSourceServiceType(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "debrid", "usenet", "local", "plex", "jellyfin":
 		return strings.ToLower(strings.TrimSpace(value))
+	default:
+		return ""
+	}
+}
+
+func normalizeStreamDebridProvider(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.NewReplacer("-", "", "_", "", " ", "").Replace(normalized)
+	switch normalized {
+	case "rd", "realdebrid":
+		return "realdebrid"
+	case "ad", "alldebrid":
+		return "alldebrid"
+	case "pm", "premiumize":
+		return "premiumize"
+	case "tb", "torbox":
+		return "torbox"
+	case "dl", "debridlink":
+		return "debridlink"
+	case "st", "stremthru":
+		return "stremthru"
+	case "db", "debrider":
+		return "debrider"
+	case "ed", "easydebrid":
+		return "easydebrid"
+	case "oc", "offcloud":
+		return "offcloud"
+	case "pp", "pikpak":
+		return "pikpak"
 	default:
 		return ""
 	}

@@ -7,10 +7,13 @@ import (
 )
 
 func TestStreamMediaMetadataSourceServiceTypeRoundTrip(t *testing.T) {
-	req := httptest.NewRequest("GET", "/video/stream?sourceServiceType=Debrid", nil)
+	req := httptest.NewRequest("GET", "/video/stream?sourceServiceType=Debrid&debridProvider=Real-Debrid", nil)
 	meta := parseStreamMediaMetadata(req)
 	if meta.SourceServiceType != "debrid" {
 		t.Fatalf("SourceServiceType = %q, want debrid", meta.SourceServiceType)
+	}
+	if meta.DebridProvider != "realdebrid" {
+		t.Fatalf("DebridProvider = %q, want realdebrid", meta.DebridProvider)
 	}
 
 	values := url.Values{}
@@ -18,12 +21,22 @@ func TestStreamMediaMetadataSourceServiceTypeRoundTrip(t *testing.T) {
 	if got := values.Get("sourceServiceType"); got != "debrid" {
 		t.Fatalf("sourceServiceType param = %q, want debrid", got)
 	}
+	if got := values.Get("debridProvider"); got != "realdebrid" {
+		t.Fatalf("debridProvider param = %q, want realdebrid", got)
+	}
 }
 
 func TestStreamMediaMetadataRejectsUnknownSourceServiceType(t *testing.T) {
 	req := httptest.NewRequest("GET", "/video/stream?sourceServiceType=unknown", nil)
 	if got := parseStreamMediaMetadata(req).SourceServiceType; got != "" {
 		t.Fatalf("SourceServiceType = %q, want empty", got)
+	}
+}
+
+func TestStreamMediaMetadataRejectsUnknownDebridProvider(t *testing.T) {
+	req := httptest.NewRequest("GET", "/video/stream?sourceServiceType=debrid&debridProvider=unknown", nil)
+	if got := parseStreamMediaMetadata(req).DebridProvider; got != "" {
+		t.Fatalf("DebridProvider = %q, want empty", got)
 	}
 }
 

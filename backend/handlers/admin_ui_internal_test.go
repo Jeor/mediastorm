@@ -676,19 +676,21 @@ func TestDashboardDebridProvider(t *testing.T) {
 	tests := []struct {
 		name        string
 		serviceType string
+		provider    string
 		paths       []string
 		wanted      string
 	}{
+		{name: "explicit provider on signed URL", serviceType: "debrid", provider: "Real-Debrid", paths: []string{"https://comet.example/playback/token"}, wanted: "realdebrid"},
 		{name: "torbox path", paths: []string{"/debrid/torbox/torrent/file/0/movie.mkv"}, wanted: "torbox"},
 		{name: "real debrid webdav path", paths: []string{"/webdav/debrid/real-debrid/torrent/file/0/movie.mkv"}, wanted: "realdebrid"},
 		{name: "provider in original path", serviceType: "debrid", paths: []string{"https://cdn.test/file", "/debrid/premiumize/torrent/file/0/movie.mkv"}, wanted: "premiumize"},
 		{name: "signed external URL without provider", serviceType: "debrid", paths: []string{"https://comet.example/playback/token"}, wanted: ""},
-		{name: "usenet path", serviceType: "usenet", paths: []string{"/nzbs/job/movie.mkv"}, wanted: ""},
+		{name: "usenet ignores explicit provider", serviceType: "usenet", provider: "torbox", paths: []string{"/nzbs/job/movie.mkv"}, wanted: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := dashboardDebridProvider(tt.serviceType, tt.paths...); got != tt.wanted {
+			if got := dashboardDebridProvider(tt.serviceType, tt.provider, tt.paths...); got != tt.wanted {
 				t.Fatalf("dashboardDebridProvider() = %q, want %q", got, tt.wanted)
 			}
 		})

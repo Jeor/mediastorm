@@ -2362,7 +2362,7 @@ func (h *AdminUIHandler) buildStreamsPayload(isAdmin bool, accountID string) ([]
 				"type":             "hls",
 				"is_live":          session.IsLive,
 				"service_type":     dashboardStreamServiceType(session.IsLive, session.MediaMetadata.SourceServiceType, session.Path, session.OriginalPath),
-				"debrid_provider":  dashboardDebridProvider(session.MediaMetadata.SourceServiceType, session.Path, session.OriginalPath),
+				"debrid_provider":  dashboardDebridProvider(session.MediaMetadata.SourceServiceType, session.MediaMetadata.DebridProvider, session.Path, session.OriginalPath),
 				"path":             session.Path,
 				"original_path":    session.OriginalPath,
 				"filename":         filename,
@@ -2500,7 +2500,7 @@ func (h *AdminUIHandler) buildStreamsPayload(isAdmin bool, accountID string) ([]
 			"type":             "direct",
 			"is_live":          streamMetadataIsLive(stream.MediaMetadata, stream.Path),
 			"service_type":     dashboardStreamServiceType(streamMetadataIsLive(stream.MediaMetadata, stream.Path), stream.MediaMetadata.SourceServiceType, stream.Path),
-			"debrid_provider":  dashboardDebridProvider(stream.MediaMetadata.SourceServiceType, stream.Path),
+			"debrid_provider":  dashboardDebridProvider(stream.MediaMetadata.SourceServiceType, stream.MediaMetadata.DebridProvider, stream.Path),
 			"path":             stream.Path,
 			"filename":         stream.Filename,
 			"item_id":          stream.MediaMetadata.ItemID,
@@ -2744,12 +2744,14 @@ func dashboardStreamServiceType(isLive bool, sourceServiceType string, paths ...
 	return "usenet"
 }
 
-// dashboardDebridProvider extracts the provider segment from canonical debrid
-// stream paths. External signed URLs intentionally remain unidentified unless
-// their path retains the /debrid/{provider}/ structure.
-func dashboardDebridProvider(sourceServiceType string, paths ...string) string {
+// dashboardDebridProvider prefers provider metadata carried by the playback
+// request, then falls back to the provider segment in canonical debrid paths.
+func dashboardDebridProvider(sourceServiceType, explicitProvider string, paths ...string) string {
 	if normalizeStreamSourceServiceType(sourceServiceType) != "debrid" && dashboardStreamServiceType(false, sourceServiceType, paths...) != "debrid" {
 		return ""
+	}
+	if provider := normalizeStreamDebridProvider(explicitProvider); provider != "" {
+		return provider
 	}
 
 	for _, sourcePath := range paths {

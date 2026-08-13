@@ -239,18 +239,19 @@ type cometResponse struct {
 }
 
 type cometStream struct {
-	titleText  string
-	infoHash   string
-	fileIdx    int
-	sizeBytes  int64
-	seeders    int
-	provider   string
-	languages  []string
-	resolution string
-	trackers   []string
-	rawTitle   string
-	name       string
-	url        string // Direct playback URL (for pre-resolved debrid streams)
+	titleText      string
+	infoHash       string
+	fileIdx        int
+	sizeBytes      int64
+	seeders        int
+	provider       string
+	debridProvider string
+	languages      []string
+	resolution     string
+	trackers       []string
+	rawTitle       string
+	name           string
+	url            string // Direct playback URL (for pre-resolved debrid streams)
 }
 
 func (s cometStream) attributes() map[string]string {
@@ -260,6 +261,9 @@ func (s cometStream) attributes() map[string]string {
 	}
 	if s.provider != "" {
 		attrs["tracker"] = s.provider
+	}
+	if s.debridProvider != "" {
+		attrs["debridProvider"] = s.debridProvider
 	}
 	if s.resolution != "" {
 		attrs["resolution"] = s.resolution
@@ -369,6 +373,7 @@ func (c *CometScraper) fetchStreams(ctx context.Context, mediaType, id, fallback
 
 		seeders := parseInt(stream.Seeders, rawTitle)
 		provider := parseProvider(rawTitle)
+		debridProvider := parseCometDebridProvider(stream.BehaviorHints, name)
 		languages := parseLanguages(rawTitle)
 		resolution := detectResolution(name, rawTitle)
 		trackers := parseTrackers(stream.BehaviorHints)
@@ -390,22 +395,77 @@ func (c *CometScraper) fetchStreams(ctx context.Context, mediaType, id, fallback
 		}
 
 		streams = append(streams, cometStream{
-			titleText:  titleText,
-			infoHash:   infoHash,
-			fileIdx:    fileIdx,
-			sizeBytes:  sizeBytes,
-			seeders:    seeders,
-			provider:   provider,
-			languages:  languages,
-			resolution: resolution,
-			trackers:   trackers,
-			rawTitle:   rawTitle,
-			name:       name,
-			url:        streamURL,
+			titleText:      titleText,
+			infoHash:       infoHash,
+			fileIdx:        fileIdx,
+			sizeBytes:      sizeBytes,
+			seeders:        seeders,
+			provider:       provider,
+			debridProvider: debridProvider,
+			languages:      languages,
+			resolution:     resolution,
+			trackers:       trackers,
+			rawTitle:       rawTitle,
+			name:           name,
+			url:            streamURL,
 		})
 	}
 
 	return streams, nil
+}
+
+func parseCometDebridProvider(behaviorHints map[string]interface{}, streamName string) string {
+	if behaviorHints != nil {
+		if bingeGroup, ok := behaviorHints["bingeGroup"].(string); ok {
+			parts := strings.Split(strings.TrimSpace(bingeGroup), "|")
+			if len(parts) >= 3 && strings.EqualFold(strings.TrimSpace(parts[0]), "comet") {
+				if provider := normalizeCometDebridProvider(parts[1]); provider != "" {
+					return provider
+				}
+			}
+		}
+	}
+
+	name := strings.TrimSpace(streamName)
+	if strings.HasPrefix(name, "[") {
+		if end := strings.Index(name, "]"); end > 1 {
+			badge := strings.TrimSpace(name[1:end])
+			for _, suffix := range []string{"⚡", "⬇️", "⬇", "🔄"} {
+				badge = strings.ReplaceAll(badge, suffix, "")
+			}
+			return normalizeCometDebridProvider(badge)
+		}
+	}
+	return ""
+}
+
+func normalizeCometDebridProvider(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.NewReplacer("-", "", "_", "", " ", "").Replace(normalized)
+	switch normalized {
+	case "rd", "realdebrid":
+		return "realdebrid"
+	case "ad", "alldebrid":
+		return "alldebrid"
+	case "pm", "premiumize":
+		return "premiumize"
+	case "tb", "torbox":
+		return "torbox"
+	case "dl", "debridlink":
+		return "debridlink"
+	case "st", "stremthru":
+		return "stremthru"
+	case "db", "debrider":
+		return "debrider"
+	case "ed", "easydebrid":
+		return "easydebrid"
+	case "oc", "offcloud":
+		return "offcloud"
+	case "pp", "pikpak":
+		return "pikpak"
+	default:
+		return ""
+	}
 }
 
 // TestConnection verifies the Comet endpoint is reachable by fetching the manifest.

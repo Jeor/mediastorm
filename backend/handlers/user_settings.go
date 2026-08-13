@@ -286,6 +286,8 @@ func (h *UserSettingsHandler) getDefaultsFromGlobal() models.UserSettings {
 			DisablePrequeue:            globalSettings.Playback.DisablePrequeue,
 			PrerollMode:                globalSettings.Playback.PrerollMode,
 			PrerollAssetID:             globalSettings.Playback.PrerollAssetID,
+			PrerollMediaScope:          globalSettings.Playback.PrerollMediaScope,
+			PrerollSkipIfPrequeueReady: models.BoolPtr(globalSettings.Playback.PrerollSkipIfPrequeueReady),
 			StreamMigrationEnabled:     models.BoolPtr(globalSettings.Playback.StreamMigrationEnabled),
 			IgnoreDVCompatibilityCheck: models.BoolPtr(globalSettings.Playback.IgnoreDVCompatibilityCheck),
 			CreditsDetectionEnabled:    models.BoolPtr(globalSettings.Playback.CreditsDetectionEnabled),

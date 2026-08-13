@@ -78,6 +78,8 @@ type ClientFilterSettings struct {
 	DisablePrequeue               *bool     `json:"disablePrequeue,omitempty"`
 	PrerollMode                   *string   `json:"prerollMode,omitempty"`
 	PrerollAssetID                *string   `json:"prerollAssetId,omitempty"`
+	PrerollMediaScope             *string   `json:"prerollMediaScope,omitempty"`
+	PrerollSkipIfPrequeueReady    *bool     `json:"prerollSkipIfPrequeueReady,omitempty"`
 	StreamMigrationEnabled        *bool     `json:"streamMigrationEnabled,omitempty"`
 	IgnoreDVCompatibilityCheck    *bool     `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"`
 	CreditsDetectionEnabled       *bool     `json:"creditsDetectionEnabled,omitempty"`
@@ -163,6 +165,8 @@ func (c *ClientFilterSettings) IsEmpty() bool {
 		c.DisablePrequeue == nil &&
 		c.PrerollMode == nil &&
 		c.PrerollAssetID == nil &&
+		c.PrerollMediaScope == nil &&
+		c.PrerollSkipIfPrequeueReady == nil &&
 		c.StreamMigrationEnabled == nil &&
 		c.IgnoreDVCompatibilityCheck == nil &&
 		c.CreditsDetectionEnabled == nil &&

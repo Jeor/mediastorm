@@ -257,6 +257,12 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 			settings.Playback.PrerollMode = defaults.Playback.PrerollMode
 			settings.Playback.PrerollAssetID = defaults.Playback.PrerollAssetID
 		}
+		if settings.Playback.PrerollMediaScope == "" {
+			settings.Playback.PrerollMediaScope = defaults.Playback.PrerollMediaScope
+		}
+		if settings.Playback.PrerollSkipIfPrequeueReady == nil {
+			settings.Playback.PrerollSkipIfPrequeueReady = defaults.Playback.PrerollSkipIfPrequeueReady
+		}
 		if settings.Playback.StreamMigrationEnabled == nil {
 			settings.Playback.StreamMigrationEnabled = defaults.Playback.StreamMigrationEnabled
 		}
@@ -636,7 +642,8 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Playback.DisablePrequeue {
 		return false
 	}
-	if s.Playback.PrerollMode != "" || s.Playback.PrerollAssetID != "" {
+	if s.Playback.PrerollMode != "" || s.Playback.PrerollAssetID != "" ||
+		s.Playback.PrerollMediaScope != "" || s.Playback.PrerollSkipIfPrequeueReady != nil {
 		return false
 	}
 

@@ -16,6 +16,20 @@ func TestPlaybackSettingsNormalizeAllowedTrackLanguages(t *testing.T) {
 	}
 }
 
+func TestPlaybackSettingsNormalizePrerollMediaScope(t *testing.T) {
+	playback := PlaybackSettings{PrerollMode: "default", PrerollMediaScope: " TV "}
+	playback.NormalizePreroll()
+	if playback.PrerollMediaScope != "tv" {
+		t.Fatalf("PrerollMediaScope = %q, want tv", playback.PrerollMediaScope)
+	}
+
+	playback.PrerollMediaScope = "unsupported"
+	playback.NormalizePreroll()
+	if playback.PrerollMediaScope != "all" {
+		t.Fatalf("invalid PrerollMediaScope = %q, want all", playback.PrerollMediaScope)
+	}
+}
+
 func TestEnsureDefaultHomeShelvesBackfillsSharedShelfLimits(t *testing.T) {
 	shelves, changed := EnsureDefaultHomeShelves([]ShelfConfig{
 		{ID: "popular-on-server", Name: "Popular"},

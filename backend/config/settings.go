@@ -446,6 +446,8 @@ type PlaybackSettings struct {
 	DisablePrequeue               bool                      `json:"disablePrequeue"`                     // Disable automatic prequeue on page load (streams only resolve when Play is pressed)
 	PrerollMode                   string                    `json:"prerollMode,omitempty"`               // disabled, default, or custom
 	PrerollAssetID                string                    `json:"prerollAssetId,omitempty"`            // Content hash used when prerollMode is custom
+	PrerollMediaScope             string                    `json:"prerollMediaScope,omitempty"`         // all, movies, or tv
+	PrerollSkipIfPrequeueReady    bool                      `json:"prerollSkipIfPrequeueReady"`          // Skip pre-roll when a prepared stream is already ready
 	StreamMigrationEnabled        bool                      `json:"streamMigrationEnabled"`              // Switch to the next ranked stream when native playback cannot sustain the current stream
 	IgnoreDVCompatibilityCheck    bool                      `json:"ignoreDolbyVisionCompatibilityCheck"` // Skip Android display DV capability check before playback
 	CreditsDetectionEnabled       bool                      `json:"creditsDetectionEnabled"`             // Enable on-device credits detection/OCR during playback
@@ -495,6 +497,12 @@ func (p *PlaybackSettings) NormalizePreroll() {
 	default:
 		p.PrerollMode = "disabled"
 		p.PrerollAssetID = ""
+	}
+	p.PrerollMediaScope = strings.ToLower(strings.TrimSpace(p.PrerollMediaScope))
+	switch p.PrerollMediaScope {
+	case "movies", "tv":
+	default:
+		p.PrerollMediaScope = "all"
 	}
 }
 
@@ -1787,7 +1795,7 @@ func DefaultSettings() Settings {
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
-		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: true, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
+		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: true, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
 		Live:      LiveSettings{Mode: "m3u", PlaylistURL: "", MaxStreams: 0, PlaylistCacheTTLHours: 24},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),

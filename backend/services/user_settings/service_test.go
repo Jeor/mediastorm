@@ -124,6 +124,46 @@ func TestGetWithDefaults_SanitizesDefaultsFallback(t *testing.T) {
 	}
 }
 
+func TestGetWithDefaults_PrerollPolicyInheritance(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	defaults := models.UserSettings{Playback: models.PlaybackSettings{
+		PrerollMediaScope:          "all",
+		PrerollSkipIfPrequeueReady: models.BoolPtr(true),
+	}}
+	if err := svc.Update("user1", models.UserSettings{Playback: models.PlaybackSettings{
+		PrerollMediaScope:          "movies",
+		PrerollSkipIfPrequeueReady: models.BoolPtr(false),
+	}}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, err := svc.GetWithDefaults("user1", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults: %v", err)
+	}
+	if got.Playback.PrerollMediaScope != "movies" {
+		t.Fatalf("PrerollMediaScope = %q, want movies", got.Playback.PrerollMediaScope)
+	}
+	if got.Playback.PrerollSkipIfPrequeueReady == nil || *got.Playback.PrerollSkipIfPrequeueReady {
+		t.Fatal("expected explicit false skip-ready override to be preserved")
+	}
+
+	inherited, err := svc.GetWithDefaults("user2", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults defaults: %v", err)
+	}
+	if inherited.Playback.PrerollMediaScope != "all" ||
+		inherited.Playback.PrerollSkipIfPrequeueReady == nil ||
+		!*inherited.Playback.PrerollSkipIfPrequeueReady {
+		t.Fatalf("expected inherited pre-roll policy, got %+v", inherited.Playback)
+	}
+}
+
 func TestLoad_RemovesCleanPostersOverrides(t *testing.T) {
 	dir := t.TempDir()
 	raw := `{

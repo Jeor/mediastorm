@@ -202,3 +202,31 @@ func TestPersonDeviceSettingsAreIsolated(t *testing.T) {
 		t.Fatalf("person-b settings = %+v err=%v", gotB, err)
 	}
 }
+
+func TestPruneInvalidSettingsLockedRemovesMissingForeignKeys(t *testing.T) {
+	svc := &Service{settings: map[string]models.ClientFilterSettings{
+		models.ClientSettingsKey("valid-client", "valid-user"):     {},
+		models.ClientSettingsKey("missing-client", "valid-user"):   {},
+		models.ClientSettingsKey("valid-client", "missing-user"):   {},
+		models.ClientSettingsKey("missing-client", "missing-user"): {},
+		"legacy-client-key": {},
+	}}
+
+	removed := svc.pruneInvalidSettingsLocked(
+		map[string]struct{}{"valid-client": {}},
+		map[string]struct{}{"valid-user": {}},
+	)
+
+	if len(removed) != 3 {
+		t.Fatalf("removed %d settings, want 3", len(removed))
+	}
+	if _, ok := svc.settings[models.ClientSettingsKey("valid-client", "valid-user")]; !ok {
+		t.Fatal("valid person-device settings were removed")
+	}
+	if _, ok := svc.settings["legacy-client-key"]; !ok {
+		t.Fatal("legacy settings key should be left unchanged")
+	}
+	if len(svc.settings) != 2 {
+		t.Fatalf("settings contains %d entries after pruning, want 2", len(svc.settings))
+	}
+}

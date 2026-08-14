@@ -40,6 +40,8 @@ func TestAdminUsersPageExplainsAndRendersAccessHierarchy(t *testing.T) {
 		`Needs attention`,
 		`client.nickname || client.name || 'Unknown device'`,
 		`onclick="showRenameClientModal('${client.id}')"`,
+		`${orphaned ? '<option value="" selected disabled>Move to person…</option>' : ''}`,
+		`onchange="if (this.value) reassignClient(`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("accounts template missing hierarchy marker %q", marker)

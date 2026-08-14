@@ -412,9 +412,48 @@ func (s *Service) saveLocked() error {
 	return nil
 }
 
+func (s *Service) pruneInvalidSettingsLocked(validClientIDs, validUserIDs map[string]struct{}) []string {
+	var removed []string
+	for key := range s.settings {
+		clientID, userID, ok := models.SplitClientSettingsKey(key)
+		if !ok {
+			continue
+		}
+		if _, ok := validClientIDs[clientID]; !ok {
+			delete(s.settings, key)
+			removed = append(removed, key)
+			continue
+		}
+		if _, ok := validUserIDs[userID]; !ok {
+			delete(s.settings, key)
+			removed = append(removed, key)
+		}
+	}
+	return removed
+}
+
 func (s *Service) syncToDB() error {
 	ctx := context.Background()
 	return s.store.WithTx(ctx, func(tx *datastore.Tx) error {
+		clients, err := tx.Clients().List(ctx)
+		if err != nil {
+			return fmt.Errorf("list clients before syncing client settings: %w", err)
+		}
+		validClientIDs := make(map[string]struct{}, len(clients))
+		for _, client := range clients {
+			validClientIDs[client.ID] = struct{}{}
+		}
+
+		users, err := tx.Users().List(ctx)
+		if err != nil {
+			return fmt.Errorf("list users before syncing client settings: %w", err)
+		}
+		validUserIDs := make(map[string]struct{}, len(users))
+		for _, user := range users {
+			validUserIDs[user.ID] = struct{}{}
+		}
+		s.pruneInvalidSettingsLocked(validClientIDs, validUserIDs)
+
 		existing, err := tx.ClientSettings().List(ctx)
 		if err != nil {
 			return err

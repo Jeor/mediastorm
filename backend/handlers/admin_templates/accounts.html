@@ -609,7 +609,8 @@ function renderDeviceRow(client, orphaned) {
         <div class="device-actions">
             <button class="btn btn-secondary btn-sm" onclick="pingClient('${client.id}')">Ping</button>
             <button class="btn btn-secondary btn-sm" onclick="showRenameClientModal('${client.id}')" title="Set or clear the device nickname">Rename</button>
-            <select class="form-select" style="width:auto;max-width:180px;font-size:0.78rem;" aria-label="Move ${escapeHtml(client.nickname || client.name || 'device')} to another person" onchange="reassignClient('${client.id}', this.value, '${client.userId}')">
+            <select class="form-select" style="width:auto;max-width:180px;font-size:0.78rem;" aria-label="Move ${escapeHtml(client.nickname || client.name || 'device')} to another person" onchange="if (this.value) reassignClient('${client.id}', this.value, '${client.userId}')">
+                ${orphaned ? '<option value="" selected disabled>Move to person…</option>' : ''}
                 ${renderPersonOptions(client.userId)}
             </select>
             <button class="btn btn-danger btn-sm" onclick="deleteClient('${client.id}', '${escapeHtml(client.nickname || client.name || 'this device')}', '${escapeHtml(client.userId || '')}')">Remove</button>

@@ -132,6 +132,8 @@ type DisplaySettings struct {
 	EnableHeroArtPanning *bool `json:"enableHeroArtPanning,omitempty"`
 	// EnableHeroArtRotation cycles through alternate TV hero artwork.
 	EnableHeroArtRotation *bool `json:"enableHeroArtRotation,omitempty"`
+	// ShowSeriesBackdropForMissingEpisodeArt uses show landscape art when an episode thumbnail is unavailable.
+	ShowSeriesBackdropForMissingEpisodeArt *bool `json:"showSeriesBackdropForMissingEpisodeArt,omitempty"`
 	// BlurUnwatchedEpisodeThumbnails blurs Details-page thumbnails for unwatched episodes.
 	BlurUnwatchedEpisodeThumbnails *bool `json:"blurUnwatchedEpisodeThumbnails,omitempty"`
 	// BlurUnwatchedEpisodeThumbnailsIncludeCurrent applies thumbnail blurring to the selected/current episode too.
@@ -1041,6 +1043,7 @@ func DefaultUserSettings() UserSettings {
 			EnableAnimations:                          BoolPtr(true),
 			EnableHeroArtPanning:                      BoolPtr(true),
 			EnableHeroArtRotation:                     BoolPtr(true),
+			ShowSeriesBackdropForMissingEpisodeArt:    BoolPtr(false),
 			Appearance: AppearanceSettings{
 				FontScale:    FloatPtr(1.0),
 				ButtonStyle:  "soft",

@@ -82,6 +82,9 @@ func TestClientSettingPathRejectsProfileOnlySettings(t *testing.T) {
 	if got, ok := clientSettingPath("display.enableAnimations"); !ok || got != "enableAnimations" {
 		t.Fatalf("clientSettingPath() = %q, %v", got, ok)
 	}
+	if got, ok := clientSettingPath("display.showSeriesBackdropForMissingEpisodeArt"); !ok || got != "showSeriesBackdropForMissingEpisodeArt" {
+		t.Fatalf("clientSettingPath() = %q, %v", got, ok)
+	}
 	if got, ok := clientSettingPath("filtering.debrid.hdrDvPolicy"); !ok || got != "debrid.hdrDvPolicy" {
 		t.Fatalf("nested clientSettingPath() = %q, %v", got, ok)
 	}

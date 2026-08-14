@@ -65,6 +65,14 @@ func TestDefaultUserSettingsKeepsTVDisplayOptionsDisabled(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsDisablesSeriesBackdropForMissingEpisodeArt(t *testing.T) {
+	settings := DefaultUserSettings()
+	option := settings.Display.ShowSeriesBackdropForMissingEpisodeArt
+	if option == nil || *option {
+		t.Fatal("series backdrop fallback should be explicitly disabled by default")
+	}
+}
+
 func TestEnsureDefaultHomeShelvesDisablesExperimentalTonightShelf(t *testing.T) {
 	shelves := DefaultHomeShelfConfigs()
 	for i := range shelves {

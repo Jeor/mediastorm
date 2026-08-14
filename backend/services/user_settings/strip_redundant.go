@@ -185,23 +185,24 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			AnimePreferredLanguage: models.StringPtr(g.AnimeFiltering.AnimePreferredLanguage),
 		},
 		Display: models.DisplaySettings{
-			BadgeVisibility:                  g.Display.BadgeVisibility,
-			NavigationTabVisibility:          g.Display.NavigationTabVisibility,
-			WatchStateIconStyle:              g.Display.WatchStateIconStyle,
-			IncludeUnreleasedMoviesInLists:   models.BoolPtr(g.Display.IncludeUnreleasedMoviesInLists),
-			IncludeUnreleasedShowsInLists:    models.BoolPtr(g.Display.IncludeUnreleasedShowsInLists),
-			IncludeUnreleasedMoviesInSearch:  models.BoolPtr(g.Display.IncludeUnreleasedMoviesInSearch),
-			IncludeUnreleasedShowsInSearch:   models.BoolPtr(g.Display.IncludeUnreleasedShowsInSearch),
-			BypassFilteringForAIOStreamsOnly: models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly),
-			DisableMobileTopCarousel:         models.BoolPtr(g.Display.DisableMobileTopCarousel),
-			HideContinueWatchingHeroMetadata: models.BoolPtr(g.Display.HideContinueWatchingHeroMetadata),
-			MoveDetailsRatingsToMetadata:     models.BoolPtr(g.Display.MoveDetailsRatingsToMetadata),
-			HideDetailsPoster:                models.BoolPtr(g.Display.HideDetailsPoster),
-			HideTVDrawerRail:                 models.BoolPtr(g.Display.HideTVDrawerRail),
-			EnableAnimations:                 models.BoolPtr(g.Display.EnableAnimations),
-			EnableHeroArtPanning:             models.BoolPtr(g.Display.EnableHeroArtPanning),
-			EnableHeroArtRotation:            models.BoolPtr(g.Display.EnableHeroArtRotation),
-			AppLanguage:                      g.Display.AppLanguage,
+			BadgeVisibility:                        g.Display.BadgeVisibility,
+			NavigationTabVisibility:                g.Display.NavigationTabVisibility,
+			WatchStateIconStyle:                    g.Display.WatchStateIconStyle,
+			IncludeUnreleasedMoviesInLists:         models.BoolPtr(g.Display.IncludeUnreleasedMoviesInLists),
+			IncludeUnreleasedShowsInLists:          models.BoolPtr(g.Display.IncludeUnreleasedShowsInLists),
+			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(g.Display.IncludeUnreleasedMoviesInSearch),
+			IncludeUnreleasedShowsInSearch:         models.BoolPtr(g.Display.IncludeUnreleasedShowsInSearch),
+			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly),
+			DisableMobileTopCarousel:               models.BoolPtr(g.Display.DisableMobileTopCarousel),
+			HideContinueWatchingHeroMetadata:       models.BoolPtr(g.Display.HideContinueWatchingHeroMetadata),
+			MoveDetailsRatingsToMetadata:           models.BoolPtr(g.Display.MoveDetailsRatingsToMetadata),
+			HideDetailsPoster:                      models.BoolPtr(g.Display.HideDetailsPoster),
+			HideTVDrawerRail:                       models.BoolPtr(g.Display.HideTVDrawerRail),
+			EnableAnimations:                       models.BoolPtr(g.Display.EnableAnimations),
+			EnableHeroArtPanning:                   models.BoolPtr(g.Display.EnableHeroArtPanning),
+			EnableHeroArtRotation:                  models.BoolPtr(g.Display.EnableHeroArtRotation),
+			ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(g.Display.ShowSeriesBackdropForMissingEpisodeArt),
+			AppLanguage:                            g.Display.AppLanguage,
 			Appearance: models.AppearanceSettings{
 				FontScale:            g.Display.Appearance.FontScale,
 				AccentColor:          g.Display.Appearance.AccentColor,
@@ -524,6 +525,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Display.EnableHeroArtRotation == nil {
 		eff.Display.EnableHeroArtRotation = models.BoolPtr(g.Display.EnableHeroArtRotation)
+	}
+	if eff.Display.ShowSeriesBackdropForMissingEpisodeArt == nil {
+		eff.Display.ShowSeriesBackdropForMissingEpisodeArt = models.BoolPtr(g.Display.ShowSeriesBackdropForMissingEpisodeArt)
 	}
 
 	// AnimeFiltering
@@ -1006,6 +1010,10 @@ func stripDisplay(d *models.DisplaySettings, g config.DisplaySettings) bool {
 		d.EnableHeroArtRotation = nil
 		changed = true
 	}
+	if d.ShowSeriesBackdropForMissingEpisodeArt != nil && *d.ShowSeriesBackdropForMissingEpisodeArt == g.ShowSeriesBackdropForMissingEpisodeArt {
+		d.ShowSeriesBackdropForMissingEpisodeArt = nil
+		changed = true
+	}
 	if d.AppLanguage != "" && d.AppLanguage == g.AppLanguage {
 		d.AppLanguage = ""
 		changed = true
@@ -1385,6 +1393,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.EnableHeroArtRotation != nil && eff.Display.EnableHeroArtRotation != nil && *cs.EnableHeroArtRotation == *eff.Display.EnableHeroArtRotation {
 		cs.EnableHeroArtRotation = nil
+		changed = true
+	}
+	if cs.ShowSeriesBackdropForMissingEpisodeArt != nil && eff.Display.ShowSeriesBackdropForMissingEpisodeArt != nil && *cs.ShowSeriesBackdropForMissingEpisodeArt == *eff.Display.ShowSeriesBackdropForMissingEpisodeArt {
+		cs.ShowSeriesBackdropForMissingEpisodeArt = nil
 		changed = true
 	}
 	if cs.NavigationTabVisibility != nil && stringSliceEqualUnordered(*cs.NavigationTabVisibility, eff.Display.NavigationTabVisibility) {

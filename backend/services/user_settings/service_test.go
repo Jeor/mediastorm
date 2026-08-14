@@ -366,6 +366,38 @@ func TestGetWithDefaults_TVDisplayOptionsInheritAndOverride(t *testing.T) {
 	}
 }
 
+func TestGetWithDefaults_SeriesBackdropFallbackInheritsAndOverrides(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	defaults := models.UserSettings{Display: models.DisplaySettings{
+		ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(true),
+	}}
+	got, err := svc.GetWithDefaults("user1", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults inherited: %v", err)
+	}
+	if got.Display.ShowSeriesBackdropForMissingEpisodeArt == nil || !*got.Display.ShowSeriesBackdropForMissingEpisodeArt {
+		t.Fatal("expected series backdrop fallback to inherit global true")
+	}
+
+	if err := svc.Update("user1", models.UserSettings{Display: models.DisplaySettings{
+		ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(false),
+	}}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	got, err = svc.GetWithDefaults("user1", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults override: %v", err)
+	}
+	if got.Display.ShowSeriesBackdropForMissingEpisodeArt == nil || *got.Display.ShowSeriesBackdropForMissingEpisodeArt {
+		t.Fatal("expected profile false to override global true")
+	}
+}
+
 func TestGetWithDefaults_DisplayAppearanceBackgroundColorFallsBackToGlobal(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)

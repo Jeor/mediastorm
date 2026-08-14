@@ -1288,6 +1288,8 @@ type DisplaySettings struct {
 	EnableHeroArtPanning bool `json:"enableHeroArtPanning"`
 	// EnableHeroArtRotation cycles through alternate TV hero artwork.
 	EnableHeroArtRotation bool `json:"enableHeroArtRotation"`
+	// ShowSeriesBackdropForMissingEpisodeArt uses show landscape art when an episode thumbnail is unavailable.
+	ShowSeriesBackdropForMissingEpisodeArt bool `json:"showSeriesBackdropForMissingEpisodeArt,omitempty"`
 	// BlurUnwatchedEpisodeThumbnails blurs Details-page thumbnails for unwatched episodes.
 	BlurUnwatchedEpisodeThumbnails bool `json:"blurUnwatchedEpisodeThumbnails,omitempty"`
 	// BlurUnwatchedEpisodeThumbnailsIncludeCurrent applies thumbnail blurring to the selected/current episode too.
@@ -1821,18 +1823,19 @@ func DefaultSettings() Settings {
 			NavigationTabVisibilityIncludesWatchlist:  true,
 		},
 		Display: DisplaySettings{
-			BadgeVisibility:                 []string{"watchProgress"},
-			NavigationTabVisibility:         []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
-			WatchStateIconStyle:             "colored",
-			IncludeUnreleasedMoviesInLists:  true,
-			IncludeUnreleasedShowsInLists:   true,
-			IncludeUnreleasedMoviesInSearch: true,
-			IncludeUnreleasedShowsInSearch:  true,
-			CleanPosters:                    true,
-			AlwaysShowProfileSelector:       true,
-			EnableAnimations:                true,
-			EnableHeroArtPanning:            true,
-			EnableHeroArtRotation:           true,
+			BadgeVisibility:                        []string{"watchProgress"},
+			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
+			WatchStateIconStyle:                    "colored",
+			IncludeUnreleasedMoviesInLists:         true,
+			IncludeUnreleasedShowsInLists:          true,
+			IncludeUnreleasedMoviesInSearch:        true,
+			IncludeUnreleasedShowsInSearch:         true,
+			CleanPosters:                           true,
+			AlwaysShowProfileSelector:              true,
+			EnableAnimations:                       true,
+			EnableHeroArtPanning:                   true,
+			EnableHeroArtRotation:                  true,
+			ShowSeriesBackdropForMissingEpisodeArt: false,
 			Appearance: AppearanceSettings{
 				FontScale:    floatPtr(1.0),
 				ButtonStyle:  "soft",

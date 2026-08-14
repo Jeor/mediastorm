@@ -340,6 +340,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Display.EnableHeroArtRotation == nil {
 			settings.Display.EnableHeroArtRotation = defaults.Display.EnableHeroArtRotation
 		}
+		if settings.Display.ShowSeriesBackdropForMissingEpisodeArt == nil {
+			settings.Display.ShowSeriesBackdropForMissingEpisodeArt = defaults.Display.ShowSeriesBackdropForMissingEpisodeArt
+		}
 		if settings.Display.AppLanguage == "" {
 			settings.Display.AppLanguage = defaults.Display.AppLanguage
 		}
@@ -721,6 +724,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Display.EnableAnimations != nil ||
 		s.Display.EnableHeroArtPanning != nil ||
 		s.Display.EnableHeroArtRotation != nil ||
+		s.Display.ShowSeriesBackdropForMissingEpisodeArt != nil ||
 		s.Display.AppLanguage != "" ||
 		s.Display.Appearance.FontScale != nil ||
 		s.Display.Appearance.AccentColor != "" ||

@@ -524,8 +524,10 @@ func TestDirectCastCopyWideningRequiresMatchingProof(t *testing.T) {
 	}
 }
 
-// A compatibility cast session must hand the receiver stereo AAC, because this is the
-// session the app's cast path creates and the only reason its audio is audible.
+// A compatibility cast session must hand the receiver stereo AAC.
+//
+// This is the fallback the app lands on, not its first choice: it asks for the direct profile,
+// and the server drops to this ladder for anything the receiver cannot take as-is.
 //
 // The failure this pins down: the cast path used to hand over the source URL, so a BluRay
 // rip reached the receiver as MKV with AC-3/E-AC-3. A Default Media Receiver decodes the
@@ -567,5 +569,61 @@ func TestCompatibilityCastForcesStereoAACForUndecodableAudio(t *testing.T) {
 	}
 	if !argPair(args, "-hls_segment_type", "mpegts") {
 		t.Fatalf("cast/forceAAC sessions must use MPEG-TS segments; args=%v", args)
+	}
+}
+
+// The plan must record the extension it chose, because a completed playlist is rebuilt from it.
+//
+// Direct Cast remuxes to MPEG-TS but satisfies none of the fMP4 exclusions, so the playlist
+// synthesis used to reconstruct `.m4s` names for files that were never written: the receiver
+// requested segment0.m4s, got nothing, retried, and gave up mid-episode with the stream healthy.
+func TestCastPlanRecordsItsSegmentExtension(t *testing.T) {
+	direct := &HLSSession{
+		ID:             "direct-cast-ext",
+		Path:           "movie.mkv",
+		OriginalPath:   "movie.mkv",
+		OutputDir:      t.TempDir(),
+		CastMode:       true,
+		DirectCastMode: true,
+		PlaybackTarget: "cast-direct",
+		ProbeData: &UnifiedProbeResult{
+			Duration:           120,
+			VideoCodec:         "h264",
+			VideoPixFmt:        "yuv420p",
+			VideoProfile:       "High",
+			VideoWidth:         1920,
+			VideoHeight:        1080,
+			VideoLevel:         41,
+			AvgFrameRate:       "24000/1001",
+			AudioStreams:       []audioStreamInfo{{Index: 1, Codec: "eac3"}},
+			HasCompatibleAudio: true,
+		},
+	}
+	runCastArgPlanTest(t, direct, false)
+	if direct.SegmentExt != ".ts" {
+		t.Fatalf("direct cast remuxes to MPEG-TS; recorded %q, so a completed playlist would name files that do not exist", direct.SegmentExt)
+	}
+
+	compatibility := &HLSSession{
+		ID:           "compat-cast-ext",
+		Path:         "movie.mkv",
+		OriginalPath: "movie.mkv",
+		OutputDir:    t.TempDir(),
+		CastMode:     true,
+		ProbeData: &UnifiedProbeResult{
+			Duration:     120,
+			VideoCodec:   "h264",
+			VideoPixFmt:  "yuv420p",
+			VideoProfile: "High",
+			VideoWidth:   1920,
+			VideoHeight:  1080,
+			VideoLevel:   41,
+			AvgFrameRate: "24000/1001",
+			AudioStreams: []audioStreamInfo{{Index: 1, Codec: "eac3"}},
+		},
+	}
+	runCastArgPlanTest(t, compatibility, true)
+	if compatibility.SegmentExt != ".ts" {
+		t.Fatalf("compatibility cast also uses MPEG-TS; recorded %q", compatibility.SegmentExt)
 	}
 }

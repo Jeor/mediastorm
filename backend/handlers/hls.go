@@ -423,6 +423,9 @@ type HLSSession struct {
 	EarliestBufferedSegment int  // Earliest segment still in player's buffer from keepalive (-1 = unknown)
 	Paused                  bool // True if FFmpeg is paused (SIGSTOP) waiting for player to catch up
 	FinalSegmentCount       int  // Highest segment number created when transcoding completed (-1 = still running or unknown)
+	// SegmentExt is the extension the transcode plan actually chose (".ts" or ".m4s"), recorded
+	// so nothing has to reconstruct it from flags. Empty until the plan runs.
+	SegmentExt string
 
 	// Input error recovery (for usenet disconnections)
 	InputErrorDetected bool // Set to true when FFmpeg input stream fails (usenet disconnect)
@@ -3547,6 +3550,15 @@ func (m *HLSManager) startTranscoding(ctx context.Context, session *HLSSession, 
 		log.Printf("[hls] session %s: using fMP4 segments for SDR content (testing, no codec tag forced)", session.ID)
 	}
 
+	// Remember what was actually chosen. Everything downstream that needs to name a segment
+	// re-derived this from session flags instead, and got it wrong for direct Cast: that path
+	// remuxes to MPEG-TS but satisfies none of the fMP4 exclusions, so a completed playlist was
+	// rebuilt advertising `.m4s` files that were never written. The receiver then asked for
+	// segment0.m4s, got nothing, and stopped. One recorded fact beats six reconstructions.
+	session.mu.Lock()
+	session.SegmentExt = segmentExt
+	session.mu.Unlock()
+
 	// Audio handling
 	audioCodecHandled := false
 
@@ -5288,10 +5300,18 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		// Find the highest segment number in the current playlist
 		highestExisting := -1
 		lines := strings.Split(playlistContent, "\n")
-		// Determine segment extension based on actual session format.
-		segmentExt := ".m4s"
-		if session.usesStableCastTimeline() || (session.forceAAC && !session.DirectCastMode && !session.HasDV && !session.HasHDR) {
-			segmentExt = ".ts" // Stable Cast and non-direct forceAAC sessions use MPEG-TS for compatibility.
+		// The extension the plan actually chose. Deriving it from flags here is what broke direct
+		// Cast: it remuxes to MPEG-TS yet matches none of the fMP4 exclusions below, so this
+		// synthesised `.m4s` entries for files that were never written and the receiver stalled on
+		// the first one. The playlist itself is the fallback, because it names real segments.
+		session.mu.RLock()
+		segmentExt := session.SegmentExt
+		session.mu.RUnlock()
+		if segmentExt == "" {
+			segmentExt = ".m4s"
+			if strings.Contains(playlistContent, ".ts\n") {
+				segmentExt = ".ts"
+			}
 		}
 		for _, line := range lines {
 			if strings.HasPrefix(line, "segment") && strings.HasSuffix(line, segmentExt) {

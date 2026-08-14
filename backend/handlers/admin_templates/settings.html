@@ -534,7 +534,7 @@
             <div class="settings-level-section">
                 <div class="settings-sidebar-label">View</div>
                 <div class="settings-level-switch" aria-label="Settings detail level">
-                    <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is being reviewed">Basic</button>
+                    <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
                     <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
                 </div>
                 <div id="settingsLevelHelp" class="settings-level-help"></div>
@@ -782,9 +782,7 @@
     const settingsDebugSessionId = 'settings-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     let editShelfEscapeHandler = null;
     let activeSettingsGroup = '';
-    // Basic mode remains visible as a roadmap affordance, but all settings stay
-    // available until its contents have been reviewed section by section.
-    let settingsLevel = 'advanced';
+    let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';
     const advancedSections = new Set(['ranking', 'server', 'transmux']);
     const advancedFieldPaths = new Set([
         'streaming.multiProviderMode',
@@ -814,7 +812,7 @@
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = 'advanced';
+        settingsLevel = (level === 'basic') ? 'basic' : 'advanced';
         localStorage.setItem('mediastorm-settings-level', settingsLevel);
         renderSettings();
     }
@@ -850,7 +848,9 @@
         document.getElementById('settingsBasicBtn')?.classList.toggle('active', settingsLevel === 'basic');
         document.getElementById('settingsAdvancedBtn')?.classList.toggle('active', settingsLevel === 'advanced');
         const help = document.getElementById('settingsLevelHelp');
-        if (help) help.textContent = 'All settings are currently shown. Basic view is disabled while its contents are reviewed.';
+        if (help) help.textContent = settingsLevel === 'basic'
+            ? 'Showing common settings. Switch to Advanced or search to find everything else.'
+            : 'Showing all settings.';
     }
 
     function settingsScopeIcon(kind) {

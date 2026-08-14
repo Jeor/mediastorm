@@ -1860,7 +1860,25 @@ func (m *HLSManager) CreateSession(ctx context.Context, path string, originalPat
 
 	normalizedPlaybackTarget := strings.ToLower(strings.TrimSpace(playbackTarget))
 	requestedDirectCastMode := castMode && isDirectCastTarget(normalizedPlaybackTarget, "")
-	directCastMode := requestedDirectCastMode && canAttemptDirectCastCopyVideo(probeData, m.lookupCastCapabilities(castReceiverHost))
+	// Refused for now, whatever the receiver can decode: copying the video is unsafe while
+	// playlists assume a fixed segment duration.
+	//
+	// A copied stream can only be cut at the source's own keyframes, so its segments run whatever
+	// length the GOP dictates — 10.4s, 1.6s, 1.1s, 9.8s measured on an ordinary x264 rip. This
+	// package derives the segment count as duration/hlsSegmentDuration and synthesises missing
+	// entries at that flat duration, so against variable segments the count is roughly double
+	// reality and the durations are invented: a receiver plays the real segments, reaches the
+	// fiction and stalls, while the server serves instantly and looks healthy.
+	//
+	// Re-encoding forces a keyframe every hlsSegmentDuration, which is what makes that model
+	// true, so the compatibility transcode remains correct. Lifting this means teaching the
+	// playlist layer to carry real per-segment durations; the copy envelope below stays intact
+	// and tested for that day. Downgrading here rather than deeper keeps DirectCastMode false,
+	// so the session is built as compatibility throughout instead of half-converted.
+	const directCastPlaylistsSupportVariableSegments = false
+	directCastMode := directCastPlaylistsSupportVariableSegments &&
+		requestedDirectCastMode &&
+		canAttemptDirectCastCopyVideo(probeData, m.lookupCastCapabilities(castReceiverHost))
 	if requestedDirectCastMode && !directCastMode {
 		// Say so at creation. The startTranscoding-side guard cannot log this
 		// case: the session is already built as compatibility by then, so

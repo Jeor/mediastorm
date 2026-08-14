@@ -7,7 +7,14 @@ func FloatPtr(v float64) *float64 { return &v }
 func BoolPtr(v bool) *bool        { return &v }
 func StringPtr(v string) *string  { return &v }
 func IntPtr(v int) *int           { return &v }
-func Int64Ptr(v int64) *int64     { return &v }
+func StringSlicePtr(v []string) *[]string {
+	copy := append([]string(nil), v...)
+	if copy == nil {
+		copy = []string{}
+	}
+	return &copy
+}
+func Int64Ptr(v int64) *int64 { return &v }
 
 // Helper functions for safely dereferencing pointers with defaults
 func FloatVal(p *float64, def float64) float64 {
@@ -389,45 +396,45 @@ func ResolveLiveSource(profile *LiveTVSettings, global *ResolvedLiveSource) Reso
 
 // PlaybackSettings controls how the client should launch resolved streams.
 type PlaybackSettings struct {
-	PreferredPlayer               string   `json:"preferredPlayer"`
-	PreferredAudioLanguage        string   `json:"preferredAudioLanguage,omitempty"`
-	PreferredSubtitleLanguage     string   `json:"preferredSubtitleLanguage,omitempty"`
-	AllowedTrackLanguages         []string `json:"allowedTrackLanguages,omitempty"`
-	PreferredSubtitleMode         string   `json:"preferredSubtitleMode,omitempty"`
-	PauseWhenAppInactive          bool     `json:"pauseWhenAppInactive,omitempty"`
-	UseLoadingScreen              bool     `json:"useLoadingScreen,omitempty"`
-	SubtitleSize                  float64  `json:"subtitleSize,omitempty"`                        // Scaling factor for subtitle size (1.0 = default)
-	SubtitleUseCropDetectPosition *bool    `json:"subtitleUseCropDetectPosition,omitempty"`       // Use detected video letterbox bars for subtitle placement
-	SubtitleColor                 string   `json:"subtitleColor,omitempty"`                       // Text color as #RRGGBB
-	SubtitleOpacity               *float64 `json:"subtitleOpacity,omitempty"`                     // Text opacity (0.0-1.0)
-	SubtitleFont                  string   `json:"subtitleFont,omitempty"`                        // SRT/VTT subtitle font family
-	SubtitleBold                  *bool    `json:"subtitleBold,omitempty"`                        // Render SRT/VTT subtitle text in bold
-	SubtitleOutlineEnabled        *bool    `json:"subtitleOutlineEnabled,omitempty"`              // Show text outline around subtitles
-	SubtitleOutlineColor          string   `json:"subtitleOutlineColor,omitempty"`                // Outline color as #RRGGBB
-	SubtitleOutlineWeight         *float64 `json:"subtitleOutlineWeight,omitempty"`               // Outline weight (0.0-1.0)
-	SubtitleBackgroundEnabled     *bool    `json:"subtitleBackgroundEnabled,omitempty"`           // Show subtitle background box
-	SubtitleBackgroundColor       string   `json:"subtitleBackgroundColor,omitempty"`             // Background color as #RRGGBB
-	SubtitleBackgroundOpacity     *float64 `json:"subtitleBackgroundOpacity,omitempty"`           // Background opacity (0.0-1.0)
-	SeekForwardSeconds            int      `json:"seekForwardSeconds,omitempty"`                  // Seconds to skip forward (default 30)
-	SeekBackwardSeconds           int      `json:"seekBackwardSeconds,omitempty"`                 // Seconds to skip backward (default 10)
-	ForceAACTranscoding           bool     `json:"forceAacTranscoding,omitempty"`                 // Force AC3/EAC3/DTS audio to AAC
-	AutoPlayTrailersTV            bool     `json:"autoPlayTrailersTV,omitempty"`                  // Auto-play trailers on TV details pages
-	RewindOnResumeFromPause       int      `json:"rewindOnResumeFromPause,omitempty"`             // Seconds to rewind when unpausing (default 0)
-	RewindOnPlaybackStart         int      `json:"rewindOnPlaybackStart,omitempty"`               // Seconds to rewind when resuming from saved progress (default 0)
-	DisablePrequeue               bool     `json:"disablePrequeue,omitempty"`                     // Disable automatic stream pre-loading
-	PrerollMode                   string   `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, default, or custom override
-	PrerollAssetID                string   `json:"prerollAssetId,omitempty"`                      // Content hash used when prerollMode is custom
-	PrerollMediaScope             string   `json:"prerollMediaScope,omitempty"`                   // Empty inherits; all, movies, or tv
-	PrerollSkipIfPrequeueReady    *bool    `json:"prerollSkipIfPrequeueReady,omitempty"`          // Skip pre-roll when a prepared stream is already ready
-	StreamMigrationEnabled        *bool    `json:"streamMigrationEnabled,omitempty"`              // Switch to the next ranked stream when native playback cannot sustain the current stream
-	IgnoreDVCompatibilityCheck    *bool    `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"` // Skip Android display DV capability check before playback
-	CreditsDetectionEnabled       *bool    `json:"creditsDetectionEnabled,omitempty"`             // Enable on-device credits detection/OCR during playback
-	CreditsAutoSkip               bool     `json:"creditsAutoSkip,omitempty"`                     // Automatically play the next episode after credits are detected
-	CreditsDetection              bool     `json:"creditsDetection,omitempty"`                    // Legacy name for creditsAutoSkip
-	MatchFrameRate                *bool    `json:"matchFrameRate,omitempty"`                      // Request TV display refresh rate matching during playback
-	LiveClosedCaptionExtraction   *bool    `json:"liveClosedCaptionExtraction,omitempty"`         // Extract EIA-608 closed captions from live TV (server-side)
-	MaxConcurrentStreams          *int     `json:"maxConcurrentStreams,omitempty"`                // Per-profile concurrent stream limit (nil = use account limit)
-	MaxResultsPerResolution       *int     `json:"maxResultsPerResolution,omitempty"`             // Maximum number of results per resolution tier (0 = no limit)
+	PreferredPlayer               string    `json:"preferredPlayer"`
+	PreferredAudioLanguage        string    `json:"preferredAudioLanguage,omitempty"`
+	PreferredSubtitleLanguage     string    `json:"preferredSubtitleLanguage,omitempty"`
+	AllowedTrackLanguages         *[]string `json:"allowedTrackLanguages,omitempty"`
+	PreferredSubtitleMode         string    `json:"preferredSubtitleMode,omitempty"`
+	PauseWhenAppInactive          *bool     `json:"pauseWhenAppInactive,omitempty"`
+	UseLoadingScreen              *bool     `json:"useLoadingScreen,omitempty"`
+	SubtitleSize                  float64   `json:"subtitleSize,omitempty"`                        // Scaling factor for subtitle size (1.0 = default)
+	SubtitleUseCropDetectPosition *bool     `json:"subtitleUseCropDetectPosition,omitempty"`       // Use detected video letterbox bars for subtitle placement
+	SubtitleColor                 string    `json:"subtitleColor,omitempty"`                       // Text color as #RRGGBB
+	SubtitleOpacity               *float64  `json:"subtitleOpacity,omitempty"`                     // Text opacity (0.0-1.0)
+	SubtitleFont                  *string   `json:"subtitleFont,omitempty"`                        // SRT/VTT subtitle font family
+	SubtitleBold                  *bool     `json:"subtitleBold,omitempty"`                        // Render SRT/VTT subtitle text in bold
+	SubtitleOutlineEnabled        *bool     `json:"subtitleOutlineEnabled,omitempty"`              // Show text outline around subtitles
+	SubtitleOutlineColor          string    `json:"subtitleOutlineColor,omitempty"`                // Outline color as #RRGGBB
+	SubtitleOutlineWeight         *float64  `json:"subtitleOutlineWeight,omitempty"`               // Outline weight (0.0-1.0)
+	SubtitleBackgroundEnabled     *bool     `json:"subtitleBackgroundEnabled,omitempty"`           // Show subtitle background box
+	SubtitleBackgroundColor       string    `json:"subtitleBackgroundColor,omitempty"`             // Background color as #RRGGBB
+	SubtitleBackgroundOpacity     *float64  `json:"subtitleBackgroundOpacity,omitempty"`           // Background opacity (0.0-1.0)
+	SeekForwardSeconds            int       `json:"seekForwardSeconds,omitempty"`                  // Seconds to skip forward (default 30)
+	SeekBackwardSeconds           int       `json:"seekBackwardSeconds,omitempty"`                 // Seconds to skip backward (default 10)
+	ForceAACTranscoding           *bool     `json:"forceAacTranscoding,omitempty"`                 // Force AC3/EAC3/DTS audio to AAC
+	AutoPlayTrailersTV            *bool     `json:"autoPlayTrailersTV,omitempty"`                  // Auto-play trailers on TV details pages
+	RewindOnResumeFromPause       *int      `json:"rewindOnResumeFromPause,omitempty"`             // Seconds to rewind when unpausing (default 0)
+	RewindOnPlaybackStart         *int      `json:"rewindOnPlaybackStart,omitempty"`               // Seconds to rewind when resuming from saved progress (default 0)
+	DisablePrequeue               *bool     `json:"disablePrequeue,omitempty"`                     // Disable automatic stream pre-loading
+	PrerollMode                   string    `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, default, or custom override
+	PrerollAssetID                string    `json:"prerollAssetId,omitempty"`                      // Content hash used when prerollMode is custom
+	PrerollMediaScope             string    `json:"prerollMediaScope,omitempty"`                   // Empty inherits; all, movies, or tv
+	PrerollSkipIfPrequeueReady    *bool     `json:"prerollSkipIfPrequeueReady,omitempty"`          // Skip pre-roll when a prepared stream is already ready
+	StreamMigrationEnabled        *bool     `json:"streamMigrationEnabled,omitempty"`              // Switch to the next ranked stream when native playback cannot sustain the current stream
+	IgnoreDVCompatibilityCheck    *bool     `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"` // Skip Android display DV capability check before playback
+	CreditsDetectionEnabled       *bool     `json:"creditsDetectionEnabled,omitempty"`             // Enable on-device credits detection/OCR during playback
+	CreditsAutoSkip               *bool     `json:"creditsAutoSkip,omitempty"`                     // Automatically play the next episode after credits are detected
+	CreditsDetection              bool      `json:"creditsDetection,omitempty"`                    // Legacy name for creditsAutoSkip
+	MatchFrameRate                *bool     `json:"matchFrameRate,omitempty"`                      // Request TV display refresh rate matching during playback
+	LiveClosedCaptionExtraction   *bool     `json:"liveClosedCaptionExtraction,omitempty"`         // Extract EIA-608 closed captions from live TV (server-side)
+	MaxConcurrentStreams          *int      `json:"maxConcurrentStreams,omitempty"`                // Per-profile concurrent stream limit (nil = use account limit)
+	MaxResultsPerResolution       *int      `json:"maxResultsPerResolution,omitempty"`             // Maximum number of results per resolution tier (0 = no limit)
 }
 
 // ShelfConfig represents a configurable home screen shelf.
@@ -956,7 +963,7 @@ const (
 type FilterSettings struct {
 	MaxSizeMovieGB             *float64        `json:"maxSizeMovieGb,omitempty"`
 	MaxSizeEpisodeGB           *float64        `json:"maxSizeEpisodeGb,omitempty"`
-	MaxResolution              string          `json:"maxResolution,omitempty"` // Maximum resolution (e.g., "720p", "1080p", "2160p", empty = no limit)
+	MaxResolution              *string         `json:"maxResolution,omitempty"` // Maximum resolution (e.g., "720p", "1080p", "2160p", empty = no limit)
 	HDRDVPolicy                HDRDVPolicy     `json:"hdrDvPolicy,omitempty"`   // HDR/DV inclusion policy: "none" (no exclusion), "hdr" (include HDR + DV 7/8), "hdr_dv" (include all HDR/DV)
 	RequiredTerms              []string        `json:"requiredTerms"`           // Terms where at least one must match for a result to be kept. Non-nil empty slice explicitly clears the inherited value.
 	FilterOutTerms             []string        `json:"filterOutTerms"`          // Terms to filter out from results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
@@ -985,8 +992,8 @@ func DefaultUserSettings() UserSettings {
 		Playback: PlaybackSettings{
 			PreferredPlayer:               "native",
 			PreferredAudioLanguage:        "eng",
-			PauseWhenAppInactive:          false,
-			UseLoadingScreen:              false,
+			PauseWhenAppInactive:          BoolPtr(false),
+			UseLoadingScreen:              BoolPtr(false),
 			SubtitleSize:                  1.0,
 			SubtitleUseCropDetectPosition: BoolPtr(true),
 			SubtitleColor:                 "#FFFFFF",
@@ -1000,6 +1007,13 @@ func DefaultUserSettings() UserSettings {
 			SubtitleBackgroundOpacity:     FloatPtr(0.6),
 			SeekForwardSeconds:            30,
 			SeekBackwardSeconds:           10,
+			SubtitleFont:                  StringPtr(""),
+			ForceAACTranscoding:           BoolPtr(false),
+			AutoPlayTrailersTV:            BoolPtr(false),
+			RewindOnResumeFromPause:       IntPtr(0),
+			RewindOnPlaybackStart:         IntPtr(0),
+			DisablePrequeue:               BoolPtr(false),
+			CreditsAutoSkip:               BoolPtr(false),
 			StreamMigrationEnabled:        BoolPtr(true),
 			IgnoreDVCompatibilityCheck:    BoolPtr(false),
 			CreditsDetectionEnabled:       BoolPtr(true),

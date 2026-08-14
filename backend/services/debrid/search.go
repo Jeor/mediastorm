@@ -213,7 +213,7 @@ func applyUserFilterOverrides(dst *models.FilterSettings, src models.FilterSetti
 	if src.MaxSizeEpisodeGB != nil {
 		dst.MaxSizeEpisodeGB = src.MaxSizeEpisodeGB
 	}
-	if src.MaxResolution != "" {
+	if src.MaxResolution != nil {
 		dst.MaxResolution = src.MaxResolution
 	}
 	if src.HDRDVPolicy != "" {
@@ -262,7 +262,7 @@ func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFi
 		dst.MaxSizeEpisodeGB = src.MaxSizeEpisodeGB
 	}
 	if src.MaxResolution != nil {
-		dst.MaxResolution = *src.MaxResolution
+		dst.MaxResolution = models.StringPtr(*src.MaxResolution)
 	}
 	if src.HDRDVPolicy != nil {
 		dst.HDRDVPolicy = *src.HDRDVPolicy
@@ -326,7 +326,7 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 	filterSettings := models.FilterSettings{
 		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
 		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:              globalSettings.Filtering.MaxResolution,
+		MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
 		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
 		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
 		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
@@ -357,7 +357,7 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 			if profileFiltering.MaxSizeEpisodeGB != nil {
 				filterSettings.MaxSizeEpisodeGB = profileFiltering.MaxSizeEpisodeGB
 			}
-			if profileFiltering.MaxResolution != "" {
+			if profileFiltering.MaxResolution != nil {
 				filterSettings.MaxResolution = profileFiltering.MaxResolution
 			}
 			if profileFiltering.HDRDVPolicy != "" {
@@ -399,7 +399,7 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 				filterSettings.MaxSizeEpisodeGB = clientSettings.MaxSizeEpisodeGB
 			}
 			if clientSettings.MaxResolution != nil {
-				filterSettings.MaxResolution = *clientSettings.MaxResolution
+				filterSettings.MaxResolution = models.StringPtr(*clientSettings.MaxResolution)
 			}
 			if clientSettings.HDRDVPolicy != nil {
 				filterSettings.HDRDVPolicy = *clientSettings.HDRDVPolicy
@@ -432,7 +432,7 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 			applyUserFilterOverrides(&filterSettings, models.FilterSettings{
 				MaxSizeMovieGB:         models.FloatPtr(globalSettings.Filtering.Debrid.MaxSizeMovieGB),
 				MaxSizeEpisodeGB:       models.FloatPtr(globalSettings.Filtering.Debrid.MaxSizeEpisodeGB),
-				MaxResolution:          globalSettings.Filtering.Debrid.MaxResolution,
+				MaxResolution:          models.StringPtr(globalSettings.Filtering.Debrid.MaxResolution),
 				HDRDVPolicy:            models.HDRDVPolicy(globalSettings.Filtering.Debrid.HDRDVPolicy),
 				RequiredTerms:          globalSettings.Filtering.Debrid.RequiredTerms,
 				FilterOutTerms:         globalSettings.Filtering.Debrid.FilterOutTerms,
@@ -643,7 +643,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 			MediaType:             parsed.MediaType,
 			MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 			MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),
-			MaxResolution:         filterSettings.MaxResolution,
+			MaxResolution:         models.StringVal(filterSettings.MaxResolution, ""),
 			HDRDVPolicy:           filter.HDRDVPolicy(filterSettings.HDRDVPolicy),
 			AlternateTitles:       alternateTitles,
 			RequiredTerms:         filterSettings.RequiredTerms,

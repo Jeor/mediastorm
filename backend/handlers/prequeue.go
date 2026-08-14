@@ -370,7 +370,7 @@ func configFilterToUserFilter(f config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
 		MaxSizeMovieGB:             models.FloatPtr(f.MaxSizeMovieGB),
 		MaxSizeEpisodeGB:           models.FloatPtr(f.MaxSizeEpisodeGB),
-		MaxResolution:              f.MaxResolution,
+		MaxResolution:              models.StringPtr(f.MaxResolution),
 		HDRDVPolicy:                models.HDRDVPolicy(f.HDRDVPolicy),
 		RequiredTerms:              append([]string(nil), f.RequiredTerms...),
 		FilterOutTerms:             append([]string(nil), f.FilterOutTerms...),
@@ -397,7 +397,7 @@ func configPlaybackToUserPlayback(p config.PlaybackSettings) models.PlaybackSett
 		PreferredAudioLanguage:     p.PreferredAudioLanguage,
 		PreferredSubtitleLanguage:  p.PreferredSubtitleLanguage,
 		PreferredSubtitleMode:      p.PreferredSubtitleMode,
-		ForceAACTranscoding:        p.ForceAACTranscoding,
+		ForceAACTranscoding:        models.BoolPtr(p.ForceAACTranscoding),
 		IgnoreDVCompatibilityCheck: models.BoolPtr(p.IgnoreDVCompatibilityCheck),
 		CreditsDetectionEnabled:    models.BoolPtr(p.CreditsDetectionEnabled),
 		MaxResultsPerResolution:    models.IntPtr(p.MaxResultsPerResolution),
@@ -415,7 +415,7 @@ func applyClientScopeOverrides(sig *prequeueScopeSignature, clientSettings *mode
 		sig.Filtering.MaxSizeEpisodeGB = clientSettings.MaxSizeEpisodeGB
 	}
 	if clientSettings.MaxResolution != nil {
-		sig.Filtering.MaxResolution = *clientSettings.MaxResolution
+		sig.Filtering.MaxResolution = models.StringPtr(*clientSettings.MaxResolution)
 	}
 	if clientSettings.HDRDVPolicy != nil {
 		sig.Filtering.HDRDVPolicy = *clientSettings.HDRDVPolicy
@@ -494,7 +494,7 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 				PreferredAudioLanguage:     defaults.Playback.PreferredAudioLanguage,
 				PreferredSubtitleLanguage:  defaults.Playback.PreferredSubtitleLanguage,
 				PreferredSubtitleMode:      defaults.Playback.PreferredSubtitleMode,
-				ForceAACTranscoding:        defaults.Playback.ForceAACTranscoding,
+				ForceAACTranscoding:        models.BoolVal(defaults.Playback.ForceAACTranscoding, false),
 				IgnoreDVCompatibilityCheck: defaults.Playback.IgnoreDVCompatibilityCheck,
 				MaxResultsPerResolution:    defaults.Playback.MaxResultsPerResolution,
 			}
@@ -514,7 +514,7 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 				PreferredAudioLanguage:     userSettings.Playback.PreferredAudioLanguage,
 				PreferredSubtitleLanguage:  userSettings.Playback.PreferredSubtitleLanguage,
 				PreferredSubtitleMode:      userSettings.Playback.PreferredSubtitleMode,
-				ForceAACTranscoding:        userSettings.Playback.ForceAACTranscoding,
+				ForceAACTranscoding:        models.BoolVal(userSettings.Playback.ForceAACTranscoding, false),
 				IgnoreDVCompatibilityCheck: userSettings.Playback.IgnoreDVCompatibilityCheck,
 				MaxResultsPerResolution:    userSettings.Playback.MaxResultsPerResolution,
 			}

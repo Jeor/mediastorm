@@ -129,15 +129,15 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			PreferredPlayer:               g.Playback.PreferredPlayer,
 			PreferredAudioLanguage:        g.Playback.PreferredAudioLanguage,
 			PreferredSubtitleLanguage:     g.Playback.PreferredSubtitleLanguage,
-			AllowedTrackLanguages:         append([]string(nil), g.Playback.AllowedTrackLanguages...),
+			AllowedTrackLanguages:         models.StringSlicePtr(g.Playback.AllowedTrackLanguages),
 			PreferredSubtitleMode:         g.Playback.PreferredSubtitleMode,
-			PauseWhenAppInactive:          g.Playback.PauseWhenAppInactive,
-			UseLoadingScreen:              g.Playback.UseLoadingScreen,
+			PauseWhenAppInactive:          models.BoolPtr(g.Playback.PauseWhenAppInactive),
+			UseLoadingScreen:              models.BoolPtr(g.Playback.UseLoadingScreen),
 			SubtitleSize:                  g.Playback.SubtitleSize,
 			SubtitleUseCropDetectPosition: models.BoolPtr(g.Playback.SubtitleUseCropDetectPosition),
 			SubtitleColor:                 g.Playback.SubtitleColor,
 			SubtitleOpacity:               models.FloatPtr(g.Playback.SubtitleOpacity),
-			SubtitleFont:                  g.Playback.SubtitleFont,
+			SubtitleFont:                  models.StringPtr(g.Playback.SubtitleFont),
 			SubtitleBold:                  models.BoolPtr(g.Playback.SubtitleBold),
 			SubtitleOutlineEnabled:        models.BoolPtr(g.Playback.SubtitleOutlineEnabled),
 			SubtitleOutlineColor:          g.Playback.SubtitleOutlineColor,
@@ -147,11 +147,11 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			SubtitleBackgroundOpacity:     models.FloatPtr(g.Playback.SubtitleBackgroundOpacity),
 			SeekForwardSeconds:            g.Playback.SeekForwardSeconds,
 			SeekBackwardSeconds:           g.Playback.SeekBackwardSeconds,
-			ForceAACTranscoding:           g.Playback.ForceAACTranscoding,
-			AutoPlayTrailersTV:            g.Playback.AutoPlayTrailersTV,
-			RewindOnResumeFromPause:       g.Playback.RewindOnResumeFromPause,
-			RewindOnPlaybackStart:         g.Playback.RewindOnPlaybackStart,
-			DisablePrequeue:               g.Playback.DisablePrequeue,
+			ForceAACTranscoding:           models.BoolPtr(g.Playback.ForceAACTranscoding),
+			AutoPlayTrailersTV:            models.BoolPtr(g.Playback.AutoPlayTrailersTV),
+			RewindOnResumeFromPause:       models.IntPtr(g.Playback.RewindOnResumeFromPause),
+			RewindOnPlaybackStart:         models.IntPtr(g.Playback.RewindOnPlaybackStart),
+			DisablePrequeue:               models.BoolPtr(g.Playback.DisablePrequeue),
 			PrerollMode:                   g.Playback.PrerollMode,
 			PrerollAssetID:                g.Playback.PrerollAssetID,
 			PrerollMediaScope:             g.Playback.PrerollMediaScope,
@@ -159,7 +159,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			StreamMigrationEnabled:        models.BoolPtr(g.Playback.StreamMigrationEnabled),
 			IgnoreDVCompatibilityCheck:    models.BoolPtr(g.Playback.IgnoreDVCompatibilityCheck),
 			CreditsDetectionEnabled:       models.BoolPtr(g.Playback.CreditsDetectionEnabled),
-			CreditsAutoSkip:               g.Playback.CreditsAutoSkip || g.Playback.CreditsDetection,
+			CreditsAutoSkip:               models.BoolPtr(g.Playback.CreditsAutoSkip || g.Playback.CreditsDetection),
 			MatchFrameRate:                models.BoolPtr(g.Playback.MatchFrameRate),
 			LiveClosedCaptionExtraction:   models.BoolPtr(g.Playback.LiveClosedCaptionExtraction),
 			MaxResultsPerResolution:       models.IntPtr(g.Playback.MaxResultsPerResolution),
@@ -167,7 +167,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 		Filtering: models.FilterSettings{
 			MaxSizeMovieGB:             models.FloatPtr(g.Filtering.MaxSizeMovieGB),
 			MaxSizeEpisodeGB:           models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:              g.Filtering.MaxResolution,
+			MaxResolution:              models.StringPtr(g.Filtering.MaxResolution),
 			HDRDVPolicy:                models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
 			RequiredTerms:              g.Filtering.RequiredTerms,
 			FilterOutTerms:             g.Filtering.FilterOutTerms,
@@ -355,14 +355,14 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.Playback.PreferredSubtitleLanguage == "" {
 		eff.Playback.PreferredSubtitleLanguage = g.Playback.PreferredSubtitleLanguage
 	}
-	if len(eff.Playback.AllowedTrackLanguages) == 0 {
-		eff.Playback.AllowedTrackLanguages = append([]string(nil), g.Playback.AllowedTrackLanguages...)
+	if eff.Playback.AllowedTrackLanguages == nil {
+		eff.Playback.AllowedTrackLanguages = models.StringSlicePtr(g.Playback.AllowedTrackLanguages)
 	}
 	if eff.Playback.PreferredSubtitleMode == "" {
 		eff.Playback.PreferredSubtitleMode = g.Playback.PreferredSubtitleMode
 	}
-	if !eff.Playback.PauseWhenAppInactive {
-		eff.Playback.PauseWhenAppInactive = g.Playback.PauseWhenAppInactive
+	if eff.Playback.PauseWhenAppInactive == nil {
+		eff.Playback.PauseWhenAppInactive = models.BoolPtr(g.Playback.PauseWhenAppInactive)
 	}
 	if eff.Playback.SubtitleSize == 0 {
 		eff.Playback.SubtitleSize = g.Playback.SubtitleSize
@@ -376,8 +376,8 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.Playback.SubtitleOpacity == nil {
 		eff.Playback.SubtitleOpacity = models.FloatPtr(g.Playback.SubtitleOpacity)
 	}
-	if eff.Playback.SubtitleFont == "" {
-		eff.Playback.SubtitleFont = g.Playback.SubtitleFont
+	if eff.Playback.SubtitleFont == nil {
+		eff.Playback.SubtitleFont = models.StringPtr(g.Playback.SubtitleFont)
 	}
 	if eff.Playback.SubtitleBold == nil {
 		eff.Playback.SubtitleBold = models.BoolPtr(g.Playback.SubtitleBold)
@@ -406,26 +406,26 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.Playback.SeekBackwardSeconds == 0 {
 		eff.Playback.SeekBackwardSeconds = g.Playback.SeekBackwardSeconds
 	}
-	if !eff.Playback.ForceAACTranscoding {
-		eff.Playback.ForceAACTranscoding = g.Playback.ForceAACTranscoding
+	if eff.Playback.ForceAACTranscoding == nil {
+		eff.Playback.ForceAACTranscoding = models.BoolPtr(g.Playback.ForceAACTranscoding)
 	}
-	if !eff.Playback.AutoPlayTrailersTV {
-		eff.Playback.AutoPlayTrailersTV = g.Playback.AutoPlayTrailersTV
+	if eff.Playback.AutoPlayTrailersTV == nil {
+		eff.Playback.AutoPlayTrailersTV = models.BoolPtr(g.Playback.AutoPlayTrailersTV)
 	}
-	if !eff.Playback.UseLoadingScreen {
-		eff.Playback.UseLoadingScreen = g.Playback.UseLoadingScreen
+	if eff.Playback.UseLoadingScreen == nil {
+		eff.Playback.UseLoadingScreen = models.BoolPtr(g.Playback.UseLoadingScreen)
 	}
-	if eff.Playback.RewindOnResumeFromPause == 0 {
-		eff.Playback.RewindOnResumeFromPause = g.Playback.RewindOnResumeFromPause
+	if eff.Playback.RewindOnResumeFromPause == nil {
+		eff.Playback.RewindOnResumeFromPause = models.IntPtr(g.Playback.RewindOnResumeFromPause)
 	}
-	if eff.Playback.RewindOnPlaybackStart == 0 {
-		eff.Playback.RewindOnPlaybackStart = g.Playback.RewindOnPlaybackStart
+	if eff.Playback.RewindOnPlaybackStart == nil {
+		eff.Playback.RewindOnPlaybackStart = models.IntPtr(g.Playback.RewindOnPlaybackStart)
 	}
-	if !eff.Playback.CreditsAutoSkip {
-		eff.Playback.CreditsAutoSkip = g.Playback.CreditsAutoSkip || g.Playback.CreditsDetection
+	if eff.Playback.CreditsAutoSkip == nil {
+		eff.Playback.CreditsAutoSkip = models.BoolPtr(g.Playback.CreditsAutoSkip || g.Playback.CreditsDetection)
 	}
-	if !eff.Playback.DisablePrequeue {
-		eff.Playback.DisablePrequeue = g.Playback.DisablePrequeue
+	if eff.Playback.DisablePrequeue == nil {
+		eff.Playback.DisablePrequeue = models.BoolPtr(g.Playback.DisablePrequeue)
 	}
 	if eff.Playback.PrerollMode == "" {
 		eff.Playback.PrerollMode = g.Playback.PrerollMode
@@ -463,8 +463,8 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.Filtering.MaxSizeEpisodeGB == nil {
 		eff.Filtering.MaxSizeEpisodeGB = models.FloatPtr(g.Filtering.MaxSizeEpisodeGB)
 	}
-	if eff.Filtering.MaxResolution == "" {
-		eff.Filtering.MaxResolution = g.Filtering.MaxResolution
+	if eff.Filtering.MaxResolution == nil {
+		eff.Filtering.MaxResolution = models.StringPtr(g.Filtering.MaxResolution)
 	}
 	if eff.Filtering.HDRDVPolicy == "" {
 		eff.Filtering.HDRDVPolicy = models.HDRDVPolicy(g.Filtering.HDRDVPolicy)
@@ -692,7 +692,7 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 		p.PreferredSubtitleLanguage = ""
 		changed = true
 	}
-	if len(p.AllowedTrackLanguages) > 0 && slices.Equal(p.AllowedTrackLanguages, g.AllowedTrackLanguages) {
+	if p.AllowedTrackLanguages != nil && slices.Equal(*p.AllowedTrackLanguages, g.AllowedTrackLanguages) {
 		p.AllowedTrackLanguages = nil
 		changed = true
 	}
@@ -700,8 +700,8 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 		p.PreferredSubtitleMode = ""
 		changed = true
 	}
-	if p.PauseWhenAppInactive && p.PauseWhenAppInactive == g.PauseWhenAppInactive {
-		p.PauseWhenAppInactive = false
+	if p.PauseWhenAppInactive != nil && *p.PauseWhenAppInactive == g.PauseWhenAppInactive {
+		p.PauseWhenAppInactive = nil
 		changed = true
 	}
 	if p.SubtitleSize != 0 && p.SubtitleSize == g.SubtitleSize {
@@ -720,8 +720,8 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 		p.SubtitleOpacity = nil
 		changed = true
 	}
-	if p.SubtitleFont != "" && p.SubtitleFont == g.SubtitleFont {
-		p.SubtitleFont = ""
+	if p.SubtitleFont != nil && *p.SubtitleFont == g.SubtitleFont {
+		p.SubtitleFont = nil
 		changed = true
 	}
 	if p.SubtitleBold != nil && *p.SubtitleBold == g.SubtitleBold {
@@ -760,29 +760,29 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 		p.SeekBackwardSeconds = 0
 		changed = true
 	}
-	if p.ForceAACTranscoding && p.ForceAACTranscoding == g.ForceAACTranscoding {
-		p.ForceAACTranscoding = false
+	if p.ForceAACTranscoding != nil && *p.ForceAACTranscoding == g.ForceAACTranscoding {
+		p.ForceAACTranscoding = nil
 		changed = true
 	}
-	if p.AutoPlayTrailersTV && p.AutoPlayTrailersTV == g.AutoPlayTrailersTV {
-		p.AutoPlayTrailersTV = false
+	if p.AutoPlayTrailersTV != nil && *p.AutoPlayTrailersTV == g.AutoPlayTrailersTV {
+		p.AutoPlayTrailersTV = nil
 		changed = true
 	}
-	if p.UseLoadingScreen && p.UseLoadingScreen == g.UseLoadingScreen {
-		p.UseLoadingScreen = false
+	if p.UseLoadingScreen != nil && *p.UseLoadingScreen == g.UseLoadingScreen {
+		p.UseLoadingScreen = nil
 		changed = true
 	}
-	if p.RewindOnResumeFromPause != 0 && p.RewindOnResumeFromPause == g.RewindOnResumeFromPause {
-		p.RewindOnResumeFromPause = 0
+	if p.RewindOnResumeFromPause != nil && *p.RewindOnResumeFromPause == g.RewindOnResumeFromPause {
+		p.RewindOnResumeFromPause = nil
 		changed = true
 	}
-	if p.RewindOnPlaybackStart != 0 && p.RewindOnPlaybackStart == g.RewindOnPlaybackStart {
-		p.RewindOnPlaybackStart = 0
+	if p.RewindOnPlaybackStart != nil && *p.RewindOnPlaybackStart == g.RewindOnPlaybackStart {
+		p.RewindOnPlaybackStart = nil
 		changed = true
 	}
 	globalCreditsAutoSkip := g.CreditsAutoSkip || g.CreditsDetection
-	if p.CreditsAutoSkip && p.CreditsAutoSkip == globalCreditsAutoSkip {
-		p.CreditsAutoSkip = false
+	if p.CreditsAutoSkip != nil && *p.CreditsAutoSkip == globalCreditsAutoSkip {
+		p.CreditsAutoSkip = nil
 		changed = true
 	}
 	if p.CreditsDetectionEnabled != nil && *p.CreditsDetectionEnabled == g.CreditsDetectionEnabled {
@@ -801,8 +801,8 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 		p.LiveClosedCaptionExtraction = nil
 		changed = true
 	}
-	if p.DisablePrequeue && p.DisablePrequeue == g.DisablePrequeue {
-		p.DisablePrequeue = false
+	if p.DisablePrequeue != nil && *p.DisablePrequeue == g.DisablePrequeue {
+		p.DisablePrequeue = nil
 		changed = true
 	}
 	if p.PrerollMode != "" && p.PrerollMode == g.PrerollMode && p.PrerollAssetID == g.PrerollAssetID {
@@ -839,8 +839,8 @@ func stripFiltering(f *models.FilterSettings, g config.FilterSettings) bool {
 		f.MaxSizeEpisodeGB = nil
 		changed = true
 	}
-	if f.MaxResolution != "" && f.MaxResolution == g.MaxResolution {
-		f.MaxResolution = ""
+	if f.MaxResolution != nil && *f.MaxResolution == g.MaxResolution {
+		f.MaxResolution = nil
 		changed = true
 	}
 	if f.HDRDVPolicy != "" && string(f.HDRDVPolicy) == string(g.HDRDVPolicy) {
@@ -1164,7 +1164,7 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.PreferredSubtitleLanguage = nil
 		changed = true
 	}
-	if cs.AllowedTrackLanguages != nil && slices.Equal(*cs.AllowedTrackLanguages, eff.Playback.AllowedTrackLanguages) {
+	if cs.AllowedTrackLanguages != nil && eff.Playback.AllowedTrackLanguages != nil && slices.Equal(*cs.AllowedTrackLanguages, *eff.Playback.AllowedTrackLanguages) {
 		cs.AllowedTrackLanguages = nil
 		changed = true
 	}
@@ -1172,11 +1172,11 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.PreferredSubtitleMode = nil
 		changed = true
 	}
-	if cs.PauseWhenAppInactive != nil && *cs.PauseWhenAppInactive == eff.Playback.PauseWhenAppInactive {
+	if cs.PauseWhenAppInactive != nil && eff.Playback.PauseWhenAppInactive != nil && *cs.PauseWhenAppInactive == *eff.Playback.PauseWhenAppInactive {
 		cs.PauseWhenAppInactive = nil
 		changed = true
 	}
-	if cs.UseLoadingScreen != nil && *cs.UseLoadingScreen == eff.Playback.UseLoadingScreen {
+	if cs.UseLoadingScreen != nil && eff.Playback.UseLoadingScreen != nil && *cs.UseLoadingScreen == *eff.Playback.UseLoadingScreen {
 		cs.UseLoadingScreen = nil
 		changed = true
 	}
@@ -1196,7 +1196,7 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.SubtitleOpacity = nil
 		changed = true
 	}
-	if cs.SubtitleFont != nil && *cs.SubtitleFont == eff.Playback.SubtitleFont {
+	if cs.SubtitleFont != nil && eff.Playback.SubtitleFont != nil && *cs.SubtitleFont == *eff.Playback.SubtitleFont {
 		cs.SubtitleFont = nil
 		changed = true
 	}
@@ -1236,19 +1236,19 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.SeekBackwardSeconds = nil
 		changed = true
 	}
-	if cs.ForceAACTranscoding != nil && *cs.ForceAACTranscoding == eff.Playback.ForceAACTranscoding {
+	if cs.ForceAACTranscoding != nil && eff.Playback.ForceAACTranscoding != nil && *cs.ForceAACTranscoding == *eff.Playback.ForceAACTranscoding {
 		cs.ForceAACTranscoding = nil
 		changed = true
 	}
-	if cs.AutoPlayTrailersTV != nil && *cs.AutoPlayTrailersTV == eff.Playback.AutoPlayTrailersTV {
+	if cs.AutoPlayTrailersTV != nil && eff.Playback.AutoPlayTrailersTV != nil && *cs.AutoPlayTrailersTV == *eff.Playback.AutoPlayTrailersTV {
 		cs.AutoPlayTrailersTV = nil
 		changed = true
 	}
-	if cs.RewindOnResumeFromPause != nil && *cs.RewindOnResumeFromPause == eff.Playback.RewindOnResumeFromPause {
+	if cs.RewindOnResumeFromPause != nil && eff.Playback.RewindOnResumeFromPause != nil && *cs.RewindOnResumeFromPause == *eff.Playback.RewindOnResumeFromPause {
 		cs.RewindOnResumeFromPause = nil
 		changed = true
 	}
-	if cs.RewindOnPlaybackStart != nil && *cs.RewindOnPlaybackStart == eff.Playback.RewindOnPlaybackStart {
+	if cs.RewindOnPlaybackStart != nil && eff.Playback.RewindOnPlaybackStart != nil && *cs.RewindOnPlaybackStart == *eff.Playback.RewindOnPlaybackStart {
 		cs.RewindOnPlaybackStart = nil
 		changed = true
 	}
@@ -1260,7 +1260,7 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.CreditsDetectionEnabled = nil
 		changed = true
 	}
-	if cs.CreditsAutoSkip != nil && *cs.CreditsAutoSkip == eff.Playback.CreditsAutoSkip {
+	if cs.CreditsAutoSkip != nil && eff.Playback.CreditsAutoSkip != nil && *cs.CreditsAutoSkip == *eff.Playback.CreditsAutoSkip {
 		cs.CreditsAutoSkip = nil
 		changed = true
 	}
@@ -1276,7 +1276,7 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.LiveClosedCaptionExtraction = nil
 		changed = true
 	}
-	if cs.DisablePrequeue != nil && *cs.DisablePrequeue == eff.Playback.DisablePrequeue {
+	if cs.DisablePrequeue != nil && eff.Playback.DisablePrequeue != nil && *cs.DisablePrequeue == *eff.Playback.DisablePrequeue {
 		cs.DisablePrequeue = nil
 		changed = true
 	}
@@ -1311,7 +1311,7 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.MaxSizeEpisodeGB = nil
 		changed = true
 	}
-	if cs.MaxResolution != nil && *cs.MaxResolution == eff.Filtering.MaxResolution {
+	if cs.MaxResolution != nil && eff.Filtering.MaxResolution != nil && *cs.MaxResolution == *eff.Filtering.MaxResolution {
 		cs.MaxResolution = nil
 		changed = true
 	}

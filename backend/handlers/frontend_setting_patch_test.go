@@ -9,13 +9,25 @@ import (
 
 func TestJSONModelPathOverridden(t *testing.T) {
 	settings := models.UserSettings{
-		Playback:  models.PlaybackSettings{PreferredPlayer: "vlc"},
+		Playback: models.PlaybackSettings{
+			PreferredPlayer:       "vlc",
+			AutoPlayTrailersTV:    models.BoolPtr(false),
+			RewindOnPlaybackStart: models.IntPtr(0),
+			AllowedTrackLanguages: models.StringSlicePtr([]string{}),
+		},
 		Filtering: models.FilterSettings{AdaptivePlaybackEnabled: models.BoolPtr(false)},
 		Display: models.DisplaySettings{
 			EnableAnimations: models.BoolPtr(false),
 		},
 	}
-	for _, path := range []string{"playback.preferredPlayer", "display.enableAnimations", "filtering.adaptivePlaybackEnabled"} {
+	for _, path := range []string{
+		"playback.preferredPlayer",
+		"playback.autoPlayTrailersTV",
+		"playback.rewindOnPlaybackStart",
+		"playback.allowedTrackLanguages",
+		"display.enableAnimations",
+		"filtering.adaptivePlaybackEnabled",
+	} {
 		if !jsonModelPathOverridden(settings, path) {
 			t.Fatalf("%s should be reported as overridden", path)
 		}

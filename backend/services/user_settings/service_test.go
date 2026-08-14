@@ -17,7 +17,7 @@ func TestUpdateSanitizesAllowedTrackLanguages(t *testing.T) {
 		t.Fatal(err)
 	}
 	settings := models.UserSettings{Playback: models.PlaybackSettings{
-		AllowedTrackLanguages: []string{" ENG ", "'fra'", "eng"},
+		AllowedTrackLanguages: models.StringSlicePtr([]string{" ENG ", "'fra'", "eng"}),
 	}}
 	if err := svc.Update("language-user", settings); err != nil {
 		t.Fatal(err)
@@ -26,7 +26,7 @@ func TestUpdateSanitizesAllowedTrackLanguages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got == nil || !reflect.DeepEqual(got.Playback.AllowedTrackLanguages, []string{"eng", "fra"}) {
+	if got == nil || got.Playback.AllowedTrackLanguages == nil || !reflect.DeepEqual(*got.Playback.AllowedTrackLanguages, []string{"eng", "fra"}) {
 		t.Fatalf("AllowedTrackLanguages = %#v, want eng/fra", got)
 	}
 }
@@ -161,6 +161,106 @@ func TestGetWithDefaults_PrerollPolicyInheritance(t *testing.T) {
 		inherited.Playback.PrerollSkipIfPrequeueReady == nil ||
 		!*inherited.Playback.PrerollSkipIfPrequeueReady {
 		t.Fatalf("expected inherited pre-roll policy, got %+v", inherited.Playback)
+	}
+}
+
+func TestGetWithDefaultsPreservesExplicitZeroValueOverrides(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	overrides := models.UserSettings{
+		Playback: models.PlaybackSettings{
+			AllowedTrackLanguages:   models.StringSlicePtr([]string{}),
+			PauseWhenAppInactive:    models.BoolPtr(false),
+			UseLoadingScreen:        models.BoolPtr(false),
+			SubtitleFont:            models.StringPtr(""),
+			ForceAACTranscoding:     models.BoolPtr(false),
+			AutoPlayTrailersTV:      models.BoolPtr(false),
+			RewindOnResumeFromPause: models.IntPtr(0),
+			RewindOnPlaybackStart:   models.IntPtr(0),
+			DisablePrequeue:         models.BoolPtr(false),
+			CreditsAutoSkip:         models.BoolPtr(false),
+		},
+		Filtering: models.FilterSettings{MaxResolution: models.StringPtr("")},
+	}
+	if err := svc.Update("zero-user", overrides); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	// Reload from persisted JSON to verify omitempty does not discard explicit
+	// false, zero, empty-string, or empty-slice overrides.
+	svc, err = NewService(dir)
+	if err != nil {
+		t.Fatalf("reload service: %v", err)
+	}
+	defaults := models.UserSettings{
+		Playback: models.PlaybackSettings{
+			AllowedTrackLanguages:   models.StringSlicePtr([]string{"eng"}),
+			PauseWhenAppInactive:    models.BoolPtr(true),
+			UseLoadingScreen:        models.BoolPtr(true),
+			SubtitleFont:            models.StringPtr("serif"),
+			ForceAACTranscoding:     models.BoolPtr(true),
+			AutoPlayTrailersTV:      models.BoolPtr(true),
+			RewindOnResumeFromPause: models.IntPtr(10),
+			RewindOnPlaybackStart:   models.IntPtr(20),
+			DisablePrequeue:         models.BoolPtr(true),
+			CreditsAutoSkip:         models.BoolPtr(true),
+		},
+		Filtering: models.FilterSettings{MaxResolution: models.StringPtr("1080p")},
+	}
+	got, err := svc.GetWithDefaults("zero-user", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults: %v", err)
+	}
+	if got.Playback.AllowedTrackLanguages == nil || len(*got.Playback.AllowedTrackLanguages) != 0 {
+		t.Fatalf("allowedTrackLanguages = %#v, want explicit empty", got.Playback.AllowedTrackLanguages)
+	}
+	for name, value := range map[string]*bool{
+		"pauseWhenAppInactive": got.Playback.PauseWhenAppInactive,
+		"useLoadingScreen":     got.Playback.UseLoadingScreen,
+		"forceAacTranscoding":  got.Playback.ForceAACTranscoding,
+		"autoPlayTrailersTV":   got.Playback.AutoPlayTrailersTV,
+		"disablePrequeue":      got.Playback.DisablePrequeue,
+		"creditsAutoSkip":      got.Playback.CreditsAutoSkip,
+	} {
+		if value == nil || *value {
+			t.Fatalf("%s = %#v, want explicit false", name, value)
+		}
+	}
+	if got.Playback.RewindOnResumeFromPause == nil || *got.Playback.RewindOnResumeFromPause != 0 ||
+		got.Playback.RewindOnPlaybackStart == nil || *got.Playback.RewindOnPlaybackStart != 0 {
+		t.Fatalf("rewind overrides were not preserved: %+v", got.Playback)
+	}
+	if got.Playback.SubtitleFont == nil || *got.Playback.SubtitleFont != "" ||
+		got.Filtering.MaxResolution == nil || *got.Filtering.MaxResolution != "" {
+		t.Fatalf("explicit empty string overrides were not preserved: %+v", got)
+	}
+}
+
+func TestIsSettingsEmptyRecognizesSolePointerOverrides(t *testing.T) {
+	tests := map[string]models.UserSettings{
+		"ignore dv compatibility": {Playback: models.PlaybackSettings{IgnoreDVCompatibilityCheck: models.BoolPtr(false)}},
+		"credits detection":       {Playback: models.PlaybackSettings{CreditsDetectionEnabled: models.BoolPtr(false)}},
+		"max concurrent streams":  {Playback: models.PlaybackSettings{MaxConcurrentStreams: models.IntPtr(0)}},
+		"exclude upcoming":        {HomeShelves: models.HomeShelvesSettings{ExcludeUpcomingFromContinue: models.BoolPtr(false)}},
+		"blur thumbnails":         {Display: models.DisplaySettings{BlurUnwatchedEpisodeThumbnails: models.BoolPtr(false)}},
+		"blur current thumbnail":  {Display: models.DisplaySettings{BlurUnwatchedEpisodeThumbnailsIncludeCurrent: models.BoolPtr(false)}},
+		"blur overviews":          {Display: models.DisplaySettings{BlurUnwatchedEpisodeOverviews: models.BoolPtr(false)}},
+		"blur current overview":   {Display: models.DisplaySettings{BlurUnwatchedEpisodeOverviewsIncludeCurrent: models.BoolPtr(false)}},
+		"newest release first":    {Ranking: &models.UserRankingSettings{NewestReleaseFirst: models.BoolPtr(false)}},
+		"live manifest":           {LiveTV: models.LiveTVSettings{ManifestURL: models.StringPtr("")}},
+		"live proxy":              {LiveTV: models.LiveTVSettings{ProxyURL: models.StringPtr("")}},
+		"live stream format":      {LiveTV: models.LiveTVSettings{StreamFormat: models.StringPtr("")}},
+	}
+	for name, settings := range tests {
+		t.Run(name, func(t *testing.T) {
+			if isSettingsEmpty(settings) {
+				t.Fatal("sole override was incorrectly treated as empty")
+			}
+		})
 	}
 }
 
@@ -1239,7 +1339,7 @@ func TestLoad_DoesNotMaterializeDefaultsForInheritingProfile(t *testing.T) {
 
 	// Empty shelves plus an unrelated override so the entry is persisted.
 	settings := models.UserSettings{
-		Filtering: models.FilterSettings{MaxResolution: "1080p"},
+		Filtering: models.FilterSettings{MaxResolution: models.StringPtr("1080p")},
 	}
 	if err := svc.Update("profile-1", settings); err != nil {
 		t.Fatalf("Update: %v", err)

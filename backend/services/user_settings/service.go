@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -96,6 +97,17 @@ func sanitizeLanguageCodes(codes []string) []string {
 	return result
 }
 
+func sanitizeOptionalLanguageCodes(codes *[]string) *[]string {
+	if codes == nil {
+		return nil
+	}
+	sanitized := sanitizeLanguageCodes(*codes)
+	if sanitized == nil {
+		sanitized = []string{}
+	}
+	return &sanitized
+}
+
 func defaultPreferredAudioLanguage(code string) string {
 	code = sanitizeLanguageCode(code)
 	if code == "" {
@@ -179,7 +191,7 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		// Sanitize language codes (strip stray quotes/whitespace)
 		settings.Playback.PreferredAudioLanguage = sanitizeLanguageCode(settings.Playback.PreferredAudioLanguage)
 		settings.Playback.PreferredSubtitleLanguage = sanitizeLanguageCode(settings.Playback.PreferredSubtitleLanguage)
-		settings.Playback.AllowedTrackLanguages = sanitizeLanguageCodes(settings.Playback.AllowedTrackLanguages)
+		settings.Playback.AllowedTrackLanguages = sanitizeOptionalLanguageCodes(settings.Playback.AllowedTrackLanguages)
 		settings.Playback.PreferredSubtitleMode = strings.TrimSpace(strings.Trim(settings.Playback.PreferredSubtitleMode, "'\""))
 		settings.Metadata.PrimaryLanguage = sanitizeLanguageCode(settings.Metadata.PrimaryLanguage)
 
@@ -194,8 +206,8 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Playback.PreferredSubtitleLanguage == "" {
 			settings.Playback.PreferredSubtitleLanguage = sanitizeLanguageCode(defaults.Playback.PreferredSubtitleLanguage)
 		}
-		if len(settings.Playback.AllowedTrackLanguages) == 0 {
-			settings.Playback.AllowedTrackLanguages = sanitizeLanguageCodes(defaults.Playback.AllowedTrackLanguages)
+		if settings.Playback.AllowedTrackLanguages == nil {
+			settings.Playback.AllowedTrackLanguages = sanitizeOptionalLanguageCodes(defaults.Playback.AllowedTrackLanguages)
 		}
 		if settings.Playback.PreferredSubtitleMode == "" {
 			settings.Playback.PreferredSubtitleMode = defaults.Playback.PreferredSubtitleMode
@@ -214,7 +226,7 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Playback.SubtitleOpacity == nil {
 			settings.Playback.SubtitleOpacity = defaults.Playback.SubtitleOpacity
 		}
-		if settings.Playback.SubtitleFont == "" {
+		if settings.Playback.SubtitleFont == nil {
 			settings.Playback.SubtitleFont = defaults.Playback.SubtitleFont
 		}
 		if settings.Playback.SubtitleBold == nil {
@@ -244,13 +256,28 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Playback.SeekBackwardSeconds == 0 {
 			settings.Playback.SeekBackwardSeconds = defaults.Playback.SeekBackwardSeconds
 		}
-		if !settings.Playback.ForceAACTranscoding {
+		if settings.Playback.ForceAACTranscoding == nil {
 			settings.Playback.ForceAACTranscoding = defaults.Playback.ForceAACTranscoding
 		}
-		if !settings.Playback.AutoPlayTrailersTV {
+		if settings.Playback.AutoPlayTrailersTV == nil {
 			settings.Playback.AutoPlayTrailersTV = defaults.Playback.AutoPlayTrailersTV
 		}
-		if !settings.Playback.DisablePrequeue {
+		if settings.Playback.PauseWhenAppInactive == nil {
+			settings.Playback.PauseWhenAppInactive = defaults.Playback.PauseWhenAppInactive
+		}
+		if settings.Playback.UseLoadingScreen == nil {
+			settings.Playback.UseLoadingScreen = defaults.Playback.UseLoadingScreen
+		}
+		if settings.Playback.RewindOnResumeFromPause == nil {
+			settings.Playback.RewindOnResumeFromPause = defaults.Playback.RewindOnResumeFromPause
+		}
+		if settings.Playback.RewindOnPlaybackStart == nil {
+			settings.Playback.RewindOnPlaybackStart = defaults.Playback.RewindOnPlaybackStart
+		}
+		if settings.Playback.CreditsAutoSkip == nil {
+			settings.Playback.CreditsAutoSkip = defaults.Playback.CreditsAutoSkip
+		}
+		if settings.Playback.DisablePrequeue == nil {
 			settings.Playback.DisablePrequeue = defaults.Playback.DisablePrequeue
 		}
 		if settings.Playback.PrerollMode == "" {
@@ -586,7 +613,7 @@ func (s *Service) Update(userID string, settings models.UserSettings) error {
 	// Sanitize language codes on save to prevent stray quotes from persisting
 	settings.Playback.PreferredAudioLanguage = sanitizeLanguageCode(settings.Playback.PreferredAudioLanguage)
 	settings.Playback.PreferredSubtitleLanguage = sanitizeLanguageCode(settings.Playback.PreferredSubtitleLanguage)
-	settings.Playback.AllowedTrackLanguages = sanitizeLanguageCodes(settings.Playback.AllowedTrackLanguages)
+	settings.Playback.AllowedTrackLanguages = sanitizeOptionalLanguageCodes(settings.Playback.AllowedTrackLanguages)
 	settings.Playback.PreferredSubtitleMode = strings.TrimSpace(strings.Trim(settings.Playback.PreferredSubtitleMode, "'\""))
 	settings.Metadata.PrimaryLanguage = sanitizeLanguageCode(settings.Metadata.PrimaryLanguage)
 	if len(settings.Display.NavigationTabVisibility) > 0 {
@@ -612,22 +639,57 @@ func (s *Service) Update(userID string, settings models.UserSettings) error {
 	return s.saveLocked()
 }
 
+// hasExplicitPointerOverride makes pointer-backed settings automatically count
+// as overrides, including explicit false, zero, and empty values. Pointers to
+// empty nested setting structs do not count until one of their fields is set.
+func hasExplicitPointerOverride(value reflect.Value) bool {
+	for value.IsValid() && value.Kind() == reflect.Interface {
+		if value.IsNil() {
+			return false
+		}
+		value = value.Elem()
+	}
+	if !value.IsValid() {
+		return false
+	}
+	if value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return false
+		}
+		if value.Elem().Kind() != reflect.Struct {
+			return true
+		}
+		return hasExplicitPointerOverride(value.Elem())
+	}
+	if value.Kind() != reflect.Struct {
+		return false
+	}
+	for i := 0; i < value.NumField(); i++ {
+		if hasExplicitPointerOverride(value.Field(i)) {
+			return true
+		}
+	}
+	return false
+}
+
 // isSettingsEmpty checks if user settings have no actual values set.
-// Empty arrays, zero values, and empty strings are considered "not set".
 func isSettingsEmpty(s models.UserSettings) bool {
+	if hasExplicitPointerOverride(reflect.ValueOf(s)) {
+		return false
+	}
 	// Check Playback - if any field is non-default, not empty
 	if s.Playback.PreferredPlayer != "" ||
 		s.Playback.PreferredAudioLanguage != "" ||
 		s.Playback.PreferredSubtitleLanguage != "" ||
-		len(s.Playback.AllowedTrackLanguages) > 0 ||
+		s.Playback.AllowedTrackLanguages != nil ||
 		s.Playback.PreferredSubtitleMode != "" ||
-		s.Playback.PauseWhenAppInactive ||
-		s.Playback.UseLoadingScreen ||
+		s.Playback.PauseWhenAppInactive != nil ||
+		s.Playback.UseLoadingScreen != nil ||
 		s.Playback.SubtitleSize != 0 ||
 		s.Playback.SubtitleUseCropDetectPosition != nil ||
 		s.Playback.SubtitleColor != "" ||
 		s.Playback.SubtitleOpacity != nil ||
-		s.Playback.SubtitleFont != "" ||
+		s.Playback.SubtitleFont != nil ||
 		s.Playback.SubtitleBold != nil ||
 		s.Playback.SubtitleOutlineEnabled != nil ||
 		s.Playback.SubtitleOutlineColor != "" ||
@@ -637,12 +699,18 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Playback.SubtitleBackgroundOpacity != nil ||
 		s.Playback.SeekForwardSeconds != 0 ||
 		s.Playback.SeekBackwardSeconds != 0 ||
-		s.Playback.ForceAACTranscoding ||
-		s.Playback.AutoPlayTrailersTV ||
+		s.Playback.ForceAACTranscoding != nil ||
+		s.Playback.AutoPlayTrailersTV != nil ||
+		s.Playback.RewindOnResumeFromPause != nil ||
+		s.Playback.RewindOnPlaybackStart != nil ||
 		s.Playback.StreamMigrationEnabled != nil ||
 		s.Playback.MatchFrameRate != nil ||
 		s.Playback.LiveClosedCaptionExtraction != nil ||
-		s.Playback.DisablePrequeue {
+		s.Playback.DisablePrequeue != nil ||
+		s.Playback.CreditsAutoSkip != nil ||
+		s.Playback.IgnoreDVCompatibilityCheck != nil ||
+		s.Playback.CreditsDetectionEnabled != nil ||
+		s.Playback.MaxConcurrentStreams != nil {
 		return false
 	}
 	if s.Playback.PrerollMode != "" || s.Playback.PrerollAssetID != "" ||
@@ -660,14 +728,15 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.HomeShelves.TVTopShelfSourceID != "" ||
 		s.HomeShelves.DisableTvLandscapeCardExpansion != nil ||
 		s.HomeShelves.HomeShelfScale != nil ||
-		s.HomeShelves.HomeHeroScale != nil {
+		s.HomeShelves.HomeHeroScale != nil ||
+		s.HomeShelves.ExcludeUpcomingFromContinue != nil {
 		return false
 	}
 
 	// Check Filtering - pointer fields
 	if s.Filtering.MaxSizeMovieGB != nil ||
 		s.Filtering.MaxSizeEpisodeGB != nil ||
-		s.Filtering.MaxResolution != "" ||
+		s.Filtering.MaxResolution != nil ||
 		s.Filtering.HDRDVPolicy != "" ||
 		s.Filtering.RequiredTerms != nil ||
 		s.Filtering.FilterOutTerms != nil ||
@@ -691,6 +760,8 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		len(s.LiveTV.SelectedCategories) > 0 ||
 		s.LiveTV.Mode != nil ||
 		s.LiveTV.PlaylistURL != nil ||
+		s.LiveTV.ManifestURL != nil ||
+		s.LiveTV.ProxyURL != nil ||
 		len(s.LiveTV.Sources) > 0 ||
 		len(s.LiveTV.PlaylistSources) > 0 ||
 		s.LiveTV.SourcesOverride != nil ||
@@ -702,14 +773,15 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.LiveTV.ProbeSizeMB != nil ||
 		s.LiveTV.AnalyzeDurationSec != nil ||
 		s.LiveTV.LowLatency != nil ||
+		s.LiveTV.StreamFormat != nil ||
 		s.LiveTV.Filtering != nil ||
 		s.LiveTV.EPG != nil {
 		return false
 	}
 
 	// Check Display
-	if len(s.Display.BadgeVisibility) > 0 ||
-		len(s.Display.NavigationTabVisibility) > 0 ||
+	if s.Display.BadgeVisibility != nil ||
+		s.Display.NavigationTabVisibility != nil ||
 		s.Display.WatchStateIconStyle != "" ||
 		s.Display.IncludeUnreleasedMoviesInLists != nil ||
 		s.Display.IncludeUnreleasedShowsInLists != nil ||
@@ -725,6 +797,10 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Display.EnableHeroArtPanning != nil ||
 		s.Display.EnableHeroArtRotation != nil ||
 		s.Display.ShowSeriesBackdropForMissingEpisodeArt != nil ||
+		s.Display.BlurUnwatchedEpisodeThumbnails != nil ||
+		s.Display.BlurUnwatchedEpisodeThumbnailsIncludeCurrent != nil ||
+		s.Display.BlurUnwatchedEpisodeOverviews != nil ||
+		s.Display.BlurUnwatchedEpisodeOverviewsIncludeCurrent != nil ||
 		s.Display.AppLanguage != "" ||
 		s.Display.Appearance.FontScale != nil ||
 		s.Display.Appearance.AccentColor != "" ||
@@ -764,6 +840,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 
 	// Check Ranking
 	if s.Ranking != nil && (len(s.Ranking.Criteria) > 0 ||
+		s.Ranking.NewestReleaseFirst != nil ||
 		s.Ranking.SplitByService != nil ||
 		s.Ranking.Debrid != nil ||
 		s.Ranking.Usenet != nil) {

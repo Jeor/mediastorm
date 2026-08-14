@@ -227,6 +227,42 @@ func TestStripProfilePointerFieldDiffers(t *testing.T) {
 	}
 }
 
+func TestStripProfilePreservesExplicitZeroValuePlaybackOverrides(t *testing.T) {
+	svc := tempService(t)
+	g := globalDefaults()
+	g.Playback.PauseWhenAppInactive = true
+	g.Playback.AutoPlayTrailersTV = true
+	g.Playback.RewindOnPlaybackStart = 15
+	g.Playback.AllowedTrackLanguages = []string{"eng"}
+	g.Playback.SubtitleFont = "serif"
+	g.Filtering.MaxResolution = "1080p"
+
+	svc.settings["user1"] = models.UserSettings{
+		Playback: models.PlaybackSettings{
+			PauseWhenAppInactive:  models.BoolPtr(false),
+			AutoPlayTrailersTV:    models.BoolPtr(false),
+			RewindOnPlaybackStart: models.IntPtr(0),
+			AllowedTrackLanguages: models.StringSlicePtr([]string{}),
+			SubtitleFont:          models.StringPtr(""),
+		},
+		Filtering: models.FilterSettings{MaxResolution: models.StringPtr("")},
+	}
+	svc.StripRedundantOverrides(g, nil, nil)
+
+	got, ok := svc.settings["user1"]
+	if !ok {
+		t.Fatal("explicit zero-value overrides were removed")
+	}
+	if got.Playback.PauseWhenAppInactive == nil || *got.Playback.PauseWhenAppInactive ||
+		got.Playback.AutoPlayTrailersTV == nil || *got.Playback.AutoPlayTrailersTV ||
+		got.Playback.RewindOnPlaybackStart == nil || *got.Playback.RewindOnPlaybackStart != 0 ||
+		got.Playback.AllowedTrackLanguages == nil || len(*got.Playback.AllowedTrackLanguages) != 0 ||
+		got.Playback.SubtitleFont == nil || *got.Playback.SubtitleFont != "" ||
+		got.Filtering.MaxResolution == nil || *got.Filtering.MaxResolution != "" {
+		t.Fatalf("explicit zero-value overrides changed: %+v", got)
+	}
+}
+
 func TestStripProfileExplicitEmptyRequiredTermsOverridePreserved(t *testing.T) {
 	svc := tempService(t)
 	g := globalDefaults()

@@ -22,7 +22,7 @@
     grid-column: 1 / -1;
     margin: 0.5rem 0 1rem;
     padding: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: rgba(99, 102, 241, 0.08);
 }
@@ -44,6 +44,63 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
 }
+
+/* Shared drag-to-reorder row primitive, used by provider priority, home shelves,
+   and ranking criteria lists. Rules common to all three live here once so their
+   per-widget <style> blocks only carry what's actually different between them. */
+.priority-row, .shelf-row, .ranking-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.priority-row.dragging, .shelf-row.dragging, .ranking-row.dragging {
+    background: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    transform: scale(1.02);
+}
+.priority-row.drag-over, .shelf-row.drag-over, .ranking-row.drag-over {
+    border-top: 2px solid var(--accent);
+    margin-top: -2px;
+}
+.shelf-row.disabled, .ranking-row.disabled {
+    opacity: 0.5;
+}
+.priority-handle, .shelf-handle, .ranking-handle {
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: grab;
+    touch-action: none;
+    padding: 8px;
+    margin: -8px 4px -8px -8px;
+}
+.priority-handle:active, .shelf-handle:active, .ranking-handle:active {
+    cursor: grabbing;
+}
+.priority-name, .shelf-name, .ranking-name {
+    flex: 1;
+}
+.shelf-name, .ranking-name {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.shelf-name {
+    min-width: 0;
+}
+.priority-num {
+    color: var(--text-muted);
+    margin-right: 10px;
+    min-width: 24px;
+    text-align: right;
+}
+
 .setting-field-title {
     display: inline-flex;
     align-items: center;
@@ -86,7 +143,7 @@
     gap: 0.75rem;
     margin: 0 0 1rem;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-left: 3px solid var(--accent);
     border-radius: 9px;
     background: var(--bg-secondary);
@@ -108,7 +165,7 @@
 .nested-settings-panel {
     margin-top: 1rem;
     padding: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.035);
 }
@@ -119,7 +176,7 @@
     gap: 0.55rem;
     margin-bottom: 0.85rem;
     padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 
 .nested-settings-panel-icon {
@@ -157,7 +214,7 @@
 
 .branding-wizard-preview {
     min-height: 300px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: #050505;
     display: flex;
@@ -185,7 +242,7 @@
 
 .branding-wizard-target.active {
     border-color: var(--accent);
-    background: var(--accent-bg);
+    background: rgba(99, 102, 241, 0.15);
 }
 
 .branding-wizard-control {
@@ -231,13 +288,13 @@
     gap: 0.35rem;
     margin: 0;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--bg-secondary);
 }
 .settings-scope-section {
     padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 .settings-scope-tree {
     display: flex;
@@ -259,7 +316,7 @@
     cursor: pointer;
 }
 .settings-scope-row:hover { color: var(--text-primary); background: var(--bg-tertiary); }
-.settings-scope-row.active { color: var(--text-primary); background: var(--accent-bg); border-color: var(--accent); }
+.settings-scope-row.active { color: var(--text-primary); background: rgba(99, 102, 241, 0.15); border-color: var(--accent); }
 .settings-scope-server-line { display: flex; align-items: stretch; }
 .settings-scope-server-line .settings-scope-row { flex: 1; width: auto; padding-left: 0.15rem; }
 .settings-scope-row.household { color: var(--text-primary); font-weight: 600; }
@@ -308,7 +365,7 @@
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 0.8rem 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 9px;
     background: var(--bg-secondary);
 }
@@ -373,11 +430,11 @@
 .settings-category-btn:hover,
 .settings-level-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
 .settings-category-btn.active,
-.settings-level-btn.active { color: var(--text-primary); background: var(--accent-bg); border-color: var(--accent); }
+.settings-level-btn.active { color: var(--text-primary); background: rgba(99, 102, 241, 0.15); border-color: var(--accent); }
 .settings-level-section {
     margin-top: 0.55rem;
     padding-top: 0.7rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
 }
 .settings-level-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
 .settings-level-btn:disabled {
@@ -427,7 +484,7 @@
     gap: 1rem;
     margin-bottom: 0.75rem;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 9px;
     background: var(--bg-secondary);
 }
@@ -534,7 +591,7 @@
             <div class="settings-level-section">
                 <div class="settings-sidebar-label">View</div>
                 <div class="settings-level-switch" aria-label="Settings detail level">
-                    <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is being reviewed">Basic</button>
+                    <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
                     <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
                 </div>
                 <div id="settingsLevelHelp" class="settings-level-help"></div>
@@ -782,9 +839,7 @@
     const settingsDebugSessionId = 'settings-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     let editShelfEscapeHandler = null;
     let activeSettingsGroup = '';
-    // Basic mode remains visible as a roadmap affordance, but all settings stay
-    // available until its contents have been reviewed section by section.
-    let settingsLevel = 'advanced';
+    let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';
     const advancedSections = new Set(['ranking', 'server', 'transmux']);
     const advancedFieldPaths = new Set([
         'streaming.multiProviderMode',
@@ -798,7 +853,44 @@
         'playback.ytdlpCookies',
         'homeShelves.homeShelfScale',
         'homeShelves.homeHeroScale',
-        'server.allowedPrivateMediaOrigins'
+        'server.allowedPrivateMediaOrigins',
+        'filtering.adaptivePlaybackEnabled',
+        'filtering.adaptiveTargetBufferFactor',
+        'filtering.downloadPreferredTerms',
+        'filtering.unknownTrackPolicy',
+        'filtering.preferredScraper',
+        'filtering.servicePriority',
+        'display.includeUnreleasedMoviesInLists',
+        'display.includeUnreleasedShowsInLists',
+        'display.includeUnreleasedMoviesInSearch',
+        'display.includeUnreleasedShowsInSearch',
+        'display.bypassFilteringForAioStreamsOnly',
+        'display.showParsedBadges',
+        'display.enableHeroArtPanning',
+        'display.enableHeroArtRotation',
+        'display.hideContinueWatchingHeroMetadata',
+        'display.moveDetailsRatingsToMetadata',
+        'display.hideDetailsPoster',
+        'display.hideTvDrawerRail',
+        'display.blurUnwatchedEpisodeThumbnailsIncludeCurrent',
+        'display.blurUnwatchedEpisodeOverviewsIncludeCurrent',
+        'display.appearance.textColor',
+        'display.appearance.secondaryTextColor',
+        'display.appearance.backgroundColor',
+        'display.appearance.modalBackgroundColor',
+        'display.appearance.buttonStyle',
+        'display.appearance.buttonRadius',
+        'display.branding.wizard',
+        'display.branding.homeTvImageUrl',
+        'display.branding.homeTvImageUpload',
+        'display.branding.homeMobileLogoUrl',
+        'display.branding.homeMobileLogoUpload',
+        'display.branding.settingsTvImageUrl',
+        'display.branding.settingsTvImageUpload',
+        'display.branding.webIconUrl',
+        'display.branding.webIconUpload',
+        'display.branding.loadingLogoUrl',
+        'display.branding.loadingLogoUpload'
     ]);
     const advancedArrayFields = new Set([
         'live.sources.proxyUrl', 'live.sources.playlistCacheTtlHours', 'live.sources.probeSizeMb', 'live.sources.analyzeDurationSec', 'live.sources.lowLatency',
@@ -814,7 +906,7 @@
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = 'advanced';
+        settingsLevel = (level === 'basic') ? 'basic' : 'advanced';
         localStorage.setItem('mediastorm-settings-level', settingsLevel);
         renderSettings();
     }
@@ -850,7 +942,9 @@
         document.getElementById('settingsBasicBtn')?.classList.toggle('active', settingsLevel === 'basic');
         document.getElementById('settingsAdvancedBtn')?.classList.toggle('active', settingsLevel === 'advanced');
         const help = document.getElementById('settingsLevelHelp');
-        if (help) help.textContent = 'All settings are currently shown. Basic view is disabled while its contents are reviewed.';
+        if (help) help.textContent = settingsLevel === 'basic'
+            ? 'Showing common settings. Switch to Advanced or search to find everything else.'
+            : 'Showing all settings.';
     }
 
     function settingsScopeIcon(kind) {
@@ -6235,14 +6329,14 @@
                 typeBadgesHtml =
                     '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:0.125rem 0.45rem;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;background:rgba(34,197,94,0.16);color:#22c55e;border:1px solid rgba(34,197,94,0.35);">ENG</span>';
             }
-            const fieldsHtml = Object.entries(sectionDef.fields)
+            const fieldEntries = Object.entries(sectionDef.fields)
                 .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
                 .map(([fieldKey, fieldDef]) => {
                 if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) {
-                    return '';
+                    return null;
                 }
                 if (settingsLevel === 'basic' && sectionKey === 'usenetEngines' && ['apiPath', 'priority', 'config.webdavPathPrefix', 'pollIntervalSeconds', 'timeoutSeconds', 'allowedProfiles'].includes(fieldKey)) {
-                    return '';
+                    return null;
                 }
                 const showWhen = fieldDef.showWhen;
                 if (showWhen) {
@@ -6257,7 +6351,7 @@
                     } else if (showWhen.field) {
                         shouldShow = getItemValue(showWhen.field) === showWhen.value;
                     }
-                    if (!shouldShow) return '';
+                    if (!shouldShow) return null;
                 }
                 // Handle nested field paths like "config.autoClearQueue"
                 let fieldValue;
@@ -6271,8 +6365,45 @@
                 const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
                 const requiredBadge = isMissingRequired ? '<span style="margin-left:0.4rem;color:var(--warning);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Required</span>' : '';
                 const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
-                return '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+(isMissingRequired ? ' required-missing' : '')+'"><label class="form-label">'+fieldDef.label+requiredBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+requiredHint+renderAdditionalFieldHint(sectionKey, fieldKey, item)+renderApiKeyFormatWarning(fieldKey, fieldValue)+'</div>';
-            }).join('');
+                const fieldInputId = (basePath+'.'+index+'_'+fieldKey).replace(/\./g, '_');
+                return {
+                    group: fieldDef.group || '',
+                    groupLabel: fieldDef.groupLabel || '',
+                    groupDescription: fieldDef.groupDescription || '',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+(isMissingRequired ? ' required-missing' : '')+'"><label class="form-label" for="'+fieldInputId+'">'+fieldDef.label+requiredBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+requiredHint+renderAdditionalFieldHint(sectionKey, fieldKey, item)+renderApiKeyFormatWarning(fieldKey, fieldValue)+'</div>',
+                };
+            }).filter(Boolean);
+            const fieldHtmlParts = [];
+            let currentGroup = '';
+            let groupedFields = [];
+            let currentGroupLabel = '';
+            let currentGroupDescription = '';
+            const flushGroup = () => {
+                if (groupedFields.length === 0) return;
+                if (currentGroup) {
+                    fieldHtmlParts.push(
+                        '<div class="field-subgroup">' +
+                            '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
+                            (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
+                            '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
+                        '</div>'
+                    );
+                } else {
+                    fieldHtmlParts.push(...groupedFields);
+                }
+                groupedFields = [];
+            };
+            for (const entry of fieldEntries) {
+                if (entry.group !== currentGroup) {
+                    flushGroup();
+                    currentGroup = entry.group;
+                    currentGroupLabel = entry.groupLabel;
+                    currentGroupDescription = entry.groupDescription;
+                }
+                groupedFields.push(entry.html);
+            }
+            flushGroup();
+            const fieldsHtml = fieldHtmlParts.join('');
             const testBtn = isTestable ? '<button id="test-btn-'+sectionKey+'-'+index+'" class="btn btn-sm btn-secondary" onclick="testProvider(\''+sectionKey+'\', '+index+')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test</button>' : '';
             const hiddenChannelsBtn = (sectionKey === 'live.sources' || sectionKey === 'liveTV.sources')
                 ? '<button class="btn btn-sm btn-secondary" onclick="openHiddenChannelsManagerForSource(\''+sectionKey+'\', '+index+', event)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M10.58 10.58A2 2 0 0 0 13.42 13.42"/><path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M6.61 6.61C3.98 8.38 2 12 2 12s3 8 10 8a10.9 10.9 0 0 0 5.39-1.39"/></svg> Manage Hidden Channels</button>'
@@ -6313,18 +6444,13 @@
             '</div>';
         }).join('');
 
+        // Row/handle/drag-state rules shared with .shelf-row and .ranking-row live in the
+        // page-level <style> block; this block only carries what's specific to this widget.
         const styles = '<style>'+
             '.priority-container{position:relative;}'+
-            '.priority-row{display:flex;align-items:center;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;user-select:none;transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease;}'+
-            '.priority-row.dragging{background:rgba(138,43,226,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;transform:scale(1.02);}'+
-            '.priority-row.drag-over{border-top:2px solid #8a2be2;margin-top:-2px;}'+
-            '.priority-handle{color:#666;margin-right:12px;font-size:16px;cursor:grab;touch-action:none;padding:8px;margin:-8px;margin-right:4px;}'+
-            '.priority-handle:active{cursor:grabbing;}'+
-            '.priority-num{color:#888;margin-right:10px;min-width:24px;text-align:right;}'+
-            '.priority-name{flex:1;}'+
             '</style>';
 
-        return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color);">'+
+        return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">'+
             styles+
             '<label class="form-label">Provider Priority</label>'+
             '<p class="form-hint" style="margin-bottom:8px;">Drag to reorder. #1 has highest priority when multiple have cached results.</p>'+
@@ -6438,31 +6564,22 @@
                 '<span class="shelf-handle">☰</span>'+
                 '<span class="shelf-name">'+s.name+typeLabel+filterBadge+sourceBadge+sortBadge+streamingBadge+collectionBadge+'</span>'+
                 actionsHtml+
-                '<label class="shelf-toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleShelfEnabled(\''+s.id+'\', this.checked)"><span class="toggle-slider"></span></label>'+
+                '<label class="toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleShelfEnabled(\''+s.id+'\', this.checked)"><span class="toggle-slider"></span></label>'+
             '</div>';
         }).join('');
 
+        // Row/handle/drag-state rules shared with .priority-row and .ranking-row live in the
+        // page-level <style> block; this block only carries what's specific to this widget.
+        // The enable toggle reuses the shared .toggle component instead of a bespoke one.
         const styles = '<style>'+
             '.shelves-container{position:relative;}'+
-            '.shelf-row{display:flex;align-items:center;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;user-select:none;transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease,opacity 0.15s ease;}'+
-            '.shelf-row.dragging{background:rgba(138,43,226,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;transform:scale(1.02);}'+
-            '.shelf-row.drag-over{border-top:2px solid #8a2be2;margin-top:-2px;}'+
-            '.shelf-row.disabled{opacity:0.5;}'+
-            '.shelf-handle{color:#666;margin-right:12px;font-size:16px;cursor:grab;touch-action:none;padding:8px;margin:-8px;margin-right:4px;}'+
-            '.shelf-handle:active{cursor:grabbing;}'+
-            '.shelf-name{flex:1;font-weight:500;display:flex;align-items:center;gap:8px;min-width:0;}'+
             '.shelf-type-badge,.shelf-source-badge{display:inline-flex;align-items:center;height:18px;line-height:1;font-size:10px;padding:0 6px;border-radius:4px;font-weight:normal;white-space:nowrap;vertical-align:middle;}'+
-            '.shelf-type-badge{background:rgba(138,43,226,0.3);color:#c9a0dc;}'+
+            '.shelf-type-badge{background:rgba(99,102,241,0.25);color:#c7d2fe;}'+
             '.shelf-source-badge{background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;}'+
             '.shelf-filter-badge{font-size:12px;margin-left:4px;opacity:0.8;}'+
-            '.shelf-toggle{position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;margin-left:12px;}'+
-            '.shelf-toggle input{opacity:0;width:0;height:0;}'+
-            '.shelf-toggle .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#444;border-radius:22px;transition:0.3s;}'+
-            '.shelf-toggle .toggle-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background-color:white;border-radius:50%;transition:0.3s;}'+
-            '.shelf-toggle input:checked + .toggle-slider{background-color:#8a2be2;}'+
-            '.shelf-toggle input:checked + .toggle-slider:before{transform:translateX(18px);}'+
+            '.shelf-row .toggle{margin-left:12px;}'+
             '.shelf-edit-btn{background:rgba(255,255,255,0.08);border:none;color:#aaa;font-size:16px;cursor:pointer;padding:8px 10px;line-height:1;border-radius:6px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;margin-left:8px;}'+
-            '.shelf-edit-btn:hover{color:#8a2be2;background:rgba(138,43,226,0.15);}'+
+            '.shelf-edit-btn:hover{color:var(--accent-hover);background:rgba(99,102,241,0.15);}'+
             '.shelf-config-btn svg{width:16px;height:16px;}'+
             '.shelf-delete-btn{background:rgba(255,255,255,0.08);border:none;color:#aaa;font-size:18px;cursor:pointer;padding:8px 10px;line-height:1;border-radius:6px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;margin-left:4px;}'+
             '.shelf-delete-btn:hover{color:#e94560;background:rgba(233,69,96,0.15);}'+
@@ -6482,14 +6599,14 @@
             '.add-custom-list-form .form-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}'+
             '.add-custom-list-form .form-group{flex:1;margin-bottom:0;}'+
             '.add-custom-list-form input{width:100%;padding:8px 12px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;font-size:14px;}'+
-            '.add-custom-list-form button{padding:8px 16px;background:#8a2be2;border:none;border-radius:6px;color:white;cursor:pointer;white-space:nowrap;}'+
-            '.add-custom-list-form button:hover{background:#9b3ce6;}'+
+            '.add-custom-list-form button{padding:8px 16px;background:var(--accent);border:none;border-radius:6px;color:white;cursor:pointer;white-space:nowrap;}'+
+            '.add-custom-list-form button:hover{background:var(--accent-hover);}'+
             // Inherited styling - greyed out when inheriting from global
             '.shelves-inherited .shelf-row{opacity:0.6;background:rgba(100,116,139,0.08);border:1px solid rgba(100,116,139,0.25);}'+
             '.shelves-inherited .shelf-handle{color:#555;}'+
             '.shelves-inherited .shelf-name{color:#888;}'+
             '.shelves-inherited .toggle-slider{opacity:0.6;background:rgba(100,116,139,0.2);}'+
-            '.shelves-inherited .shelf-toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
+            '.shelves-inherited .toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
             '.shelves-inherited .add-custom-list-form{opacity:0.6;}'+
             '.shelves-inherited .add-custom-list-form input,.shelves-inherited .add-custom-list-form select,.shelves-inherited .add-custom-list-form button{opacity:0.7;}'+
             '.add-custom-list-form select{width:100%;padding:8px 12px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;font-size:14px;cursor:pointer;}'+
@@ -6554,7 +6671,7 @@
             '<h4 style="margin:0 0 12px 0;font-size:14px;font-weight:500;">Add Home Shelf</h4>'+
             '<div class="form-row">'+
                 '<div class="form-group" style="flex:0 0 200px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Type</label>'+
+                    '<label class="form-label" for="newShelfType" style="font-size:12px;margin-bottom:4px;">Type</label>'+
                     '<select id="newShelfType" onchange="onShelfTypeChange()">'+
                         '<option value="mdblist">MDBList</option>'+
                         '<option value="popular-on-server">Popular on This Server</option>'+
@@ -6572,14 +6689,14 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="stremioImportModeGroup" style="display:none;flex:0 0 240px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Import As</label>'+
+                    '<label class="form-label" for="newShelfStremioImportMode" style="font-size:12px;margin-bottom:4px;">Import As</label>'+
                     '<select id="newShelfStremioImportMode" onchange="onStremioImportModeChange()">'+
                         '<option value="shelves">Individual shelves</option>'+
                         '<option value="hub">Collection hub</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSourceTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Source Type</label>'+
+                    '<label class="form-label" for="newShelfTmdbSourceType" style="font-size:12px;margin-bottom:4px;">Source Type</label>'+
                     '<select id="newShelfTmdbSourceType" onchange="onTMDBSourceTypeChange()">'+
                         '<option value="public-list">Public list</option>'+
                         '<option value="production-company">Production company</option>'+
@@ -6591,7 +6708,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSearchGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" id="newShelfTmdbSourceLabel" style="font-size:12px;margin-bottom:4px;">List</label>'+
+                    '<label class="form-label" for="newShelfTmdbSourceQuery" id="newShelfTmdbSourceLabel" style="font-size:12px;margin-bottom:4px;">List</label>'+
                     '<input type="text" id="newShelfTmdbSourceQuery" placeholder="TMDB URL, name, or numeric ID">'+
                     '<input type="hidden" id="newShelfTmdbSourceId">'+
                     '<input type="hidden" id="newShelfTmdbSourceName">'+
@@ -6601,11 +6718,11 @@
                     '<button type="button" onclick="searchTMDBShelfSource(\'newShelf\')">Search</button>'+
                 '</div>'+
                 '<div class="form-group" id="newShelfTmdbSourceResultGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Result</label>'+
+                    '<label class="form-label" for="newShelfTmdbSourceResult" style="font-size:12px;margin-bottom:4px;">Result</label>'+
                     '<select id="newShelfTmdbSourceResult" onchange="applyTMDBSourceResult(\'newShelf\')"></select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Type</label>'+
+                    '<label class="form-label" for="newShelfTmdbMediaType" style="font-size:12px;margin-bottom:4px;">Type</label>'+
                     '<select id="newShelfTmdbMediaType">'+
                         '<option value="movie">Movies</option>'+
                         '<option value="tv">Series</option>'+
@@ -6613,7 +6730,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSortGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Sort</label>'+
+                    '<label class="form-label" for="newShelfTmdbSort" style="font-size:12px;margin-bottom:4px;">Sort</label>'+
                     '<select id="newShelfTmdbSort" onchange="onTMDBSortFieldChange(\'newShelf\')">'+
                         '<option value="original">Original order</option>'+
                         '<option value="popularity">Popularity</option>'+
@@ -6623,38 +6740,38 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSortDirectionGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Direction</label>'+
+                    '<label class="form-label" for="newShelfTmdbSortDirection" style="font-size:12px;margin-bottom:4px;">Direction</label>'+
                     '<select id="newShelfTmdbSortDirection">'+
                         '<option value="desc">Descending</option>'+
                         '<option value="asc">Ascending</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="mediaLibraryGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Library</label>'+
+                    '<label class="form-label" for="newShelfLibrary" style="font-size:12px;margin-bottom:4px;">Library</label>'+
                     '<select id="newShelfLibrary" onchange="onMediaLibraryShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="traktAccountGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Trakt Account</label>'+
+                    '<label class="form-label" for="newShelfTraktAccount" style="font-size:12px;margin-bottom:4px;">Trakt Account</label>'+
                     '<select id="newShelfTraktAccount" onchange="onTraktShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="traktListTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">List Type</label>'+
+                    '<label class="form-label" for="newShelfTraktListType" style="font-size:12px;margin-bottom:4px;">List Type</label>'+
                     '<select id="newShelfTraktListType" onchange="onTraktShelfSourceChange()">'+
                         '<option value="watchlist">Watchlist</option>'+
                         '<option value="custom">Custom List</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="traktListGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Custom List</label>'+
+                    '<label class="form-label" for="newShelfTraktList" style="font-size:12px;margin-bottom:4px;">Custom List</label>'+
                     '<select id="newShelfTraktList" onchange="onTraktShelfSourceChange()"></select>'+
                 '</div>'+
                 // Simkl fields (shown when type=simkl)
                 '<div class="form-group" id="simklAccountGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Simkl Account</label>'+
+                    '<label class="form-label" for="newShelfSimklAccount" style="font-size:12px;margin-bottom:4px;">Simkl Account</label>'+
                     '<select id="newShelfSimklAccount" onchange="onSimklShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="simklMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfSimklMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfSimklMediaType" onchange="onSimklShelfSourceChange()">'+
                         '<option value="movies">Movies</option>'+
                         '<option value="shows">Shows</option>'+
@@ -6662,7 +6779,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="simklListTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">List</label>'+
+                    '<label class="form-label" for="newShelfSimklListType" style="font-size:12px;margin-bottom:4px;">List</label>'+
                     '<select id="newShelfSimklListType" onchange="onSimklShelfSourceChange()">'+
                         '<option value="plantowatch">Plan to Watch</option>'+
                         '<option value="watching">Watching</option>'+
@@ -6672,45 +6789,45 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="letterboxdSourceGroup" style="display:none;flex:0 0 200px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Source</label>'+
+                    '<label class="form-label" for="newShelfLetterboxdSource" style="font-size:12px;margin-bottom:4px;">Source</label>'+
                     '<select id="newShelfLetterboxdSource" onchange="onLetterboxdSourceModeChange()">'+
                         '<option value="url">Public URL</option>'+
                         '<option value="mdblist">Imported via MDBList</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="letterboxdUrlGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Public Letterboxd URL</label>'+
+                    '<label class="form-label" for="newShelfLetterboxdUrl" style="font-size:12px;margin-bottom:4px;">Public Letterboxd URL</label>'+
                     '<input type="text" id="newShelfLetterboxdUrl" oninput="onLetterboxdUrlInput()" placeholder="https://letterboxd.com/user/list/list-name/">'+
                 '</div>'+
                 '<div class="form-group" id="letterboxdListGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Imported List</label>'+
+                    '<label class="form-label" for="newShelfLetterboxdList" style="font-size:12px;margin-bottom:4px;">Imported List</label>'+
                     '<select id="newShelfLetterboxdList" onchange="onLetterboxdShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="genreMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfGenreMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfGenreMediaType" onchange="onGenreShelfMediaTypeChange()">'+
                         '<option value="movie">Movies</option>'+
                         '<option value="tv">TV Shows</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="genreGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Genre</label>'+
+                    '<label class="form-label" for="newShelfGenre" style="font-size:12px;margin-bottom:4px;">Genre</label>'+
                     '<select id="newShelfGenre" onchange="onGenreShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="decadeMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfDecadeMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfDecadeMediaType" onchange="onDecadeShelfSourceChange()">'+
                         '<option value="movie">Movies</option>'+
                         '<option value="tv">TV Shows</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="decadeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Decade</label>'+
+                    '<label class="form-label" for="newShelfDecade" style="font-size:12px;margin-bottom:4px;">Decade</label>'+
                     '<select id="newShelfDecade" onchange="onDecadeShelfSourceChange()"></select>'+
                 '</div>'+
                 // Streaming service fields (shown when type=streaming-service)
                 '<div class="form-group" id="streamingServiceGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Service</label>'+
+                    '<label class="form-label" for="newShelfService" style="font-size:12px;margin-bottom:4px;">Service</label>'+
                     '<select id="newShelfService" onchange="onStreamingServiceChange()">'+
                         '<option value="netflix">Netflix</option>'+
                         '<option value="disney">Disney+</option>'+
@@ -6722,7 +6839,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="streamingMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfMediaType" onchange="onStreamingServiceChange()">'+
                         '<option value="movies">Movies</option>'+
                         '<option value="shows">Shows</option>'+
@@ -6731,11 +6848,11 @@
                 '</div>'+
                 // MDBList URL field (shown when type=mdblist)
                 '<div class="form-group" id="mdblistUrlGroup" style="flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">URL</label>'+
+                    '<label class="form-label" for="newShelfUrl" style="font-size:12px;margin-bottom:4px;">URL</label>'+
                     '<input type="text" id="newShelfUrl" placeholder="https://mdblist.com/lists/username/list-name/json">'+
                 '</div>'+
                 '<div class="form-group" id="stremioManifestGroup" style="display:none;flex:1 0 100%;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Manifest URL</label>'+
+                    '<label class="form-label" for="newShelfStremioManifest" style="font-size:12px;margin-bottom:4px;">Manifest URL</label>'+
                     '<div class="stremio-manifest-row">'+
                         '<input type="text" id="newShelfStremioManifest" oninput="clearLoadedStremioManifest()" placeholder="Manifest, install, or stremio-addons.net page URL">'+
                         '<button type="button" class="btn btn-secondary" onclick="loadStremioShelfManifest()">Load Catalogs</button>'+
@@ -6743,24 +6860,24 @@
                     '<p class="form-hint" id="stremioImportHint" style="margin-top:6px;">Paste a configured manifest, Stremio install URL, or stremio-addons.net add-on page.</p>'+
                 '</div>'+
                 '<div class="form-group" id="stremioCatalogsGroup" style="display:none;flex:1 1 100%;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Catalogs</label>'+
+                    '<label class="form-label" for="stremioCatalogsList" style="font-size:12px;margin-bottom:4px;">Catalogs</label>'+
                     '<div id="stremioCatalogsList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px;"></div>'+
                     '<p id="stremioCatalogStatus" class="form-hint" style="margin-top:6px;"></p>'+
                 '</div>'+
                 '<div class="form-group" id="stremioHubNameGroup" style="display:none;flex:1 1 280px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Hub Name</label>'+
+                    '<label class="form-label" for="newShelfStremioHubName" style="font-size:12px;margin-bottom:4px;">Hub Name</label>'+
                     '<input type="text" id="newShelfStremioHubName" placeholder="Add-on collections">'+
                 '</div>'+
                 '<div class="form-group" id="newShelfNameGroup">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Name</label>'+
+                    '<label class="form-label" for="newShelfName" style="font-size:12px;margin-bottom:4px;">Name</label>'+
                     '<input type="text" id="newShelfName" placeholder="My Custom List">'+
                 '</div>'+
                 '<div class="form-group" id="newShelfLimitGroup" style="flex:0 0 80px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Limit</label>'+
+                    '<label class="form-label" for="newShelfLimit" style="font-size:12px;margin-bottom:4px;">Limit</label>'+
                     '<input type="number" id="newShelfLimit" placeholder="0" min="0" max="500" value="0">'+
                 '</div>'+
                 '<div class="form-group" id="newShelfHideUnreleasedGroup" style="flex:0 0 auto;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Hide Unreleased</label>'+
+                    '<label class="form-label" for="newShelfHideUnreleased" style="font-size:12px;margin-bottom:4px;">Hide Unreleased</label>'+
                     '<div style="display:flex;align-items:center;height:38px;" title="Filter out movies not yet available for home viewing, and upcoming/in-production series"><input type="checkbox" id="newShelfHideUnreleased"></div>'+
                 '</div>'+
                 '<button class="add-custom-list-submit" onclick="addCustomShelf()">Add</button>'+
@@ -7561,7 +7678,7 @@
             if (list) {
                 list.innerHTML = catalogs.map((catalog, index) => {
                     const typeLabel = catalog.type === 'movie' ? 'Movies' : 'Series';
-                    return `<label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border-color);border-radius:6px;cursor:pointer;">
+                    return `<label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
                         <input type="checkbox" class="stremio-catalog-choice" value="${index}" checked>
                         <span>${escapeHtml(catalog.name)} <span style="color:var(--text-muted);font-size:11px;">${typeLabel}</span></span>
                     </label>`;
@@ -8636,21 +8753,21 @@
         const settingFields = isPopular
             ? `
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
+                    <label class="form-label" for="sharedShelfWindowDays" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
                     <input type="number" id="sharedShelfWindowDays" value="${shelf.activityWindowDays || 90}" min="7" max="365" class="form-input">
                 </div>
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Minimum Views</label>
+                    <label class="form-label" for="sharedShelfMinProfiles" style="font-size:12px;margin-bottom:4px;display:block;">Minimum Views</label>
                     <input type="number" id="sharedShelfMinProfiles" value="${shelf.minimumProfiles || 2}" min="1" max="100" class="form-input">
                     <p class="form-hint" style="margin-top:6px;">Only titles with at least this many completed movie or episode views are shown.</p>
                 </div>`
             : `
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
+                    <label class="form-label" for="sharedShelfWindowDays" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
                     <input type="number" id="sharedShelfWindowDays" value="${shelf.activityWindowDays || 14}" min="1" max="90" class="form-input">
                 </div>
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Maximum Items Per Profile</label>
+                    <label class="form-label" for="sharedShelfPerProfileCap" style="font-size:12px;margin-bottom:4px;display:block;">Maximum Items Per Profile</label>
                     <input type="number" id="sharedShelfPerProfileCap" value="${shelf.maxItemsPerProfile || 3}" min="1" max="20" class="form-input">
                     <p class="form-hint" style="margin-top:6px;">Prevents one profile from dominating the shared feed.</p>
                 </div>`;
@@ -8667,12 +8784,12 @@
                     </div>
                     <div class="test-modal-body streaming-services-modal-body">
                         <div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Shelf Name</label>
+                            <label class="form-label" for="sharedShelfName" style="font-size:12px;margin-bottom:4px;display:block;">Shelf Name</label>
                             <input type="text" id="sharedShelfName" value="${escapeHtml(shelf.name).replace(/"/g, '&quot;')}" class="form-input">
                         </div>
                         ${settingFields}
                         <div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
+                            <label class="form-label" for="sharedShelfItemLimit" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
                             <input type="number" id="sharedShelfItemLimit" value="${shelf.limit || 0}" min="0" max="500" class="form-input">
                         </div>
                         <p class="form-hint">These values follow the selected profile's Home Shelves configuration and are executed by the backend.</p>
@@ -8821,7 +8938,7 @@
             const currentSort = shelf.sort || defaultMyUpcomingSort();
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
+                        <label class="form-label" for="editShelfSort" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
                         <select id="editShelfSort" class="form-input">
                             <option value="air-date-asc" ${currentSort === 'air-date-asc' ? 'selected' : ''}>Soonest air date</option>
                             <option value="air-date-desc" ${currentSort === 'air-date-desc' ? 'selected' : ''}>Latest air date</option>
@@ -8835,15 +8952,15 @@
         } else if (isStremioShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Add-on</label>
-                        <input type="text" value="${escapeHtml(shelf.addonName || 'Stremio Add-on').replace(/"/g, '&quot;')}" class="form-input" disabled>
+                        <label class="form-label" for="editShelfStremioAddonName" style="font-size:12px;margin-bottom:4px;display:block;">Add-on</label>
+                        <input type="text" id="editShelfStremioAddonName" value="${escapeHtml(shelf.addonName || 'Stremio Add-on').replace(/"/g, '&quot;')}" class="form-input" disabled>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Catalog</label>
-                        <input type="text" value="${escapeHtml((shelf.addonCatalogId || '') + ' (' + (shelf.addonCatalogType || '') + ')').replace(/"/g, '&quot;')}" class="form-input" disabled>
+                        <label class="form-label" for="editShelfStremioCatalog" style="font-size:12px;margin-bottom:4px;display:block;">Catalog</label>
+                        <input type="text" id="editShelfStremioCatalog" value="${escapeHtml((shelf.addonCatalogId || '') + ' (' + (shelf.addonCatalogType || '') + ')').replace(/"/g, '&quot;')}" class="form-input" disabled>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Manifest URL</label>
+                        <label class="form-label" for="editShelfStremioManifest" style="font-size:12px;margin-bottom:4px;display:block;">Manifest URL</label>
                         <input type="text" id="editShelfStremioManifest" value="${escapeHtml(shelf.addonManifestUrl || '').replace(/"/g, '&quot;')}" class="form-input">
                     </div>
         `;
@@ -8853,11 +8970,11 @@
             const tmdbQueryValue = [tmdbSourceName, tmdbSourceID].filter(Boolean).join(', ');
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Source Type</label>
+                        <label class="form-label" for="editShelfTmdbSourceType" style="font-size:12px;margin-bottom:4px;display:block;">Source Type</label>
                         <select id="editShelfTmdbSourceType" onchange="onTMDBSourceTypeChange('editShelf')" class="form-input">${tmdbSourceOptions}</select>
                     </div>
                     <div id="editShelfTmdbSearchGroup" style="margin-bottom:12px;">
-                        <label id="editShelfTmdbSourceLabel" class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">TMDB Source</label>
+                        <label id="editShelfTmdbSourceLabel" class="form-label" for="editShelfTmdbSourceQuery" style="font-size:12px;margin-bottom:4px;display:block;">TMDB Source</label>
                         <input type="text" id="editShelfTmdbSourceQuery" value="${escapeHtml(tmdbQueryValue).replace(/"/g, '&quot;')}" class="form-input" placeholder="TMDB URL, name, or numeric ID">
                         <input type="hidden" id="editShelfTmdbSourceId" value="${escapeHtml(tmdbSourceID).replace(/"/g, '&quot;')}">
                         <input type="hidden" id="editShelfTmdbSourceName" value="${escapeHtml(tmdbSourceName).replace(/"/g, '&quot;')}">
@@ -8867,19 +8984,19 @@
                         <button type="button" class="btn btn-secondary" onclick="searchTMDBShelfSource('editShelf')">Search</button>
                     </div>
                     <div id="editShelfTmdbSourceResultGroup" style="display:none;margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Result</label>
+                        <label class="form-label" for="editShelfTmdbSourceResult" style="font-size:12px;margin-bottom:4px;display:block;">Result</label>
                         <select id="editShelfTmdbSourceResult" onchange="applyTMDBSourceResult('editShelf')" class="form-input"></select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Type</label>
+                        <label class="form-label" for="editShelfTmdbMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Type</label>
                         <select id="editShelfTmdbMediaType" class="form-input">${tmdbMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
+                        <label class="form-label" for="editShelfTmdbSort" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
                         <select id="editShelfTmdbSort" onchange="onTMDBSortFieldChange('editShelf')" class="form-input">${tmdbSortOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Direction</label>
+                        <label class="form-label" for="editShelfTmdbSortDirection" style="font-size:12px;margin-bottom:4px;display:block;">Direction</label>
                         <select id="editShelfTmdbSortDirection" class="form-input" ${tmdbSort.field === 'original' ? 'disabled' : ''}>${tmdbSortDirectionOptions}</select>
                     </div>
                     ${buildTMDBCustomFilterFields('editShelf', shelf.tmdbDiscoverQuery || '', true)}
@@ -8887,37 +9004,37 @@
         } else if (isLibraryShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Library</label>
+                        <label class="form-label" for="editShelfLibrary" style="font-size:12px;margin-bottom:4px;display:block;">Library</label>
                         <select id="editShelfLibrary" class="form-input">${mediaLibraryOptions}</select>
                     </div>
         `;
         } else if (isTraktShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Trakt Account</label>
+                        <label class="form-label" for="editShelfTraktAccount" style="font-size:12px;margin-bottom:4px;display:block;">Trakt Account</label>
                         <select id="editShelfTraktAccount" onchange="onEditTraktShelfSourceChange()" class="form-input">${traktAccountOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">List Type</label>
+                        <label class="form-label" for="editShelfTraktListType" style="font-size:12px;margin-bottom:4px;display:block;">List Type</label>
                         <select id="editShelfTraktListType" onchange="onEditTraktShelfSourceChange()" class="form-input">${traktListTypeOptions}</select>
                     </div>
                     <div id="editShelfTraktListGroup" style="margin-bottom:12px;display:${traktListType === 'custom' ? 'block' : 'none'};">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Custom List</label>
+                        <label class="form-label" for="editShelfTraktList" style="font-size:12px;margin-bottom:4px;display:block;">Custom List</label>
                         <select id="editShelfTraktList" class="form-input"><option value="">Loading...</option></select>
                     </div>
         `;
         } else if (isSimklShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Simkl Account</label>
+                        <label class="form-label" for="editShelfSimklAccount" style="font-size:12px;margin-bottom:4px;display:block;">Simkl Account</label>
                         <select id="editShelfSimklAccount" class="form-input">${simklAccountOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
+                        <label class="form-label" for="editShelfSimklMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
                         <select id="editShelfSimklMediaType" class="form-input">${simklMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">List</label>
+                        <label class="form-label" for="editShelfSimklListType" style="font-size:12px;margin-bottom:4px;display:block;">List</label>
                         <select id="editShelfSimklListType" class="form-input">${simklStatusOptions}</select>
                     </div>
         `;
@@ -8930,19 +9047,19 @@
             const editUseUrl = !(shelf.letterboxdListId && !shelf.letterboxdListUrl);
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Source</label>
+                        <label class="form-label" for="editShelfLetterboxdSource" style="font-size:12px;margin-bottom:4px;display:block;">Source</label>
                         <select id="editShelfLetterboxdSource" onchange="onEditLetterboxdSourceModeChange()" class="form-input">
                             <option value="url" ${editUseUrl ? 'selected' : ''}>Public URL</option>
                             <option value="mdblist" ${editUseUrl ? '' : 'selected'}>Imported via MDBList</option>
                         </select>
                     </div>
                     <div id="editLetterboxdUrlGroup" style="margin-bottom:12px;display:${editUseUrl ? 'block' : 'none'};">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Public Letterboxd URL</label>
+                        <label class="form-label" for="editShelfLetterboxdUrl" style="font-size:12px;margin-bottom:4px;display:block;">Public Letterboxd URL</label>
                         <input type="text" id="editShelfLetterboxdUrl" value="${(shelf.letterboxdListUrl || '').replace(/"/g, '&quot;')}" placeholder="https://letterboxd.com/user/list/list-name/" class="form-input">
                         <p class="form-hint" style="margin-top:6px;font-size:11px;">Any public Letterboxd list or watchlist URL — no MDBList account needed.</p>
                     </div>
                     <div id="editLetterboxdListGroup" style="margin-bottom:12px;display:${editUseUrl ? 'none' : 'block'};">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Imported List</label>
+                        <label class="form-label" for="editShelfLetterboxdList" style="font-size:12px;margin-bottom:4px;display:block;">Imported List</label>
                         <select id="editShelfLetterboxdList" class="form-input">${letterboxdOptions}</select>
                         <p class="form-hint" style="margin-top:6px;font-size:11px;">Letterboxd lists imported into mdblist.com. Don't see yours? Import it on MDBList first.</p>
                     </div>
@@ -8950,29 +9067,29 @@
         } else if (isGenreShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
+                        <label class="form-label" for="editShelfGenreMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
                         <select id="editShelfGenreMediaType" onchange="onEditGenreShelfMediaTypeChange()" class="form-input">${genreMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Genre</label>
+                        <label class="form-label" for="editShelfGenre" style="font-size:12px;margin-bottom:4px;display:block;">Genre</label>
                         <select id="editShelfGenre" class="form-input">${genreOptions}</select>
                     </div>
         `;
         } else if (isDecadeShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
+                        <label class="form-label" for="editShelfDecadeMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
                         <select id="editShelfDecadeMediaType" class="form-input">${decadeMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Decade</label>
+                        <label class="form-label" for="editShelfDecade" style="font-size:12px;margin-bottom:4px;display:block;">Decade</label>
                         <select id="editShelfDecade" class="form-input">${decadeOptions}</select>
                     </div>
         `;
         } else {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">URL</label>
+                        <label class="form-label" for="editShelfUrl" style="font-size:12px;margin-bottom:4px;display:block;">URL</label>
                         <input type="text" id="editShelfUrl" value="${(shelf.listUrl || '').replace(/"/g, '&quot;')}" class="form-input">
                     </div>
         `;
@@ -8992,12 +9109,12 @@
                     </div>
                     <div class="test-modal-body streaming-services-modal-body">
                         <div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Name</label>
+                            <label class="form-label" for="editShelfName" style="font-size:12px;margin-bottom:4px;display:block;">Name</label>
                             <input type="text" id="editShelfName" value="${shelf.name.replace(/"/g, '&quot;')}" class="form-input">
                         </div>
                         ${traktSourceFields}
                         ${isRecentlyAiredShelf || isMyUpcomingShelf ? '' : `<div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
+                            <label class="form-label" for="editShelfLimit" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
                             <input type="number" id="editShelfLimit" value="${shelf.limit || 0}" min="0" max="500" class="form-input">
                         </div>
                         <div style="margin-bottom:16px;">
@@ -9279,7 +9396,7 @@
             if (p) descHtml = '<span style="margin-left: 0.75rem; color: var(--text-muted); font-size: 0.8rem;">' + p.description + '</span>';
         }
 
-        return '<div style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">' +
+        return '<div style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">' +
             '<label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Preset</label>' +
             '<div style="display: flex; align-items: center; gap: 0.5rem;">' +
             '<select class="form-select" style="max-width: 220px;" onchange="applyPreset(this.value)">' +
@@ -9362,10 +9479,10 @@
             : '<span style="color: var(--text-muted); font-size: 0.8rem;">Choose a preset to fill the appearance fields below.</span>';
         const swatchHtml = (currentPreset ? ['accentColor', 'textColor', 'secondaryTextColor', 'backgroundColor', 'modalBackgroundColor'].map(key => {
             const color = currentPreset.appearance[key];
-            return '<span title="' + key + ': ' + color + '" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:' + color + ';border:1px solid var(--border-color);"></span>';
+            return '<span title="' + key + ': ' + color + '" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:' + color + ';border:1px solid var(--border);"></span>';
         }).join('') : '');
 
-        return '<div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary);">' +
+        return '<div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-secondary);">' +
             '<label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Theme Quick Select</label>' +
             '<div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">' +
             '<select class="form-select" style="max-width: 240px;" onchange="applyThemeQuickSelect(this.value)">' +
@@ -9746,30 +9863,21 @@
             return '<div class="ranking-row'+enabledClass+'" data-index="'+i+'" data-id="'+c.id+'">'+
                 '<span class="ranking-handle">☰</span>'+
                 '<span class="ranking-name">'+c.name+'</span>'+
-                '<label class="ranking-toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleRankingCriterionEnabled(\''+c.id+'\', this.checked, \''+criteriaPath+'\')"><span class="toggle-slider"></span></label>'+
+                '<label class="toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleRankingCriterionEnabled(\''+c.id+'\', this.checked, \''+criteriaPath+'\')"><span class="toggle-slider"></span></label>'+
             '</div>';
         }).join('');
 
+        // Row/handle/drag-state rules shared with .priority-row and .shelf-row live in the
+        // page-level <style> block; this block only carries what's specific to this widget.
+        // The enable toggle reuses the shared .toggle component instead of a bespoke one.
         const styles = '<style>'+
             '.ranking-container{position:relative;}'+
-            '.ranking-row{display:flex;align-items:center;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;user-select:none;transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease,opacity 0.15s ease;}'+
-            '.ranking-row.dragging{background:rgba(138,43,226,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;transform:scale(1.02);}'+
-            '.ranking-row.drag-over{border-top:2px solid #8a2be2;margin-top:-2px;}'+
-            '.ranking-row.disabled{opacity:0.5;}'+
-            '.ranking-handle{color:#666;margin-right:12px;font-size:16px;cursor:grab;touch-action:none;padding:8px;margin:-8px;margin-right:4px;}'+
-            '.ranking-handle:active{cursor:grabbing;}'+
-            '.ranking-name{flex:1;font-weight:500;display:flex;align-items:center;gap:8px;}'+
-            '.ranking-toggle{position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;margin-left:12px;}'+
-            '.ranking-toggle input{opacity:0;width:0;height:0;}'+
-            '.ranking-toggle .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#444;border-radius:22px;transition:0.3s;}'+
-            '.ranking-toggle .toggle-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background-color:white;border-radius:50%;transition:0.3s;}'+
-            '.ranking-toggle input:checked + .toggle-slider{background-color:#8a2be2;}'+
-            '.ranking-toggle input:checked + .toggle-slider:before{transform:translateX(18px);}'+
+            '.ranking-row .toggle{margin-left:12px;}'+
             '.ranking-inherited .ranking-row{opacity:0.6;background:rgba(100,116,139,0.08);border:1px solid rgba(100,116,139,0.25);}'+
             '.ranking-inherited .ranking-handle{color:#555;}'+
             '.ranking-inherited .ranking-name{color:#888;}'+
             '.ranking-inherited .toggle-slider{opacity:0.6;background:rgba(100,116,139,0.2);}'+
-            '.ranking-inherited .ranking-toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
+            '.ranking-inherited .toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
             '</style>';
 
         const containerClass = isInherited && selectedUserId ? 'ranking-container ranking-inherited' : 'ranking-container';
@@ -9905,7 +10013,7 @@
         if (!e.target.closest(handleClass)) return;
 
         // Don't start drag if clicking on interactive elements
-        if (e.target.closest('.shelf-toggle') || e.target.closest('.shelf-edit-btn') || e.target.closest('.shelf-delete-btn') || e.target.closest('.ranking-toggle')) return;
+        if (e.target.closest('.toggle') || e.target.closest('.shelf-edit-btn') || e.target.closest('.shelf-delete-btn')) return;
 
         e.preventDefault();
         ensureDragListeners();
@@ -10079,11 +10187,12 @@
                 const inheritanceClass = (selectedUserId || selectedClientId)
                     ? (inheritanceInfo.isOverridden ? ' field-overridden' : ' field-inherited')
                     : '';
+                const fieldInputId = (sectionKey+'_'+fieldKey).replace(/\./g, '_');
                 return {
                     group: fieldDef.group || '',
                     groupLabel: fieldDef.groupLabel || '',
                     groupDescription: fieldDef.groupDescription || '',
-                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
             .filter(Boolean);
@@ -10133,7 +10242,7 @@
         // Add test button for testable object sections
         let testHtml = '';
         if (sectionDef.testable && !selectedUserId && !selectedClientId) {
-            testHtml = '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.75rem;">'+
+            testHtml = '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem;">'+
                 '<button id="test-btn-'+sectionKey+'" class="btn btn-secondary" onclick="testObjectSection(\''+sectionKey+'\')">'+
                 '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test Connection</button>'+
                 '<span id="test-result-'+sectionKey+'" class="test-result"></span></div>';
@@ -10278,7 +10387,16 @@
         const warningBadge = errorCount > 0 ? '<span class="section-warning">'+errorCount+'</span>' : '';
 
         // Save button for section header (only show when section has changes and not a custom section)
-        const saveBtn = (hasChanges && !sectionDef.custom && !isDisabled) ? '<button class="section-save-btn" onclick="saveSection(\''+sectionKey+'\', event)" title="Save changes"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</button>' : '';
+        // At global/server scope, saving one section actually PUTs the entire settings tree
+        // (see saveSection's global-scope branch), so any other section's unsaved edits get
+        // persisted too. Label/title disclose that honestly instead of implying a scoped save.
+        // Profile/device scope saves are genuinely scoped to that profile/device's own object.
+        const isGlobalScopeSave = !selectedUserId && !selectedClientId;
+        const saveBtnLabel = isGlobalScopeSave ? 'Save All' : 'Save';
+        const saveBtnTitle = isGlobalScopeSave
+            ? 'Saves all sections with unsaved changes, not just this one'
+            : 'Save changes';
+        const saveBtn = (hasChanges && !sectionDef.custom && !isDisabled) ? '<button class="section-save-btn" onclick="saveSection(\''+sectionKey+'\', event)" title="'+saveBtnTitle+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> '+saveBtnLabel+'</button>' : '';
 
         // Section-level validation messages
         let messagesHtml = '';
@@ -10313,7 +10431,7 @@
 
         // Add clear cache button for cache section
         if (sectionKey === 'cache') {
-            contentHtml += '<div class="cache-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);"><button class="btn btn-secondary" id="clear-cache-btn" onclick="clearMetadataCache()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear Metadata Cache</button><p class="form-hint" style="margin-top: 0.5rem;">Remove all cached metadata and posters. Fresh data will be fetched from TVDB/TMDB on next request.</p></div>';
+            contentHtml += '<div class="cache-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);"><button class="btn btn-secondary" id="clear-cache-btn" onclick="clearMetadataCache()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear Metadata Cache</button><p class="form-hint" style="margin-top: 0.5rem;">Remove all cached metadata and posters. Fresh data will be fetched from TVDB/TMDB on next request.</p></div>';
         }
         let nestedHtml = '';
         for (const [nestedKey, nestedDef] of Object.entries(schema)) {
@@ -11094,7 +11212,7 @@
             const clientName = client ? (client.nickname || client.name) : selectedClientId;
             bannerHtml = '<div style="background: rgba(240, 208, 32, 0.1); border: 1px solid #f0d020; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f0d020" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span>Editing device-specific settings for <strong>' + clientName + '</strong></span></div><p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Fields show <span class="inheritance-badge overridden" style="font-size: 0.6rem;">Device</span> when overridden here, or <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Profile</span> / <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Global</span> when inherited. Click ↩ to reset an override.</p></div>';
         } else if (selectedUserId) {
-            bannerHtml = '<div style="background: var(--accent-bg, #2563eb20); border: 1px solid var(--accent, #2563eb); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent, #2563eb)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Editing profile-specific settings</span></div><p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Fields show <span class="inheritance-badge overridden" style="font-size: 0.6rem;">Profile</span> when overridden here, or <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Global</span> when using the default. Click ↩ to reset an override.</p></div>';
+            bannerHtml = '<div style="background: rgba(99, 102, 241, 0.15); border: 1px solid var(--accent); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Editing profile-specific settings</span></div><p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Fields show <span class="inheritance-badge overridden" style="font-size: 0.6rem;">Profile</span> when overridden here, or <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Global</span> when using the default. Click ↩ to reset an override.</p></div>';
         }
 
         // Add validation warning banner if there are issues

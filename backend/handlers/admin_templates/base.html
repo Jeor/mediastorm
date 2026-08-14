@@ -2326,8 +2326,49 @@
         });
 
         function toggleSection(el) {
-            el.closest('.section').classList.toggle('open');
+            const isOpen = el.closest('.section').classList.toggle('open');
+            if (el.classList.contains('section-header')) {
+                el.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
         }
+
+        // Accordion headers are rendered with a plain onclick handler across every admin page
+        // (settings, tools, backup, ...) and some pages rebuild their section markup at runtime
+        // (e.g. Settings search/filter re-renders #settingsContainer). Enhance every
+        // .section-header, present now or added later, so the primary navigation pattern of
+        // this dense config UI stays keyboard- and screen-reader-operable without needing each
+        // page template to opt in individually.
+        (function enhanceSectionHeaders() {
+            function enhance(header) {
+                if (header.dataset.a11yEnhanced) return;
+                // Only interactive headers opt in (onclick="toggleSection(this)"); some pages
+                // (e.g. bad_streams.html) render a static, always-expanded .section-header with
+                // no toggle behavior, and making those keyboard-focusable would add a focus stop
+                // that does nothing.
+                if (!header.hasAttribute('onclick')) return;
+                header.dataset.a11yEnhanced = '1';
+                header.setAttribute('role', 'button');
+                if (!header.hasAttribute('tabindex')) header.setAttribute('tabindex', '0');
+                const section = header.closest('.section');
+                header.setAttribute('aria-expanded', section && section.classList.contains('open') ? 'true' : 'false');
+                header.addEventListener('keydown', function(e) {
+                    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+                    e.preventDefault();
+                    toggleSection(header);
+                });
+            }
+            document.querySelectorAll('.section-header').forEach(enhance);
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType !== 1) return;
+                        if (node.matches && node.matches('.section-header')) enhance(node);
+                        if (node.querySelectorAll) node.querySelectorAll('.section-header').forEach(enhance);
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        })();
 
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');

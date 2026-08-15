@@ -269,14 +269,10 @@
 }
 
 .settings-workspace {
-    display: grid;
-    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
-    gap: 1rem;
-    align-items: start;
+    display: block;
 }
 .settings-sidebar {
-    align-self: start;
-    min-width: 0;
+    display: none;
 }
 .settings-main {
     min-width: 0;
@@ -366,10 +362,10 @@
     margin-bottom: 1rem;
     padding: 0.8rem 1rem;
     border: 1px solid var(--border);
-    border-radius: 9px;
+    border-radius: var(--radius-lg);
     background: var(--bg-secondary);
 }
-.settings-impact-banner p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.78rem; }
+.settings-impact-banner p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.75rem; }
 .settings-stale-toggle {
     align-self: flex-start;
     margin: 0.1rem 0 0.25rem 2.2rem;
@@ -384,7 +380,7 @@
 .settings-scope-empty { padding: 0.35rem 0.5rem 0.35rem 1.35rem; color: var(--text-muted); font-size: 0.68rem; }
 .settings-navigation-section { padding-top: 0.7rem; }
 #userSelector,
-#clientSelector { display: none !important; }
+#clientSelector { display: block; }
 .settings-sidebar-label {
     padding: 0.15rem 0.55rem 0.35rem;
     color: var(--text-muted);
@@ -401,11 +397,11 @@
 .settings-category-btn,
 .settings-level-btn {
     border: 1px solid transparent;
-    border-radius: 7px;
+    border-radius: var(--radius);
     background: transparent;
     color: var(--text-secondary);
     padding: 0.55rem 0.65rem;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     cursor: pointer;
 }
 .settings-category-btn {
@@ -419,10 +415,10 @@
     justify-content: center;
     min-width: 1.2rem;
     padding: 0.1rem 0.35rem;
-    border-radius: 999px;
+    border-radius: 9999px;
     background: var(--bg-tertiary);
     color: var(--text-muted);
-    font-size: 0.62rem;
+    font-size: 0.75rem;
     font-weight: 700;
     line-height: 1.25;
 }
@@ -457,10 +453,283 @@
     max-height: 40px;
 }
 #settingsContainer .settings-group { margin-bottom: 1rem; }
-#settingsContainer .group-title { margin: 0 0 0.55rem; font-size: 0.78rem; }
+#settingsContainer .group-title {
+    margin: 1.35rem 0 0.65rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+#settingsContainer .settings-group:first-of-type .group-title { margin-top: 0; }
 #settingsContainer .section { margin-bottom: 0.45rem; }
-#settingsContainer .section-header { min-height: 48px; padding: 0.7rem 0.85rem; }
+#settingsContainer .section-header {
+    min-height: 58px;
+    padding: 0.72rem 0.9rem;
+}
+#settingsContainer .section-header:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: -2px;
+}
 #settingsContainer .section-content { padding: 0.9rem; }
+#settingsContainer .section-title {
+    min-width: 0;
+    align-items: center;
+    gap: 0.7rem;
+}
+#settingsContainer .section-title > svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    color: var(--accent);
+}
+.settings-section-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+.settings-section-label {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.settings-section-description {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.settings-section-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0.16rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.settings-scope-panel {
+    margin-bottom: 1rem;
+}
+.settings-scope-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 40px;
+    padding: 0.35rem 0;
+}
+.settings-scope-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.settings-scope-server-btn,
+.settings-scope-select-wrap {
+    min-height: 30px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+}
+.settings-scope-server-btn {
+    padding: 0.35rem 0.65rem;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.settings-scope-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.settings-scope-select-wrap::before {
+    content: '\2192';
+    margin: 0 0.35rem 0 0.05rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+.settings-scope-select-wrap select {
+    min-height: 30px;
+    max-width: 220px;
+    padding: 0.3rem 1.75rem 0.3rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.settings-scope-server-btn.active,
+.settings-scope-select-wrap.active select {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-hover);
+}
+.settings-scope-server-btn:focus-visible,
+.settings-scope-select-wrap select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.settings-scope-select-wrap select:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+.settings-scope-spacer { flex: 1; }
+.settings-view-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.settings-view-compact .settings-level-switch {
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.15rem;
+}
+.settings-view-compact .settings-level-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+}
+.settings-cascade-copy {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+.settings-scope-tree-storage { display: none; }
+.indexer-table-shell {
+    overflow-x: auto;
+    border-radius: var(--radius);
+}
+.indexer-table {
+    width: 100%;
+    min-width: 780px;
+    border-collapse: separate;
+    border-spacing: 0 0.45rem;
+}
+.indexer-table th {
+    padding: 0.25rem 0.65rem;
+    border: 0;
+    background: rgba(255,255,255,0.025);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-align: left;
+    text-transform: uppercase;
+}
+.indexer-table td {
+    padding: 0.6rem 0.65rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    vertical-align: middle;
+}
+.indexer-table td:first-child { border-left: 1px solid var(--border); border-radius: var(--radius) 0 0 var(--radius); }
+.indexer-table td:last-child { border-right: 1px solid var(--border); border-radius: 0 var(--radius) var(--radius) 0; }
+.indexer-name { color: var(--text-primary); font-weight: 600; }
+.indexer-url {
+    display: block;
+    max-width: 290px;
+    margin-top: 0.12rem;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.indexer-status { display: inline-flex; align-items: center; gap: 0.4rem; }
+.indexer-status .toggle { transform: scale(0.82); transform-origin: left center; margin-right: -0.25rem; }
+.indexer-status-text.enabled { color: var(--success); }
+.indexer-api-mask { color: var(--text-muted); letter-spacing: 0.08em; }
+.provider-type-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+.provider-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    padding: 0.125rem 0.45rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+.provider-type-badge.debrid { color: var(--accent); background: rgba(99, 102, 241, 0.14); border-color: rgba(99, 102, 241, 0.35); }
+.provider-type-badge.torrent { color: var(--warning); background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35); }
+.provider-type-badge.direct { color: var(--success); background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.35); }
+.provider-type-name { color: var(--text-muted); font-size: 0.7rem; text-transform: none; }
+.indexer-actions { display: flex; align-items: center; gap: 0.25rem; }
+.indexer-action-btn {
+    min-height: 30px;
+    padding: 0.3rem 0.5rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--accent-hover);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.indexer-action-btn:hover { background: rgba(99, 102, 241, 0.12); }
+.indexer-action-btn.danger { color: var(--danger); }
+.indexer-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); }
+.indexer-action-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.indexer-edit-row td {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.indexer-edit-panel {
+    margin-top: -0.3rem;
+    padding: 1rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: rgba(99, 102, 241, 0.05);
+}
+.provider-table-warning {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    font-size: 0.8rem;
+}
+.indexer-section-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+.indexer-empty-state {
+    padding: 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    text-align: center;
+}
 #settingsContainer .grid { gap: 0.75rem; }
 #settingsContainer .form-group { margin-bottom: 0.75rem; }
 #settingsContainer .form-hint { margin-top: 0.3rem; font-size: 0.74rem; line-height: 1.35; }
@@ -469,10 +738,10 @@
     display: inline-flex;
     margin-left: 0.45rem;
     padding: 0.12rem 0.38rem;
-    border-radius: 999px;
+    border-radius: 9999px;
     background: var(--bg-tertiary);
     color: var(--text-muted);
-    font-size: 0.62rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -485,10 +754,10 @@
     margin-bottom: 0.75rem;
     padding: 0.85rem 1rem;
     border: 1px solid var(--border);
-    border-radius: 9px;
+    border-radius: var(--radius-lg);
     background: var(--bg-secondary);
 }
-.settings-related-card p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.78rem; }
+.settings-related-card p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.75rem; }
 @media (max-width: 900px) {
     .page-header-controls { flex-wrap: wrap; }
     .settings-workspace { grid-template-columns: 1fr; }
@@ -499,6 +768,54 @@
     .settings-level-section .settings-sidebar-label { padding: 0; }
     .settings-level-switch { display: flex; }
     .settings-level-help { margin: 0; }
+}
+@media (max-width: 640px) {
+    .settings-scope-bar { align-items: stretch; flex-direction: column; }
+    .settings-scope-label { padding: 0.2rem 0; }
+    .settings-scope-server-btn,
+    .settings-scope-select-wrap,
+    .settings-scope-select-wrap select { width: 100%; max-width: none; }
+    .settings-scope-select-wrap::before { display: none; }
+    .settings-scope-spacer { display: none; }
+    .settings-view-compact { justify-content: space-between; }
+    .settings-section-description { white-space: normal; }
+    #settingsContainer .section-header { align-items: flex-start; }
+    #settingsContainer .section-header-actions { padding-top: 0.15rem; }
+    .indexer-section-actions { align-items: stretch; flex-direction: column; }
+    .indexer-section-actions .btn { justify-content: center; width: 100%; }
+    .indexer-table-shell { overflow: visible; }
+    .indexer-table,
+    .indexer-table tbody,
+    .indexer-table tr,
+    .indexer-table td { display: block; width: 100%; min-width: 0; }
+    .indexer-table { border-spacing: 0; }
+    .indexer-table thead { display: none; }
+    .indexer-table tr { margin-bottom: 0.75rem; }
+    .indexer-table td {
+        display: grid;
+        grid-template-columns: 5.5rem minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: center;
+        border-right: 1px solid var(--border);
+        border-bottom: 0;
+        border-left: 1px solid var(--border);
+        border-radius: 0;
+    }
+    .indexer-table td::before {
+        color: var(--text-muted);
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+    .indexer-table td:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .indexer-table td:last-child { border-bottom: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); }
+    .indexer-table .indexer-edit-row { margin-top: -0.4rem; }
+    .indexer-table .indexer-edit-row td { display: block; border: 0; }
+    .indexer-table .indexer-edit-row td::before { display: none; }
+    .indexer-url { max-width: 100%; }
+    .indexer-actions { flex-wrap: wrap; }
 }
 </style>
 {{end}}
@@ -523,7 +840,7 @@
 <div class="page-header page-header-flex" style="display: flex; align-items: center; justify-content: space-between;">
     <div>
         <h1>Settings</h1>
-        <p>{{if .IsAdmin}}Configure your mediastorm server{{else}}Configure profile settings{{end}}</p>
+        <p>{{if .IsAdmin}}Configure your Mediastorm server{{else}}Configure profile settings{{end}}</p>
     </div>
     <div class="page-header-controls" style="display: flex; gap: 0.5rem; align-items: center;">
         <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)" style="min-width: 200px;">
@@ -560,44 +877,37 @@
     </div>
 </div>
 
-<aside class="settings-scope-guide" aria-label="How settings scopes work">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-    </svg>
-    <div>
-        <p><strong>Settings inherit from left to right:</strong> Server defaults → Person → Device. Choose a scope in the sidebar, change its values, then Save. A person overrides the server for every device using that profile; a device overrides both only on that device. Use <strong>Use Parent Defaults</strong> to remove a person or device override.</p>
-        {{if .IsAdmin}}<p><strong>Frontend access:</strong> Pencil icons appear only while viewing <strong>Server defaults</strong>. A grey pencil hides that setting from frontend Settings; an accent-colored pencil exposes it. Select the pencil and Save to apply the change.</p>{{end}}
-    </div>
-</aside>
-
-<div class="settings-workspace">
-    <aside class="settings-sidebar" aria-label="Settings navigation">
-        <div class="settings-workspace-toolbar">
-            <div class="settings-scope-section">
-                <div class="settings-sidebar-label">Scope</div>
-                <div id="settingsScopeTree" class="settings-scope-tree" aria-label="Settings scope"></div>
-                <select id="userSelector" hidden aria-hidden="true" tabindex="-1">
-                    {{if .IsAdmin}}<option value="">Server defaults</option>{{end}}
-                    {{range .Users}}
-                    <option value="{{.ID}}">{{.Name}}</option>
-                    {{end}}
-                </select>
-                <select id="clientSelector" hidden aria-hidden="true" tabindex="-1"><option value="">Profile defaults</option></select>
-            </div>
-            <div class="settings-navigation-section">
-                <div class="settings-sidebar-label">Settings</div>
-                <div id="settingsCategoryNav" class="settings-category-nav" aria-label="Settings categories"></div>
-            </div>
-            <div class="settings-level-section">
-                <div class="settings-sidebar-label">View</div>
-                <div class="settings-level-switch" aria-label="Settings detail level">
-                    <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
-                    <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
-                </div>
-                <div id="settingsLevelHelp" class="settings-level-help"></div>
+<section class="settings-scope-panel" aria-label="Settings scope">
+    <div class="settings-scope-bar">
+        <span class="settings-scope-label">Scope:</span>
+        {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
+        <label class="settings-scope-select-wrap" id="settingsPersonScopeWrap">
+            <select id="userSelector" aria-label="Person" onchange="selectSettingsScope(this.value ? 'person' : 'server', this.value)">
+                {{if .IsAdmin}}<option value="">Person</option>{{end}}
+                {{range .Users}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+        </label>
+        <label class="settings-scope-select-wrap" id="settingsDeviceScopeWrap">
+            <select id="clientSelector" aria-label="Device" onchange="selectSettingsScope(this.value ? 'device' : 'person', selectedUserId, this.value)"><option value="">Device</option></select>
+        </label>
+        <span class="settings-scope-spacer"></span>
+        <div class="settings-view-compact">
+            <span class="settings-scope-label">View:</span>
+            <div class="settings-level-switch" aria-label="Settings detail level">
+                <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+                <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
             </div>
         </div>
-    </aside>
+    </div>
+    <p class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides</p>
+    <div id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage" aria-hidden="true"></div>
+    <div id="settingsCategoryNav" hidden aria-hidden="true"></div>
+    <div id="settingsLevelHelp" hidden aria-hidden="true"></div>
+</section>
+
+<div class="settings-workspace">
     <main class="settings-main">
         <div id="settingsContainer">
             <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
@@ -840,6 +1150,50 @@
     let editShelfEscapeHandler = null;
     let activeSettingsGroup = '';
     let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';
+    let expandedIndexerEditIndex = -1;
+    const expandedProviderEditIndexes = {
+        debridProviders: -1,
+        torrentScrapers: -1,
+    };
+    const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers']);
+    const settingsSectionDescriptions = {
+        indexers: 'Configure indexers and search providers',
+        debridProviders: 'Real-Debrid, AllDebrid, Premiumize',
+        torrentScrapers: 'Torrent indexers and streaming providers',
+        'live.sources': 'IPTV and live television sources',
+        'liveTV.sources': 'IPTV and live television sources',
+        usenet: 'Usenet server connections',
+        usenetEngines: 'SABnzbd, NZBGet configuration',
+        streaming: 'Search behavior and source priority',
+        filtering: 'Resolution, codec, and quality preferences',
+        animeFiltering: 'Anime-specific search and naming',
+        ranking: 'Sort and filter result rankings',
+        playback: 'Player behavior, resume, and binge mode',
+        transmux: 'Browser-based player settings',
+        metadata: 'TMDb, metadata agents, and artwork',
+        mdblist: 'MDBList integration and lists',
+        subtitles: 'OpenSubtitles and subtitle preferences',
+        homeShelves: 'Dashboard layout and widgets',
+        display: 'Theme, colors, and custom branding',
+        server: 'Base URL and port configuration',
+        network: 'Local and remote access URLs'
+    };
+    const settingsOverviewGroups = [
+        { id: 'sources', label: 'Sources & Providers' },
+        { id: 'search', label: 'Search & Results' },
+        { id: 'playback', label: 'Playback' },
+        { id: 'metadata', label: 'Metadata & Services' },
+        { id: 'interface', label: 'Interface' },
+        { id: 'server', label: 'Server & Network' }
+    ];
+    const settingsOverviewSectionOrder = new Map([
+        'indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines',
+        'streaming', 'filtering', 'animeFiltering', 'ranking',
+        'playback', 'transmux',
+        'metadata', 'mdblist', 'subtitles',
+        'homeShelves', 'display',
+        'server', 'network'
+    ].map((key, index) => [key, index]));
     const advancedSections = new Set(['ranking', 'server', 'transmux']);
     const advancedFieldPaths = new Set([
         'streaming.multiProviderMode',
@@ -918,6 +1272,7 @@
 
     function renderSettingsWorkspaceNavigation() {
         renderSettingsScopeTree();
+        updateSettingsScopeBarState();
         const nav = document.getElementById('settingsCategoryNav');
         const availableGroups = groups.filter(group => Object.entries(schema).some(([key, def]) => {
             if (def.group !== group.id || def.hidden) return false;
@@ -945,6 +1300,70 @@
         if (help) help.textContent = settingsLevel === 'basic'
             ? 'Showing common settings. Switch to Advanced or search to find everything else.'
             : 'Showing all settings.';
+    }
+
+    function updateSettingsScopeBarState() {
+        const serverButton = document.getElementById('settingsServerScopeBtn');
+        const personWrap = document.getElementById('settingsPersonScopeWrap');
+        const deviceWrap = document.getElementById('settingsDeviceScopeWrap');
+        const userSelector = document.getElementById('userSelector');
+        const clientSelector = document.getElementById('clientSelector');
+        const isServer = !selectedUserId;
+        const isPerson = !!selectedUserId && !selectedClientId;
+        const isDevice = !!selectedClientId;
+        serverButton?.classList.toggle('active', isServer);
+        personWrap?.classList.toggle('active', isPerson);
+        deviceWrap?.classList.toggle('active', isDevice);
+        if (userSelector && userSelector.value !== selectedUserId) userSelector.value = selectedUserId;
+        if (clientSelector) {
+            clientSelector.disabled = !selectedUserId || clientsForUser.length === 0;
+            if (clientSelector.value !== selectedClientId) clientSelector.value = selectedClientId;
+        }
+    }
+
+    function settingsOverviewGroupForSection(sectionKey, sectionDef) {
+        if (['indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines'].includes(sectionKey)) return 'sources';
+        if (['streaming', 'filtering', 'animeFiltering', 'ranking'].includes(sectionKey)) return 'search';
+        if (['playback', 'transmux'].includes(sectionKey)) return 'playback';
+        if (['metadata', 'mdblist', 'subtitles'].includes(sectionKey)) return 'metadata';
+        if (['homeShelves', 'display'].includes(sectionKey)) return 'interface';
+        if (['server', 'network'].includes(sectionKey)) return 'server';
+        return {
+            providers: 'sources',
+            searchFiltering: 'search',
+            experience: 'interface',
+            services: 'metadata',
+            server: 'server'
+        }[sectionDef.group] || 'metadata';
+    }
+
+    function settingsSectionRowDescription(sectionKey, sectionDef) {
+        if (settingsSectionDescriptions[sectionKey]) return settingsSectionDescriptions[sectionKey];
+        if (sectionDef.description) {
+            const plain = String(sectionDef.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (plain) return plain;
+        }
+        return 'Configure ' + String(sectionDef.label || sectionKey).toLowerCase();
+    }
+
+    function settingsSectionConfiguredCount(sectionKey, sectionDef) {
+        const countArray = (key, def) => {
+            if (!def?.is_array) return 0;
+            let value;
+            if (def.parent) value = getValue(def.parent + '.' + def.key);
+            else value = getValue(key);
+            return Array.isArray(value) ? value.length : 0;
+        };
+        let count = countArray(sectionKey, sectionDef);
+        for (const [nestedKey, nestedDef] of Object.entries(schema)) {
+            if (nestedDef.parent === sectionKey && !nestedDef.group) count += countArray(nestedKey, nestedDef);
+        }
+        return count;
+    }
+
+    function renderSettingsSectionBadge(sectionKey, sectionDef) {
+        const count = settingsSectionConfiguredCount(sectionKey, sectionDef);
+        return count > 0 ? '<span class="settings-section-badge">' + count + ' configured</span>' : '';
     }
 
     function settingsScopeIcon(kind) {
@@ -4009,11 +4428,32 @@
                 return '<input type="text" class="form-input'+invalidClass+'" id="'+id+'" value="'+escapeHtml(value || '').replace(/"/g, '&quot;')+'" '+isReadonly+' oninput="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)" onchange="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
         }
     }
+    function refreshInlineSectionSaveState(basePath) {
+        const path = String(basePath || '');
+        const match = Object.entries(schema)
+            .map(([sectionKey, sectionDef]) => ({
+                sectionKey,
+                sectionPath: sectionDef.parent ? sectionDef.parent + '.' + sectionDef.key : sectionKey,
+            }))
+            .filter(candidate => path === candidate.sectionPath || path.startsWith(candidate.sectionPath + '.'))
+            .sort((a, b) => b.sectionPath.length - a.sectionPath.length)[0];
+        if (!match) return;
+
+        const section = document.getElementById('section-' + match.sectionKey);
+        if (!section) return;
+        const hasChanges = sectionHasChanges(match.sectionKey);
+        section.classList.toggle('has-changes', hasChanges);
+        section.querySelectorAll('.section-save-btn').forEach(button => {
+            button.disabled = !hasChanges;
+        });
+    }
+
     function handleFieldInputChange(basePath, fieldKey, value) {
         if (fieldKey.startsWith('config.') && typeof value === 'boolean') {
             value = value ? 'true' : 'false';
         }
         setValue(basePath ? basePath+'.'+fieldKey : fieldKey, value);
+        refreshInlineSectionSaveState(basePath || fieldKey);
     }
 
     function allowOnlyOneEnabledUsenetEngine(basePath) {
@@ -6270,6 +6710,206 @@
         }
     }
 
+    function toggleIndexerEditor(index, event) {
+        event?.stopPropagation();
+        expandedIndexerEditIndex = expandedIndexerEditIndex === index ? -1 : index;
+        renderSettings();
+    }
+
+    function addIndexerItem(event) {
+        event?.stopPropagation();
+        expandedIndexerEditIndex = Array.isArray(currentSettings.indexers) ? currentSettings.indexers.length : 0;
+        addArrayItem('indexers');
+    }
+
+    function removeIndexerItem(index, event) {
+        event?.stopPropagation();
+        if (expandedIndexerEditIndex === index) expandedIndexerEditIndex = -1;
+        else if (expandedIndexerEditIndex > index) expandedIndexerEditIndex--;
+        removeArrayItem('indexers', index);
+    }
+
+    function toggleProviderEditor(sectionKey, index, event) {
+        event?.stopPropagation();
+        expandedProviderEditIndexes[sectionKey] = expandedProviderEditIndexes[sectionKey] === index ? -1 : index;
+        renderSettings();
+    }
+
+    function addProviderItem(sectionKey, event) {
+        event?.stopPropagation();
+        const sectionDef = schema[sectionKey];
+        const items = sectionDef.parent
+            ? currentSettings[sectionDef.parent]?.[sectionDef.key]
+            : currentSettings[sectionKey];
+        expandedProviderEditIndexes[sectionKey] = Array.isArray(items) ? items.length : 0;
+        addArrayItem(sectionKey);
+    }
+
+    function removeProviderItem(sectionKey, index, event) {
+        event?.stopPropagation();
+        if (expandedProviderEditIndexes[sectionKey] === index) expandedProviderEditIndexes[sectionKey] = -1;
+        else if (expandedProviderEditIndexes[sectionKey] > index) expandedProviderEditIndexes[sectionKey]--;
+        removeArrayItem(sectionKey, index);
+    }
+
+    function renderIndexerEditFields(sectionDef, item, index, basePath) {
+        return Object.entries(sectionDef.fields)
+            .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+            .map(([fieldKey, fieldDef]) => {
+                let fieldValue = fieldKey.includes('.')
+                    ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
+                    : item[fieldKey];
+                const fieldInputId = (basePath + '.' + index + '_' + fieldKey).replace(/\./g, '_');
+                const isRequired = fieldDef.required === true;
+                const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+                const requiredBadge = isMissingRequired ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required</span>' : '';
+                const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+                let fieldInput = renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, 'indexers');
+                if (fieldDef.type === 'boolean') {
+                    fieldInput = fieldInput.replace('<label class="toggle">', '<label class="toggle" aria-label="' + escapeHtml(fieldDef.label).replace(/"/g, '&quot;') + '">');
+                }
+                return '<div class="form-group' + (fieldDef.type === 'boolean' ? ' form-group-toggle' : '') + (isMissingRequired ? ' required-missing' : '') + '">' +
+                    '<label class="form-label" for="' + fieldInputId + '">' + fieldDef.label + requiredBadge + '</label>' +
+                    fieldInput +
+                    (fieldDef.description ? '<p class="form-hint">' + fieldDef.description + '</p>' : '') +
+                    requiredHint + renderAdditionalFieldHint('indexers', fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+                '</div>';
+            }).join('');
+    }
+
+    function providerTableFieldVisible(item, fieldDef) {
+        const showWhen = fieldDef.showWhen;
+        if (!showWhen) return true;
+        const getItemValue = (path) => path.split('.').reduce((obj, key) => obj?.[key], item);
+        if (typeof showWhen === 'string' && showWhen.includes('=')) {
+            const [field, value] = showWhen.split('=');
+            return getItemValue(field) === value;
+        }
+        if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
+            return showWhen.conditions.some(condition => getItemValue(condition.field) === condition.value);
+        }
+        if (showWhen.field) return getItemValue(showWhen.field) === showWhen.value;
+        return true;
+    }
+
+    function renderProviderEditFields(sectionKey, sectionDef, item, index, basePath) {
+        return Object.entries(sectionDef.fields)
+            .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+            .map(([fieldKey, fieldDef]) => {
+                if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return '';
+                if (!providerTableFieldVisible(item, fieldDef)) return '';
+                const fieldValue = fieldKey.includes('.')
+                    ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
+                    : item[fieldKey];
+                const fieldInputId = (basePath + '.' + index + '_' + fieldKey).replace(/\./g, '_');
+                const isRequired = fieldDef.required === true;
+                const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+                const requiredBadge = isMissingRequired ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required</span>' : '';
+                const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+                let fieldInput = renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, sectionKey);
+                if (fieldDef.type === 'boolean') {
+                    fieldInput = fieldInput.replace('<label class="toggle">', '<label class="toggle" aria-label="' + escapeHtml(fieldDef.label).replace(/"/g, '&quot;') + '">');
+                }
+                return '<div class="form-group' + (fieldDef.type === 'boolean' ? ' form-group-toggle' : '') + (isMissingRequired ? ' required-missing' : '') + '">' +
+                    '<label class="form-label" for="' + fieldInputId + '">' + fieldDef.label + requiredBadge + '</label>' +
+                    fieldInput +
+                    (fieldDef.description ? '<p class="form-hint">' + fieldDef.description + '</p>' : '') +
+                    requiredHint + renderAdditionalFieldHint(sectionKey, fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+                '</div>';
+            }).join('');
+    }
+
+    function renderProviderTableBadges(sectionKey, item) {
+        if (sectionKey === 'debridProviders') {
+            const provider = String(item.provider || '').trim();
+            return provider ? '<span class="provider-type-badge debrid">' + escapeHtml(provider) + '</span>' : '';
+        }
+        if (sectionKey !== 'torrentScrapers') return '';
+        const scraperType = String(item.type || '').trim();
+        if (!scraperType) return '';
+        const directStreamTypes = ['aiostreams', 'comet', 'mediafusion', 'internetarchive'];
+        return '<span class="provider-type-badge torrent">TOR</span>' +
+            (directStreamTypes.includes(scraperType) ? '<span class="provider-type-badge direct">DIR</span>' : '') +
+            '<span class="provider-type-name">' + escapeHtml(scraperType) + '</span>';
+    }
+
+    function renderProviderTableSection(sectionKey, sectionDef, items, basePath, options) {
+        const rows = items.map((item, index) => {
+            const name = item.name || item.id || options.itemFallback + ' ' + (index + 1);
+            const secondary = options.secondary(item);
+            const statusInput = renderInput('enabled', sectionDef.fields.enabled, item.enabled, basePath + '.' + index, sectionKey)
+                .replace('<label class="toggle">', '<label class="toggle" aria-label="Enable ' + escapeHtml(name).replace(/"/g, '&quot;') + '">');
+            const isEditing = expandedProviderEditIndexes[sectionKey] === index;
+            const credentialMask = item.apiKey ? '••••••••' : 'Not set';
+            const badges = renderProviderTableBadges(sectionKey, item);
+            const badgesHtml = badges ? '<span class="provider-type-badges">' + badges + '</span>' : '';
+            const editHint = sectionKey === 'torrentScrapers' && item.type === 'aiostreams' && item.enabled && (currentSettings.streaming?.indexerTimeoutSec || 5) <= 5
+                ? '<div class="provider-table-warning">AIOStreams typically needs more than the default 5s search timeout. Increase it under <strong>Search &amp; Resolution</strong>.</div>'
+                : '';
+            const mainRow = '<tr>' +
+                '<td data-label="Name"><span class="indexer-name">' + escapeHtml(name) + '</span>' +
+                    (secondary ? '<span class="indexer-url" title="' + escapeHtml(secondary).replace(/"/g, '&quot;') + '">' + escapeHtml(secondary) + '</span>' : '') +
+                    badgesHtml + '</td>' +
+                '<td data-label="Status"><span class="indexer-status">' + statusInput + '<span class="indexer-status-text ' + (item.enabled ? 'enabled' : '') + '">' + (item.enabled ? 'On' : 'Off') + '</span></span></td>' +
+                '<td data-label="Priority">' + (index + 1) + '</td>' +
+                '<td data-label="API Key"><span class="indexer-api-mask">' + credentialMask + '</span></td>' +
+                '<td data-label="Actions"><div class="indexer-actions">' +
+                    '<button id="test-btn-' + sectionKey + '-' + index + '" class="indexer-action-btn" type="button" onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">Test</button>' +
+                    '<button class="indexer-action-btn" type="button" aria-expanded="' + isEditing + '" onclick="toggleProviderEditor(\'' + sectionKey + '\', ' + index + ', event)">' + (isEditing ? 'Close' : 'Edit') + '</button>' +
+                    '<button class="indexer-action-btn danger" type="button" onclick="removeProviderItem(\'' + sectionKey + '\', ' + index + ', event)">Delete</button>' +
+                '</div></td>' +
+            '</tr>';
+            const editRow = isEditing
+                ? '<tr class="indexer-edit-row"><td colspan="5"><div class="indexer-edit-panel"><div class="grid grid-2">' + renderProviderEditFields(sectionKey, sectionDef, item, index, basePath) + '</div>' + editHint + '</div></td></tr>'
+                : '';
+            return mainRow + editRow;
+        }).join('');
+        const table = items.length > 0
+            ? '<div class="indexer-table-shell provider-table-shell"><table class="indexer-table provider-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">API Key</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            : '<div class="indexer-empty-state"><strong>' + options.emptyTitle + '</strong><p class="form-hint">' + options.emptyHint + '</p></div>';
+        const hasChanges = sectionHasChanges(sectionKey);
+        const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
+        return '<p class="form-hint" style="margin:0 0 0.45rem;">' + options.intro + '</p>' +
+            table +
+            '<div class="indexer-section-actions"><button type="button" class="btn btn-primary" onclick="addProviderItem(\'' + sectionKey + '\', event)">+ ' + options.addLabel + '</button>' +
+            '<button type="button" class="section-save-btn" onclick="saveSection(\'' + sectionKey + '\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
+    }
+
+    function renderIndexerTableSection(sectionDef, items, basePath) {
+        const rows = items.map((item, index) => {
+            const name = item.name || item.id || 'Indexer ' + (index + 1);
+            const url = item.url || 'URL not set';
+            const statusInput = renderInput('enabled', sectionDef.fields.enabled, item.enabled, basePath + '.' + index, 'indexers')
+                .replace('<label class="toggle">', '<label class="toggle" aria-label="Enable ' + escapeHtml(name).replace(/"/g, '&quot;') + '">');
+            const isEditing = expandedIndexerEditIndex === index;
+            const apiMask = item.apiKey ? '••••••••' : 'Not set';
+            const mainRow = '<tr>' +
+                '<td data-label="Name"><span class="indexer-name">' + escapeHtml(name) + '</span><span class="indexer-url" title="' + escapeHtml(url).replace(/"/g, '&quot;') + '">' + escapeHtml(url) + '</span></td>' +
+                '<td data-label="Status"><span class="indexer-status">' + statusInput + '<span class="indexer-status-text ' + (item.enabled ? 'enabled' : '') + '">' + (item.enabled ? 'On' : 'Off') + '</span></span></td>' +
+                '<td data-label="Priority">' + (index + 1) + '</td>' +
+                '<td data-label="API Key"><span class="indexer-api-mask">' + apiMask + '</span></td>' +
+                '<td data-label="Actions"><div class="indexer-actions">' +
+                    '<button id="test-btn-indexers-' + index + '" class="indexer-action-btn" type="button" onclick="testProvider(\'indexers\', ' + index + ')">Test</button>' +
+                    '<button class="indexer-action-btn" type="button" aria-expanded="' + isEditing + '" onclick="toggleIndexerEditor(' + index + ', event)">' + (isEditing ? 'Close' : 'Edit') + '</button>' +
+                    '<button class="indexer-action-btn danger" type="button" onclick="removeIndexerItem(' + index + ', event)">Delete</button>' +
+                '</div></td>' +
+            '</tr>';
+            const editRow = isEditing
+                ? '<tr class="indexer-edit-row"><td colspan="5"><div class="indexer-edit-panel"><div class="grid grid-2">' + renderIndexerEditFields(sectionDef, item, index, basePath) + '</div></div></td></tr>'
+                : '';
+            return mainRow + editRow;
+        }).join('');
+        const table = items.length > 0
+            ? '<div class="indexer-table-shell"><table class="indexer-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">API Key</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            : '<div class="indexer-empty-state"><strong>No Usenet search sources configured</strong><p class="form-hint">Add an indexer to make Usenet results available.</p></div>';
+        const hasChanges = sectionHasChanges('indexers');
+        const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
+        return '<p class="form-hint" style="margin:0 0 0.45rem;">Configure Usenet indexers used for searching. Order reflects current search priority.</p>' +
+            table +
+            '<div class="indexer-section-actions"><button type="button" class="btn btn-primary" onclick="addIndexerItem(event)">+ Add Indexer</button>' +
+            '<button type="button" class="section-save-btn" onclick="saveSection(\'indexers\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
+    }
+
     function renderArraySection(sectionKey, sectionDef) {
         let items, basePath;
         const parentKey = sectionDef.parent;
@@ -6295,6 +6935,27 @@
             basePath = sectionKey;
         }
         const isTestable = testableSections.includes(sectionKey);
+        if (sectionKey === 'indexers') return renderIndexerTableSection(sectionDef, items, basePath);
+        if (sectionKey === 'debridProviders') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Debrid service',
+                secondary: item => item.provider || 'Provider not set',
+                intro: 'Configure debrid services used for resolving and streaming. Order reflects current service priority.',
+                emptyTitle: 'No debrid services configured',
+                emptyHint: 'Add a service to make debrid resolution available.',
+                addLabel: 'Add Debrid Service',
+            });
+        }
+        if (sectionKey === 'torrentScrapers') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Source',
+                secondary: item => item.url || item.type || 'URL not set',
+                intro: 'Configure torrent indexers and streaming providers. Order reflects current search priority.',
+                emptyTitle: 'No torrent or streaming sources configured',
+                emptyHint: 'Add a configured source to make torrent or direct-stream results available.',
+                addLabel: 'Add Source',
+            });
+        }
         let profileInheritanceControls = '';
         if (sectionKey === 'liveTV.sources' && selectedUserId && userSettings) {
             const hasOverride = hasProfileLiveSourceOverride();
@@ -10396,7 +11057,7 @@
         const saveBtnTitle = isGlobalScopeSave
             ? 'Saves all sections with unsaved changes, not just this one'
             : 'Save changes';
-        const saveBtn = (hasChanges && !sectionDef.custom && !isDisabled) ? '<button class="section-save-btn" onclick="saveSection(\''+sectionKey+'\', event)" title="'+saveBtnTitle+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> '+saveBtnLabel+'</button>' : '';
+        const saveBtn = (hasChanges && !providerTableSectionKeys.has(sectionKey) && !sectionDef.custom && !isDisabled) ? '<button class="section-save-btn" onclick="saveSection(\''+sectionKey+'\', event)" title="'+saveBtnTitle+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> '+saveBtnLabel+'</button>' : '';
 
         // Section-level validation messages
         let messagesHtml = '';
@@ -10443,7 +11104,15 @@
             }
         }
         const advancedBadge = advancedSections.has(sectionKey) ? '<span class="advanced-setting-badge">Advanced</span>' : '';
-        return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'"><div class="section-header" onclick="toggleSection(this)"><div class="section-title">'+getIcon(sectionDef.icon)+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</div><div class="section-header-actions">'+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div><div class="section-content">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div></div>';
+        const rowDescription = settingsSectionRowDescription(sectionKey, sectionDef);
+        const configuredBadge = renderSettingsSectionBadge(sectionKey, sectionDef);
+        return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'">' +
+            '<div class="section-header" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)">' +
+                '<div class="section-title">'+getIcon(sectionDef.icon)+'<span class="settings-section-copy"><span class="settings-section-label">'+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</span><span class="settings-section-description">'+escapeHtml(rowDescription)+'</span></span></div>' +
+                '<div class="section-header-actions">'+configuredBadge+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></div>' +
+            '</div>' +
+            '<div class="section-content">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div>' +
+        '</div>';
     }
 
     // Profile management functions
@@ -11196,11 +11865,7 @@
         validationErrors = validateSettings();
 
         // Save currently open sections before re-rendering
-        const openSections = new Set();
-        container.querySelectorAll('.section.open').forEach(section => {
-            const id = section.id.replace('section-', '');
-            if (id) openSections.add(id);
-        });
+        const openSection = container.querySelector('.section.open')?.id.replace('section-', '') || '';
 
         // Add info banner when user or client is selected
         let bannerHtml = '';
@@ -11232,10 +11897,9 @@
         // Sections that can be configured per-client (subset of perUserSections)
         let totalMatchingSections = 0;
 
-        for (const group of groups) {
-            if (!searchTerm && activeSettingsGroup && group.id !== activeSettingsGroup) continue;
+        for (const group of settingsOverviewGroups) {
             const groupSections = Object.entries(schema).filter(([key, def]) => {
-                if (def.group !== group.id) return false;
+                if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
                 if (def.hidden) return false;
                 if (settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)) return false;
@@ -11248,12 +11912,16 @@
                 // Hide per-user-only sections (with inheritFrom) when viewing global settings
                 if (!selectedUserId && def.inheritFrom) return false;
                 return true;
-            }).sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999));
+            }).sort((a, b) => {
+                const aOrder = settingsOverviewSectionOrder.has(a[0]) ? settingsOverviewSectionOrder.get(a[0]) : 1000 + (a[1].order ?? 999);
+                const bOrder = settingsOverviewSectionOrder.has(b[0]) ? settingsOverviewSectionOrder.get(b[0]) : 1000 + (b[1].order ?? 999);
+                return aOrder - bOrder;
+            });
 
             if (groupSections.length === 0) continue;
 
             totalMatchingSections += groupSections.length;
-            const relatedHtml = group.id === 'services' && isAdmin && !selectedUserId && !selectedClientId
+            const relatedHtml = group.id === 'metadata' && isAdmin && !selectedUserId && !selectedClientId
                 ? '<div class="settings-related-card"><div><strong>Connected services</strong><p>Connect Trakt, Simkl, MDBList, Plex, or Jellyfin and assign them to profiles.</p></div><a class="btn btn-secondary btn-sm" href="'+basePath+'/integrations">Manage Services</a></div>'
                 : '';
             html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+relatedHtml+groupSections.map(([key, def]) => renderSection(key, def)).join('')+'</div></div>';
@@ -11268,26 +11936,46 @@
 
         // Restore previously open sections (or auto-expand if searching)
         if (searchTerm && filteredSections && filteredSections.size > 0) {
-            // Auto-expand all matching sections when searching
-            filteredSections.forEach(sectionKey => {
-                const section = document.getElementById('section-'+sectionKey);
-                if (section) section.classList.add('open');
-            });
-        } else {
-            openSections.forEach(sectionKey => {
-                const section = document.getElementById('section-'+sectionKey);
-                if (section) section.classList.add('open');
-            });
+            // Keep progressive disclosure intact while searching: open the first match only.
+            const firstMatch = filteredSections.values().next().value;
+            const section = document.getElementById('section-'+firstMatch);
+            if (section) section.classList.add('open');
+        } else if (openSection) {
+            const section = document.getElementById('section-'+openSection);
+            if (section) section.classList.add('open');
         }
 
         if (window.location.hash) {
             const section = document.getElementById('section-'+window.location.hash.substring(1));
-            if (section) { section.classList.add('open'); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            if (section) {
+                container.querySelectorAll('.section.open').forEach(open => open.classList.remove('open'));
+                section.classList.add('open');
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // Initialize drag-drop for provider priority and shelves
         initDragDrop();
         initFileUploadStatuses();
+    }
+
+    function toggleSettingsSection(header) {
+        const section = header.closest('.section');
+        if (!section) return;
+        const shouldOpen = !section.classList.contains('open');
+        document.querySelectorAll('#settingsContainer .section.open').forEach(openSection => {
+            openSection.classList.remove('open');
+            openSection.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'false');
+        });
+        section.classList.toggle('open', shouldOpen);
+        header.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
+
+    function handleSettingsSectionKeydown(event, header) {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleSettingsSection(header);
     }
 
     function normalizeSettingsForSave(settings) {

@@ -624,6 +624,40 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 	}
 }
 
+func TestAdminDashboardWatchTimeStacksOnNarrowViewports(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := strings.ReplaceAll(string(templateBytes), "\r\n", "\n")
+
+	if strings.Contains(source, `.dashboard-v4 .watch-time-grid {`) {
+		t.Fatal("dashboard-specific watch-time grid selector overrides the narrower mobile layout")
+	}
+	if !strings.Contains(source, "@media (max-width: 640px) {\n        .watch-time-grid {\n            grid-template-columns: 1fr;") {
+		t.Fatal("dashboard watch-time grid is missing its single-column narrow-viewport layout")
+	}
+}
+
+func TestAdminDashboardActiveStreamSummaryDoesNotDependOnTransferredBytes(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`if (streams.length > 0 && totalBandwidth > 0)`,
+		`} else if (streams.length > 0) {`,
+		`streams.length === 1 ? '1 active stream' : streams.length + ' active streams'`,
+		`subtextEl.textContent = 'No active streams';`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("status template missing active-stream summary marker %q", marker)
+		}
+	}
+}
+
 func TestAdminDashboardWatchTimeNormalizesRoundedMinutes(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
 	if err != nil {

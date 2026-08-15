@@ -306,10 +306,6 @@
     gap: 1.25rem;
 }
 
-.dashboard-v4 .watch-time-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 @media (max-width: 760px) {
     .donation-banner {
         grid-template-columns: 1fr;
@@ -3075,9 +3071,11 @@
         if (subtextEl) {
             const totalBandwidth = streams.reduce((sum, s) => sum + (s.bytes_streamed || 0), 0);
             const totalThroughput = streams.reduce((sum, s) => sum + (s.is_paused ? 0 : (s.throughput_bps || 0)), 0);
-            if (totalBandwidth > 0) {
+            if (streams.length > 0 && totalBandwidth > 0) {
                 subtextEl.textContent = formatBytes(totalBandwidth) + ' total'
                     + (totalThroughput > 0 ? ' · ' + formatBitsPerSec(totalThroughput) : '');
+            } else if (streams.length > 0) {
+                subtextEl.textContent = streams.length === 1 ? '1 active stream' : streams.length + ' active streams';
             } else {
                 subtextEl.textContent = 'No active streams';
             }

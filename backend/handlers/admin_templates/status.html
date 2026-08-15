@@ -201,9 +201,113 @@
 }
 
 .dashboard-uptime {
-    margin-top: 0.35rem;
+    color: var(--text-primary);
+    font-size: 1.375rem;
+    font-weight: 700;
+}
+
+.dashboard-v4 {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.dashboard-v4 > * {
+    margin-bottom: 0 !important;
+}
+
+.dashboard-page-header {
+    margin: 0;
+}
+
+.dashboard-page-header h1 {
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-toolbar {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.dashboard-toolbar .view-toggle {
+    display: flex;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+}
+
+.dashboard-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.dashboard-summary-card {
+    display: grid;
+    min-height: 92px;
+    align-content: center;
+    gap: 0.2rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.dashboard-summary-label {
     color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.dashboard-summary-value {
+    color: var(--text-secondary);
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.dashboard-summary-meta {
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+}
+
+.dashboard-v4 .donation-banner,
+.dashboard-v4 .dashboard-update-banner {
+    padding: 0.75rem 3.25rem 0.75rem 1rem;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.08);
+    box-shadow: none;
+}
+
+.dashboard-v4 .dashboard-update-banner {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.dashboard-v4 .donation-banner-title,
+.dashboard-v4 .dashboard-update-title {
     font-size: 0.8125rem;
+}
+
+.dashboard-v4 .donation-banner-copy p,
+.dashboard-v4 .dashboard-update-banner p {
+    font-size: 0.75rem;
+}
+
+.dashboard-v4 .card {
+    border-radius: 8px;
+}
+
+.dashboard-insights {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+}
+
+.dashboard-v4 .watch-time-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 @media (max-width: 760px) {
@@ -220,11 +324,45 @@
     .donation-links {
         justify-content: flex-start;
     }
+
+    .dashboard-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .dashboard-toolbar .view-toggle,
+    .dashboard-toolbar .btn {
+        width: 100%;
+    }
+
+    .dashboard-summary-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 {{end}}
 
 {{define "content"}}
+<div class="dashboard-v4">
+<div class="page-header dashboard-page-header">
+    <h1>Dashboard</h1>
+    <p>System overview and quick actions</p>
+</div>
+
+<div class="dashboard-toolbar" aria-label="Dashboard controls">
+    <div class="view-toggle">
+        <button id="dashboardBasicBtn" class="view-toggle-btn dashboard-detail-btn" type="button" onclick="setDashboardDetail('basic')">Basic</button>
+        <button id="dashboardAdvancedBtn" class="view-toggle-btn dashboard-detail-btn" type="button" onclick="setDashboardDetail('advanced')">Advanced</button>
+    </div>
+    <button class="btn btn-secondary" type="button" onclick="refreshStatus()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+        </svg>
+        Refresh
+    </button>
+</div>
+
 <section id="donationBanner" class="donation-banner" aria-label="Support mediastorm">
     <div class="donation-banner-copy">
         <h2 class="donation-banner-title">
@@ -277,25 +415,17 @@
     </button>
 </section>
 
-<div class="page-header" style="display: flex; align-items: center; justify-content: space-between;">
-    <div>
-        <h1>Dashboard</h1>
-        <p>Real-time monitoring and overview of your mediastorm server</p>
-        <div id="backendUptime" class="dashboard-uptime" aria-live="polite">Backend uptime loading...</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-        <div class="view-toggle" style="display:flex;background:var(--bg-tertiary);border-radius:var(--radius);padding:2px;">
-            <button id="dashboardBasicBtn" class="view-toggle-btn dashboard-detail-btn" type="button" onclick="setDashboardDetail('basic')">Basic</button>
-            <button id="dashboardAdvancedBtn" class="view-toggle-btn dashboard-detail-btn" type="button" onclick="setDashboardDetail('advanced')">Advanced</button>
-        </div>
-        <button class="btn btn-secondary" onclick="refreshStatus()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="1 4 1 10 7 10"/>
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-            </svg>
-            Refresh
-        </button>
-    </div>
+<div class="dashboard-summary-grid" aria-label="Dashboard summary">
+    <section class="dashboard-summary-card">
+        <div class="dashboard-summary-label">Active Streams</div>
+        <div class="dashboard-summary-value" id="activeStreamCount">0</div>
+        <div class="dashboard-summary-meta" id="streamSubtext">Loading stream activity…</div>
+    </section>
+    <section class="dashboard-summary-card">
+        <div class="dashboard-summary-label">Backend Uptime</div>
+        <div id="backendUptime" class="dashboard-uptime" aria-live="polite">Loading…</div>
+        <div class="dashboard-summary-meta">Live server runtime</div>
+    </section>
 </div>
 
 <!-- Active Streams -->
@@ -336,7 +466,7 @@
 </div>
 
 <!-- User Stats -->
-<div class="grid grid-2" style="margin-bottom: 1.5rem;">
+<div class="dashboard-insights">
     <div class="card">
         <div class="card-header" style="gap: 0.75rem; flex-wrap: wrap;">
             <h2>
@@ -896,6 +1026,7 @@
     </div>
 </div>
 {{end}}
+</div>
 {{end}}
 
 {{define "scripts"}}

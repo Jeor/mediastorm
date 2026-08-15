@@ -6,25 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0f0f0f">
+    <meta name="theme-color" content="#0d0d12">
     <title>{{block "title" .}}mediastorm Admin{{end}}</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{brandingURL "web-icon" "favicon-32.png"}}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{brandingURL "web-icon" "favicon-16.png"}}">
     <style>
         :root {
-            --bg-primary: #0f0f0f;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #252525;
-            --bg-hover: #2d2d2d;
+            --bg-primary: #0d0d12;
+            --bg-secondary: #16161e;
+            --bg-tertiary: #1c1c26;
+            --bg-hover: #242433;
             --text-primary: #ffffff;
-            --text-secondary: #a0a0a0;
-            --text-muted: #666666;
-            --accent: #6366f1;
+            --text-secondary: #9ca3af;
+            --text-muted: #7d8592;
+            --accent: #5f62ed;
             --accent-hover: #818cf8;
+            --accent-strong: #4f46e5;
             --success: #22c55e;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --border: #333333;
+            --border: #2a2a36;
             --shadow: rgba(0, 0, 0, 0.3);
             --radius: 8px;
             --radius-lg: 12px;
@@ -654,7 +655,7 @@
         }
 
         .btn-primary:hover {
-            background: var(--accent-hover);
+            background: var(--accent-strong);
         }
 
         .btn-secondary {
@@ -853,7 +854,7 @@
         }
 
         .section-save-btn:hover {
-            background: var(--accent-hover);
+            background: var(--accent-strong);
         }
 
         .section-save-btn:disabled {
@@ -1963,312 +1964,586 @@
                 margin-top: 0.25rem;
             }
         }
+
+        /* v4 application shell and shared component primitives */
+        .admin-shell {
+            display: flex;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        .admin-sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            z-index: 300;
+            display: flex;
+            width: 240px;
+            min-height: 100vh;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            background: #111118;
+        }
+
+        .admin-sidebar-brand {
+            display: flex;
+            min-height: 56px;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(42, 42, 54, 0.55);
+        }
+
+        .admin-sidebar-brand img {
+            width: 24px;
+            height: 24px;
+            flex: 0 0 auto;
+            border-radius: 6px;
+        }
+
+        .admin-sidebar-brand-copy {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .admin-sidebar-brand-title {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .admin-sidebar-brand-build {
+            color: var(--text-muted);
+            font-size: 0.6875rem;
+            font-weight: 400;
+        }
+
+        .admin-sidebar-nav {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0.5rem 0.75rem 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .sidebar-group {
+            margin: 0;
+        }
+
+        .sidebar-group > summary {
+            display: flex;
+            min-height: 32px;
+            cursor: pointer;
+            list-style: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.45rem 0.75rem;
+            color: var(--text-muted);
+            border-radius: 6px;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-group > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .sidebar-group > summary:hover,
+        .sidebar-group > summary:focus-visible {
+            background: rgba(255, 255, 255, 0.025);
+            color: var(--text-secondary);
+            outline: none;
+        }
+
+        .sidebar-group-chevron {
+            font-size: 0.625rem;
+            transition: transform 0.16s ease;
+        }
+
+        .sidebar-group[open] .sidebar-group-chevron {
+            transform: rotate(90deg);
+        }
+
+        .sidebar-group-items {
+            display: grid;
+            gap: 0.125rem;
+            padding-bottom: 0.25rem;
+        }
+
+        .sidebar-nav-link {
+            position: relative;
+            display: flex;
+            min-height: 36px;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 0.75rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .sidebar-nav-link:hover,
+        .sidebar-nav-link:focus-visible {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+            outline: none;
+        }
+
+        .sidebar-nav-link.active {
+            color: var(--text-primary);
+            background: rgba(99, 102, 241, 0.14);
+        }
+
+        .sidebar-nav-link.active::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3px;
+            border-radius: 3px;
+            background: var(--accent);
+        }
+
+        .sidebar-nav-icon {
+            width: 16px;
+            flex: 0 0 16px;
+            color: var(--accent);
+            text-align: center;
+            font-size: 0.75rem;
+        }
+
+        .admin-sidebar-footer {
+            flex: 0 0 auto;
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .admin-sidebar-user {
+            display: grid;
+            grid-template-columns: 32px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 0.625rem;
+        }
+
+        .admin-avatar {
+            display: inline-flex;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.8125rem;
+            font-weight: 600;
+        }
+
+        .admin-sidebar-user-name {
+            display: block;
+            overflow: hidden;
+            color: var(--text-primary);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .admin-sidebar-user-role,
+        .admin-sidebar-version {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.6875rem;
+        }
+
+        .admin-sidebar-logout {
+            color: #9ca3f1;
+            font-size: 0.75rem;
+            text-decoration: none;
+        }
+
+        .admin-sidebar-version {
+            margin-top: 0.375rem;
+            text-align: center;
+        }
+
+        .admin-workspace {
+            display: flex;
+            width: calc(100% - 240px);
+            min-width: 0;
+            min-height: 100vh;
+            margin-left: 240px;
+            flex-direction: column;
+        }
+
+        .admin-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 250;
+            display: flex;
+            min-height: 48px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.5rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(17, 17, 24, 0.96);
+            backdrop-filter: blur(10px);
+        }
+
+        .admin-topbar-search {
+            display: inline-flex;
+            min-width: 180px;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.8125rem;
+        }
+
+        .admin-topbar-search:hover,
+        .admin-topbar-search:focus-visible {
+            color: var(--text-secondary);
+            outline: none;
+        }
+
+        .admin-topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-left: auto;
+        }
+
+        .admin-topbar-action {
+            display: inline-flex;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            border-radius: 50%;
+            text-decoration: none;
+        }
+
+        .admin-topbar-action:hover,
+        .admin-topbar-action:focus-visible {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+            outline: none;
+        }
+
+        .admin-topbar-action svg,
+        .admin-mobile-menu svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .admin-mobile-menu {
+            display: none;
+            width: 36px;
+            height: 36px;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            cursor: pointer;
+        }
+
+        .main-content {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 1.5rem 2rem 2rem;
+            flex: 1 1 auto;
+        }
+
+        .admin-statusbar {
+            display: flex;
+            min-height: 29px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.4rem 1rem;
+            color: var(--text-muted);
+            border-top: 1px solid rgba(42, 42, 54, 0.55);
+            background: var(--bg-secondary);
+            font-size: 0.6875rem;
+        }
+
+        .admin-statusbar-state {
+            color: var(--text-muted);
+        }
+
+        .sidebar-scrim {
+            display: none;
+        }
+
+        body.web-player-theater-active .admin-sidebar,
+        body.web-player-theater-active .admin-topbar,
+        body.web-player-theater-active .admin-statusbar,
+        body.web-player-theater-active .sidebar-scrim {
+            display: none !important;
+        }
+
+        body.web-player-theater-active .admin-workspace {
+            width: 100%;
+            margin-left: 0;
+        }
+
+        .onboarding-navbar {
+            display: flex;
+            min-height: 60px;
+            align-items: center;
+            padding: 0 1rem;
+            border-bottom: 1px solid var(--border);
+            background: #111118;
+        }
+
+        .onboarding-navbar .admin-sidebar-brand {
+            min-height: auto;
+            padding: 0;
+            border: 0;
+        }
+
+        .main-content.onboarding-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Shared v4 component refinements */
+        .card,
+        .section,
+        .v4-card {
+            border-color: var(--border);
+            background: var(--bg-secondary);
+            box-shadow: none;
+        }
+
+        .btn {
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .btn-secondary {
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        .form-input,
+        .form-select,
+        textarea {
+            border-color: var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                width: min(320px, calc(100vw - 48px));
+                transform: translateX(-100%);
+                transition: transform 0.2s ease;
+            }
+
+            .admin-shell.sidebar-open .admin-sidebar {
+                transform: translateX(0);
+            }
+
+            .admin-shell.sidebar-open .sidebar-scrim {
+                position: fixed;
+                inset: 0;
+                z-index: 290;
+                display: block;
+                border: 0;
+                background: rgba(0, 0, 0, 0.6);
+            }
+
+            .admin-sidebar-brand,
+            .admin-sidebar-nav {
+                width: 100%;
+            }
+
+            .admin-workspace {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .admin-mobile-menu {
+                display: inline-flex;
+            }
+
+            .admin-topbar {
+                padding-inline: 1rem;
+            }
+
+            .admin-topbar-search {
+                min-width: 0;
+                margin-right: auto;
+            }
+
+            .main-content {
+                padding: 1.25rem 1rem 1.5rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .admin-sidebar,
+            .sidebar-group-chevron {
+                transition: none;
+            }
+        }
     </style>
     {{block "styles" .}}{{end}}
 </head>
 <body>
-    <nav class="navbar">
-        <div class="navbar-content">
-            <a {{if not (hasSuffix .CurrentPath "/onboarding")}}href="{{.BasePath}}"{{end}} class="navbar-brand" {{if hasSuffix .CurrentPath "/onboarding"}}aria-disabled="true" onclick="return false;" style="cursor: default;"{{end}}>
-                <img src="{{brandingURL "web-icon" "icon-rounded.png"}}" alt="mediastorm" style="width: 32px; height: 32px; border-radius: 6px;">
-                <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                    <span>{{if .IsAdmin}}mediastorm admin{{else}}mediastorm account{{end}} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">v{{.Version}}</span></span>
-                    <span style="font-size: 0.65rem; color: #f59e0b; font-weight: 400;">build {{.BuildID}}</span>
-                    <span class="navbar-username" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 400;">{{.Username}}</span>
-                </div>
-            </a>
-
-            {{if not (hasSuffix .CurrentPath "/onboarding")}}
-            <button class="menu-toggle" type="button" onclick="toggleMenu()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="12" x2="21" y2="12"/>
-                    <line x1="3" y1="6" x2="21" y2="6"/>
-                    <line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-            </button>
-
-            <div class="navbar-nav" id="navMenu">
-                <a href="{{.BasePath}}" class="nav-link {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}active{{end}}" data-walkthrough-target="dashboard">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
-                    Dashboard
-                </a>
-                <div class="nav-dropdown desktop-dropdown">
-                    <button class="nav-dropdown-toggle {{if hasSuffix .CurrentPath "/playback"}}has-active{{end}}" type="button" aria-expanded="false" data-nav-dropdown-toggle>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="5 3 19 12 5 21 5 3"/>
-                        </svg>
-                        Playback
-                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </button>
-                    <div class="nav-dropdown-menu">
-                        <a href="{{.BasePath}}/playback" class="nav-link {{if hasSuffix .CurrentPath "/playback"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="16" rx="2"/>
-                                <polygon points="10 8 16 12 10 16 10 8"/>
-                            </svg>
-                            Admin Player
-                        </a>
-                        <a href="{{.ServerBasePath}}/watch" class="nav-link">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                                <line x1="8" y1="21" x2="16" y2="21"/>
-                                <line x1="12" y1="17" x2="12" y2="21"/>
-                            </svg>
-                            Web App
-                        </a>
-                    </div>
-                </div>
-                <div class="nav-dropdown desktop-dropdown">
-                <button class="nav-dropdown-toggle {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}has-active{{end}}" type="button" aria-expanded="false" data-nav-dropdown-toggle data-walkthrough-target="settings">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                    Manage
-                    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="nav-dropdown-menu">
-                    <a href="{{.BasePath}}/settings" class="nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}">Settings</a>
-                    <a href="{{.BasePath}}/tasks" class="nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}">Automations</a>
-                    <a href="{{.BasePath}}/integrations" class="nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}">Integrations</a>
-                </div>
-                </div>
-                <a href="{{.BasePath}}/settings" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}">Settings</a>
-                <a href="{{.BasePath}}/tasks" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}">Automations</a>
-                <a href="{{.BasePath}}/integrations" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}">Integrations</a>
-                <!-- Media dropdown (desktop only) -->
-                <div class="nav-dropdown desktop-dropdown">
-                    <button class="nav-dropdown-toggle {{if or (hasSuffix .CurrentPath "/history") (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule") (hasSuffix .CurrentPath "/library") (hasSuffix .CurrentPath "/recordings")}}has-active{{end}}" type="button" aria-expanded="false" data-nav-dropdown-toggle data-walkthrough-target="media">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="23 7 16 12 23 17 23 7"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        </svg>
-                        Media
-                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </button>
-                    <div class="nav-dropdown-menu">
-                        <a href="{{.BasePath}}/history" class="nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                            History
-                        </a>
-                        <a href="{{.BasePath}}/schedule" class="nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            Schedule
-                        </a>
-                        <a href="{{.BasePath}}/recordings" class="nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M23 7l-7 5 7 5V7z"/>
-                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                                <circle cx="8" cy="12" r="2"/>
-                            </svg>
-                            Recordings
-                        </a>
-                        {{if .IsAdmin}}
-                        <a href="{{.BasePath}}/library" class="nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H20"/>
-                                <path d="M3 10.5A2.5 2.5 0 0 1 5.5 8H20"/>
-                                <path d="M3 14.5A2.5 2.5 0 0 1 5.5 12H20"/>
-                                <path d="M3 18.5A2.5 2.5 0 0 1 5.5 16H20"/>
-                            </svg>
-                            Library
-                        </a>
-                        {{end}}
-                    </div>
-                </div>
-                <!-- Media items (mobile only, flat) -->
-                <a href="{{.BasePath}}/history" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}" data-walkthrough-mobile-target="media">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    History
-                </a>
-                <a href="{{.BasePath}}/schedule" class="nav-link mobile-nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    Schedule
-                </a>
-                <a href="{{.BasePath}}/recordings" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 7l-7 5 7 5V7z"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        <circle cx="8" cy="12" r="2"/>
-                    </svg>
-                    Recordings
-                </a>
-                {{if .IsAdmin}}
-                <a href="{{.BasePath}}/library" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H20"/>
-                        <path d="M3 10.5A2.5 2.5 0 0 1 5.5 8H20"/>
-                        <path d="M3 14.5A2.5 2.5 0 0 1 5.5 12H20"/>
-                        <path d="M3 18.5A2.5 2.5 0 0 1 5.5 16H20"/>
-                    </svg>
-                    Library
-                </a>
-                {{end}}
-                {{if .IsAdmin}}
-                <!-- System dropdown (desktop only) -->
-                <div class="nav-dropdown desktop-dropdown">
-                    <button class="nav-dropdown-toggle {{if or (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/search")}}has-active{{end}}" type="button" aria-expanded="false" data-nav-dropdown-toggle data-walkthrough-target="system">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                            <line x1="6" y1="6" x2="6.01" y2="6"/>
-                            <line x1="6" y1="18" x2="6.01" y2="18"/>
-                        </svg>
-                        System
-                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </button>
-                    <div class="nav-dropdown-menu">
-                        <a href="{{.BasePath}}/search" class="nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"/>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                            </svg>
-                            Search Diagnostics
-                        </a>
-                        <a href="{{.BasePath}}/connections" class="nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                <polyline points="22 4 12 14.01 9 11.01"/>
-                            </svg>
-                            Connections
-                        </a>
-                        <a href="{{.BasePath}}/backup" class="nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                            Backup
-                        </a>
-                        <a href="{{.BasePath}}/performance" class="nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                            </svg>
-                            Performance
-                        </a>
-                        <a href="{{.BasePath}}/tools" class="nav-link {{if hasSuffix .CurrentPath "/tools"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                            </svg>
-                            Maintenance
-                        </a>
-                        <a href="{{.BasePath}}/logs" class="nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                            Logs
-                        </a>
-                    </div>
-                </div>
-                <!-- System items (mobile only, flat) -->
-                <a href="{{.BasePath}}/connections" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}" data-walkthrough-mobile-target="system">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    Connections
-                </a>
-                <a href="{{.BasePath}}/backup" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    Backup
-                </a>
-                <a href="{{.BasePath}}/search" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    Search
-                </a>
-                <a href="{{.BasePath}}/performance" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                    </svg>
-                    Performance
-                </a>
-                <a href="{{.BasePath}}/tools" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/tools"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                    </svg>
-                    Maintenance
-                </a>
-                <a href="{{.BasePath}}/logs" class="nav-link mobile-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
-                    </svg>
-                    Logs
-                </a>
-                {{end}}
-                <a href="{{.BasePath}}/accounts" class="nav-link {{if hasSuffix .CurrentPath "/accounts"}}active{{end}}" data-walkthrough-target="accounts">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        {{if .IsAdmin}}
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        {{end}}
-                    </svg>
-                    Users
-                </a>
-                <span class="nav-username" style="align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; color: var(--text-secondary); font-size: 0.875rem; border-left: 1px solid var(--border); margin-left: 0.5rem;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    {{.Username}}
-                </span>
-                <a href="{{.BasePath}}/logout" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
-                    Logout
-                </a>
-            </div>
-            {{end}}
-        </div>
+    {{if hasSuffix .CurrentPath "/onboarding"}}
+    <nav class="onboarding-navbar">
+        <span class="admin-sidebar-brand" aria-label="mediastorm onboarding">
+            <img src="{{brandingURL "web-icon" "icon-rounded.png"}}" alt="">
+            <span class="admin-sidebar-brand-copy">
+                <span class="admin-sidebar-brand-title">Mediastorm</span>
+                <span class="admin-sidebar-brand-build">Setup · build {{.BuildID}}</span>
+            </span>
+        </span>
     </nav>
-
-    <main class="main-content">
+    <main class="main-content onboarding-content">
         {{block "content" .}}{{end}}
     </main>
+    {{else}}
+    <div class="admin-shell" id="adminShell">
+        <aside class="admin-sidebar" id="adminSidebar" aria-label="{{if .IsAdmin}}Admin{{else}}Account{{end}} navigation">
+            <a href="{{.BasePath}}" class="admin-sidebar-brand">
+                <img src="{{brandingURL "web-icon" "icon-rounded.png"}}" alt="">
+                <span class="admin-sidebar-brand-copy">
+                    <span class="admin-sidebar-brand-title">Mediastorm</span>
+                    <span class="admin-sidebar-brand-build">build {{.BuildID}}</span>
+                </span>
+            </a>
+
+            <nav class="admin-sidebar-nav" id="navMenu">
+                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}open{{end}}>
+                    <summary><span>Overview</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
+                        <a href="{{.BasePath}}" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}active{{end}}" data-walkthrough-target="dashboard">
+                            <span class="sidebar-nav-icon">⌂</span><span>Dashboard</span>
+                        </a>
+                    </div>
+                </details>
+
+                <details class="sidebar-group" {{if hasSuffix .CurrentPath "/playback"}}open{{end}}>
+                    <summary><span>Playback</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
+                        <a href="{{.BasePath}}/playback" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/playback"}}active{{end}}">
+                            <span class="sidebar-nav-icon">▷</span><span>Admin Player</span>
+                        </a>
+                        <a href="{{.ServerBasePath}}/watch" class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon">▣</span><span>Web App</span>
+                        </a>
+                    </div>
+                </details>
+
+                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations") (hasSuffix .CurrentPath "/notifications")}}open{{end}}>
+                    <summary data-walkthrough-target="settings"><span>Manage</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
+                        <a href="{{.BasePath}}/settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}"><span class="sidebar-nav-icon">⚙</span><span>Settings</span></a>
+                        <a href="{{.BasePath}}/tasks" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}"><span class="sidebar-nav-icon">⟳</span><span>Automations</span></a>
+                        <a href="{{.BasePath}}/integrations" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}"><span class="sidebar-nav-icon">⌁</span><span>Integrations</span></a>
+                        <a href="{{.BasePath}}/notifications" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/notifications"}}active{{end}}"><span class="sidebar-nav-icon">◉</span><span>Notifications</span></a>
+                    </div>
+                </details>
+
+                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/history") (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule") (hasSuffix .CurrentPath "/recordings") (hasSuffix .CurrentPath "/library") (hasSuffix .CurrentPath "/prequeue")}}open{{end}}>
+                    <summary data-walkthrough-target="media" data-walkthrough-mobile-target="media"><span>Media</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
+                        <a href="{{.BasePath}}/history" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}"><span class="sidebar-nav-icon">◷</span><span>Watch History</span></a>
+                        <a href="{{.BasePath}}/schedule" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}"><span class="sidebar-nav-icon">□</span><span>Schedule</span></a>
+                        <a href="{{.BasePath}}/recordings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}"><span class="sidebar-nav-icon">●</span><span>Recordings</span></a>
+                        {{if .IsAdmin}}<a href="{{.BasePath}}/library" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}"><span class="sidebar-nav-icon">▤</span><span>Library</span></a>{{end}}
+                        {{if .IsAdmin}}<a href="{{.BasePath}}/prequeue" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/prequeue"}}active{{end}}"><span class="sidebar-nav-icon">≡</span><span>Prequeue</span></a>{{end}}
+                    </div>
+                </details>
+
+                {{if .IsAdmin}}
+                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}open{{end}}>
+                    <summary data-walkthrough-target="system" data-walkthrough-mobile-target="system"><span>System</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
+                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}"><span class="sidebar-nav-icon">⌕</span><span>Search Diagnostics</span></a>
+                        <a href="{{.BasePath}}/connections" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}"><span class="sidebar-nav-icon">⇄</span><span>Connections</span></a>
+                        <a href="{{.BasePath}}/backup" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}"><span class="sidebar-nav-icon">⇧</span><span>Backup</span></a>
+                        <a href="{{.BasePath}}/performance" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}"><span class="sidebar-nav-icon">◇</span><span>Performance</span></a>
+                        <a href="{{.BasePath}}/tools" class="sidebar-nav-link {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}active{{end}}"><span class="sidebar-nav-icon">⚒</span><span>Maintenance</span></a>
+                        <a href="{{.BasePath}}/logs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}"><span class="sidebar-nav-icon">≡</span><span>Logs</span></a>
+                        <a href="{{.BasePath}}/tools/hidden-items" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/hidden-items"}}active{{end}}"><span class="sidebar-nav-icon">◌</span><span>Hidden Items</span></a>
+                        <a href="{{.BasePath}}/tools/resolved-nzbs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/resolved-nzbs"}}active{{end}}"><span class="sidebar-nav-icon">✓</span><span>Resolved NZBs</span></a>
+                        <a href="{{.BasePath}}/tools/bad-streams" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/bad-streams"}}active{{end}}"><span class="sidebar-nav-icon">⊗</span><span>Bad Streams</span></a>
+                        <a href="{{.BasePath}}/tools/share-links" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/share-links"}}active{{end}}"><span class="sidebar-nav-icon">↗</span><span>Share Links</span></a>
+                    </div>
+                </details>
+                {{end}}
+
+                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/accounts") (hasSuffix .CurrentPath "/kids-settings")}}open{{end}}>
+                    <summary><span>People</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
+                        <a href="{{.BasePath}}/accounts" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/accounts"}}active{{end}}" data-walkthrough-target="accounts"><span class="sidebar-nav-icon">⊕</span><span>Users</span></a>
+                        <a href="{{.BasePath}}/kids-settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/kids-settings"}}active{{end}}"><span class="sidebar-nav-icon">♥</span><span>Kids &amp; Family</span></a>
+                    </div>
+                </details>
+            </nav>
+
+            <footer class="admin-sidebar-footer">
+                <div class="admin-sidebar-user">
+                    <span class="admin-avatar" aria-hidden="true">A</span>
+                    <span>
+                        <span class="admin-sidebar-user-name">{{.Username}}</span>
+                        <span class="admin-sidebar-user-role">{{if .IsAdmin}}Administrator{{else}}Account{{end}}</span>
+                    </span>
+                    <a href="{{.BasePath}}/logout" class="admin-sidebar-logout">Logout</a>
+                </div>
+                <div class="admin-sidebar-version">v{{.Version}}</div>
+            </footer>
+        </aside>
+
+        <button class="sidebar-scrim" type="button" aria-label="Close navigation" onclick="toggleMenu(false)"></button>
+
+        <section class="admin-workspace">
+            <header class="admin-topbar">
+                <button class="admin-mobile-menu" type="button" aria-label="Open navigation" aria-controls="adminSidebar" aria-expanded="false" onclick="toggleMenu()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                {{if .IsAdmin}}<a href="{{.BasePath}}/search" class="admin-topbar-search" aria-label="Open search diagnostics"><span aria-hidden="true">⌕</span><span>Search…</span></a>{{end}}
+                <div class="admin-topbar-actions">
+                    <a href="{{.BasePath}}/notifications" class="admin-topbar-action" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </a>
+                    <a href="{{.BasePath}}/accounts" class="admin-avatar" aria-label="Open user management">A</a>
+                </div>
+            </header>
+
+            <main class="main-content">
+                {{block "content" .}}{{end}}
+            </main>
+
+            <footer class="admin-statusbar" aria-label="Application information">
+                <span>v{{.Version}}</span>
+                <span class="admin-statusbar-state">Mediastorm</span>
+            </footer>
+        </section>
+    </div>
+    {{end}}
 
     <div class="toast-container" id="toastContainer"></div>
 
@@ -2298,8 +2573,67 @@
         const basePath = {{json .BasePath}};
         const serverBasePath = {{json .ServerBasePath}};
 
-        function toggleMenu() {
-            document.getElementById('navMenu').classList.toggle('open');
+        let mobileMenuReturnFocus = null;
+        let mobileMenuPreviousBodyOverflow = '';
+
+        function mobileMenuFocusableElements() {
+            const sidebar = document.getElementById('adminSidebar');
+            if (!sidebar) return [];
+            return Array.from(sidebar.querySelectorAll('a[href], button:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'))
+                .filter(element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+        }
+
+        function syncMobileMenuAccessibility() {
+            const shell = document.getElementById('adminShell');
+            const sidebar = document.getElementById('adminSidebar');
+            const menuButton = document.querySelector('.admin-mobile-menu');
+            if (!shell || !sidebar || !menuButton) return;
+
+            const isMobile = isMobileNavMenu();
+            const isOpen = isMobile && shell.classList.contains('sidebar-open');
+            sidebar.inert = isMobile && !isOpen;
+            if (isMobile && !isOpen) sidebar.setAttribute('aria-hidden', 'true');
+            else sidebar.removeAttribute('aria-hidden');
+            menuButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            menuButton.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+
+            if (!isMobile) {
+                shell.classList.remove('sidebar-open');
+                document.body.style.overflow = mobileMenuPreviousBodyOverflow;
+                mobileMenuReturnFocus = null;
+            }
+        }
+
+        function toggleMenu(forceOpen) {
+            const shell = document.getElementById('adminShell');
+            const sidebar = document.getElementById('adminSidebar');
+            const menuButton = document.querySelector('.admin-mobile-menu');
+            if (!shell || !sidebar || !menuButton) return;
+            const shouldOpen = typeof forceOpen === 'boolean'
+                ? forceOpen
+                : !shell.classList.contains('sidebar-open');
+
+            if (shouldOpen) {
+                mobileMenuReturnFocus = document.activeElement instanceof HTMLElement
+                    ? document.activeElement
+                    : menuButton;
+                mobileMenuPreviousBodyOverflow = document.body.style.overflow;
+            }
+            shell.classList.toggle('sidebar-open', shouldOpen);
+            sidebar.inert = !shouldOpen;
+            if (shouldOpen) sidebar.removeAttribute('aria-hidden');
+            else sidebar.setAttribute('aria-hidden', 'true');
+            menuButton.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            menuButton.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
+            document.body.style.overflow = shouldOpen ? 'hidden' : mobileMenuPreviousBodyOverflow;
+
+            if (shouldOpen) {
+                window.requestAnimationFrame(() => mobileMenuFocusableElements()[0]?.focus());
+            } else {
+                const returnFocus = mobileMenuReturnFocus;
+                mobileMenuReturnFocus = null;
+                window.requestAnimationFrame(() => (returnFocus || menuButton).focus());
+            }
         }
 
         function isMobileNavMenu() {
@@ -2307,6 +2641,23 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            syncMobileMenuAccessibility();
+
+            document.querySelectorAll('.sidebar-group').forEach(group => {
+                group.addEventListener('toggle', () => {
+                    if (!group.open) return;
+                    group.parentElement?.querySelectorAll('.sidebar-group[open]').forEach(openGroup => {
+                        if (openGroup !== group) openGroup.removeAttribute('open');
+                    });
+                });
+            });
+
+            document.querySelectorAll('.sidebar-nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (isMobileNavMenu()) toggleMenu(false);
+                });
+            });
+
             document.querySelectorAll('[data-nav-dropdown-toggle]').forEach(button => {
                 const dropdown = button.closest('.nav-dropdown');
                 if (!dropdown) return;
@@ -2323,6 +2674,38 @@
                     button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
                 });
             });
+
+            document.addEventListener('keydown', event => {
+                const shell = document.getElementById('adminShell');
+                if (!isMobileNavMenu() || !shell?.classList.contains('sidebar-open')) return;
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    toggleMenu(false);
+                    return;
+                }
+                if (event.key !== 'Tab') return;
+
+                const focusable = mobileMenuFocusableElements();
+                if (focusable.length === 0) {
+                    event.preventDefault();
+                    return;
+                }
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                const active = document.activeElement;
+                if (!document.getElementById('adminSidebar')?.contains(active)) {
+                    event.preventDefault();
+                    (event.shiftKey ? last : first).focus();
+                } else if (event.shiftKey && active === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && active === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            });
+
+            window.addEventListener('resize', syncMobileMenuAccessibility);
         });
 
         function toggleSection(el) {
@@ -2503,7 +2886,7 @@
                     activateStormEgg({ persist: false, announce: false });
                 }
 
-                const brand = document.querySelector('.navbar-brand');
+                const brand = document.querySelector('.admin-sidebar-brand');
                 if (!brand) return;
                 const clearBrandPress = () => {
                     window.clearTimeout(brandPressTimer);

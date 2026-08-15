@@ -258,6 +258,72 @@ func TestPreserveRedactedFields_RestoresRealCredentials(t *testing.T) {
 	}
 }
 
+func TestPreserveRedactedFields_RestoresIndexerKeysByStableArrayIndex(t *testing.T) {
+	existing := config.Settings{
+		Indexers: []config.IndexerConfig{
+			{Name: "alpha", APIKey: "alpha-key"},
+			{Name: "beta", APIKey: "beta-key"},
+		},
+	}
+	incoming := config.Settings{
+		Indexers: []config.IndexerConfig{
+			{Name: "alpha updated", APIKey: redactedPlaceholder},
+			{Name: "beta", APIKey: redactedPlaceholder},
+		},
+	}
+
+	preserveRedactedFields(&incoming, &existing)
+
+	if got := incoming.Indexers[0].APIKey; got != "alpha-key" {
+		t.Fatalf("first indexer key restored from wrong array slot: got %q", got)
+	}
+	if got := incoming.Indexers[1].APIKey; got != "beta-key" {
+		t.Fatalf("second indexer key restored from wrong array slot: got %q", got)
+	}
+}
+
+func TestPreserveRedactedFields_RestoresProviderKeysByStableArrayIndex(t *testing.T) {
+	existing := config.Settings{
+		TorrentScrapers: []config.TorrentScraperConfig{
+			{Name: "torrent alpha", APIKey: "torrent-alpha-key"},
+			{Name: "torrent beta", APIKey: "torrent-beta-key"},
+		},
+		Streaming: config.StreamingSettings{
+			DebridProviders: []config.DebridProviderSettings{
+				{Name: "debrid alpha", APIKey: "debrid-alpha-key"},
+				{Name: "debrid beta", APIKey: "debrid-beta-key"},
+			},
+		},
+	}
+	incoming := config.Settings{
+		TorrentScrapers: []config.TorrentScraperConfig{
+			{Name: "torrent alpha updated", APIKey: redactedPlaceholder},
+			{Name: "torrent beta", APIKey: redactedPlaceholder},
+		},
+		Streaming: config.StreamingSettings{
+			DebridProviders: []config.DebridProviderSettings{
+				{Name: "debrid alpha updated", APIKey: redactedPlaceholder},
+				{Name: "debrid beta", APIKey: redactedPlaceholder},
+			},
+		},
+	}
+
+	preserveRedactedFields(&incoming, &existing)
+
+	if got := incoming.TorrentScrapers[0].APIKey; got != "torrent-alpha-key" {
+		t.Fatalf("first torrent source key restored from wrong array slot: got %q", got)
+	}
+	if got := incoming.TorrentScrapers[1].APIKey; got != "torrent-beta-key" {
+		t.Fatalf("second torrent source key restored from wrong array slot: got %q", got)
+	}
+	if got := incoming.Streaming.DebridProviders[0].APIKey; got != "debrid-alpha-key" {
+		t.Fatalf("first debrid key restored from wrong array slot: got %q", got)
+	}
+	if got := incoming.Streaming.DebridProviders[1].APIKey; got != "debrid-beta-key" {
+		t.Fatalf("second debrid key restored from wrong array slot: got %q", got)
+	}
+}
+
 func TestPreserveRedactedFields_AllowsRealUpdates(t *testing.T) {
 	existing := config.Settings{
 		Metadata: config.MetadataSettings{

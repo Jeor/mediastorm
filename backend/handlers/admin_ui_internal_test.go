@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -268,26 +269,233 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 
 	for _, marker := range []string{
 		`id="settingsCategoryNav"`,
-		`id="settingsBasicBtn" class="settings-level-btn" type="button" disabled`,
+		`id="settingsBasicBtn" class="settings-level-btn"`,
 		`id="settingsAdvancedBtn"`,
 		`autocomplete="off" autocapitalize="none" spellcheck="false"`,
-		`let settingsLevel = 'advanced';`,
+		`let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';`,
 		`.page-header-controls .form-select {`,
 		`height: 40px;`,
 		`function setSettingsLevel(level)`,
-		`function setSettingsGroup(groupId)`,
-		`let activeSettingsGroup = '';`,
-		`onclick="setSettingsGroup(\'\')"><span class="settings-category-btn-copy"><span>All</span>`,
 		`const advancedSections = new Set`,
 		`const friendlySettingsCopy = [`,
 		`'Streaming Method'`,
 		`'Adapt to Each Device'`,
-		`if (!searchTerm && activeSettingsGroup && group.id !== activeSettingsGroup) continue;`,
+		`const settingsOverviewGroups = [`,
+		`{ id: 'sources', label: 'Sources & Providers' }`,
+		`{ id: 'search', label: 'Search & Results' }`,
+		`{ id: 'server', label: 'Server & Network' }`,
+		`function toggleSettingsSection(header)`,
+		`document.querySelectorAll('#settingsContainer .section.open')`,
+		`function handleSettingsSectionKeydown(event, header)`,
+		`const firstMatch = filteredSections.values().next().value;`,
 		`propagateBtnLabel.textContent = 'Review Customizations'`,
 		`settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing progressive-disclosure marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSettingsRendersUsenetIndexerTableWithoutChangingContracts(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`function renderIndexerTableSection(sectionDef, items, basePath)`,
+		`<th scope="col">Name</th>`,
+		`<th scope="col">Status</th>`,
+		`<th scope="col">Priority</th>`,
+		`<th scope="col">API Key</th>`,
+		`<th scope="col">Actions</th>`,
+		`data-label="Priority">' + (index + 1)`,
+		`id="test-btn-indexers-' + index + '"`,
+		`onclick="testProvider(\'indexers\', ' + index + ')">Test</button>`,
+		`renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, 'indexers')`,
+		`removeArrayItem('indexers', index)`,
+		`addArrayItem('indexers')`,
+		`saveSection(\'indexers\', event)`,
+		`if (sectionKey === 'indexers') return renderIndexerTableSection(sectionDef, items, basePath);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing indexer-table contract marker %q", marker)
+		}
+	}
+
+	if strings.Contains(source, `reorderArrayItem('indexers'`) {
+		t.Fatal("indexer table must not reorder rows because redacted API keys are restored by stable array index")
+	}
+}
+
+func TestAdminSettingsRendersDebridAndTorrentProviderTablesWithoutChangingContracts(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers'])`,
+		`function renderProviderTableSection(sectionKey, sectionDef, items, basePath, options)`,
+		`function renderProviderEditFields(sectionKey, sectionDef, item, index, basePath)`,
+		`if (sectionKey === 'debridProviders')`,
+		`if (sectionKey === 'torrentScrapers')`,
+		`data-label="Priority">' + (index + 1)`,
+		`id="test-btn-' + sectionKey + '-' + index + '"`,
+		`onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">Test</button>`,
+		`renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, sectionKey)`,
+		`function refreshInlineSectionSaveState(basePath)`,
+		`refreshInlineSectionSaveState(basePath || fieldKey);`,
+		`removeProviderItem(\'' + sectionKey + '\', ' + index + ', event)`,
+		`addProviderItem(\'' + sectionKey + '\', event)`,
+		`saveSection(\'' + sectionKey + '\', event)`,
+		`provider-type-badge debrid`,
+		`provider-type-badge torrent`,
+		`provider-type-badge direct`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing provider-table contract marker %q", marker)
+		}
+	}
+
+	for _, sectionKey := range []string{"debridProviders", "torrentScrapers"} {
+		if strings.Contains(source, `reorderArrayItem('`+sectionKey+`'`) {
+			t.Fatalf("%s table must preserve stable credential-bearing array indices", sectionKey)
+		}
+	}
+}
+
+func TestAdminSettingsAccordionUsesVisibleKeyboardFocus(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`#settingsContainer .section-header:focus-visible {`,
+		`outline: 2px solid var(--accent-hover);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing accordion focus marker %q", marker)
+		}
+	}
+}
+
+func TestAdminMobileNavigationTrapsAndReturnsKeyboardFocus(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`function mobileMenuFocusableElements()`,
+		`sidebar.inert = isMobile && !isOpen;`,
+		`document.body.style.overflow = shouldOpen ? 'hidden' : mobileMenuPreviousBodyOverflow;`,
+		`if (event.key === 'Escape')`,
+		`if (event.key !== 'Tab') return;`,
+		`(event.shiftKey ? last : first).focus();`,
+		`window.requestAnimationFrame(() => (returnFocus || menuButton).focus());`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("base template missing mobile-navigation accessibility marker %q", marker)
+		}
+	}
+}
+
+func TestSharedShellRendersOnlyRegisteredRoleLinksAndContextualLabels(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	handler := NewAdminUIHandler(settingsPath, "", nil, nil, nil, config.NewManager(settingsPath))
+	if handler.statusTemplate == nil {
+		t.Fatal("status template failed to load")
+	}
+
+	render := func(t *testing.T, data AdminPageData) string {
+		t.Helper()
+		var output bytes.Buffer
+		if err := handler.statusTemplate.ExecuteTemplate(&output, "base", data); err != nil {
+			t.Fatalf("render shared shell: %v", err)
+		}
+		return output.String()
+	}
+
+	accountHTML := render(t, AdminPageData{
+		CurrentPath: "/account/status",
+		BasePath:    "/account",
+		Version:     "1.2.3-test",
+		BuildID:     "qa-build",
+	})
+	for _, deadLink := range []string{`href="/account/search"`, `href="/account/prequeue"`} {
+		if strings.Contains(accountHTML, deadLink) {
+			t.Fatalf("regular-account shell rendered unregistered link %q", deadLink)
+		}
+	}
+	if !strings.Contains(accountHTML, `aria-label="Account navigation"`) {
+		t.Fatal("regular-account shell is missing its contextual navigation label")
+	}
+
+	adminHTML := render(t, AdminPageData{
+		CurrentPath: "/admin/status",
+		BasePath:    "/admin",
+		IsAdmin:     true,
+		Version:     "1.2.3-test",
+		BuildID:     "qa-build",
+	})
+	for _, registeredLink := range []string{`href="/admin/search"`, `href="/admin/prequeue"`} {
+		if !strings.Contains(adminHTML, registeredLink) {
+			t.Fatalf("admin shell is missing registered link %q", registeredLink)
+		}
+	}
+	if !strings.Contains(adminHTML, `aria-label="Admin navigation"`) {
+		t.Fatal("admin shell is missing its contextual navigation label")
+	}
+}
+
+func TestSharedShellUsesTruthfulApplicationInformation(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, unsupportedClaim := range []string{"Connected", "Server OK"} {
+		if strings.Contains(source, unsupportedClaim) {
+			t.Fatalf("shared shell contains unsupported runtime claim %q", unsupportedClaim)
+		}
+	}
+	for _, marker := range []string{
+		`<div class="admin-sidebar-version">v{{.Version}}</div>`,
+		`<footer class="admin-statusbar" aria-label="Application information">`,
+		`<span class="admin-statusbar-state">Mediastorm</span>`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("shared shell is missing truthful application marker %q", marker)
+		}
+	}
+}
+
+func TestSharedShellSupportsPlaybackTheaterMode(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`body.web-player-theater-active .admin-sidebar,`,
+		`body.web-player-theater-active .admin-topbar,`,
+		`body.web-player-theater-active .admin-statusbar,`,
+		`body.web-player-theater-active .sidebar-scrim {`,
+		`body.web-player-theater-active .admin-workspace {`,
+		`width: 100%;`,
+		`margin-left: 0;`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("shared shell is missing theater-mode compatibility marker %q", marker)
 		}
 	}
 }
@@ -443,7 +651,7 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read status template: %v", err)
 	}
-	source := string(templateBytes)
+	source := strings.ReplaceAll(string(templateBytes), "\r\n", "\n")
 
 	for _, marker := range []string{
 		"<!-- Active Streams -->\n<div class=\"card\"",
@@ -454,6 +662,40 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("status template missing basic-dashboard marker %q", marker)
+		}
+	}
+}
+
+func TestAdminDashboardWatchTimeStacksOnNarrowViewports(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := strings.ReplaceAll(string(templateBytes), "\r\n", "\n")
+
+	if strings.Contains(source, `.dashboard-v4 .watch-time-grid {`) {
+		t.Fatal("dashboard-specific watch-time grid selector overrides the narrower mobile layout")
+	}
+	if !strings.Contains(source, "@media (max-width: 640px) {\n        .watch-time-grid {\n            grid-template-columns: 1fr;") {
+		t.Fatal("dashboard watch-time grid is missing its single-column narrow-viewport layout")
+	}
+}
+
+func TestAdminDashboardActiveStreamSummaryDoesNotDependOnTransferredBytes(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`if (streams.length > 0 && totalBandwidth > 0)`,
+		`} else if (streams.length > 0) {`,
+		`streams.length === 1 ? '1 active stream' : streams.length + ' active streams'`,
+		`subtextEl.textContent = 'No active streams';`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("status template missing active-stream summary marker %q", marker)
 		}
 	}
 }
@@ -504,7 +746,7 @@ func TestRegularAccountToolsExposeAutomationsAndAllIntegrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := string(templateBytes)
+	source := strings.ReplaceAll(string(templateBytes), "\r\n", "\n")
 	for _, marker := range []string{
 		"<!-- AUTOMATION CATEGORY -->\n<div class=\"settings-group\">",
 		`id="scheduledTasksSection"`,

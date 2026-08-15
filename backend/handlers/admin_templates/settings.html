@@ -22,7 +22,7 @@
     grid-column: 1 / -1;
     margin: 0.5rem 0 1rem;
     padding: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: rgba(99, 102, 241, 0.08);
 }
@@ -44,6 +44,63 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
 }
+
+/* Shared drag-to-reorder row primitive, used by provider priority, home shelves,
+   and ranking criteria lists. Rules common to all three live here once so their
+   per-widget <style> blocks only carry what's actually different between them. */
+.priority-row, .shelf-row, .ranking-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.priority-row.dragging, .shelf-row.dragging, .ranking-row.dragging {
+    background: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    transform: scale(1.02);
+}
+.priority-row.drag-over, .shelf-row.drag-over, .ranking-row.drag-over {
+    border-top: 2px solid var(--accent);
+    margin-top: -2px;
+}
+.shelf-row.disabled, .ranking-row.disabled {
+    opacity: 0.5;
+}
+.priority-handle, .shelf-handle, .ranking-handle {
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: grab;
+    touch-action: none;
+    padding: 8px;
+    margin: -8px 4px -8px -8px;
+}
+.priority-handle:active, .shelf-handle:active, .ranking-handle:active {
+    cursor: grabbing;
+}
+.priority-name, .shelf-name, .ranking-name {
+    flex: 1;
+}
+.shelf-name, .ranking-name {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.shelf-name {
+    min-width: 0;
+}
+.priority-num {
+    color: var(--text-muted);
+    margin-right: 10px;
+    min-width: 24px;
+    text-align: right;
+}
+
 .setting-field-title {
     display: inline-flex;
     align-items: center;
@@ -86,7 +143,7 @@
     gap: 0.75rem;
     margin: 0 0 1rem;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-left: 3px solid var(--accent);
     border-radius: 9px;
     background: var(--bg-secondary);
@@ -108,7 +165,7 @@
 .nested-settings-panel {
     margin-top: 1rem;
     padding: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.035);
 }
@@ -119,7 +176,7 @@
     gap: 0.55rem;
     margin-bottom: 0.85rem;
     padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 
 .nested-settings-panel-icon {
@@ -157,7 +214,7 @@
 
 .branding-wizard-preview {
     min-height: 300px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: #050505;
     display: flex;
@@ -185,7 +242,7 @@
 
 .branding-wizard-target.active {
     border-color: var(--accent);
-    background: var(--accent-bg);
+    background: rgba(99, 102, 241, 0.15);
 }
 
 .branding-wizard-control {
@@ -212,14 +269,10 @@
 }
 
 .settings-workspace {
-    display: grid;
-    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
-    gap: 1rem;
-    align-items: start;
+    display: block;
 }
 .settings-sidebar {
-    align-self: start;
-    min-width: 0;
+    display: none;
 }
 .settings-main {
     min-width: 0;
@@ -231,13 +284,13 @@
     gap: 0.35rem;
     margin: 0;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--bg-secondary);
 }
 .settings-scope-section {
     padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 .settings-scope-tree {
     display: flex;
@@ -259,7 +312,7 @@
     cursor: pointer;
 }
 .settings-scope-row:hover { color: var(--text-primary); background: var(--bg-tertiary); }
-.settings-scope-row.active { color: var(--text-primary); background: var(--accent-bg); border-color: var(--accent); }
+.settings-scope-row.active { color: var(--text-primary); background: rgba(99, 102, 241, 0.15); border-color: var(--accent); }
 .settings-scope-server-line { display: flex; align-items: stretch; }
 .settings-scope-server-line .settings-scope-row { flex: 1; width: auto; padding-left: 0.15rem; }
 .settings-scope-row.household { color: var(--text-primary); font-weight: 600; }
@@ -308,11 +361,11 @@
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 0.8rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     background: var(--bg-secondary);
 }
-.settings-impact-banner p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.78rem; }
+.settings-impact-banner p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.75rem; }
 .settings-stale-toggle {
     align-self: flex-start;
     margin: 0.1rem 0 0.25rem 2.2rem;
@@ -327,7 +380,7 @@
 .settings-scope-empty { padding: 0.35rem 0.5rem 0.35rem 1.35rem; color: var(--text-muted); font-size: 0.68rem; }
 .settings-navigation-section { padding-top: 0.7rem; }
 #userSelector,
-#clientSelector { display: none !important; }
+#clientSelector { display: block; }
 .settings-sidebar-label {
     padding: 0.15rem 0.55rem 0.35rem;
     color: var(--text-muted);
@@ -344,11 +397,11 @@
 .settings-category-btn,
 .settings-level-btn {
     border: 1px solid transparent;
-    border-radius: 7px;
+    border-radius: var(--radius);
     background: transparent;
     color: var(--text-secondary);
     padding: 0.55rem 0.65rem;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     cursor: pointer;
 }
 .settings-category-btn {
@@ -362,10 +415,10 @@
     justify-content: center;
     min-width: 1.2rem;
     padding: 0.1rem 0.35rem;
-    border-radius: 999px;
+    border-radius: 9999px;
     background: var(--bg-tertiary);
     color: var(--text-muted);
-    font-size: 0.62rem;
+    font-size: 0.75rem;
     font-weight: 700;
     line-height: 1.25;
 }
@@ -373,11 +426,11 @@
 .settings-category-btn:hover,
 .settings-level-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
 .settings-category-btn.active,
-.settings-level-btn.active { color: var(--text-primary); background: var(--accent-bg); border-color: var(--accent); }
+.settings-level-btn.active { color: var(--text-primary); background: rgba(99, 102, 241, 0.15); border-color: var(--accent); }
 .settings-level-section {
     margin-top: 0.55rem;
     padding-top: 0.7rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
 }
 .settings-level-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
 .settings-level-btn:disabled {
@@ -400,10 +453,283 @@
     max-height: 40px;
 }
 #settingsContainer .settings-group { margin-bottom: 1rem; }
-#settingsContainer .group-title { margin: 0 0 0.55rem; font-size: 0.78rem; }
+#settingsContainer .group-title {
+    margin: 1.35rem 0 0.65rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+#settingsContainer .settings-group:first-of-type .group-title { margin-top: 0; }
 #settingsContainer .section { margin-bottom: 0.45rem; }
-#settingsContainer .section-header { min-height: 48px; padding: 0.7rem 0.85rem; }
+#settingsContainer .section-header {
+    min-height: 58px;
+    padding: 0.72rem 0.9rem;
+}
+#settingsContainer .section-header:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: -2px;
+}
 #settingsContainer .section-content { padding: 0.9rem; }
+#settingsContainer .section-title {
+    min-width: 0;
+    align-items: center;
+    gap: 0.7rem;
+}
+#settingsContainer .section-title > svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    color: var(--accent);
+}
+.settings-section-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+.settings-section-label {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.settings-section-description {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.settings-section-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0.16rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.settings-scope-panel {
+    margin-bottom: 1rem;
+}
+.settings-scope-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 40px;
+    padding: 0.35rem 0;
+}
+.settings-scope-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.settings-scope-server-btn,
+.settings-scope-select-wrap {
+    min-height: 30px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+}
+.settings-scope-server-btn {
+    padding: 0.35rem 0.65rem;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.settings-scope-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.settings-scope-select-wrap::before {
+    content: '\2192';
+    margin: 0 0.35rem 0 0.05rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+.settings-scope-select-wrap select {
+    min-height: 30px;
+    max-width: 220px;
+    padding: 0.3rem 1.75rem 0.3rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.settings-scope-server-btn.active,
+.settings-scope-select-wrap.active select {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-hover);
+}
+.settings-scope-server-btn:focus-visible,
+.settings-scope-select-wrap select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.settings-scope-select-wrap select:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+.settings-scope-spacer { flex: 1; }
+.settings-view-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.settings-view-compact .settings-level-switch {
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.15rem;
+}
+.settings-view-compact .settings-level-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+}
+.settings-cascade-copy {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+.settings-scope-tree-storage { display: none; }
+.indexer-table-shell {
+    overflow-x: auto;
+    border-radius: var(--radius);
+}
+.indexer-table {
+    width: 100%;
+    min-width: 780px;
+    border-collapse: separate;
+    border-spacing: 0 0.45rem;
+}
+.indexer-table th {
+    padding: 0.25rem 0.65rem;
+    border: 0;
+    background: rgba(255,255,255,0.025);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-align: left;
+    text-transform: uppercase;
+}
+.indexer-table td {
+    padding: 0.6rem 0.65rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    vertical-align: middle;
+}
+.indexer-table td:first-child { border-left: 1px solid var(--border); border-radius: var(--radius) 0 0 var(--radius); }
+.indexer-table td:last-child { border-right: 1px solid var(--border); border-radius: 0 var(--radius) var(--radius) 0; }
+.indexer-name { color: var(--text-primary); font-weight: 600; }
+.indexer-url {
+    display: block;
+    max-width: 290px;
+    margin-top: 0.12rem;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.indexer-status { display: inline-flex; align-items: center; gap: 0.4rem; }
+.indexer-status .toggle { transform: scale(0.82); transform-origin: left center; margin-right: -0.25rem; }
+.indexer-status-text.enabled { color: var(--success); }
+.indexer-api-mask { color: var(--text-muted); letter-spacing: 0.08em; }
+.provider-type-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+.provider-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    padding: 0.125rem 0.45rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+.provider-type-badge.debrid { color: var(--accent); background: rgba(99, 102, 241, 0.14); border-color: rgba(99, 102, 241, 0.35); }
+.provider-type-badge.torrent { color: var(--warning); background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35); }
+.provider-type-badge.direct { color: var(--success); background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.35); }
+.provider-type-name { color: var(--text-muted); font-size: 0.7rem; text-transform: none; }
+.indexer-actions { display: flex; align-items: center; gap: 0.25rem; }
+.indexer-action-btn {
+    min-height: 30px;
+    padding: 0.3rem 0.5rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--accent-hover);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.indexer-action-btn:hover { background: rgba(99, 102, 241, 0.12); }
+.indexer-action-btn.danger { color: var(--danger); }
+.indexer-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); }
+.indexer-action-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.indexer-edit-row td {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.indexer-edit-panel {
+    margin-top: -0.3rem;
+    padding: 1rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: rgba(99, 102, 241, 0.05);
+}
+.provider-table-warning {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    font-size: 0.8rem;
+}
+.indexer-section-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+.indexer-empty-state {
+    padding: 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    text-align: center;
+}
 #settingsContainer .grid { gap: 0.75rem; }
 #settingsContainer .form-group { margin-bottom: 0.75rem; }
 #settingsContainer .form-hint { margin-top: 0.3rem; font-size: 0.74rem; line-height: 1.35; }
@@ -412,10 +738,10 @@
     display: inline-flex;
     margin-left: 0.45rem;
     padding: 0.12rem 0.38rem;
-    border-radius: 999px;
+    border-radius: 9999px;
     background: var(--bg-tertiary);
     color: var(--text-muted);
-    font-size: 0.62rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -427,11 +753,11 @@
     gap: 1rem;
     margin-bottom: 0.75rem;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     background: var(--bg-secondary);
 }
-.settings-related-card p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.78rem; }
+.settings-related-card p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.75rem; }
 @media (max-width: 900px) {
     .page-header-controls { flex-wrap: wrap; }
     .settings-workspace { grid-template-columns: 1fr; }
@@ -442,6 +768,54 @@
     .settings-level-section .settings-sidebar-label { padding: 0; }
     .settings-level-switch { display: flex; }
     .settings-level-help { margin: 0; }
+}
+@media (max-width: 640px) {
+    .settings-scope-bar { align-items: stretch; flex-direction: column; }
+    .settings-scope-label { padding: 0.2rem 0; }
+    .settings-scope-server-btn,
+    .settings-scope-select-wrap,
+    .settings-scope-select-wrap select { width: 100%; max-width: none; }
+    .settings-scope-select-wrap::before { display: none; }
+    .settings-scope-spacer { display: none; }
+    .settings-view-compact { justify-content: space-between; }
+    .settings-section-description { white-space: normal; }
+    #settingsContainer .section-header { align-items: flex-start; }
+    #settingsContainer .section-header-actions { padding-top: 0.15rem; }
+    .indexer-section-actions { align-items: stretch; flex-direction: column; }
+    .indexer-section-actions .btn { justify-content: center; width: 100%; }
+    .indexer-table-shell { overflow: visible; }
+    .indexer-table,
+    .indexer-table tbody,
+    .indexer-table tr,
+    .indexer-table td { display: block; width: 100%; min-width: 0; }
+    .indexer-table { border-spacing: 0; }
+    .indexer-table thead { display: none; }
+    .indexer-table tr { margin-bottom: 0.75rem; }
+    .indexer-table td {
+        display: grid;
+        grid-template-columns: 5.5rem minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: center;
+        border-right: 1px solid var(--border);
+        border-bottom: 0;
+        border-left: 1px solid var(--border);
+        border-radius: 0;
+    }
+    .indexer-table td::before {
+        color: var(--text-muted);
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+    .indexer-table td:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .indexer-table td:last-child { border-bottom: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); }
+    .indexer-table .indexer-edit-row { margin-top: -0.4rem; }
+    .indexer-table .indexer-edit-row td { display: block; border: 0; }
+    .indexer-table .indexer-edit-row td::before { display: none; }
+    .indexer-url { max-width: 100%; }
+    .indexer-actions { flex-wrap: wrap; }
 }
 </style>
 {{end}}
@@ -466,7 +840,7 @@
 <div class="page-header page-header-flex" style="display: flex; align-items: center; justify-content: space-between;">
     <div>
         <h1>Settings</h1>
-        <p>{{if .IsAdmin}}Configure your mediastorm server{{else}}Configure profile settings{{end}}</p>
+        <p>{{if .IsAdmin}}Configure your Mediastorm server{{else}}Configure profile settings{{end}}</p>
     </div>
     <div class="page-header-controls" style="display: flex; gap: 0.5rem; align-items: center;">
         <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)" style="min-width: 200px;">
@@ -503,44 +877,37 @@
     </div>
 </div>
 
-<aside class="settings-scope-guide" aria-label="How settings scopes work">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-    </svg>
-    <div>
-        <p><strong>Settings inherit from left to right:</strong> Server defaults → Person → Device. Choose a scope in the sidebar, change its values, then Save. A person overrides the server for every device using that profile; a device overrides both only on that device. Use <strong>Use Parent Defaults</strong> to remove a person or device override.</p>
-        {{if .IsAdmin}}<p><strong>Frontend access:</strong> Pencil icons appear only while viewing <strong>Server defaults</strong>. A grey pencil hides that setting from frontend Settings; an accent-colored pencil exposes it. Select the pencil and Save to apply the change.</p>{{end}}
-    </div>
-</aside>
-
-<div class="settings-workspace">
-    <aside class="settings-sidebar" aria-label="Settings navigation">
-        <div class="settings-workspace-toolbar">
-            <div class="settings-scope-section">
-                <div class="settings-sidebar-label">Scope</div>
-                <div id="settingsScopeTree" class="settings-scope-tree" aria-label="Settings scope"></div>
-                <select id="userSelector" hidden aria-hidden="true" tabindex="-1">
-                    {{if .IsAdmin}}<option value="">Server defaults</option>{{end}}
-                    {{range .Users}}
-                    <option value="{{.ID}}">{{.Name}}</option>
-                    {{end}}
-                </select>
-                <select id="clientSelector" hidden aria-hidden="true" tabindex="-1"><option value="">Profile defaults</option></select>
-            </div>
-            <div class="settings-navigation-section">
-                <div class="settings-sidebar-label">Settings</div>
-                <div id="settingsCategoryNav" class="settings-category-nav" aria-label="Settings categories"></div>
-            </div>
-            <div class="settings-level-section">
-                <div class="settings-sidebar-label">View</div>
-                <div class="settings-level-switch" aria-label="Settings detail level">
-                    <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is being reviewed">Basic</button>
-                    <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
-                </div>
-                <div id="settingsLevelHelp" class="settings-level-help"></div>
+<section class="settings-scope-panel" aria-label="Settings scope">
+    <div class="settings-scope-bar">
+        <span class="settings-scope-label">Scope:</span>
+        {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
+        <label class="settings-scope-select-wrap" id="settingsPersonScopeWrap">
+            <select id="userSelector" aria-label="Person" onchange="selectSettingsScope(this.value ? 'person' : 'server', this.value)">
+                {{if .IsAdmin}}<option value="">Person</option>{{end}}
+                {{range .Users}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+        </label>
+        <label class="settings-scope-select-wrap" id="settingsDeviceScopeWrap">
+            <select id="clientSelector" aria-label="Device" onchange="selectSettingsScope(this.value ? 'device' : 'person', selectedUserId, this.value)"><option value="">Device</option></select>
+        </label>
+        <span class="settings-scope-spacer"></span>
+        <div class="settings-view-compact">
+            <span class="settings-scope-label">View:</span>
+            <div class="settings-level-switch" aria-label="Settings detail level">
+                <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+                <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
             </div>
         </div>
-    </aside>
+    </div>
+    <p class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides</p>
+    <div id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage" aria-hidden="true"></div>
+    <div id="settingsCategoryNav" hidden aria-hidden="true"></div>
+    <div id="settingsLevelHelp" hidden aria-hidden="true"></div>
+</section>
+
+<div class="settings-workspace">
     <main class="settings-main">
         <div id="settingsContainer">
             <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
@@ -785,9 +1152,51 @@
     // Sensitive settings may be revealed only until their first blur. Keep the
     // lock outside renderSettings so rerendering cannot make them viewable again.
     const lockedSensitiveFields = new Set();
-    // Basic mode remains visible as a roadmap affordance, but all settings stay
-    // available until its contents have been reviewed section by section.
-    let settingsLevel = 'advanced';
+    let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';
+    let expandedIndexerEditIndex = -1;
+    const expandedProviderEditIndexes = {
+        debridProviders: -1,
+        torrentScrapers: -1,
+    };
+    const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers']);
+    const settingsSectionDescriptions = {
+        indexers: 'Configure indexers and search providers',
+        debridProviders: 'Real-Debrid, AllDebrid, Premiumize',
+        torrentScrapers: 'Torrent indexers and streaming providers',
+        'live.sources': 'IPTV and live television sources',
+        'liveTV.sources': 'IPTV and live television sources',
+        usenet: 'Usenet server connections',
+        usenetEngines: 'SABnzbd, NZBGet configuration',
+        streaming: 'Search behavior and source priority',
+        filtering: 'Resolution, codec, and quality preferences',
+        animeFiltering: 'Anime-specific search and naming',
+        ranking: 'Sort and filter result rankings',
+        playback: 'Player behavior, resume, and binge mode',
+        transmux: 'Browser-based player settings',
+        metadata: 'TMDb, metadata agents, and artwork',
+        mdblist: 'MDBList integration and lists',
+        subtitles: 'OpenSubtitles and subtitle preferences',
+        homeShelves: 'Dashboard layout and widgets',
+        display: 'Theme, colors, and custom branding',
+        server: 'Base URL and port configuration',
+        network: 'Local and remote access URLs'
+    };
+    const settingsOverviewGroups = [
+        { id: 'sources', label: 'Sources & Providers' },
+        { id: 'search', label: 'Search & Results' },
+        { id: 'playback', label: 'Playback' },
+        { id: 'metadata', label: 'Metadata & Services' },
+        { id: 'interface', label: 'Interface' },
+        { id: 'server', label: 'Server & Network' }
+    ];
+    const settingsOverviewSectionOrder = new Map([
+        'indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines',
+        'streaming', 'filtering', 'animeFiltering', 'ranking',
+        'playback', 'transmux',
+        'metadata', 'mdblist', 'subtitles',
+        'homeShelves', 'display',
+        'server', 'network'
+    ].map((key, index) => [key, index]));
     const advancedSections = new Set(['ranking', 'server', 'transmux']);
     const advancedFieldPaths = new Set([
         'streaming.multiProviderMode',
@@ -801,7 +1210,44 @@
         'playback.ytdlpCookies',
         'homeShelves.homeShelfScale',
         'homeShelves.homeHeroScale',
-        'server.allowedPrivateMediaOrigins'
+        'server.allowedPrivateMediaOrigins',
+        'filtering.adaptivePlaybackEnabled',
+        'filtering.adaptiveTargetBufferFactor',
+        'filtering.downloadPreferredTerms',
+        'filtering.unknownTrackPolicy',
+        'filtering.preferredScraper',
+        'filtering.servicePriority',
+        'display.includeUnreleasedMoviesInLists',
+        'display.includeUnreleasedShowsInLists',
+        'display.includeUnreleasedMoviesInSearch',
+        'display.includeUnreleasedShowsInSearch',
+        'display.bypassFilteringForAioStreamsOnly',
+        'display.showParsedBadges',
+        'display.enableHeroArtPanning',
+        'display.enableHeroArtRotation',
+        'display.hideContinueWatchingHeroMetadata',
+        'display.moveDetailsRatingsToMetadata',
+        'display.hideDetailsPoster',
+        'display.hideTvDrawerRail',
+        'display.blurUnwatchedEpisodeThumbnailsIncludeCurrent',
+        'display.blurUnwatchedEpisodeOverviewsIncludeCurrent',
+        'display.appearance.textColor',
+        'display.appearance.secondaryTextColor',
+        'display.appearance.backgroundColor',
+        'display.appearance.modalBackgroundColor',
+        'display.appearance.buttonStyle',
+        'display.appearance.buttonRadius',
+        'display.branding.wizard',
+        'display.branding.homeTvImageUrl',
+        'display.branding.homeTvImageUpload',
+        'display.branding.homeMobileLogoUrl',
+        'display.branding.homeMobileLogoUpload',
+        'display.branding.settingsTvImageUrl',
+        'display.branding.settingsTvImageUpload',
+        'display.branding.webIconUrl',
+        'display.branding.webIconUpload',
+        'display.branding.loadingLogoUrl',
+        'display.branding.loadingLogoUpload'
     ]);
     const advancedArrayFields = new Set([
         'live.sources.proxyUrl', 'live.sources.playlistCacheTtlHours', 'live.sources.probeSizeMb', 'live.sources.analyzeDurationSec', 'live.sources.lowLatency',
@@ -817,7 +1263,7 @@
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = 'advanced';
+        settingsLevel = (level === 'basic') ? 'basic' : 'advanced';
         localStorage.setItem('mediastorm-settings-level', settingsLevel);
         renderSettings();
     }
@@ -829,6 +1275,7 @@
 
     function renderSettingsWorkspaceNavigation() {
         renderSettingsScopeTree();
+        updateSettingsScopeBarState();
         const nav = document.getElementById('settingsCategoryNav');
         const availableGroups = groups.filter(group => Object.entries(schema).some(([key, def]) => {
             if (def.group !== group.id || def.hidden) return false;
@@ -853,7 +1300,73 @@
         document.getElementById('settingsBasicBtn')?.classList.toggle('active', settingsLevel === 'basic');
         document.getElementById('settingsAdvancedBtn')?.classList.toggle('active', settingsLevel === 'advanced');
         const help = document.getElementById('settingsLevelHelp');
-        if (help) help.textContent = 'All settings are currently shown. Basic view is disabled while its contents are reviewed.';
+        if (help) help.textContent = settingsLevel === 'basic'
+            ? 'Showing common settings. Switch to Advanced or search to find everything else.'
+            : 'Showing all settings.';
+    }
+
+    function updateSettingsScopeBarState() {
+        const serverButton = document.getElementById('settingsServerScopeBtn');
+        const personWrap = document.getElementById('settingsPersonScopeWrap');
+        const deviceWrap = document.getElementById('settingsDeviceScopeWrap');
+        const userSelector = document.getElementById('userSelector');
+        const clientSelector = document.getElementById('clientSelector');
+        const isServer = !selectedUserId;
+        const isPerson = !!selectedUserId && !selectedClientId;
+        const isDevice = !!selectedClientId;
+        serverButton?.classList.toggle('active', isServer);
+        personWrap?.classList.toggle('active', isPerson);
+        deviceWrap?.classList.toggle('active', isDevice);
+        if (userSelector && userSelector.value !== selectedUserId) userSelector.value = selectedUserId;
+        if (clientSelector) {
+            clientSelector.disabled = !selectedUserId || clientsForUser.length === 0;
+            if (clientSelector.value !== selectedClientId) clientSelector.value = selectedClientId;
+        }
+    }
+
+    function settingsOverviewGroupForSection(sectionKey, sectionDef) {
+        if (['indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines'].includes(sectionKey)) return 'sources';
+        if (['streaming', 'filtering', 'animeFiltering', 'ranking'].includes(sectionKey)) return 'search';
+        if (['playback', 'transmux'].includes(sectionKey)) return 'playback';
+        if (['metadata', 'mdblist', 'subtitles'].includes(sectionKey)) return 'metadata';
+        if (['homeShelves', 'display'].includes(sectionKey)) return 'interface';
+        if (['server', 'network'].includes(sectionKey)) return 'server';
+        return {
+            providers: 'sources',
+            searchFiltering: 'search',
+            experience: 'interface',
+            services: 'metadata',
+            server: 'server'
+        }[sectionDef.group] || 'metadata';
+    }
+
+    function settingsSectionRowDescription(sectionKey, sectionDef) {
+        if (settingsSectionDescriptions[sectionKey]) return settingsSectionDescriptions[sectionKey];
+        if (sectionDef.description) {
+            const plain = String(sectionDef.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (plain) return plain;
+        }
+        return 'Configure ' + String(sectionDef.label || sectionKey).toLowerCase();
+    }
+
+    function settingsSectionConfiguredCount(sectionKey, sectionDef) {
+        const countArray = (key, def) => {
+            if (!def?.is_array) return 0;
+            let value;
+            if (def.parent) value = getValue(def.parent + '.' + def.key);
+            else value = getValue(key);
+            return Array.isArray(value) ? value.length : 0;
+        };
+        let count = countArray(sectionKey, sectionDef);
+        for (const [nestedKey, nestedDef] of Object.entries(schema)) {
+            if (nestedDef.parent === sectionKey && !nestedDef.group) count += countArray(nestedKey, nestedDef);
+        }
+        return count;
+    }
+
+    function renderSettingsSectionBadge(sectionKey, sectionDef) {
+        const count = settingsSectionConfiguredCount(sectionKey, sectionDef);
+        return count > 0 ? '<span class="settings-section-badge">' + count + ' configured</span>' : '';
     }
 
     function settingsScopeIcon(kind) {
@@ -3927,11 +4440,32 @@
                 return '<input type="text" class="form-input'+invalidClass+'" id="'+id+'" value="'+escapeHtml(value || '').replace(/"/g, '&quot;')+'" '+isReadonly+' oninput="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)" onchange="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
         }
     }
+    function refreshInlineSectionSaveState(basePath) {
+        const path = String(basePath || '');
+        const match = Object.entries(schema)
+            .map(([sectionKey, sectionDef]) => ({
+                sectionKey,
+                sectionPath: sectionDef.parent ? sectionDef.parent + '.' + sectionDef.key : sectionKey,
+            }))
+            .filter(candidate => path === candidate.sectionPath || path.startsWith(candidate.sectionPath + '.'))
+            .sort((a, b) => b.sectionPath.length - a.sectionPath.length)[0];
+        if (!match) return;
+
+        const section = document.getElementById('section-' + match.sectionKey);
+        if (!section) return;
+        const hasChanges = sectionHasChanges(match.sectionKey);
+        section.classList.toggle('has-changes', hasChanges);
+        section.querySelectorAll('.section-save-btn').forEach(button => {
+            button.disabled = !hasChanges;
+        });
+    }
+
     function handleFieldInputChange(basePath, fieldKey, value) {
         if (fieldKey.startsWith('config.') && typeof value === 'boolean') {
             value = value ? 'true' : 'false';
         }
         setValue(basePath ? basePath+'.'+fieldKey : fieldKey, value);
+        refreshInlineSectionSaveState(basePath || fieldKey);
     }
 
     function sensitiveFieldPath(basePath, fieldKey) {
@@ -6213,6 +6747,206 @@
         }
     }
 
+    function toggleIndexerEditor(index, event) {
+        event?.stopPropagation();
+        expandedIndexerEditIndex = expandedIndexerEditIndex === index ? -1 : index;
+        renderSettings();
+    }
+
+    function addIndexerItem(event) {
+        event?.stopPropagation();
+        expandedIndexerEditIndex = Array.isArray(currentSettings.indexers) ? currentSettings.indexers.length : 0;
+        addArrayItem('indexers');
+    }
+
+    function removeIndexerItem(index, event) {
+        event?.stopPropagation();
+        if (expandedIndexerEditIndex === index) expandedIndexerEditIndex = -1;
+        else if (expandedIndexerEditIndex > index) expandedIndexerEditIndex--;
+        removeArrayItem('indexers', index);
+    }
+
+    function toggleProviderEditor(sectionKey, index, event) {
+        event?.stopPropagation();
+        expandedProviderEditIndexes[sectionKey] = expandedProviderEditIndexes[sectionKey] === index ? -1 : index;
+        renderSettings();
+    }
+
+    function addProviderItem(sectionKey, event) {
+        event?.stopPropagation();
+        const sectionDef = schema[sectionKey];
+        const items = sectionDef.parent
+            ? currentSettings[sectionDef.parent]?.[sectionDef.key]
+            : currentSettings[sectionKey];
+        expandedProviderEditIndexes[sectionKey] = Array.isArray(items) ? items.length : 0;
+        addArrayItem(sectionKey);
+    }
+
+    function removeProviderItem(sectionKey, index, event) {
+        event?.stopPropagation();
+        if (expandedProviderEditIndexes[sectionKey] === index) expandedProviderEditIndexes[sectionKey] = -1;
+        else if (expandedProviderEditIndexes[sectionKey] > index) expandedProviderEditIndexes[sectionKey]--;
+        removeArrayItem(sectionKey, index);
+    }
+
+    function renderIndexerEditFields(sectionDef, item, index, basePath) {
+        return Object.entries(sectionDef.fields)
+            .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+            .map(([fieldKey, fieldDef]) => {
+                let fieldValue = fieldKey.includes('.')
+                    ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
+                    : item[fieldKey];
+                const fieldInputId = (basePath + '.' + index + '_' + fieldKey).replace(/\./g, '_');
+                const isRequired = fieldDef.required === true;
+                const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+                const requiredBadge = isMissingRequired ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required</span>' : '';
+                const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+                let fieldInput = renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, 'indexers');
+                if (fieldDef.type === 'boolean') {
+                    fieldInput = fieldInput.replace('<label class="toggle">', '<label class="toggle" aria-label="' + escapeHtml(fieldDef.label).replace(/"/g, '&quot;') + '">');
+                }
+                return '<div class="form-group' + (fieldDef.type === 'boolean' ? ' form-group-toggle' : '') + (isMissingRequired ? ' required-missing' : '') + '">' +
+                    '<label class="form-label" for="' + fieldInputId + '">' + fieldDef.label + requiredBadge + '</label>' +
+                    fieldInput +
+                    (fieldDef.description ? '<p class="form-hint">' + fieldDef.description + '</p>' : '') +
+                    requiredHint + renderAdditionalFieldHint('indexers', fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+                '</div>';
+            }).join('');
+    }
+
+    function providerTableFieldVisible(item, fieldDef) {
+        const showWhen = fieldDef.showWhen;
+        if (!showWhen) return true;
+        const getItemValue = (path) => path.split('.').reduce((obj, key) => obj?.[key], item);
+        if (typeof showWhen === 'string' && showWhen.includes('=')) {
+            const [field, value] = showWhen.split('=');
+            return getItemValue(field) === value;
+        }
+        if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
+            return showWhen.conditions.some(condition => getItemValue(condition.field) === condition.value);
+        }
+        if (showWhen.field) return getItemValue(showWhen.field) === showWhen.value;
+        return true;
+    }
+
+    function renderProviderEditFields(sectionKey, sectionDef, item, index, basePath) {
+        return Object.entries(sectionDef.fields)
+            .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+            .map(([fieldKey, fieldDef]) => {
+                if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return '';
+                if (!providerTableFieldVisible(item, fieldDef)) return '';
+                const fieldValue = fieldKey.includes('.')
+                    ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
+                    : item[fieldKey];
+                const fieldInputId = (basePath + '.' + index + '_' + fieldKey).replace(/\./g, '_');
+                const isRequired = fieldDef.required === true;
+                const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+                const requiredBadge = isMissingRequired ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required</span>' : '';
+                const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+                let fieldInput = renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, sectionKey);
+                if (fieldDef.type === 'boolean') {
+                    fieldInput = fieldInput.replace('<label class="toggle">', '<label class="toggle" aria-label="' + escapeHtml(fieldDef.label).replace(/"/g, '&quot;') + '">');
+                }
+                return '<div class="form-group' + (fieldDef.type === 'boolean' ? ' form-group-toggle' : '') + (isMissingRequired ? ' required-missing' : '') + '">' +
+                    '<label class="form-label" for="' + fieldInputId + '">' + fieldDef.label + requiredBadge + '</label>' +
+                    fieldInput +
+                    (fieldDef.description ? '<p class="form-hint">' + fieldDef.description + '</p>' : '') +
+                    requiredHint + renderAdditionalFieldHint(sectionKey, fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+                '</div>';
+            }).join('');
+    }
+
+    function renderProviderTableBadges(sectionKey, item) {
+        if (sectionKey === 'debridProviders') {
+            const provider = String(item.provider || '').trim();
+            return provider ? '<span class="provider-type-badge debrid">' + escapeHtml(provider) + '</span>' : '';
+        }
+        if (sectionKey !== 'torrentScrapers') return '';
+        const scraperType = String(item.type || '').trim();
+        if (!scraperType) return '';
+        const directStreamTypes = ['aiostreams', 'comet', 'mediafusion', 'internetarchive'];
+        return '<span class="provider-type-badge torrent">TOR</span>' +
+            (directStreamTypes.includes(scraperType) ? '<span class="provider-type-badge direct">DIR</span>' : '') +
+            '<span class="provider-type-name">' + escapeHtml(scraperType) + '</span>';
+    }
+
+    function renderProviderTableSection(sectionKey, sectionDef, items, basePath, options) {
+        const rows = items.map((item, index) => {
+            const name = item.name || item.id || options.itemFallback + ' ' + (index + 1);
+            const secondary = options.secondary(item);
+            const statusInput = renderInput('enabled', sectionDef.fields.enabled, item.enabled, basePath + '.' + index, sectionKey)
+                .replace('<label class="toggle">', '<label class="toggle" aria-label="Enable ' + escapeHtml(name).replace(/"/g, '&quot;') + '">');
+            const isEditing = expandedProviderEditIndexes[sectionKey] === index;
+            const credentialMask = item.apiKey ? '••••••••' : 'Not set';
+            const badges = renderProviderTableBadges(sectionKey, item);
+            const badgesHtml = badges ? '<span class="provider-type-badges">' + badges + '</span>' : '';
+            const editHint = sectionKey === 'torrentScrapers' && item.type === 'aiostreams' && item.enabled && (currentSettings.streaming?.indexerTimeoutSec || 5) <= 5
+                ? '<div class="provider-table-warning">AIOStreams typically needs more than the default 5s search timeout. Increase it under <strong>Search &amp; Resolution</strong>.</div>'
+                : '';
+            const mainRow = '<tr>' +
+                '<td data-label="Name"><span class="indexer-name">' + escapeHtml(name) + '</span>' +
+                    (secondary ? '<span class="indexer-url" title="' + escapeHtml(secondary).replace(/"/g, '&quot;') + '">' + escapeHtml(secondary) + '</span>' : '') +
+                    badgesHtml + '</td>' +
+                '<td data-label="Status"><span class="indexer-status">' + statusInput + '<span class="indexer-status-text ' + (item.enabled ? 'enabled' : '') + '">' + (item.enabled ? 'On' : 'Off') + '</span></span></td>' +
+                '<td data-label="Priority">' + (index + 1) + '</td>' +
+                '<td data-label="API Key"><span class="indexer-api-mask">' + credentialMask + '</span></td>' +
+                '<td data-label="Actions"><div class="indexer-actions">' +
+                    '<button id="test-btn-' + sectionKey + '-' + index + '" class="indexer-action-btn" type="button" onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">Test</button>' +
+                    '<button class="indexer-action-btn" type="button" aria-expanded="' + isEditing + '" onclick="toggleProviderEditor(\'' + sectionKey + '\', ' + index + ', event)">' + (isEditing ? 'Close' : 'Edit') + '</button>' +
+                    '<button class="indexer-action-btn danger" type="button" onclick="removeProviderItem(\'' + sectionKey + '\', ' + index + ', event)">Delete</button>' +
+                '</div></td>' +
+            '</tr>';
+            const editRow = isEditing
+                ? '<tr class="indexer-edit-row"><td colspan="5"><div class="indexer-edit-panel"><div class="grid grid-2">' + renderProviderEditFields(sectionKey, sectionDef, item, index, basePath) + '</div>' + editHint + '</div></td></tr>'
+                : '';
+            return mainRow + editRow;
+        }).join('');
+        const table = items.length > 0
+            ? '<div class="indexer-table-shell provider-table-shell"><table class="indexer-table provider-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">API Key</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            : '<div class="indexer-empty-state"><strong>' + options.emptyTitle + '</strong><p class="form-hint">' + options.emptyHint + '</p></div>';
+        const hasChanges = sectionHasChanges(sectionKey);
+        const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
+        return '<p class="form-hint" style="margin:0 0 0.45rem;">' + options.intro + '</p>' +
+            table +
+            '<div class="indexer-section-actions"><button type="button" class="btn btn-primary" onclick="addProviderItem(\'' + sectionKey + '\', event)">+ ' + options.addLabel + '</button>' +
+            '<button type="button" class="section-save-btn" onclick="saveSection(\'' + sectionKey + '\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
+    }
+
+    function renderIndexerTableSection(sectionDef, items, basePath) {
+        const rows = items.map((item, index) => {
+            const name = item.name || item.id || 'Indexer ' + (index + 1);
+            const url = item.url || 'URL not set';
+            const statusInput = renderInput('enabled', sectionDef.fields.enabled, item.enabled, basePath + '.' + index, 'indexers')
+                .replace('<label class="toggle">', '<label class="toggle" aria-label="Enable ' + escapeHtml(name).replace(/"/g, '&quot;') + '">');
+            const isEditing = expandedIndexerEditIndex === index;
+            const apiMask = item.apiKey ? '••••••••' : 'Not set';
+            const mainRow = '<tr>' +
+                '<td data-label="Name"><span class="indexer-name">' + escapeHtml(name) + '</span><span class="indexer-url" title="' + escapeHtml(url).replace(/"/g, '&quot;') + '">' + escapeHtml(url) + '</span></td>' +
+                '<td data-label="Status"><span class="indexer-status">' + statusInput + '<span class="indexer-status-text ' + (item.enabled ? 'enabled' : '') + '">' + (item.enabled ? 'On' : 'Off') + '</span></span></td>' +
+                '<td data-label="Priority">' + (index + 1) + '</td>' +
+                '<td data-label="API Key"><span class="indexer-api-mask">' + apiMask + '</span></td>' +
+                '<td data-label="Actions"><div class="indexer-actions">' +
+                    '<button id="test-btn-indexers-' + index + '" class="indexer-action-btn" type="button" onclick="testProvider(\'indexers\', ' + index + ')">Test</button>' +
+                    '<button class="indexer-action-btn" type="button" aria-expanded="' + isEditing + '" onclick="toggleIndexerEditor(' + index + ', event)">' + (isEditing ? 'Close' : 'Edit') + '</button>' +
+                    '<button class="indexer-action-btn danger" type="button" onclick="removeIndexerItem(' + index + ', event)">Delete</button>' +
+                '</div></td>' +
+            '</tr>';
+            const editRow = isEditing
+                ? '<tr class="indexer-edit-row"><td colspan="5"><div class="indexer-edit-panel"><div class="grid grid-2">' + renderIndexerEditFields(sectionDef, item, index, basePath) + '</div></div></td></tr>'
+                : '';
+            return mainRow + editRow;
+        }).join('');
+        const table = items.length > 0
+            ? '<div class="indexer-table-shell"><table class="indexer-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">API Key</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            : '<div class="indexer-empty-state"><strong>No Usenet search sources configured</strong><p class="form-hint">Add an indexer to make Usenet results available.</p></div>';
+        const hasChanges = sectionHasChanges('indexers');
+        const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
+        return '<p class="form-hint" style="margin:0 0 0.45rem;">Configure Usenet indexers used for searching. Order reflects current search priority.</p>' +
+            table +
+            '<div class="indexer-section-actions"><button type="button" class="btn btn-primary" onclick="addIndexerItem(event)">+ Add Indexer</button>' +
+            '<button type="button" class="section-save-btn" onclick="saveSection(\'indexers\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
+    }
+
     function renderArraySection(sectionKey, sectionDef) {
         let items, basePath;
         const parentKey = sectionDef.parent;
@@ -6238,6 +6972,27 @@
             basePath = sectionKey;
         }
         const isTestable = testableSections.includes(sectionKey);
+        if (sectionKey === 'indexers') return renderIndexerTableSection(sectionDef, items, basePath);
+        if (sectionKey === 'debridProviders') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Debrid service',
+                secondary: item => item.provider || 'Provider not set',
+                intro: 'Configure debrid services used for resolving and streaming. Order reflects current service priority.',
+                emptyTitle: 'No debrid services configured',
+                emptyHint: 'Add a service to make debrid resolution available.',
+                addLabel: 'Add Debrid Service',
+            });
+        }
+        if (sectionKey === 'torrentScrapers') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Source',
+                secondary: item => item.url || item.type || 'URL not set',
+                intro: 'Configure torrent indexers and streaming providers. Order reflects current search priority.',
+                emptyTitle: 'No torrent or streaming sources configured',
+                emptyHint: 'Add a configured source to make torrent or direct-stream results available.',
+                addLabel: 'Add Source',
+            });
+        }
         let profileInheritanceControls = '';
         if (sectionKey === 'liveTV.sources' && selectedUserId && userSettings) {
             const hasOverride = hasProfileLiveSourceOverride();
@@ -6272,14 +7027,14 @@
                 typeBadgesHtml =
                     '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:0.125rem 0.45rem;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;background:rgba(34,197,94,0.16);color:#22c55e;border:1px solid rgba(34,197,94,0.35);">ENG</span>';
             }
-            const fieldsHtml = Object.entries(sectionDef.fields)
+            const fieldEntries = Object.entries(sectionDef.fields)
                 .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
                 .map(([fieldKey, fieldDef]) => {
                 if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) {
-                    return '';
+                    return null;
                 }
                 if (settingsLevel === 'basic' && sectionKey === 'usenetEngines' && ['apiPath', 'priority', 'config.webdavPathPrefix', 'pollIntervalSeconds', 'timeoutSeconds', 'allowedProfiles'].includes(fieldKey)) {
-                    return '';
+                    return null;
                 }
                 const showWhen = fieldDef.showWhen;
                 if (showWhen) {
@@ -6294,7 +7049,7 @@
                     } else if (showWhen.field) {
                         shouldShow = getItemValue(showWhen.field) === showWhen.value;
                     }
-                    if (!shouldShow) return '';
+                    if (!shouldShow) return null;
                 }
                 // Handle nested field paths like "config.autoClearQueue"
                 let fieldValue;
@@ -6308,8 +7063,45 @@
                 const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
                 const requiredBadge = isMissingRequired ? '<span style="margin-left:0.4rem;color:var(--warning);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Required</span>' : '';
                 const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
-                return '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+(isMissingRequired ? ' required-missing' : '')+'"><label class="form-label">'+fieldDef.label+requiredBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+requiredHint+renderAdditionalFieldHint(sectionKey, fieldKey, item)+renderApiKeyFormatWarning(fieldKey, fieldValue)+'</div>';
-            }).join('');
+                const fieldInputId = (basePath+'.'+index+'_'+fieldKey).replace(/\./g, '_');
+                return {
+                    group: fieldDef.group || '',
+                    groupLabel: fieldDef.groupLabel || '',
+                    groupDescription: fieldDef.groupDescription || '',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+(isMissingRequired ? ' required-missing' : '')+'"><label class="form-label" for="'+fieldInputId+'">'+fieldDef.label+requiredBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+requiredHint+renderAdditionalFieldHint(sectionKey, fieldKey, item)+renderApiKeyFormatWarning(fieldKey, fieldValue)+'</div>',
+                };
+            }).filter(Boolean);
+            const fieldHtmlParts = [];
+            let currentGroup = '';
+            let groupedFields = [];
+            let currentGroupLabel = '';
+            let currentGroupDescription = '';
+            const flushGroup = () => {
+                if (groupedFields.length === 0) return;
+                if (currentGroup) {
+                    fieldHtmlParts.push(
+                        '<div class="field-subgroup">' +
+                            '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
+                            (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
+                            '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
+                        '</div>'
+                    );
+                } else {
+                    fieldHtmlParts.push(...groupedFields);
+                }
+                groupedFields = [];
+            };
+            for (const entry of fieldEntries) {
+                if (entry.group !== currentGroup) {
+                    flushGroup();
+                    currentGroup = entry.group;
+                    currentGroupLabel = entry.groupLabel;
+                    currentGroupDescription = entry.groupDescription;
+                }
+                groupedFields.push(entry.html);
+            }
+            flushGroup();
+            const fieldsHtml = fieldHtmlParts.join('');
             const testBtn = isTestable ? '<button id="test-btn-'+sectionKey+'-'+index+'" class="btn btn-sm btn-secondary" onclick="testProvider(\''+sectionKey+'\', '+index+')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test</button>' : '';
             const hiddenChannelsBtn = (sectionKey === 'live.sources' || sectionKey === 'liveTV.sources')
                 ? '<button class="btn btn-sm btn-secondary" onclick="openHiddenChannelsManagerForSource(\''+sectionKey+'\', '+index+', event)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M10.58 10.58A2 2 0 0 0 13.42 13.42"/><path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M6.61 6.61C3.98 8.38 2 12 2 12s3 8 10 8a10.9 10.9 0 0 0 5.39-1.39"/></svg> Manage Hidden Channels</button>'
@@ -6350,18 +7142,13 @@
             '</div>';
         }).join('');
 
+        // Row/handle/drag-state rules shared with .shelf-row and .ranking-row live in the
+        // page-level <style> block; this block only carries what's specific to this widget.
         const styles = '<style>'+
             '.priority-container{position:relative;}'+
-            '.priority-row{display:flex;align-items:center;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;user-select:none;transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease;}'+
-            '.priority-row.dragging{background:rgba(138,43,226,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;transform:scale(1.02);}'+
-            '.priority-row.drag-over{border-top:2px solid #8a2be2;margin-top:-2px;}'+
-            '.priority-handle{color:#666;margin-right:12px;font-size:16px;cursor:grab;touch-action:none;padding:8px;margin:-8px;margin-right:4px;}'+
-            '.priority-handle:active{cursor:grabbing;}'+
-            '.priority-num{color:#888;margin-right:10px;min-width:24px;text-align:right;}'+
-            '.priority-name{flex:1;}'+
             '</style>';
 
-        return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color);">'+
+        return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">'+
             styles+
             '<label class="form-label">Provider Priority</label>'+
             '<p class="form-hint" style="margin-bottom:8px;">Drag to reorder. #1 has highest priority when multiple have cached results.</p>'+
@@ -6475,31 +7262,22 @@
                 '<span class="shelf-handle">☰</span>'+
                 '<span class="shelf-name">'+s.name+typeLabel+filterBadge+sourceBadge+sortBadge+streamingBadge+collectionBadge+'</span>'+
                 actionsHtml+
-                '<label class="shelf-toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleShelfEnabled(\''+s.id+'\', this.checked)"><span class="toggle-slider"></span></label>'+
+                '<label class="toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleShelfEnabled(\''+s.id+'\', this.checked)"><span class="toggle-slider"></span></label>'+
             '</div>';
         }).join('');
 
+        // Row/handle/drag-state rules shared with .priority-row and .ranking-row live in the
+        // page-level <style> block; this block only carries what's specific to this widget.
+        // The enable toggle reuses the shared .toggle component instead of a bespoke one.
         const styles = '<style>'+
             '.shelves-container{position:relative;}'+
-            '.shelf-row{display:flex;align-items:center;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;user-select:none;transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease,opacity 0.15s ease;}'+
-            '.shelf-row.dragging{background:rgba(138,43,226,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;transform:scale(1.02);}'+
-            '.shelf-row.drag-over{border-top:2px solid #8a2be2;margin-top:-2px;}'+
-            '.shelf-row.disabled{opacity:0.5;}'+
-            '.shelf-handle{color:#666;margin-right:12px;font-size:16px;cursor:grab;touch-action:none;padding:8px;margin:-8px;margin-right:4px;}'+
-            '.shelf-handle:active{cursor:grabbing;}'+
-            '.shelf-name{flex:1;font-weight:500;display:flex;align-items:center;gap:8px;min-width:0;}'+
             '.shelf-type-badge,.shelf-source-badge{display:inline-flex;align-items:center;height:18px;line-height:1;font-size:10px;padding:0 6px;border-radius:4px;font-weight:normal;white-space:nowrap;vertical-align:middle;}'+
-            '.shelf-type-badge{background:rgba(138,43,226,0.3);color:#c9a0dc;}'+
+            '.shelf-type-badge{background:rgba(99,102,241,0.25);color:#c7d2fe;}'+
             '.shelf-source-badge{background:rgba(59,130,246,0.18);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;}'+
             '.shelf-filter-badge{font-size:12px;margin-left:4px;opacity:0.8;}'+
-            '.shelf-toggle{position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;margin-left:12px;}'+
-            '.shelf-toggle input{opacity:0;width:0;height:0;}'+
-            '.shelf-toggle .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#444;border-radius:22px;transition:0.3s;}'+
-            '.shelf-toggle .toggle-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background-color:white;border-radius:50%;transition:0.3s;}'+
-            '.shelf-toggle input:checked + .toggle-slider{background-color:#8a2be2;}'+
-            '.shelf-toggle input:checked + .toggle-slider:before{transform:translateX(18px);}'+
+            '.shelf-row .toggle{margin-left:12px;}'+
             '.shelf-edit-btn{background:rgba(255,255,255,0.08);border:none;color:#aaa;font-size:16px;cursor:pointer;padding:8px 10px;line-height:1;border-radius:6px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;margin-left:8px;}'+
-            '.shelf-edit-btn:hover{color:#8a2be2;background:rgba(138,43,226,0.15);}'+
+            '.shelf-edit-btn:hover{color:var(--accent-hover);background:rgba(99,102,241,0.15);}'+
             '.shelf-config-btn svg{width:16px;height:16px;}'+
             '.shelf-delete-btn{background:rgba(255,255,255,0.08);border:none;color:#aaa;font-size:18px;cursor:pointer;padding:8px 10px;line-height:1;border-radius:6px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;margin-left:4px;}'+
             '.shelf-delete-btn:hover{color:#e94560;background:rgba(233,69,96,0.15);}'+
@@ -6519,14 +7297,14 @@
             '.add-custom-list-form .form-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}'+
             '.add-custom-list-form .form-group{flex:1;margin-bottom:0;}'+
             '.add-custom-list-form input{width:100%;padding:8px 12px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;font-size:14px;}'+
-            '.add-custom-list-form button{padding:8px 16px;background:#8a2be2;border:none;border-radius:6px;color:white;cursor:pointer;white-space:nowrap;}'+
-            '.add-custom-list-form button:hover{background:#9b3ce6;}'+
+            '.add-custom-list-form button{padding:8px 16px;background:var(--accent);border:none;border-radius:6px;color:white;cursor:pointer;white-space:nowrap;}'+
+            '.add-custom-list-form button:hover{background:var(--accent-hover);}'+
             // Inherited styling - greyed out when inheriting from global
             '.shelves-inherited .shelf-row{opacity:0.6;background:rgba(100,116,139,0.08);border:1px solid rgba(100,116,139,0.25);}'+
             '.shelves-inherited .shelf-handle{color:#555;}'+
             '.shelves-inherited .shelf-name{color:#888;}'+
             '.shelves-inherited .toggle-slider{opacity:0.6;background:rgba(100,116,139,0.2);}'+
-            '.shelves-inherited .shelf-toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
+            '.shelves-inherited .toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
             '.shelves-inherited .add-custom-list-form{opacity:0.6;}'+
             '.shelves-inherited .add-custom-list-form input,.shelves-inherited .add-custom-list-form select,.shelves-inherited .add-custom-list-form button{opacity:0.7;}'+
             '.add-custom-list-form select{width:100%;padding:8px 12px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;font-size:14px;cursor:pointer;}'+
@@ -6591,7 +7369,7 @@
             '<h4 style="margin:0 0 12px 0;font-size:14px;font-weight:500;">Add Home Shelf</h4>'+
             '<div class="form-row">'+
                 '<div class="form-group" style="flex:0 0 200px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Type</label>'+
+                    '<label class="form-label" for="newShelfType" style="font-size:12px;margin-bottom:4px;">Type</label>'+
                     '<select id="newShelfType" onchange="onShelfTypeChange()">'+
                         '<option value="mdblist">MDBList</option>'+
                         '<option value="popular-on-server">Popular on This Server</option>'+
@@ -6609,14 +7387,14 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="stremioImportModeGroup" style="display:none;flex:0 0 240px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Import As</label>'+
+                    '<label class="form-label" for="newShelfStremioImportMode" style="font-size:12px;margin-bottom:4px;">Import As</label>'+
                     '<select id="newShelfStremioImportMode" onchange="onStremioImportModeChange()">'+
                         '<option value="shelves">Individual shelves</option>'+
                         '<option value="hub">Collection hub</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSourceTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Source Type</label>'+
+                    '<label class="form-label" for="newShelfTmdbSourceType" style="font-size:12px;margin-bottom:4px;">Source Type</label>'+
                     '<select id="newShelfTmdbSourceType" onchange="onTMDBSourceTypeChange()">'+
                         '<option value="public-list">Public list</option>'+
                         '<option value="production-company">Production company</option>'+
@@ -6628,7 +7406,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSearchGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" id="newShelfTmdbSourceLabel" style="font-size:12px;margin-bottom:4px;">List</label>'+
+                    '<label class="form-label" for="newShelfTmdbSourceQuery" id="newShelfTmdbSourceLabel" style="font-size:12px;margin-bottom:4px;">List</label>'+
                     '<input type="text" id="newShelfTmdbSourceQuery" placeholder="TMDB URL, name, or numeric ID">'+
                     '<input type="hidden" id="newShelfTmdbSourceId">'+
                     '<input type="hidden" id="newShelfTmdbSourceName">'+
@@ -6638,11 +7416,11 @@
                     '<button type="button" onclick="searchTMDBShelfSource(\'newShelf\')">Search</button>'+
                 '</div>'+
                 '<div class="form-group" id="newShelfTmdbSourceResultGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Result</label>'+
+                    '<label class="form-label" for="newShelfTmdbSourceResult" style="font-size:12px;margin-bottom:4px;">Result</label>'+
                     '<select id="newShelfTmdbSourceResult" onchange="applyTMDBSourceResult(\'newShelf\')"></select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Type</label>'+
+                    '<label class="form-label" for="newShelfTmdbMediaType" style="font-size:12px;margin-bottom:4px;">Type</label>'+
                     '<select id="newShelfTmdbMediaType">'+
                         '<option value="movie">Movies</option>'+
                         '<option value="tv">Series</option>'+
@@ -6650,7 +7428,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSortGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Sort</label>'+
+                    '<label class="form-label" for="newShelfTmdbSort" style="font-size:12px;margin-bottom:4px;">Sort</label>'+
                     '<select id="newShelfTmdbSort" onchange="onTMDBSortFieldChange(\'newShelf\')">'+
                         '<option value="original">Original order</option>'+
                         '<option value="popularity">Popularity</option>'+
@@ -6660,38 +7438,38 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="tmdbSortDirectionGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Direction</label>'+
+                    '<label class="form-label" for="newShelfTmdbSortDirection" style="font-size:12px;margin-bottom:4px;">Direction</label>'+
                     '<select id="newShelfTmdbSortDirection">'+
                         '<option value="desc">Descending</option>'+
                         '<option value="asc">Ascending</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="mediaLibraryGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Library</label>'+
+                    '<label class="form-label" for="newShelfLibrary" style="font-size:12px;margin-bottom:4px;">Library</label>'+
                     '<select id="newShelfLibrary" onchange="onMediaLibraryShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="traktAccountGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Trakt Account</label>'+
+                    '<label class="form-label" for="newShelfTraktAccount" style="font-size:12px;margin-bottom:4px;">Trakt Account</label>'+
                     '<select id="newShelfTraktAccount" onchange="onTraktShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="traktListTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">List Type</label>'+
+                    '<label class="form-label" for="newShelfTraktListType" style="font-size:12px;margin-bottom:4px;">List Type</label>'+
                     '<select id="newShelfTraktListType" onchange="onTraktShelfSourceChange()">'+
                         '<option value="watchlist">Watchlist</option>'+
                         '<option value="custom">Custom List</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="traktListGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Custom List</label>'+
+                    '<label class="form-label" for="newShelfTraktList" style="font-size:12px;margin-bottom:4px;">Custom List</label>'+
                     '<select id="newShelfTraktList" onchange="onTraktShelfSourceChange()"></select>'+
                 '</div>'+
                 // Simkl fields (shown when type=simkl)
                 '<div class="form-group" id="simklAccountGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Simkl Account</label>'+
+                    '<label class="form-label" for="newShelfSimklAccount" style="font-size:12px;margin-bottom:4px;">Simkl Account</label>'+
                     '<select id="newShelfSimklAccount" onchange="onSimklShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="simklMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfSimklMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfSimklMediaType" onchange="onSimklShelfSourceChange()">'+
                         '<option value="movies">Movies</option>'+
                         '<option value="shows">Shows</option>'+
@@ -6699,7 +7477,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="simklListTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">List</label>'+
+                    '<label class="form-label" for="newShelfSimklListType" style="font-size:12px;margin-bottom:4px;">List</label>'+
                     '<select id="newShelfSimklListType" onchange="onSimklShelfSourceChange()">'+
                         '<option value="plantowatch">Plan to Watch</option>'+
                         '<option value="watching">Watching</option>'+
@@ -6709,45 +7487,45 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="letterboxdSourceGroup" style="display:none;flex:0 0 200px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Source</label>'+
+                    '<label class="form-label" for="newShelfLetterboxdSource" style="font-size:12px;margin-bottom:4px;">Source</label>'+
                     '<select id="newShelfLetterboxdSource" onchange="onLetterboxdSourceModeChange()">'+
                         '<option value="url">Public URL</option>'+
                         '<option value="mdblist">Imported via MDBList</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="letterboxdUrlGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Public Letterboxd URL</label>'+
+                    '<label class="form-label" for="newShelfLetterboxdUrl" style="font-size:12px;margin-bottom:4px;">Public Letterboxd URL</label>'+
                     '<input type="text" id="newShelfLetterboxdUrl" oninput="onLetterboxdUrlInput()" placeholder="https://letterboxd.com/user/list/list-name/">'+
                 '</div>'+
                 '<div class="form-group" id="letterboxdListGroup" style="display:none;flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Imported List</label>'+
+                    '<label class="form-label" for="newShelfLetterboxdList" style="font-size:12px;margin-bottom:4px;">Imported List</label>'+
                     '<select id="newShelfLetterboxdList" onchange="onLetterboxdShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="genreMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfGenreMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfGenreMediaType" onchange="onGenreShelfMediaTypeChange()">'+
                         '<option value="movie">Movies</option>'+
                         '<option value="tv">TV Shows</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="genreGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Genre</label>'+
+                    '<label class="form-label" for="newShelfGenre" style="font-size:12px;margin-bottom:4px;">Genre</label>'+
                     '<select id="newShelfGenre" onchange="onGenreShelfSourceChange()"></select>'+
                 '</div>'+
                 '<div class="form-group" id="decadeMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfDecadeMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfDecadeMediaType" onchange="onDecadeShelfSourceChange()">'+
                         '<option value="movie">Movies</option>'+
                         '<option value="tv">TV Shows</option>'+
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="decadeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Decade</label>'+
+                    '<label class="form-label" for="newShelfDecade" style="font-size:12px;margin-bottom:4px;">Decade</label>'+
                     '<select id="newShelfDecade" onchange="onDecadeShelfSourceChange()"></select>'+
                 '</div>'+
                 // Streaming service fields (shown when type=streaming-service)
                 '<div class="form-group" id="streamingServiceGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Service</label>'+
+                    '<label class="form-label" for="newShelfService" style="font-size:12px;margin-bottom:4px;">Service</label>'+
                     '<select id="newShelfService" onchange="onStreamingServiceChange()">'+
                         '<option value="netflix">Netflix</option>'+
                         '<option value="disney">Disney+</option>'+
@@ -6759,7 +7537,7 @@
                     '</select>'+
                 '</div>'+
                 '<div class="form-group" id="streamingMediaTypeGroup" style="display:none;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Content</label>'+
+                    '<label class="form-label" for="newShelfMediaType" style="font-size:12px;margin-bottom:4px;">Content</label>'+
                     '<select id="newShelfMediaType" onchange="onStreamingServiceChange()">'+
                         '<option value="movies">Movies</option>'+
                         '<option value="shows">Shows</option>'+
@@ -6768,11 +7546,11 @@
                 '</div>'+
                 // MDBList URL field (shown when type=mdblist)
                 '<div class="form-group" id="mdblistUrlGroup" style="flex:2;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">URL</label>'+
+                    '<label class="form-label" for="newShelfUrl" style="font-size:12px;margin-bottom:4px;">URL</label>'+
                     '<input type="text" id="newShelfUrl" placeholder="https://mdblist.com/lists/username/list-name/json">'+
                 '</div>'+
                 '<div class="form-group" id="stremioManifestGroup" style="display:none;flex:1 0 100%;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Manifest URL</label>'+
+                    '<label class="form-label" for="newShelfStremioManifest" style="font-size:12px;margin-bottom:4px;">Manifest URL</label>'+
                     '<div class="stremio-manifest-row">'+
                         '<input type="text" id="newShelfStremioManifest" oninput="clearLoadedStremioManifest()" placeholder="Manifest, install, or stremio-addons.net page URL">'+
                         '<button type="button" class="btn btn-secondary" onclick="loadStremioShelfManifest()">Load Catalogs</button>'+
@@ -6780,24 +7558,24 @@
                     '<p class="form-hint" id="stremioImportHint" style="margin-top:6px;">Paste a configured manifest, Stremio install URL, or stremio-addons.net add-on page.</p>'+
                 '</div>'+
                 '<div class="form-group" id="stremioCatalogsGroup" style="display:none;flex:1 1 100%;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Catalogs</label>'+
+                    '<label class="form-label" for="stremioCatalogsList" style="font-size:12px;margin-bottom:4px;">Catalogs</label>'+
                     '<div id="stremioCatalogsList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px;"></div>'+
                     '<p id="stremioCatalogStatus" class="form-hint" style="margin-top:6px;"></p>'+
                 '</div>'+
                 '<div class="form-group" id="stremioHubNameGroup" style="display:none;flex:1 1 280px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Hub Name</label>'+
+                    '<label class="form-label" for="newShelfStremioHubName" style="font-size:12px;margin-bottom:4px;">Hub Name</label>'+
                     '<input type="text" id="newShelfStremioHubName" placeholder="Add-on collections">'+
                 '</div>'+
                 '<div class="form-group" id="newShelfNameGroup">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Name</label>'+
+                    '<label class="form-label" for="newShelfName" style="font-size:12px;margin-bottom:4px;">Name</label>'+
                     '<input type="text" id="newShelfName" placeholder="My Custom List">'+
                 '</div>'+
                 '<div class="form-group" id="newShelfLimitGroup" style="flex:0 0 80px;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Limit</label>'+
+                    '<label class="form-label" for="newShelfLimit" style="font-size:12px;margin-bottom:4px;">Limit</label>'+
                     '<input type="number" id="newShelfLimit" placeholder="0" min="0" max="500" value="0">'+
                 '</div>'+
                 '<div class="form-group" id="newShelfHideUnreleasedGroup" style="flex:0 0 auto;">'+
-                    '<label class="form-label" style="font-size:12px;margin-bottom:4px;">Hide Unreleased</label>'+
+                    '<label class="form-label" for="newShelfHideUnreleased" style="font-size:12px;margin-bottom:4px;">Hide Unreleased</label>'+
                     '<div style="display:flex;align-items:center;height:38px;" title="Filter out movies not yet available for home viewing, and upcoming/in-production series"><input type="checkbox" id="newShelfHideUnreleased"></div>'+
                 '</div>'+
                 '<button class="add-custom-list-submit" onclick="addCustomShelf()">Add</button>'+
@@ -7598,7 +8376,7 @@
             if (list) {
                 list.innerHTML = catalogs.map((catalog, index) => {
                     const typeLabel = catalog.type === 'movie' ? 'Movies' : 'Series';
-                    return `<label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border-color);border-radius:6px;cursor:pointer;">
+                    return `<label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
                         <input type="checkbox" class="stremio-catalog-choice" value="${index}" checked>
                         <span>${escapeHtml(catalog.name)} <span style="color:var(--text-muted);font-size:11px;">${typeLabel}</span></span>
                     </label>`;
@@ -8673,21 +9451,21 @@
         const settingFields = isPopular
             ? `
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
+                    <label class="form-label" for="sharedShelfWindowDays" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
                     <input type="number" id="sharedShelfWindowDays" value="${shelf.activityWindowDays || 90}" min="7" max="365" class="form-input">
                 </div>
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Minimum Views</label>
+                    <label class="form-label" for="sharedShelfMinProfiles" style="font-size:12px;margin-bottom:4px;display:block;">Minimum Views</label>
                     <input type="number" id="sharedShelfMinProfiles" value="${shelf.minimumProfiles || 2}" min="1" max="100" class="form-input">
                     <p class="form-hint" style="margin-top:6px;">Only titles with at least this many completed movie or episode views are shown.</p>
                 </div>`
             : `
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
+                    <label class="form-label" for="sharedShelfWindowDays" style="font-size:12px;margin-bottom:4px;display:block;">Activity Window (days)</label>
                     <input type="number" id="sharedShelfWindowDays" value="${shelf.activityWindowDays || 14}" min="1" max="90" class="form-input">
                 </div>
                 <div style="margin-bottom:12px;">
-                    <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Maximum Items Per Profile</label>
+                    <label class="form-label" for="sharedShelfPerProfileCap" style="font-size:12px;margin-bottom:4px;display:block;">Maximum Items Per Profile</label>
                     <input type="number" id="sharedShelfPerProfileCap" value="${shelf.maxItemsPerProfile || 3}" min="1" max="20" class="form-input">
                     <p class="form-hint" style="margin-top:6px;">Prevents one profile from dominating the shared feed.</p>
                 </div>`;
@@ -8704,12 +9482,12 @@
                     </div>
                     <div class="test-modal-body streaming-services-modal-body">
                         <div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Shelf Name</label>
+                            <label class="form-label" for="sharedShelfName" style="font-size:12px;margin-bottom:4px;display:block;">Shelf Name</label>
                             <input type="text" id="sharedShelfName" value="${escapeHtml(shelf.name).replace(/"/g, '&quot;')}" class="form-input">
                         </div>
                         ${settingFields}
                         <div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
+                            <label class="form-label" for="sharedShelfItemLimit" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
                             <input type="number" id="sharedShelfItemLimit" value="${shelf.limit || 0}" min="0" max="500" class="form-input">
                         </div>
                         <p class="form-hint">These values follow the selected profile's Home Shelves configuration and are executed by the backend.</p>
@@ -8858,7 +9636,7 @@
             const currentSort = shelf.sort || defaultMyUpcomingSort();
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
+                        <label class="form-label" for="editShelfSort" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
                         <select id="editShelfSort" class="form-input">
                             <option value="air-date-asc" ${currentSort === 'air-date-asc' ? 'selected' : ''}>Soonest air date</option>
                             <option value="air-date-desc" ${currentSort === 'air-date-desc' ? 'selected' : ''}>Latest air date</option>
@@ -8872,15 +9650,15 @@
         } else if (isStremioShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Add-on</label>
-                        <input type="text" value="${escapeHtml(shelf.addonName || 'Stremio Add-on').replace(/"/g, '&quot;')}" class="form-input" disabled>
+                        <label class="form-label" for="editShelfStremioAddonName" style="font-size:12px;margin-bottom:4px;display:block;">Add-on</label>
+                        <input type="text" id="editShelfStremioAddonName" value="${escapeHtml(shelf.addonName || 'Stremio Add-on').replace(/"/g, '&quot;')}" class="form-input" disabled>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Catalog</label>
-                        <input type="text" value="${escapeHtml((shelf.addonCatalogId || '') + ' (' + (shelf.addonCatalogType || '') + ')').replace(/"/g, '&quot;')}" class="form-input" disabled>
+                        <label class="form-label" for="editShelfStremioCatalog" style="font-size:12px;margin-bottom:4px;display:block;">Catalog</label>
+                        <input type="text" id="editShelfStremioCatalog" value="${escapeHtml((shelf.addonCatalogId || '') + ' (' + (shelf.addonCatalogType || '') + ')').replace(/"/g, '&quot;')}" class="form-input" disabled>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Manifest URL</label>
+                        <label class="form-label" for="editShelfStremioManifest" style="font-size:12px;margin-bottom:4px;display:block;">Manifest URL</label>
                         <input type="text" id="editShelfStremioManifest" value="${escapeHtml(shelf.addonManifestUrl || '').replace(/"/g, '&quot;')}" class="form-input">
                     </div>
         `;
@@ -8890,11 +9668,11 @@
             const tmdbQueryValue = [tmdbSourceName, tmdbSourceID].filter(Boolean).join(', ');
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Source Type</label>
+                        <label class="form-label" for="editShelfTmdbSourceType" style="font-size:12px;margin-bottom:4px;display:block;">Source Type</label>
                         <select id="editShelfTmdbSourceType" onchange="onTMDBSourceTypeChange('editShelf')" class="form-input">${tmdbSourceOptions}</select>
                     </div>
                     <div id="editShelfTmdbSearchGroup" style="margin-bottom:12px;">
-                        <label id="editShelfTmdbSourceLabel" class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">TMDB Source</label>
+                        <label id="editShelfTmdbSourceLabel" class="form-label" for="editShelfTmdbSourceQuery" style="font-size:12px;margin-bottom:4px;display:block;">TMDB Source</label>
                         <input type="text" id="editShelfTmdbSourceQuery" value="${escapeHtml(tmdbQueryValue).replace(/"/g, '&quot;')}" class="form-input" placeholder="TMDB URL, name, or numeric ID">
                         <input type="hidden" id="editShelfTmdbSourceId" value="${escapeHtml(tmdbSourceID).replace(/"/g, '&quot;')}">
                         <input type="hidden" id="editShelfTmdbSourceName" value="${escapeHtml(tmdbSourceName).replace(/"/g, '&quot;')}">
@@ -8904,19 +9682,19 @@
                         <button type="button" class="btn btn-secondary" onclick="searchTMDBShelfSource('editShelf')">Search</button>
                     </div>
                     <div id="editShelfTmdbSourceResultGroup" style="display:none;margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Result</label>
+                        <label class="form-label" for="editShelfTmdbSourceResult" style="font-size:12px;margin-bottom:4px;display:block;">Result</label>
                         <select id="editShelfTmdbSourceResult" onchange="applyTMDBSourceResult('editShelf')" class="form-input"></select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Type</label>
+                        <label class="form-label" for="editShelfTmdbMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Type</label>
                         <select id="editShelfTmdbMediaType" class="form-input">${tmdbMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
+                        <label class="form-label" for="editShelfTmdbSort" style="font-size:12px;margin-bottom:4px;display:block;">Sort</label>
                         <select id="editShelfTmdbSort" onchange="onTMDBSortFieldChange('editShelf')" class="form-input">${tmdbSortOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Direction</label>
+                        <label class="form-label" for="editShelfTmdbSortDirection" style="font-size:12px;margin-bottom:4px;display:block;">Direction</label>
                         <select id="editShelfTmdbSortDirection" class="form-input" ${tmdbSort.field === 'original' ? 'disabled' : ''}>${tmdbSortDirectionOptions}</select>
                     </div>
                     ${buildTMDBCustomFilterFields('editShelf', shelf.tmdbDiscoverQuery || '', true)}
@@ -8924,37 +9702,37 @@
         } else if (isLibraryShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Library</label>
+                        <label class="form-label" for="editShelfLibrary" style="font-size:12px;margin-bottom:4px;display:block;">Library</label>
                         <select id="editShelfLibrary" class="form-input">${mediaLibraryOptions}</select>
                     </div>
         `;
         } else if (isTraktShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Trakt Account</label>
+                        <label class="form-label" for="editShelfTraktAccount" style="font-size:12px;margin-bottom:4px;display:block;">Trakt Account</label>
                         <select id="editShelfTraktAccount" onchange="onEditTraktShelfSourceChange()" class="form-input">${traktAccountOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">List Type</label>
+                        <label class="form-label" for="editShelfTraktListType" style="font-size:12px;margin-bottom:4px;display:block;">List Type</label>
                         <select id="editShelfTraktListType" onchange="onEditTraktShelfSourceChange()" class="form-input">${traktListTypeOptions}</select>
                     </div>
                     <div id="editShelfTraktListGroup" style="margin-bottom:12px;display:${traktListType === 'custom' ? 'block' : 'none'};">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Custom List</label>
+                        <label class="form-label" for="editShelfTraktList" style="font-size:12px;margin-bottom:4px;display:block;">Custom List</label>
                         <select id="editShelfTraktList" class="form-input"><option value="">Loading...</option></select>
                     </div>
         `;
         } else if (isSimklShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Simkl Account</label>
+                        <label class="form-label" for="editShelfSimklAccount" style="font-size:12px;margin-bottom:4px;display:block;">Simkl Account</label>
                         <select id="editShelfSimklAccount" class="form-input">${simklAccountOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
+                        <label class="form-label" for="editShelfSimklMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
                         <select id="editShelfSimklMediaType" class="form-input">${simklMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">List</label>
+                        <label class="form-label" for="editShelfSimklListType" style="font-size:12px;margin-bottom:4px;display:block;">List</label>
                         <select id="editShelfSimklListType" class="form-input">${simklStatusOptions}</select>
                     </div>
         `;
@@ -8967,19 +9745,19 @@
             const editUseUrl = !(shelf.letterboxdListId && !shelf.letterboxdListUrl);
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Source</label>
+                        <label class="form-label" for="editShelfLetterboxdSource" style="font-size:12px;margin-bottom:4px;display:block;">Source</label>
                         <select id="editShelfLetterboxdSource" onchange="onEditLetterboxdSourceModeChange()" class="form-input">
                             <option value="url" ${editUseUrl ? 'selected' : ''}>Public URL</option>
                             <option value="mdblist" ${editUseUrl ? '' : 'selected'}>Imported via MDBList</option>
                         </select>
                     </div>
                     <div id="editLetterboxdUrlGroup" style="margin-bottom:12px;display:${editUseUrl ? 'block' : 'none'};">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Public Letterboxd URL</label>
+                        <label class="form-label" for="editShelfLetterboxdUrl" style="font-size:12px;margin-bottom:4px;display:block;">Public Letterboxd URL</label>
                         <input type="text" id="editShelfLetterboxdUrl" value="${(shelf.letterboxdListUrl || '').replace(/"/g, '&quot;')}" placeholder="https://letterboxd.com/user/list/list-name/" class="form-input">
                         <p class="form-hint" style="margin-top:6px;font-size:11px;">Any public Letterboxd list or watchlist URL — no MDBList account needed.</p>
                     </div>
                     <div id="editLetterboxdListGroup" style="margin-bottom:12px;display:${editUseUrl ? 'none' : 'block'};">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Imported List</label>
+                        <label class="form-label" for="editShelfLetterboxdList" style="font-size:12px;margin-bottom:4px;display:block;">Imported List</label>
                         <select id="editShelfLetterboxdList" class="form-input">${letterboxdOptions}</select>
                         <p class="form-hint" style="margin-top:6px;font-size:11px;">Letterboxd lists imported into mdblist.com. Don't see yours? Import it on MDBList first.</p>
                     </div>
@@ -8987,29 +9765,29 @@
         } else if (isGenreShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
+                        <label class="form-label" for="editShelfGenreMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
                         <select id="editShelfGenreMediaType" onchange="onEditGenreShelfMediaTypeChange()" class="form-input">${genreMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Genre</label>
+                        <label class="form-label" for="editShelfGenre" style="font-size:12px;margin-bottom:4px;display:block;">Genre</label>
                         <select id="editShelfGenre" class="form-input">${genreOptions}</select>
                     </div>
         `;
         } else if (isDecadeShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
+                        <label class="form-label" for="editShelfDecadeMediaType" style="font-size:12px;margin-bottom:4px;display:block;">Content</label>
                         <select id="editShelfDecadeMediaType" class="form-input">${decadeMediaOptions}</select>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Decade</label>
+                        <label class="form-label" for="editShelfDecade" style="font-size:12px;margin-bottom:4px;display:block;">Decade</label>
                         <select id="editShelfDecade" class="form-input">${decadeOptions}</select>
                     </div>
         `;
         } else {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
-                        <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">URL</label>
+                        <label class="form-label" for="editShelfUrl" style="font-size:12px;margin-bottom:4px;display:block;">URL</label>
                         <input type="text" id="editShelfUrl" value="${(shelf.listUrl || '').replace(/"/g, '&quot;')}" class="form-input">
                     </div>
         `;
@@ -9029,12 +9807,12 @@
                     </div>
                     <div class="test-modal-body streaming-services-modal-body">
                         <div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Name</label>
+                            <label class="form-label" for="editShelfName" style="font-size:12px;margin-bottom:4px;display:block;">Name</label>
                             <input type="text" id="editShelfName" value="${shelf.name.replace(/"/g, '&quot;')}" class="form-input">
                         </div>
                         ${traktSourceFields}
                         ${isRecentlyAiredShelf || isMyUpcomingShelf ? '' : `<div style="margin-bottom:12px;">
-                            <label class="form-label" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
+                            <label class="form-label" for="editShelfLimit" style="font-size:12px;margin-bottom:4px;display:block;">Item Limit <span style="color:#888;font-weight:normal;">(0 = unlimited)</span></label>
                             <input type="number" id="editShelfLimit" value="${shelf.limit || 0}" min="0" max="500" class="form-input">
                         </div>
                         <div style="margin-bottom:16px;">
@@ -9316,7 +10094,7 @@
             if (p) descHtml = '<span style="margin-left: 0.75rem; color: var(--text-muted); font-size: 0.8rem;">' + p.description + '</span>';
         }
 
-        return '<div style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">' +
+        return '<div style="margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">' +
             '<label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Preset</label>' +
             '<div style="display: flex; align-items: center; gap: 0.5rem;">' +
             '<select class="form-select" style="max-width: 220px;" onchange="applyPreset(this.value)">' +
@@ -9399,10 +10177,10 @@
             : '<span style="color: var(--text-muted); font-size: 0.8rem;">Choose a preset to fill the appearance fields below.</span>';
         const swatchHtml = (currentPreset ? ['accentColor', 'textColor', 'secondaryTextColor', 'backgroundColor', 'modalBackgroundColor'].map(key => {
             const color = currentPreset.appearance[key];
-            return '<span title="' + key + ': ' + color + '" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:' + color + ';border:1px solid var(--border-color);"></span>';
+            return '<span title="' + key + ': ' + color + '" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:' + color + ';border:1px solid var(--border);"></span>';
         }).join('') : '');
 
-        return '<div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary);">' +
+        return '<div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-secondary);">' +
             '<label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Theme Quick Select</label>' +
             '<div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">' +
             '<select class="form-select" style="max-width: 240px;" onchange="applyThemeQuickSelect(this.value)">' +
@@ -9783,30 +10561,21 @@
             return '<div class="ranking-row'+enabledClass+'" data-index="'+i+'" data-id="'+c.id+'">'+
                 '<span class="ranking-handle">☰</span>'+
                 '<span class="ranking-name">'+c.name+'</span>'+
-                '<label class="ranking-toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleRankingCriterionEnabled(\''+c.id+'\', this.checked, \''+criteriaPath+'\')"><span class="toggle-slider"></span></label>'+
+                '<label class="toggle"><input type="checkbox" '+toggleChecked+' onchange="toggleRankingCriterionEnabled(\''+c.id+'\', this.checked, \''+criteriaPath+'\')"><span class="toggle-slider"></span></label>'+
             '</div>';
         }).join('');
 
+        // Row/handle/drag-state rules shared with .priority-row and .shelf-row live in the
+        // page-level <style> block; this block only carries what's specific to this widget.
+        // The enable toggle reuses the shared .toggle component instead of a bespoke one.
         const styles = '<style>'+
             '.ranking-container{position:relative;}'+
-            '.ranking-row{display:flex;align-items:center;padding:10px 12px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;user-select:none;transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease,opacity 0.15s ease;}'+
-            '.ranking-row.dragging{background:rgba(138,43,226,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;transform:scale(1.02);}'+
-            '.ranking-row.drag-over{border-top:2px solid #8a2be2;margin-top:-2px;}'+
-            '.ranking-row.disabled{opacity:0.5;}'+
-            '.ranking-handle{color:#666;margin-right:12px;font-size:16px;cursor:grab;touch-action:none;padding:8px;margin:-8px;margin-right:4px;}'+
-            '.ranking-handle:active{cursor:grabbing;}'+
-            '.ranking-name{flex:1;font-weight:500;display:flex;align-items:center;gap:8px;}'+
-            '.ranking-toggle{position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;margin-left:12px;}'+
-            '.ranking-toggle input{opacity:0;width:0;height:0;}'+
-            '.ranking-toggle .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#444;border-radius:22px;transition:0.3s;}'+
-            '.ranking-toggle .toggle-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background-color:white;border-radius:50%;transition:0.3s;}'+
-            '.ranking-toggle input:checked + .toggle-slider{background-color:#8a2be2;}'+
-            '.ranking-toggle input:checked + .toggle-slider:before{transform:translateX(18px);}'+
+            '.ranking-row .toggle{margin-left:12px;}'+
             '.ranking-inherited .ranking-row{opacity:0.6;background:rgba(100,116,139,0.08);border:1px solid rgba(100,116,139,0.25);}'+
             '.ranking-inherited .ranking-handle{color:#555;}'+
             '.ranking-inherited .ranking-name{color:#888;}'+
             '.ranking-inherited .toggle-slider{opacity:0.6;background:rgba(100,116,139,0.2);}'+
-            '.ranking-inherited .ranking-toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
+            '.ranking-inherited .toggle input:checked + .toggle-slider{opacity:0.6;background:rgba(99,102,241,0.5);}'+
             '</style>';
 
         const containerClass = isInherited && selectedUserId ? 'ranking-container ranking-inherited' : 'ranking-container';
@@ -9942,7 +10711,7 @@
         if (!e.target.closest(handleClass)) return;
 
         // Don't start drag if clicking on interactive elements
-        if (e.target.closest('.shelf-toggle') || e.target.closest('.shelf-edit-btn') || e.target.closest('.shelf-delete-btn') || e.target.closest('.ranking-toggle')) return;
+        if (e.target.closest('.toggle') || e.target.closest('.shelf-edit-btn') || e.target.closest('.shelf-delete-btn')) return;
 
         e.preventDefault();
         ensureDragListeners();
@@ -10116,11 +10885,12 @@
                 const inheritanceClass = (selectedUserId || selectedClientId)
                     ? (inheritanceInfo.isOverridden ? ' field-overridden' : ' field-inherited')
                     : '';
+                const fieldInputId = (sectionKey+'_'+fieldKey).replace(/\./g, '_');
                 return {
                     group: fieldDef.group || '',
                     groupLabel: fieldDef.groupLabel || '',
                     groupDescription: fieldDef.groupDescription || '',
-                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
             .filter(Boolean);
@@ -10170,7 +10940,7 @@
         // Add test button for testable object sections
         let testHtml = '';
         if (sectionDef.testable && !selectedUserId && !selectedClientId) {
-            testHtml = '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.75rem;">'+
+            testHtml = '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem;">'+
                 '<button id="test-btn-'+sectionKey+'" class="btn btn-secondary" onclick="testObjectSection(\''+sectionKey+'\')">'+
                 '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test Connection</button>'+
                 '<span id="test-result-'+sectionKey+'" class="test-result"></span></div>';
@@ -10315,7 +11085,16 @@
         const warningBadge = errorCount > 0 ? '<span class="section-warning">'+errorCount+'</span>' : '';
 
         // Save button for section header (only show when section has changes and not a custom section)
-        const saveBtn = (hasChanges && !sectionDef.custom && !isDisabled) ? '<button class="section-save-btn" onclick="saveSection(\''+sectionKey+'\', event)" title="Save changes"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</button>' : '';
+        // At global/server scope, saving one section actually PUTs the entire settings tree
+        // (see saveSection's global-scope branch), so any other section's unsaved edits get
+        // persisted too. Label/title disclose that honestly instead of implying a scoped save.
+        // Profile/device scope saves are genuinely scoped to that profile/device's own object.
+        const isGlobalScopeSave = !selectedUserId && !selectedClientId;
+        const saveBtnLabel = isGlobalScopeSave ? 'Save All' : 'Save';
+        const saveBtnTitle = isGlobalScopeSave
+            ? 'Saves all sections with unsaved changes, not just this one'
+            : 'Save changes';
+        const saveBtn = (hasChanges && !providerTableSectionKeys.has(sectionKey) && !sectionDef.custom && !isDisabled) ? '<button class="section-save-btn" onclick="saveSection(\''+sectionKey+'\', event)" title="'+saveBtnTitle+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> '+saveBtnLabel+'</button>' : '';
 
         // Section-level validation messages
         let messagesHtml = '';
@@ -10350,7 +11129,7 @@
 
         // Add clear cache button for cache section
         if (sectionKey === 'cache') {
-            contentHtml += '<div class="cache-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);"><button class="btn btn-secondary" id="clear-cache-btn" onclick="clearMetadataCache()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear Metadata Cache</button><p class="form-hint" style="margin-top: 0.5rem;">Remove all cached metadata and posters. Fresh data will be fetched from TVDB/TMDB on next request.</p></div>';
+            contentHtml += '<div class="cache-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);"><button class="btn btn-secondary" id="clear-cache-btn" onclick="clearMetadataCache()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear Metadata Cache</button><p class="form-hint" style="margin-top: 0.5rem;">Remove all cached metadata and posters. Fresh data will be fetched from TVDB/TMDB on next request.</p></div>';
         }
         let nestedHtml = '';
         for (const [nestedKey, nestedDef] of Object.entries(schema)) {
@@ -10362,7 +11141,15 @@
             }
         }
         const advancedBadge = advancedSections.has(sectionKey) ? '<span class="advanced-setting-badge">Advanced</span>' : '';
-        return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'"><div class="section-header" onclick="toggleSection(this)"><div class="section-title">'+getIcon(sectionDef.icon)+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</div><div class="section-header-actions">'+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div><div class="section-content">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div></div>';
+        const rowDescription = settingsSectionRowDescription(sectionKey, sectionDef);
+        const configuredBadge = renderSettingsSectionBadge(sectionKey, sectionDef);
+        return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'">' +
+            '<div class="section-header" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)">' +
+                '<div class="section-title">'+getIcon(sectionDef.icon)+'<span class="settings-section-copy"><span class="settings-section-label">'+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</span><span class="settings-section-description">'+escapeHtml(rowDescription)+'</span></span></div>' +
+                '<div class="section-header-actions">'+configuredBadge+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></div>' +
+            '</div>' +
+            '<div class="section-content">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div>' +
+        '</div>';
     }
 
     // Profile management functions
@@ -11115,11 +11902,7 @@
         validationErrors = validateSettings();
 
         // Save currently open sections before re-rendering
-        const openSections = new Set();
-        container.querySelectorAll('.section.open').forEach(section => {
-            const id = section.id.replace('section-', '');
-            if (id) openSections.add(id);
-        });
+        const openSection = container.querySelector('.section.open')?.id.replace('section-', '') || '';
 
         // Add info banner when user or client is selected
         let bannerHtml = '';
@@ -11131,7 +11914,7 @@
             const clientName = client ? (client.nickname || client.name) : selectedClientId;
             bannerHtml = '<div style="background: rgba(240, 208, 32, 0.1); border: 1px solid #f0d020; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f0d020" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span>Editing device-specific settings for <strong>' + clientName + '</strong></span></div><p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Fields show <span class="inheritance-badge overridden" style="font-size: 0.6rem;">Device</span> when overridden here, or <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Profile</span> / <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Global</span> when inherited. Click ↩ to reset an override.</p></div>';
         } else if (selectedUserId) {
-            bannerHtml = '<div style="background: var(--accent-bg, #2563eb20); border: 1px solid var(--accent, #2563eb); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent, #2563eb)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Editing profile-specific settings</span></div><p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Fields show <span class="inheritance-badge overridden" style="font-size: 0.6rem;">Profile</span> when overridden here, or <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Global</span> when using the default. Click ↩ to reset an override.</p></div>';
+            bannerHtml = '<div style="background: rgba(99, 102, 241, 0.15); border: 1px solid var(--accent); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Editing profile-specific settings</span></div><p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Fields show <span class="inheritance-badge overridden" style="font-size: 0.6rem;">Profile</span> when overridden here, or <span class="inheritance-badge inherited" style="font-size: 0.6rem;">From Global</span> when using the default. Click ↩ to reset an override.</p></div>';
         }
 
         // Add validation warning banner if there are issues
@@ -11151,10 +11934,9 @@
         // Sections that can be configured per-client (subset of perUserSections)
         let totalMatchingSections = 0;
 
-        for (const group of groups) {
-            if (!searchTerm && activeSettingsGroup && group.id !== activeSettingsGroup) continue;
+        for (const group of settingsOverviewGroups) {
             const groupSections = Object.entries(schema).filter(([key, def]) => {
-                if (def.group !== group.id) return false;
+                if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
                 if (def.hidden) return false;
                 if (settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)) return false;
@@ -11167,12 +11949,16 @@
                 // Hide per-user-only sections (with inheritFrom) when viewing global settings
                 if (!selectedUserId && def.inheritFrom) return false;
                 return true;
-            }).sort((a, b) => (a[1].order ?? 999) - (b[1].order ?? 999));
+            }).sort((a, b) => {
+                const aOrder = settingsOverviewSectionOrder.has(a[0]) ? settingsOverviewSectionOrder.get(a[0]) : 1000 + (a[1].order ?? 999);
+                const bOrder = settingsOverviewSectionOrder.has(b[0]) ? settingsOverviewSectionOrder.get(b[0]) : 1000 + (b[1].order ?? 999);
+                return aOrder - bOrder;
+            });
 
             if (groupSections.length === 0) continue;
 
             totalMatchingSections += groupSections.length;
-            const relatedHtml = group.id === 'services' && isAdmin && !selectedUserId && !selectedClientId
+            const relatedHtml = group.id === 'metadata' && isAdmin && !selectedUserId && !selectedClientId
                 ? '<div class="settings-related-card"><div><strong>Connected services</strong><p>Connect Trakt, Simkl, MDBList, Plex, or Jellyfin and assign them to profiles.</p></div><a class="btn btn-secondary btn-sm" href="'+basePath+'/integrations">Manage Services</a></div>'
                 : '';
             html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+relatedHtml+groupSections.map(([key, def]) => renderSection(key, def)).join('')+'</div></div>';
@@ -11187,26 +11973,46 @@
 
         // Restore previously open sections (or auto-expand if searching)
         if (searchTerm && filteredSections && filteredSections.size > 0) {
-            // Auto-expand all matching sections when searching
-            filteredSections.forEach(sectionKey => {
-                const section = document.getElementById('section-'+sectionKey);
-                if (section) section.classList.add('open');
-            });
-        } else {
-            openSections.forEach(sectionKey => {
-                const section = document.getElementById('section-'+sectionKey);
-                if (section) section.classList.add('open');
-            });
+            // Keep progressive disclosure intact while searching: open the first match only.
+            const firstMatch = filteredSections.values().next().value;
+            const section = document.getElementById('section-'+firstMatch);
+            if (section) section.classList.add('open');
+        } else if (openSection) {
+            const section = document.getElementById('section-'+openSection);
+            if (section) section.classList.add('open');
         }
 
         if (window.location.hash) {
             const section = document.getElementById('section-'+window.location.hash.substring(1));
-            if (section) { section.classList.add('open'); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            if (section) {
+                container.querySelectorAll('.section.open').forEach(open => open.classList.remove('open'));
+                section.classList.add('open');
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // Initialize drag-drop for provider priority and shelves
         initDragDrop();
         initFileUploadStatuses();
+    }
+
+    function toggleSettingsSection(header) {
+        const section = header.closest('.section');
+        if (!section) return;
+        const shouldOpen = !section.classList.contains('open');
+        document.querySelectorAll('#settingsContainer .section.open').forEach(openSection => {
+            openSection.classList.remove('open');
+            openSection.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'false');
+        });
+        section.classList.toggle('open', shouldOpen);
+        header.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
+
+    function handleSettingsSectionKeydown(event, header) {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleSettingsSection(header);
     }
 
     function normalizeSettingsForSave(settings) {

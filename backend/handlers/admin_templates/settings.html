@@ -3365,8 +3365,11 @@
                 }
                 val = val[key];
             }
-            // Only return if the value was found; otherwise fall through to global
-            if (found && val !== undefined) {
+            // Raw profile settings serialize unset slices as null. Treat null the
+            // same as a missing value so inherited arrays render their effective
+            // parent values instead of an empty editor with a "From Global" badge.
+            // An explicit empty array remains a real override.
+            if (found && val !== undefined && val !== null) {
                 return val;
             }
         }
@@ -4040,6 +4043,16 @@
     }
 
     function renderAdditionalFieldHint(sectionKey, fieldKey, item) {
+        if (isExplicitEmptyArrayOverride(sectionKey, fieldKey) && (selectedUserId || selectedClientId)) {
+            const info = getInheritanceInfo(sectionKey + '.' + fieldKey);
+            const scopeLabel = selectedClientId ? 'device' : 'profile';
+            if (!info.isOverridden) {
+                const parentLabel = info.source === 'profile' ? 'profile' : 'global';
+                return '<p class="form-hint"><strong>Inherited list:</strong> These are the current ' + parentLabel + ' values. Adding, removing, or changing an item creates a complete ' + scopeLabel + ' override starting with this list.</p>';
+            }
+            const parentLabel = info.inheritedFrom === 'profile' ? 'profile' : 'global';
+            return '<p class="form-hint"><strong>' + (selectedClientId ? 'Device' : 'Profile') + ' override:</strong> This complete list replaces the ' + parentLabel + ' list. Use ↩ above to return to inherited values.</p>';
+        }
         if (sectionKey === 'transmux' && fieldKey === 'hardwareAcceleration') {
             if (!hardwareAccelerationStatus) {
                 return '<p class="form-hint">Effective encoder: detecting…</p>';

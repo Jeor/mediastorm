@@ -179,6 +179,25 @@ func TestAdminSettingsSaveCommitsPendingTextArrayInputs(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsInheritedTermListsShowEffectiveValuesAndReplacementSemantics(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`if (found && val !== undefined && val !== null)`,
+		`<strong>Inherited list:</strong> These are the current `,
+		`creates a complete ' + scopeLabel + ' override starting with this list.`,
+		`This complete list replaces the ' + parentLabel + ' list.`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing inherited term-list behavior %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsCustomShelfActionsAlignWithInputs(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

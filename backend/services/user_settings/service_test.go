@@ -980,8 +980,8 @@ func TestGetWithDefaults_BackfillsCalendarShelf(t *testing.T) {
 	if topTen.Order != 0 {
 		t.Fatalf("expected top ten shelf order 0, got %d", topTen.Order)
 	}
-	if tonight == nil || tonight.Enabled || tonight.Order != 2 {
-		t.Fatalf("expected disabled tonight shelf at order 2, got %#v", tonight)
+	if tonight == nil || tonight.Enabled || tonight.Order != 3 {
+		t.Fatalf("expected disabled tonight shelf at order 3, got %#v", tonight)
 	}
 	if calendar == nil {
 		t.Fatal("expected calendar shelf to be backfilled")
@@ -992,8 +992,8 @@ func TestGetWithDefaults_BackfillsCalendarShelf(t *testing.T) {
 	if myRecommended == nil {
 		t.Fatal("expected my recommended shelf to be backfilled")
 	}
-	if myRecommended.Order != 3 {
-		t.Fatalf("expected my recommended shelf order 3, got %d", myRecommended.Order)
+	if myRecommended.Order != 4 {
+		t.Fatalf("expected my recommended shelf order 4, got %d", myRecommended.Order)
 	}
 	if !myRecommended.Enabled {
 		t.Fatal("expected my recommended shelf to be enabled by default")
@@ -1001,11 +1001,11 @@ func TestGetWithDefaults_BackfillsCalendarShelf(t *testing.T) {
 	if myUpcoming == nil {
 		t.Fatal("expected my upcoming shelf to be backfilled")
 	}
-	if myUpcoming.Order != 4 {
-		t.Fatalf("expected my upcoming shelf order 4, got %d", myUpcoming.Order)
+	if myUpcoming.Order != 5 {
+		t.Fatalf("expected my upcoming shelf order 5, got %d", myUpcoming.Order)
 	}
-	if calendar.Order != 5 {
-		t.Fatalf("expected calendar shelf order 5, got %d", calendar.Order)
+	if calendar.Order != 6 {
+		t.Fatalf("expected calendar shelf order 6, got %d", calendar.Order)
 	}
 	if !calendar.Enabled {
 		t.Fatal("expected calendar shelf to be enabled by default")
@@ -1013,8 +1013,8 @@ func TestGetWithDefaults_BackfillsCalendarShelf(t *testing.T) {
 	if recentlyAired == nil {
 		t.Fatal("expected my recently aired shelf to be backfilled")
 	}
-	if recentlyAired.Order != 6 {
-		t.Fatalf("expected my recently aired shelf order 6, got %d", recentlyAired.Order)
+	if recentlyAired.Order != 7 {
+		t.Fatalf("expected my recently aired shelf order 7, got %d", recentlyAired.Order)
 	}
 	if !models.BoolVal(recentlyAired.CalendarSources.Watchlist, false) {
 		t.Fatal("expected my recently aired shelf to include watchlist by default")
@@ -1249,8 +1249,8 @@ func TestLoad_MigratesMissingCalendarShelf(t *testing.T) {
 	if topTen.Order != 0 {
 		t.Fatalf("expected top ten shelf order 0, got %d", topTen.Order)
 	}
-	if tonight == nil || tonight.Enabled || tonight.Order != 2 {
-		t.Fatalf("expected disabled tonight shelf at order 2, got %#v", tonight)
+	if tonight == nil || tonight.Enabled || tonight.Order != 3 {
+		t.Fatalf("expected disabled tonight shelf at order 3, got %#v", tonight)
 	}
 	if calendar == nil {
 		t.Fatal("expected calendar shelf to be migrated in")
@@ -1258,23 +1258,23 @@ func TestLoad_MigratesMissingCalendarShelf(t *testing.T) {
 	if myRecommended == nil {
 		t.Fatal("expected my recommended shelf to be migrated in")
 	}
-	if myRecommended.Order != 3 {
-		t.Fatalf("expected my recommended shelf order 3, got %d", myRecommended.Order)
+	if myRecommended.Order != 4 {
+		t.Fatalf("expected my recommended shelf order 4, got %d", myRecommended.Order)
 	}
 	if myUpcoming == nil {
 		t.Fatal("expected my upcoming shelf to be migrated in")
 	}
-	if myUpcoming.Order != 4 {
-		t.Fatalf("expected my upcoming shelf order 4, got %d", myUpcoming.Order)
+	if myUpcoming.Order != 5 {
+		t.Fatalf("expected my upcoming shelf order 5, got %d", myUpcoming.Order)
 	}
-	if calendar.Order != 5 {
-		t.Fatalf("expected calendar shelf order 5, got %d", calendar.Order)
+	if calendar.Order != 6 {
+		t.Fatalf("expected calendar shelf order 6, got %d", calendar.Order)
 	}
 	if recentlyAired == nil {
 		t.Fatal("expected my recently aired shelf to be migrated in")
 	}
-	if recentlyAired.Order != 6 {
-		t.Fatalf("expected my recently aired shelf order 6, got %d", recentlyAired.Order)
+	if recentlyAired.Order != 7 {
+		t.Fatalf("expected my recently aired shelf order 7, got %d", recentlyAired.Order)
 	}
 	if streamingServices == nil {
 		t.Fatal("expected streaming services shelf to be migrated in")
@@ -1299,8 +1299,8 @@ func TestLoad_MigratesMissingCalendarShelf(t *testing.T) {
 	if watchlist == nil {
 		t.Fatal("expected watchlist shelf to remain after migration")
 	}
-	if watchlist.Order != 7 {
-		t.Fatalf("expected watchlist to shift to order 7, got %d", watchlist.Order)
+	if watchlist.Order != 8 {
+		t.Fatalf("expected watchlist to shift to order 8, got %d", watchlist.Order)
 	}
 }
 

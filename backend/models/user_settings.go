@@ -533,20 +533,21 @@ func DefaultHomeShelfConfigs() []ShelfConfig {
 	return []ShelfConfig{
 		{ID: "top-ten", Name: "Top 10 Today", Enabled: true, Order: 0},
 		{ID: "continue-watching", Name: "Continue Watching", Enabled: true, Order: 1},
-		{ID: "tonight", Name: "Tonight", Enabled: false, Order: 2},
-		{ID: "my-recommended", Name: "My Recommended", Enabled: true, Order: 3},
-		{ID: "my-upcoming", Name: "My Upcoming", Enabled: true, Order: 4, Sort: "air-date-asc"},
-		{ID: "calendar", Name: "Coming Up", Enabled: true, Order: 5},
-		{ID: "my-recently-aired", Name: "My Recently Aired", Enabled: true, Order: 6, CalendarSources: CalendarSettings{Watchlist: BoolPtr(true), History: BoolPtr(false), Trending: BoolPtr(false), TopTrending: BoolPtr(false), MDBLists: BoolPtr(false)}},
-		{ID: "watchlist", Name: "Your Watchlist", Enabled: true, Order: 7},
-		{ID: "trending-movies", Name: "Trending Movies", Enabled: true, Order: 8},
-		{ID: "trending-tv", Name: "Trending TV Shows", Enabled: true, Order: 9},
-		{ID: "streaming-services", Name: "Streaming Services", Enabled: true, Order: 10},
-		{ID: "live-favorites", Name: "Favorite Channels", Enabled: false, Order: 11},
-		{ID: "popular-on-server", Name: "Popular on This Server", Enabled: false, Order: 12, Limit: 20, ActivityWindowDays: 90, MinimumProfiles: 2},
-		{ID: "recently-watched", Name: "Recently Watched", Enabled: false, Order: 13, Limit: 20, ActivityWindowDays: 14, MaxItemsPerProfile: 3},
-		{ID: "dashboard", Name: "Dashboard", Enabled: false, Order: 14},
-		{ID: "permanent-prequeue", Name: "Permanent Prequeue", Enabled: false, Order: 15},
+		{ID: "watch-something", Name: "Watch Something", Enabled: true, Order: 2},
+		{ID: "tonight", Name: "Tonight", Enabled: false, Order: 3},
+		{ID: "my-recommended", Name: "My Recommended", Enabled: true, Order: 4},
+		{ID: "my-upcoming", Name: "My Upcoming", Enabled: true, Order: 5, Sort: "air-date-asc"},
+		{ID: "calendar", Name: "Coming Up", Enabled: true, Order: 6},
+		{ID: "my-recently-aired", Name: "My Recently Aired", Enabled: true, Order: 7, CalendarSources: CalendarSettings{Watchlist: BoolPtr(true), History: BoolPtr(false), Trending: BoolPtr(false), TopTrending: BoolPtr(false), MDBLists: BoolPtr(false)}},
+		{ID: "watchlist", Name: "Your Watchlist", Enabled: true, Order: 8},
+		{ID: "trending-movies", Name: "Trending Movies", Enabled: true, Order: 9},
+		{ID: "trending-tv", Name: "Trending TV Shows", Enabled: true, Order: 10},
+		{ID: "streaming-services", Name: "Streaming Services", Enabled: true, Order: 11},
+		{ID: "live-favorites", Name: "Favorite Channels", Enabled: false, Order: 12},
+		{ID: "popular-on-server", Name: "Popular on This Server", Enabled: false, Order: 13, Limit: 20, ActivityWindowDays: 90, MinimumProfiles: 2},
+		{ID: "recently-watched", Name: "Recently Watched", Enabled: false, Order: 14, Limit: 20, ActivityWindowDays: 14, MaxItemsPerProfile: 3},
+		{ID: "dashboard", Name: "Dashboard", Enabled: false, Order: 15},
+		{ID: "permanent-prequeue", Name: "Permanent Prequeue", Enabled: false, Order: 16},
 	}
 }
 
@@ -893,6 +894,28 @@ func EnsureDefaultHomeShelves(shelves []ShelfConfig) ([]ShelfConfig, bool) {
 			ID:      "permanent-prequeue",
 			Name:    "Permanent Prequeue",
 			Enabled: false,
+			Order:   insertOrder,
+		})
+		changed = true
+	}
+
+	if !hasShelf("watch-something") {
+		insertOrder := 2
+		for _, shelf := range nextShelves {
+			if shelf.ID == "continue-watching" {
+				insertOrder = shelf.Order + 1
+				break
+			}
+		}
+		for i := range nextShelves {
+			if nextShelves[i].Order >= insertOrder {
+				nextShelves[i].Order++
+			}
+		}
+		nextShelves = append(nextShelves, ShelfConfig{
+			ID:      "watch-something",
+			Name:    "Watch Something",
+			Enabled: true,
 			Order:   insertOrder,
 		})
 		changed = true

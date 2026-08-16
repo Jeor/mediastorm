@@ -168,6 +168,36 @@ func TestEnsureDefaultHomeShelvesAddsDisabledPermanentPrequeueShelf(t *testing.T
 	t.Fatal("expected permanent prequeue shelf to be added")
 }
 
+func TestEnsureDefaultHomeShelvesAddsWatchSomethingBelowContinueWatching(t *testing.T) {
+	migrated, changed := EnsureDefaultHomeShelves([]ShelfConfig{
+		{ID: "continue-watching", Name: "Continue Watching", Enabled: true, Order: 3},
+		{ID: "custom", Name: "Custom", Enabled: true, Order: 4},
+	})
+	if !changed {
+		t.Fatal("expected Watch Something shelf to be backfilled")
+	}
+
+	continueOrder := -1
+	var watchSomething *ShelfConfig
+	for i := range migrated {
+		switch migrated[i].ID {
+		case "continue-watching":
+			continueOrder = migrated[i].Order
+		case "watch-something":
+			watchSomething = &migrated[i]
+		}
+	}
+	if watchSomething == nil {
+		t.Fatal("Watch Something shelf was not added")
+	}
+	if !watchSomething.Enabled {
+		t.Fatal("Watch Something shelf should default enabled")
+	}
+	if watchSomething.Order != continueOrder+1 {
+		t.Fatalf("Watch Something order = %d, want %d", watchSomething.Order, continueOrder+1)
+	}
+}
+
 func newGlobal() *ResolvedLiveSource {
 	return &ResolvedLiveSource{
 		Mode:                  "m3u",

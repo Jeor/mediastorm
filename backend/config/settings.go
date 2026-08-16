@@ -1282,6 +1282,8 @@ type DisplaySettings struct {
 	HideDetailsPoster bool `json:"hideDetailsPoster,omitempty"`
 	// HideTVDrawerRail fully hides the collapsed TV navigation drawer instead of leaving its icon rail visible.
 	HideTVDrawerRail bool `json:"hideTvDrawerRail,omitempty"`
+	// DisableTVHomeCardDimming keeps trailing home shelf cards fully visible on TV platforms.
+	DisableTVHomeCardDimming bool `json:"disableTvHomeCardDimming,omitempty"`
 	// EnableAnimations controls application UI motion such as animated scrolling and transitions.
 	EnableAnimations bool `json:"enableAnimations"`
 	// EnableHeroArtPanning animates TV hero artwork with a slow pan/zoom effect.
@@ -1835,6 +1837,7 @@ func DefaultSettings() Settings {
 			EnableAnimations:                       true,
 			EnableHeroArtPanning:                   true,
 			EnableHeroArtRotation:                  true,
+			DisableTVHomeCardDimming:               false,
 			ShowSeriesBackdropForMissingEpisodeArt: false,
 			Appearance: AppearanceSettings{
 				FontScale:    floatPtr(1.0),

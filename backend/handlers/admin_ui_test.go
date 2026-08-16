@@ -2686,6 +2686,24 @@ func TestNavigationVisibilitySchemaIncludesWatchlist(t *testing.T) {
 	t.Fatal("navigation visibility options do not include Watchlist")
 }
 
+func TestDisplaySchemaIncludesTVHomeCardDimmingOptOut(t *testing.T) {
+	section, ok := handlers.SettingsSchema["display"].(map[string]interface{})
+	if !ok {
+		t.Fatal("display settings schema is missing")
+	}
+	fields, ok := section["fields"].(map[string]interface{})
+	if !ok {
+		t.Fatal("display fields schema is missing")
+	}
+	field, ok := fields["disableTvHomeCardDimming"].(map[string]interface{})
+	if !ok {
+		t.Fatal("disableTvHomeCardDimming field is missing")
+	}
+	if field["type"] != "boolean" {
+		t.Fatalf("unexpected disableTvHomeCardDimming schema: %+v", field)
+	}
+}
+
 // multipartWriter creates a multipart form with a file field
 func multipartWriter(t *testing.T, body *bytes.Buffer, fieldName, fileName, content string) *multipart.Writer {
 	t.Helper()

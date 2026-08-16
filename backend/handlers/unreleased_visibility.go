@@ -88,6 +88,7 @@ func displayUnreleasedVisibilityInitialized(display config.DisplaySettings) bool
 		display.MoveDetailsRatingsToMetadata ||
 		display.HideDetailsPoster ||
 		display.HideTVDrawerRail ||
+		display.DisableTVHomeCardDimming ||
 		display.EnableAnimations ||
 		display.ShowSeriesBackdropForMissingEpisodeArt ||
 		display.BlurUnwatchedEpisodeThumbnails ||

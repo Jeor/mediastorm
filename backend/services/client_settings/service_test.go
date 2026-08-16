@@ -97,6 +97,7 @@ func TestTVDisplayOptionsMakeClientSettingsNonEmpty(t *testing.T) {
 		"moveDetailsRatingsToMetadata":           {MoveDetailsRatingsToMetadata: models.BoolPtr(false)},
 		"hideDetailsPoster":                      {HideDetailsPoster: models.BoolPtr(false)},
 		"hideTvDrawerRail":                       {HideTVDrawerRail: models.BoolPtr(false)},
+		"disableTvHomeCardDimming":               {DisableTVHomeCardDimming: models.BoolPtr(false)},
 		"showSeriesBackdropForMissingEpisodeArt": {ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(false)},
 	} {
 		if settings.IsEmpty() {

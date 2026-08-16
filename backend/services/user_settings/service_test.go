@@ -446,6 +446,7 @@ func TestGetWithDefaults_TVDisplayOptionsInheritAndOverride(t *testing.T) {
 		MoveDetailsRatingsToMetadata:     models.BoolPtr(true),
 		HideDetailsPoster:                models.BoolPtr(true),
 		HideTVDrawerRail:                 models.BoolPtr(true),
+		DisableTVHomeCardDimming:         models.BoolPtr(true),
 	}}
 
 	got, err := svc.GetWithDefaults("user1", defaults)
@@ -463,6 +464,9 @@ func TestGetWithDefaults_TVDisplayOptionsInheritAndOverride(t *testing.T) {
 	}
 	if got.Display.HideTVDrawerRail == nil || !*got.Display.HideTVDrawerRail {
 		t.Fatal("expected TV drawer rail option to inherit global true")
+	}
+	if got.Display.DisableTVHomeCardDimming == nil || !*got.Display.DisableTVHomeCardDimming {
+		t.Fatal("expected TV home card dimming option to inherit global true")
 	}
 }
 

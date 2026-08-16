@@ -37,6 +37,7 @@ type ClientFilterSettings struct {
 	MoveDetailsRatingsToMetadata                 *bool               `json:"moveDetailsRatingsToMetadata,omitempty"`
 	HideDetailsPoster                            *bool               `json:"hideDetailsPoster,omitempty"`
 	HideTVDrawerRail                             *bool               `json:"hideTvDrawerRail,omitempty"`
+	DisableTVHomeCardDimming                     *bool               `json:"disableTvHomeCardDimming,omitempty"`
 	EnableAnimations                             *bool               `json:"enableAnimations,omitempty"`
 	EnableHeroArtPanning                         *bool               `json:"enableHeroArtPanning,omitempty"`
 	EnableHeroArtRotation                        *bool               `json:"enableHeroArtRotation,omitempty"`
@@ -129,6 +130,7 @@ func (c *ClientFilterSettings) IsEmpty() bool {
 		c.MoveDetailsRatingsToMetadata == nil &&
 		c.HideDetailsPoster == nil &&
 		c.HideTVDrawerRail == nil &&
+		c.DisableTVHomeCardDimming == nil &&
 		c.EnableAnimations == nil &&
 		c.EnableHeroArtPanning == nil &&
 		c.EnableHeroArtRotation == nil &&

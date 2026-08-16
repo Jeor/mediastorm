@@ -277,6 +277,43 @@ func TestFullHealthPreservesAuthoritativeCachedStateWhenTrackPreparationFails(t 
 	}
 }
 
+func TestFullHealthNeverDeletesTorrentUsedByActivePlayback(t *testing.T) {
+	provider := &mockProvider{
+		name:             "health_active_playback_cleanup",
+		cacheStatusKnown: true,
+		cachedOnAdd:      false,
+	}
+	RegisterProvider(provider.name, func(string) Provider { return provider })
+
+	cfg := config.NewManager(t.TempDir() + "/settings.json")
+	settings := config.DefaultSettings()
+	settings.Streaming.DebridProviders = []config.DebridProviderSettings{
+		{Name: "Active playback", Provider: provider.name, APIKey: "test-key", Enabled: true},
+	}
+	if err := cfg.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	hs := NewHealthService(cfg)
+	hs.MarkTorrentActive(provider.name, "test-torrent-id")
+	health, err := hs.CheckHealth(context.Background(), models.NZBResult{
+		Title: "Example",
+		Link:  "magnet:?xt=urn:btih:abcdef1234567890",
+		Attributes: map[string]string{
+			"infoHash": "abcdef1234567890",
+		},
+	}, true)
+	if err != nil {
+		t.Fatalf("CheckHealth returned error: %v", err)
+	}
+	if health.Status != "not_cached" {
+		t.Fatalf("health status = %q, want not_cached", health.Status)
+	}
+	if got := atomic.LoadInt64(&provider.deleteCalls); got != 0 {
+		t.Fatalf("DeleteTorrent calls = %d, want 0 for active playback", got)
+	}
+}
+
 func TestQuickCacheDedupKeyUsesProviderAndInfoHash(t *testing.T) {
 	result := models.NZBResult{
 		Link: "magnet:?xt=urn:btih:ABCDEF1234567890&dn=Example",

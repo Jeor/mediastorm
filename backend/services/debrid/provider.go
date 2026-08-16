@@ -52,8 +52,10 @@ type Configurable interface {
 
 // AddMagnetResult contains the result of adding a magnet link.
 type AddMagnetResult struct {
-	ID  string // Provider-specific torrent/download ID
-	URI string // Optional: URI for the added item
+	ID               string // Provider-specific torrent/download ID
+	URI              string // Optional: URI for the added item
+	CacheStatusKnown bool   // Whether Cached was authoritatively reported while adding
+	Cached           bool   // Whether the provider reported the item as already available
 }
 
 // UnrestrictResult contains the result of unrestricting a link.

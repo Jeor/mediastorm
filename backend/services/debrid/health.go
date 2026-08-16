@@ -1016,14 +1016,42 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 	}
 
 	torrentID := addResp.ID
+	providerCacheKnown := addResp.CacheStatusKnown
+	providerReportedCached := providerCacheKnown && addResp.Cached
 	if strings.HasPrefix(strings.ToLower(result.Link), "magnet:") {
 		RegisterMagnet(providerName, torrentID, result.Link)
 	}
 	log.Printf("[debrid-health] %s torrent added with ID %s, getting file list", providerName, torrentID)
+	if providerCacheKnown && !addResp.Cached {
+		_ = client.DeleteTorrent(ctx, torrentID)
+		log.Printf("[debrid-health] %s add response authoritatively reported torrent %s is not cached", providerName, torrentID)
+		return &DebridHealthCheck{
+			Healthy:  false,
+			Status:   "not_cached",
+			Cached:   false,
+			Provider: providerName,
+			InfoHash: infoHash,
+		}, nil
+	}
+
+	knownCachedProbeFailure := func(message string) (*DebridHealthCheck, error) {
+		_ = client.DeleteTorrent(ctx, torrentID)
+		return &DebridHealthCheck{
+			Healthy:         true,
+			Status:          "cached",
+			Cached:          true,
+			Provider:        providerName,
+			InfoHash:        infoHash,
+			TrackProbeError: message,
+		}, nil
+	}
 
 	// First, get the torrent info to see what files are available
 	info, err := client.GetTorrentInfo(ctx, torrentID)
 	if err != nil {
+		if providerReportedCached {
+			return knownCachedProbeFailure(fmt.Sprintf("get torrent info failed: %v", err))
+		}
 		_ = client.DeleteTorrent(ctx, torrentID)
 		log.Printf("[debrid-health] %s get initial torrent info failed for %s: %v", providerName, torrentID, err)
 		return &DebridHealthCheck{
@@ -1039,6 +1067,9 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 	// Select all files for caching, but track the preferred playable target
 	selection := selectMediaFiles(info.Files, buildSelectionHints(result, info.Filename))
 	if selection == nil {
+		if providerReportedCached {
+			return knownCachedProbeFailure("no media files found in torrent")
+		}
 		_ = client.DeleteTorrent(ctx, torrentID)
 		log.Printf("[debrid-health] %s torrent %s has no media files", providerName, torrentID)
 		return &DebridHealthCheck{
@@ -1051,6 +1082,9 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 		}, nil
 	}
 	if selection.RejectionReason != "" {
+		if providerReportedCached {
+			return knownCachedProbeFailure(selection.RejectionReason)
+		}
 		_ = client.DeleteTorrent(ctx, torrentID)
 		log.Printf("[debrid-health] %s torrent %s rejected: %s", providerName, torrentID, selection.RejectionReason)
 		return &DebridHealthCheck{
@@ -1063,6 +1097,9 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 		}, nil
 	}
 	if len(selection.OrderedIDs) == 0 {
+		if providerReportedCached {
+			return knownCachedProbeFailure("no media files found in torrent")
+		}
 		_ = client.DeleteTorrent(ctx, torrentID)
 		log.Printf("[debrid-health] %s torrent %s has no media files", providerName, torrentID)
 		return &DebridHealthCheck{
@@ -1084,6 +1121,9 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 
 	// Select media files - this is required to trigger the provider to check cache status
 	if err := client.SelectFiles(ctx, torrentID, fileSelection); err != nil {
+		if providerReportedCached {
+			return knownCachedProbeFailure(fmt.Sprintf("select files failed: %v", err))
+		}
 		_ = client.DeleteTorrent(ctx, torrentID)
 		log.Printf("[debrid-health] %s select files failed for %s: %v", providerName, torrentID, err)
 		return &DebridHealthCheck{
@@ -1099,6 +1139,9 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 	// Check the torrent info again to see if it's cached or needs download
 	info, err = client.GetTorrentInfo(ctx, torrentID)
 	if err != nil {
+		if providerReportedCached {
+			return knownCachedProbeFailure(fmt.Sprintf("get torrent info failed: %v", err))
+		}
 		// Try to clean up even if we got an error
 		_ = client.DeleteTorrent(ctx, torrentID)
 		log.Printf("[debrid-health] %s get torrent info failed for %s: %v", providerName, torrentID, err)
@@ -1113,7 +1156,7 @@ func (s *HealthService) checkProviderHealth(ctx context.Context, client Provider
 	}
 
 	// Check if the torrent is already downloaded (cached)
-	isCached := strings.ToLower(info.Status) == "downloaded"
+	isCached := providerReportedCached || strings.ToLower(info.Status) == "downloaded"
 	log.Printf("[debrid-health] %s torrent %s status=%s cached=%t", providerName, torrentID, info.Status, isCached)
 
 	// Prepare the result

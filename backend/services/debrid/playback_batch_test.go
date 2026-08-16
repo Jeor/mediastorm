@@ -25,12 +25,18 @@ type mockProvider struct {
 	status           string   // torrent status (e.g. "downloaded")
 	torrentFilename  string
 	unrestrictErr    error
+	cacheStatusKnown bool
+	cachedOnAdd      bool
 }
 
 func (m *mockProvider) Name() string { return m.name }
 func (m *mockProvider) AddMagnet(_ context.Context, _ string) (*AddMagnetResult, error) {
 	atomic.AddInt64(&m.addMagnetCalls, 1)
-	return &AddMagnetResult{ID: "test-torrent-id"}, nil
+	return &AddMagnetResult{
+		ID:               "test-torrent-id",
+		CacheStatusKnown: m.cacheStatusKnown,
+		Cached:           m.cachedOnAdd,
+	}, nil
 }
 func (m *mockProvider) AddTorrentFile(_ context.Context, _ []byte, _ string) (*AddMagnetResult, error) {
 	return &AddMagnetResult{ID: "test-torrent-id"}, nil

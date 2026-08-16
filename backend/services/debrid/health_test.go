@@ -197,6 +197,86 @@ func TestCheckQuickCacheOnlyTreatsAnyProviderCacheAsPlayable(t *testing.T) {
 	}
 }
 
+func TestFullHealthUsesAuthoritativeUncachedAddResponse(t *testing.T) {
+	provider := &mockProvider{
+		name:             "health_known_uncached_add",
+		cacheStatusKnown: true,
+		cachedOnAdd:      false,
+	}
+	RegisterProvider(provider.name, func(string) Provider { return provider })
+
+	cfg := config.NewManager(t.TempDir() + "/settings.json")
+	settings := config.DefaultSettings()
+	settings.Streaming.DebridProviders = []config.DebridProviderSettings{
+		{Name: "Known uncached", Provider: provider.name, APIKey: "test-key", Enabled: true},
+	}
+	if err := cfg.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	health, err := NewHealthService(cfg).CheckHealth(context.Background(), models.NZBResult{
+		Title: "Example",
+		Link:  "magnet:?xt=urn:btih:abcdef1234567890",
+		Attributes: map[string]string{
+			"infoHash": "abcdef1234567890",
+		},
+	}, true)
+	if err != nil {
+		t.Fatalf("CheckHealth returned error: %v", err)
+	}
+	if health.Status != "not_cached" || health.Cached || health.Healthy {
+		t.Fatalf("expected authoritative not-cached result, got %#v", health)
+	}
+	if got := atomic.LoadInt64(&provider.getInfoCalls); got != 0 {
+		t.Fatalf("GetTorrentInfo calls = %d, want 0", got)
+	}
+	if got := atomic.LoadInt64(&provider.deleteCalls); got != 1 {
+		t.Fatalf("DeleteTorrent calls = %d, want 1", got)
+	}
+}
+
+func TestFullHealthPreservesAuthoritativeCachedStateWhenTrackPreparationFails(t *testing.T) {
+	provider := &mockProvider{
+		name:             "health_known_cached_add",
+		cacheStatusKnown: true,
+		cachedOnAdd:      true,
+		status:           "queued",
+	}
+	RegisterProvider(provider.name, func(string) Provider { return provider })
+
+	cfg := config.NewManager(t.TempDir() + "/settings.json")
+	settings := config.DefaultSettings()
+	settings.Streaming.DebridProviders = []config.DebridProviderSettings{
+		{Name: "Known cached", Provider: provider.name, APIKey: "test-key", Enabled: true},
+	}
+	if err := cfg.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	health, err := NewHealthService(cfg).CheckHealth(context.Background(), models.NZBResult{
+		Title: "Example",
+		Link:  "magnet:?xt=urn:btih:abcdef1234567890",
+		Attributes: map[string]string{
+			"infoHash": "abcdef1234567890",
+		},
+	}, true)
+	if err != nil {
+		t.Fatalf("CheckHealth returned error: %v", err)
+	}
+	if health.Status != "cached" || !health.Cached || !health.Healthy {
+		t.Fatalf("expected authoritative cached result, got %#v", health)
+	}
+	if health.TrackProbeError == "" {
+		t.Fatal("expected track preparation failure to be reported separately")
+	}
+	if got := atomic.LoadInt64(&provider.getInfoCalls); got != 1 {
+		t.Fatalf("GetTorrentInfo calls = %d, want 1", got)
+	}
+	if got := atomic.LoadInt64(&provider.deleteCalls); got != 1 {
+		t.Fatalf("DeleteTorrent calls = %d, want 1", got)
+	}
+}
+
 func TestQuickCacheDedupKeyUsesProviderAndInfoHash(t *testing.T) {
 	result := models.NZBResult{
 		Link: "magnet:?xt=urn:btih:ABCDEF1234567890&dn=Example",

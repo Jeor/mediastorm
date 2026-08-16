@@ -75,6 +75,13 @@ type allDebridMagnetUploadData struct {
 	Magnets []allDebridMagnet `json:"magnets"`
 }
 
+// allDebridFileUploadData wraps the torrent-file upload response. AllDebrid
+// uses a different `files` key for this endpoint even though each item carries
+// the same cache-ready metadata as a magnet upload.
+type allDebridFileUploadData struct {
+	Files []allDebridMagnet `json:"files"`
+}
+
 // allDebridStatus represents magnet status response.
 type allDebridStatus struct {
 	ID             int                 `json:"id"`
@@ -124,19 +131,6 @@ type allDebridUnlock struct {
 	ID         string `json:"id,omitempty"`
 	HostDomain string `json:"hostDomain,omitempty"`
 	Delayed    int    `json:"delayed,omitempty"`
-}
-
-// allDebridInstantData represents instant availability response.
-type allDebridInstantData struct {
-	Magnets []struct {
-		Magnet  string `json:"magnet"`
-		Hash    string `json:"hash"`
-		Instant bool   `json:"instant"`
-		Files   []struct {
-			N string `json:"n"` // filename
-			S int64  `json:"s"` // size
-		} `json:"files,omitempty"`
-	} `json:"magnets"`
 }
 
 // AllDebrid status codes
@@ -226,8 +220,10 @@ func (c *AllDebridClient) AddMagnet(ctx context.Context, magnetURL string) (*Add
 	log.Printf("[alldebrid] magnet added: id=%d hash=%s name=%s ready=%v", magnet.ID, magnet.Hash, magnet.Name, magnet.Ready)
 
 	return &AddMagnetResult{
-		ID:  strconv.Itoa(magnet.ID),
-		URI: trimmedMagnet,
+		ID:               strconv.Itoa(magnet.ID),
+		URI:              trimmedMagnet,
+		CacheStatusKnown: true,
+		Cached:           magnet.Ready,
 	}, nil
 }
 
@@ -292,7 +288,7 @@ func (c *AllDebridClient) AddTorrentFile(ctx context.Context, torrentData []byte
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
-	var result allDebridResponse[allDebridMagnetUploadData]
+	var result allDebridResponse[allDebridFileUploadData]
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("decode add torrent response: %w (body: %s)", err, string(body))
 	}
@@ -305,16 +301,18 @@ func (c *AllDebridClient) AddTorrentFile(ctx context.Context, torrentData []byte
 		return nil, fmt.Errorf("add torrent failed: %s", errMsg)
 	}
 
-	if len(result.Data.Magnets) == 0 {
+	if len(result.Data.Files) == 0 {
 		return nil, fmt.Errorf("no torrent data returned")
 	}
 
-	magnet := result.Data.Magnets[0]
+	magnet := result.Data.Files[0]
 	log.Printf("[alldebrid] torrent file uploaded: id=%d hash=%s name=%s", magnet.ID, magnet.Hash, magnet.Name)
 
 	return &AddMagnetResult{
-		ID:  strconv.Itoa(magnet.ID),
-		URI: filename,
+		ID:               strconv.Itoa(magnet.ID),
+		URI:              filename,
+		CacheStatusKnown: true,
+		Cached:           magnet.Ready,
 	}, nil
 }
 
@@ -595,8 +593,10 @@ func (c *AllDebridClient) UnrestrictLink(ctx context.Context, link string) (*Unr
 	}, nil
 }
 
-// CheckInstantAvailability checks if a torrent hash is cached on AllDebrid.
-func (c *AllDebridClient) CheckInstantAvailability(ctx context.Context, infoHash string) (bool, error) {
+// CheckInstantAvailability reports that AllDebrid has no non-mutating cache
+// lookup endpoint. Cache state is authoritatively returned as `ready` by the
+// magnet upload endpoint and is handled by the full add/check/delete probe.
+func (c *AllDebridClient) CheckInstantAvailability(_ context.Context, infoHash string) (bool, error) {
 	if c.apiKey == "" {
 		return false, fmt.Errorf("alldebrid API key not configured")
 	}
@@ -606,48 +606,5 @@ func (c *AllDebridClient) CheckInstantAvailability(ctx context.Context, infoHash
 		return false, fmt.Errorf("info hash is required")
 	}
 
-	endpoint := fmt.Sprintf("%s/magnet/instant?agent=%s&magnets[]=%s",
-		c.baseURL, url.QueryEscape(c.agent), normalizedHash)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return false, fmt.Errorf("build instant availability request: %w", err)
-	}
-
-	resp, err := c.doRequest(req)
-	if err != nil {
-		return false, fmt.Errorf("instant availability request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return false, fmt.Errorf("alldebrid authentication failed: invalid API key")
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("read response body: %w", err)
-	}
-
-	var result allDebridResponse[allDebridInstantData]
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, fmt.Errorf("decode instant availability response: %w (body: %s)", err, string(body))
-	}
-
-	if result.Status != "success" {
-		// Not an error, just not available
-		log.Printf("[alldebrid] instant availability check failed: %v", result.Error)
-		return false, nil
-	}
-
-	// Check if hash is instantly available
-	for _, magnet := range result.Data.Magnets {
-		if strings.EqualFold(magnet.Hash, normalizedHash) && magnet.Instant {
-			log.Printf("[alldebrid] instant availability: hash %s is CACHED", normalizedHash)
-			return true, nil
-		}
-	}
-
-	log.Printf("[alldebrid] instant availability: hash %s not cached", normalizedHash)
-	return false, nil
+	return false, fmt.Errorf("alldebrid does not support non-mutating instant cache checks for %s", normalizedHash)
 }

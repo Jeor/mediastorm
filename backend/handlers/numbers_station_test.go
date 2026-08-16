@@ -108,7 +108,7 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		t.Fatalf("read status template: %v", err)
 	}
 	content := string(templateBytes)
-	for _, unwanted := range []string{"Complete the next line.", "numbers-station-hint", "NUMBERS STATION ·"} {
+	for _, unwanted := range []string{"Complete the next line.", "numbers-station-hint", "NUMBERS STATION ·", "numbers-station-submit", ">TRANSMIT<", "submitNumbersStation"} {
 		if strings.Contains(content, unwanted) {
 			t.Fatalf("status template still contains %q", unwanted)
 		}
@@ -123,7 +123,12 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`SIGNAL ACQUIRED`,
 		`The storm is closer than the forecast says.`,
 		`numbersStationImageStatic`,
+		`numbersStationSequenceFlash`,
+		`--numbers-station-line-index: ${index}`,
 		`inputmode="numeric"`,
+		`oninput="queueNumbersStationAnswer()"`,
+		`window.setTimeout(() => validateNumbersStationAnswer(answer, attempt), 320)`,
+		`if (response.status !== 422 && feedback)`,
 		`readNumbersStationResponse(response)`,
 		`SESSION EXPIRED — RELOAD THE DASHBOARD`,
 		`numbers-station-achievement-badge">Storm-Marked`,

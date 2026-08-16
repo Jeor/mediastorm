@@ -349,7 +349,12 @@
     color: #dcfce7;
     font-size: 1rem;
     line-height: 1.65;
-    white-space: pre-wrap;
+}
+
+.numbers-station-line {
+    opacity: 0.72;
+    animation: numbersStationSequenceFlash 0.72s ease-out both;
+    animation-delay: calc(var(--numbers-station-line-index) * 180ms);
 }
 
 .numbers-station-prompt {
@@ -357,30 +362,19 @@
     font-size: 0.85rem;
 }
 
-.numbers-station-form {
-    display: flex;
-    gap: 0.6rem;
+.numbers-station-response {
     margin-top: 1.25rem;
 }
 
 .numbers-station-input {
     flex: 1;
+    width: 100%;
     min-width: 0;
     border: 1px solid rgba(74, 222, 128, 0.38);
     border-radius: var(--radius);
     background: rgba(0, 0, 0, 0.38);
     color: #dcfce7;
     padding: 0.7rem 0.8rem;
-    font: inherit;
-}
-
-.numbers-station-submit {
-    border: 1px solid rgba(74, 222, 128, 0.48);
-    border-radius: var(--radius);
-    background: rgba(34, 197, 94, 0.12);
-    color: #86efac;
-    padding: 0.7rem 0.9rem;
-    cursor: pointer;
     font: inherit;
 }
 
@@ -537,6 +531,27 @@ body.numbers-station-open {
     8%, 15%, 48%, 55%, 83%, 92% { opacity: 0.8; transform: translateY(56%); }
 }
 
+@keyframes numbersStationSequenceFlash {
+    0% {
+        opacity: 0.12;
+        color: #4ade80;
+        text-shadow: none;
+        transform: translateX(-0.2rem);
+    }
+    48% {
+        opacity: 1;
+        color: #f0fdf4;
+        text-shadow: 0 0 0.7rem rgba(134, 239, 172, 0.95);
+        transform: translateX(0.08rem);
+    }
+    100% {
+        opacity: 0.72;
+        color: #dcfce7;
+        text-shadow: none;
+        transform: translateX(0);
+    }
+}
+
 @keyframes numbersStationFragmentIn {
     from { opacity: 0; filter: blur(2px); }
     to { opacity: 1; filter: blur(0); }
@@ -554,11 +569,13 @@ body.numbers-station-open {
     .numbers-station-sender::before,
     .numbers-station-sender::after,
     .numbers-station-transcript p,
-    .numbers-station-static-break {
+    .numbers-station-static-break,
+    .numbers-station-line {
         animation: none;
     }
 
     .numbers-station-transcript p { opacity: 1; }
+    .numbers-station-line { opacity: 0.72; }
     .numbers-station-sender::before { opacity: 0.1; }
 }
 
@@ -3498,6 +3515,8 @@ body.numbers-station-open {
     }
 
     const numbersStationSenderURL = {{json .ServerBasePath}} + '/api/static/numbers-station-sender.jpg';
+    let numbersStationAnswerTimer = null;
+    let numbersStationAnswerAttempt = 0;
 
     function markNumbersStationCompleted() {
         const signal = document.getElementById('numbersStationSignal');
@@ -3541,16 +3560,18 @@ body.numbers-station-open {
         }
 
         const transmission = state.transmission || {};
-        const lines = Array.isArray(transmission.lines) ? transmission.lines.join('\n') : '';
+        const lines = Array.isArray(transmission.lines) ? transmission.lines : [];
+        const sequence = lines.map((line, index) => `
+            <div class="numbers-station-line" style="--numbers-station-line-index: ${index}">${escapeNumbersStationText(line)}</div>
+        `).join('');
         body.innerHTML = `
             <h2 id="numbersStationCallsign" class="numbers-station-callsign">${escapeNumbersStationText(transmission.callsign)}</h2>
-            <pre class="numbers-station-lines">${escapeNumbersStationText(lines)}</pre>
+            <div class="numbers-station-lines" aria-label="Number sequence">${sequence}</div>
             <p class="numbers-station-prompt">${escapeNumbersStationText(transmission.prompt)}</p>
-            <form class="numbers-station-form" onsubmit="submitNumbersStation(event)">
-                <input id="numbersStationAnswer" class="numbers-station-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Transmission response">
-                <button class="numbers-station-submit" type="submit">TRANSMIT</button>
-            </form>
-            <p id="numbersStationFeedback" class="numbers-station-feedback"></p>
+            <div class="numbers-station-response">
+                <input id="numbersStationAnswer" class="numbers-station-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Transmission response" oninput="queueNumbersStationAnswer()">
+            </div>
+            <p id="numbersStationFeedback" class="numbers-station-feedback" aria-live="polite"></p>
         `;
         document.getElementById('numbersStationAnswer')?.focus();
     }
@@ -3626,13 +3647,21 @@ body.numbers-station-open {
         window.scrollTo(0, numbersStationScrollY);
     }
 
-    async function submitNumbersStation(event) {
-        event.preventDefault();
+    function queueNumbersStationAnswer() {
+        const input = document.getElementById('numbersStationAnswer');
+        if (!input) return;
+        input.value = input.value.replace(/\D/g, '');
+        if (numbersStationAnswerTimer) window.clearTimeout(numbersStationAnswerTimer);
+        const attempt = ++numbersStationAnswerAttempt;
+        const answer = input.value.trim();
+        if (!answer) return;
+        numbersStationAnswerTimer = window.setTimeout(() => validateNumbersStationAnswer(answer, attempt), 320);
+    }
+
+    async function validateNumbersStationAnswer(answer, attempt) {
         const input = document.getElementById('numbersStationAnswer');
         const feedback = document.getElementById('numbersStationFeedback');
-        const answer = input?.value.trim() || '';
-        if (!answer) return;
-        input.disabled = true;
+        if (!input || input.value.trim() !== answer || attempt !== numbersStationAnswerAttempt) return;
         try {
             const response = await fetch(basePath + '/api/numbers-station/answer', {
                 method: 'POST',
@@ -3640,17 +3669,16 @@ body.numbers-station-open {
                 body: JSON.stringify({ answer }),
             });
             const payload = await readNumbersStationResponse(response);
+            if (!input || input.value.trim() !== answer || attempt !== numbersStationAnswerAttempt) return;
             if (!response.ok || response.redirected || payload.error) {
-                if (feedback) feedback.textContent = payload.error || 'TRANSMISSION REJECTED';
-                input.disabled = false;
-                input.select();
+                if (response.status !== 422 && feedback) feedback.textContent = payload.error || 'RECEIVER ERROR';
                 return;
             }
+            input.disabled = true;
             if (feedback) feedback.textContent = 'SIGNAL CONFIRMED';
             window.setTimeout(() => renderNumbersStation(payload, { showBroadcast: true }), 650);
         } catch (error) {
             if (feedback) feedback.textContent = 'NO CARRIER — CHECK CONNECTION';
-            input.disabled = false;
         }
     }
 
@@ -3686,6 +3714,7 @@ body.numbers-station-open {
         if (dashboardStatsTimer) clearInterval(dashboardStatsTimer);
         if (fallbackPollTimer) clearInterval(fallbackPollTimer);
         if (sseRetryTimer) clearTimeout(sseRetryTimer);
+        if (numbersStationAnswerTimer) clearTimeout(numbersStationAnswerTimer);
     });
 </script>
 {{end}}

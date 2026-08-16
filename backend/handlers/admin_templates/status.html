@@ -502,24 +502,16 @@ body.numbers-station-open {
     cursor: pointer;
 }
 
-.numbers-station-silence {
+.numbers-station-silence-heading {
     margin: 0.75rem 0 0;
-    color: #6ee7b7;
-    font-size: 0.74rem;
-    letter-spacing: 0.16em;
     text-align: center;
-    opacity: 0.72;
 }
 
-.numbers-station-audio-toggle {
-    display: block;
-    margin: 0.55rem auto 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: #4ade80;
-    font: 0.66rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    cursor: pointer;
+.numbers-station-silence {
+    margin: 0.35rem 0 0;
+    color: #6ee7b7;
+    font-size: 0.74rem;
+    text-align: center;
     opacity: 0.72;
 }
 
@@ -3506,9 +3498,6 @@ body.numbers-station-open {
     }
 
     const numbersStationSenderURL = {{json .ServerBasePath}} + '/api/static/numbers-station-sender.jpg';
-    let numbersStationAudioContext = null;
-    let numbersStationStaticSource = null;
-    let numbersStationStaticGain = null;
 
     function markNumbersStationCompleted() {
         const signal = document.getElementById('numbersStationSignal');
@@ -3532,7 +3521,10 @@ body.numbers-station-open {
                     <div class="numbers-station-static-break" aria-label="Static interference">— SHHHK — CARRIER UNSTABLE —</div>
                     <p>When the lights turn violet, don't wait for the rain. The storm is closer than the forecast says.</p>
                 </div>
-            ` : '<p class="numbers-station-silence">RADIO SILENCE</p>';
+            ` : `
+                <div class="numbers-station-static-break numbers-station-silence-heading" aria-label="Radio silence">— RADIO SILENCE —</div>
+                <p class="numbers-station-silence">Just static. It sounds like rain.</p>
+            `;
             body.innerHTML = `
                 <h2 id="numbersStationCallsign" class="numbers-station-callsign">${options.showBroadcast ? 'SIGNAL ACQUIRED' : 'CARRIER PRESENT'}</h2>
                 <div class="numbers-station-sender">
@@ -3540,13 +3532,11 @@ body.numbers-station-open {
                     <img class="numbers-station-sender-glitch" data-numbers-station-sender alt="" aria-hidden="true">
                 </div>
                 ${transcript}
-                <button id="numbersStationAudioToggle" class="numbers-station-audio-toggle" type="button" onclick="toggleNumbersStationStatic()">STATIC: OFF</button>
                 <button class="numbers-station-reward" type="button" onclick="closeNumbersStation()">${escapeNumbersStationText(state.reward)}</button>
             `;
             body.querySelectorAll('[data-numbers-station-sender]').forEach(image => {
                 image.src = numbersStationSenderURL;
             });
-            startNumbersStationStatic();
             return;
         }
 
@@ -3571,9 +3561,6 @@ body.numbers-station-open {
         if (!dialog || !body) return;
         body.textContent = 'TUNING...';
         lockNumbersStationScroll();
-        if (document.getElementById('numbersStationSignal')?.classList.contains('transmission-complete')) {
-            startNumbersStationStatic();
-        }
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
         try {
@@ -3605,73 +3592,7 @@ body.numbers-station-open {
         if (!dialog) return;
         if (typeof dialog.close === 'function') dialog.close();
         else dialog.removeAttribute('open');
-        stopNumbersStationStatic();
         unlockNumbersStationScroll();
-    }
-
-    function updateNumbersStationAudioToggle() {
-        const toggle = document.getElementById('numbersStationAudioToggle');
-        if (toggle) toggle.textContent = numbersStationStaticSource ? 'STATIC: ON' : 'STATIC: OFF';
-    }
-
-    async function startNumbersStationStatic() {
-        if (numbersStationStaticSource) {
-            updateNumbersStationAudioToggle();
-            return;
-        }
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
-        try {
-            if (!numbersStationAudioContext) numbersStationAudioContext = new AudioContextClass();
-            if (numbersStationAudioContext.state === 'suspended') await numbersStationAudioContext.resume();
-
-            const sampleRate = numbersStationAudioContext.sampleRate;
-            const buffer = numbersStationAudioContext.createBuffer(1, sampleRate * 2, sampleRate);
-            const samples = buffer.getChannelData(0);
-            let rain = 0;
-            for (let i = 0; i < samples.length; i++) {
-                const white = Math.random() * 2 - 1;
-                rain = (rain + 0.025 * white) / 1.025;
-                samples[i] = rain * 3.2 + white * 0.08;
-            }
-
-            const source = numbersStationAudioContext.createBufferSource();
-            const highpass = numbersStationAudioContext.createBiquadFilter();
-            const lowpass = numbersStationAudioContext.createBiquadFilter();
-            const gain = numbersStationAudioContext.createGain();
-            source.buffer = buffer;
-            source.loop = true;
-            highpass.type = 'highpass';
-            highpass.frequency.value = 320;
-            lowpass.type = 'lowpass';
-            lowpass.frequency.value = 4200;
-            gain.gain.value = 0.028;
-            source.connect(highpass).connect(lowpass).connect(gain).connect(numbersStationAudioContext.destination);
-            source.start();
-            numbersStationStaticSource = source;
-            numbersStationStaticGain = gain;
-            updateNumbersStationAudioToggle();
-        } catch (error) {
-            stopNumbersStationStatic();
-        }
-    }
-
-    function stopNumbersStationStatic() {
-        if (numbersStationStaticSource) {
-            try { numbersStationStaticSource.stop(); } catch (error) {}
-            try { numbersStationStaticSource.disconnect(); } catch (error) {}
-        }
-        if (numbersStationStaticGain) {
-            try { numbersStationStaticGain.disconnect(); } catch (error) {}
-        }
-        numbersStationStaticSource = null;
-        numbersStationStaticGain = null;
-        updateNumbersStationAudioToggle();
-    }
-
-    function toggleNumbersStationStatic() {
-        if (numbersStationStaticSource) stopNumbersStationStatic();
-        else startNumbersStationStatic();
     }
 
     async function initializeNumbersStationSignal() {
@@ -3748,7 +3669,6 @@ body.numbers-station-open {
         }
         initializeNumbersStationSignal();
         document.getElementById('numbersStationDialog')?.addEventListener('close', () => {
-            stopNumbersStationStatic();
             unlockNumbersStationScroll();
         });
     });
@@ -3766,7 +3686,6 @@ body.numbers-station-open {
         if (dashboardStatsTimer) clearInterval(dashboardStatsTimer);
         if (fallbackPollTimer) clearInterval(fallbackPollTimer);
         if (sseRetryTimer) clearTimeout(sseRetryTimer);
-        stopNumbersStationStatic();
     });
 </script>
 {{end}}

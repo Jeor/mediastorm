@@ -127,15 +127,20 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`readNumbersStationResponse(response)`,
 		`SESSION EXPIRED — RELOAD THE DASHBOARD`,
 		`numbers-station-achievement-badge">Storm-Marked`,
-		`<p class="numbers-station-silence">RADIO SILENCE</p>`,
+		`class="numbers-station-static-break numbers-station-silence-heading"`,
+		`— RADIO SILENCE —`,
+		`Just static. It sounds like rain.`,
 		`class="numbers-station-reward" type="button" onclick="closeNumbersStation()"`,
 		`initializeNumbersStationSignal()`,
 		`markNumbersStationCompleted()`,
-		`startNumbersStationStatic()`,
-		`gain.gain.value = 0.028`,
 	} {
 		if !strings.Contains(content, required) {
 			t.Fatalf("status template missing %q", required)
+		}
+	}
+	for _, unwanted := range []string{"AudioContext", "numbersStationAudioToggle", "startNumbersStationStatic"} {
+		if strings.Contains(content, unwanted) {
+			t.Fatalf("status template still contains audio implementation %q", unwanted)
 		}
 	}
 }

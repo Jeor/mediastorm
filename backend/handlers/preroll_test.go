@@ -24,7 +24,7 @@ func TestPrerollManifestAndDefaultAsset(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if manifest.ID != "36cd41220d641bfafd4aa6efcb4724a7f5f96d850412c7c47c75a7f70bf0fb06" {
+	if manifest.ID != "debe216d5dc988e5f22a7fa35c7f92077153b019174a6045d9222d9970ed7244" {
 		t.Fatalf("unexpected embedded asset id %q", manifest.ID)
 	}
 	if manifest.Size <= 0 || manifest.URL == "" {

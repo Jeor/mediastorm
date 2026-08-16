@@ -191,6 +191,10 @@ type LiveUserSettingsProvider interface {
 	Get(userID string) (*models.UserSettings, error)
 }
 
+type LiveEPGNowPlayingProvider interface {
+	GetNowPlaying(channelIDs []string, timeOffset ...time.Duration) []models.EPGNowPlaying
+}
+
 type xtreamChannelsCacheEntry struct {
 	channels  []LiveChannel
 	expiresAt time.Time
@@ -216,6 +220,7 @@ type LiveHandler struct {
 	lowLatency         bool // Enable low-latency mode
 	cfgManager         *config.Manager
 	userSettingsSvc    LiveUserSettingsProvider
+	epgService         LiveEPGNowPlayingProvider
 
 	stremioMu    sync.Mutex
 	stremioCache map[string]stremioChannelsCacheEntry
@@ -223,6 +228,12 @@ type LiveHandler struct {
 	xtreamMu       sync.Mutex
 	xtreamCache    map[string]xtreamChannelsCacheEntry
 	xtreamInFlight map[string]*xtreamChannelsFetch
+}
+
+// SetEPGService enables pre-pagination channel filtering by current and next
+// programme title in addition to channel name.
+func (h *LiveHandler) SetEPGService(service LiveEPGNowPlayingProvider) {
+	h.epgService = service
 }
 
 // NewLiveHandler creates a handler capable of fetching remote playlists.
@@ -1172,6 +1183,78 @@ func filterChannels(channels []LiveChannel, filter config.LiveTVFilterSettings) 
 	return filtered
 }
 
+func filterLiveChannelsByText(
+	channels []LiveChannel,
+	filterText string,
+	favoriteIDs map[string]struct{},
+	epgService LiveEPGNowPlayingProvider,
+	epgTimeOffset time.Duration,
+) []LiveChannel {
+	query := strings.ToLower(strings.TrimSpace(filterText))
+	if query == "" {
+		return channels
+	}
+
+	matches := make(map[string]struct{}, len(channels))
+	channelIDs := make([]string, 0, len(channels))
+	channelIDsToLiveIDs := make(map[string][]string, len(channels))
+	for _, channel := range channels {
+		if _, favorite := favoriteIDs[channel.ID]; favorite {
+			matches[channel.ID] = struct{}{}
+			continue
+		}
+		if strings.Contains(strings.ToLower(channel.Name), query) {
+			matches[channel.ID] = struct{}{}
+			continue
+		}
+		if epgService != nil && strings.TrimSpace(channel.TvgID) != "" {
+			channelIDs = append(channelIDs, channel.TvgID)
+			lookupID := strings.ToLower(channel.TvgID)
+			channelIDsToLiveIDs[lookupID] = append(channelIDsToLiveIDs[lookupID], channel.ID)
+		}
+	}
+
+	if len(channelIDs) > 0 {
+		for _, nowPlaying := range epgService.GetNowPlaying(channelIDs, -epgTimeOffset) {
+			currentMatches := nowPlaying.Current != nil && strings.Contains(strings.ToLower(nowPlaying.Current.Title), query)
+			nextMatches := nowPlaying.Next != nil && strings.Contains(strings.ToLower(nowPlaying.Next.Title), query)
+			if !currentMatches && !nextMatches {
+				continue
+			}
+			for _, channelID := range channelIDsToLiveIDs[strings.ToLower(nowPlaying.ChannelID)] {
+				matches[channelID] = struct{}{}
+			}
+		}
+	}
+
+	filtered := make([]LiveChannel, 0, len(matches))
+	for _, channel := range channels {
+		if _, match := matches[channel.ID]; match {
+			filtered = append(filtered, channel)
+		}
+	}
+	return filtered
+}
+
+func orderFavoriteChannelsFirst(channels []LiveChannel, favoriteIDs map[string]struct{}) []LiveChannel {
+	if len(favoriteIDs) == 0 {
+		return channels
+	}
+
+	ordered := make([]LiveChannel, 0, len(channels))
+	for _, channel := range channels {
+		if _, favorite := favoriteIDs[channel.ID]; favorite {
+			ordered = append(ordered, channel)
+		}
+	}
+	for _, channel := range channels {
+		if _, favorite := favoriteIDs[channel.ID]; !favorite {
+			ordered = append(ordered, channel)
+		}
+	}
+	return ordered
+}
+
 // fetchPlaylistContents fetches the M3U playlist from the given URL.
 func (h *LiveHandler) fetchPlaylistContents(ctx context.Context, playlistURL, proxyURL string) (string, error) {
 	if strings.TrimSpace(playlistURL) == "" {
@@ -1675,7 +1758,7 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	profileID := strings.TrimSpace(r.URL.Query().Get("profileId"))
 	requestedSourceID := strings.TrimSpace(r.URL.Query().Get("sourceId"))
 	log.Printf(
-		"[live] GetChannels request start profileId=%q sourceId=%q paginated=%t offset=%d limit=%d categoryCount=%d favoriteCount=%d favoritesOnly=%q",
+		"[live] GetChannels request start profileId=%q sourceId=%q paginated=%t offset=%d limit=%d categoryCount=%d favoriteCount=%d favoritesOnly=%q filterLength=%d",
 		profileID,
 		requestedSourceID,
 		paginated,
@@ -1684,6 +1767,7 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 		len(r.URL.Query()["category"]),
 		len(r.URL.Query()["favoriteId"]),
 		r.URL.Query().Get("favoritesOnly"),
+		len(strings.TrimSpace(r.URL.Query().Get("filter"))),
 	)
 
 	settings, err := h.cfgManager.Load()
@@ -1812,6 +1896,14 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 		}
 		filteredChannels = selected
 	}
+	filteredChannels = filterLiveChannelsByText(
+		filteredChannels,
+		r.URL.Query().Get("filter"),
+		requestedFavoriteIDs,
+		h.epgService,
+		time.Duration(src.EPGTimeOffsetMinutes)*time.Minute,
+	)
+	filteredChannels = orderFavoriteChannelsFirst(filteredChannels, requestedFavoriteIDs)
 
 	total := len(filteredChannels)
 	pageChannels := filteredChannels

@@ -385,6 +385,69 @@ http://stream.example/movie-1`))
 	}
 }
 
+type fakeLiveEPGNowPlayingProvider struct {
+	nowPlaying []models.EPGNowPlaying
+}
+
+func (f fakeLiveEPGNowPlayingProvider) GetNowPlaying(_ []string, _ ...time.Duration) []models.EPGNowPlaying {
+	return f.nowPlaying
+}
+
+func TestGetChannelsFiltersAndOrdersBeforePagination(t *testing.T) {
+	playlistServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`#EXTM3U
+#EXTINF:-1 tvg-id="favorite" group-title="News",Always Favorite
+http://stream.example/favorite
+#EXTINF:-1 tvg-id="name-1" group-title="Sports",Match One
+http://stream.example/name-1
+#EXTINF:-1 tvg-id="program" group-title="Movies",Cinema Channel
+http://stream.example/program
+#EXTINF:-1 tvg-id="name-2" group-title="Sports",Match Two
+http://stream.example/name-2
+#EXTINF:-1 tvg-id="other" group-title="News",Other Channel
+http://stream.example/other`))
+	}))
+	defer playlistServer.Close()
+
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Live: config.LiveSettings{PlaylistURL: playlistServer.URL}}); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	h := NewLiveHandler(playlistServer.Client(), false, "", 24, 0, 0, false, mgr, nil)
+	h.SetEPGService(fakeLiveEPGNowPlayingProvider{nowPlaying: []models.EPGNowPlaying{
+		{ChannelID: "program", Current: &models.EPGProgram{Title: "The Match Show"}},
+	}})
+	req := httptest.NewRequest(http.MethodGet, "/live/channels?filter=match&favoriteId=favorite&offset=0&limit=2", nil)
+	rec := httptest.NewRecorder()
+	h.GetChannels(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	var resp LiveChannelsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.TotalBeforeFilter != 5 || resp.Total != 4 || !resp.HasMore {
+		t.Fatalf("response totals = before:%d filtered:%d hasMore:%v, want 5/4/true", resp.TotalBeforeFilter, resp.Total, resp.HasMore)
+	}
+	if len(resp.Channels) != 2 || resp.Channels[0].ID != "favorite" || resp.Channels[1].ID != "name-1" {
+		t.Fatalf("first page = %+v, want favorite followed by first name match", resp.Channels)
+	}
+
+	nextReq := httptest.NewRequest(http.MethodGet, "/live/channels?filter=match&favoriteId=favorite&offset=2&limit=2", nil)
+	nextRec := httptest.NewRecorder()
+	h.GetChannels(nextRec, nextReq)
+	if err := json.Unmarshal(nextRec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode next response: %v", err)
+	}
+	if resp.HasMore || len(resp.Channels) != 2 || resp.Channels[0].ID != "program" || resp.Channels[1].ID != "name-2" {
+		t.Fatalf("second page = %+v hasMore=%v, want program and remaining name match", resp.Channels, resp.HasMore)
+	}
+}
+
 func TestGetChannelsRejectsInvalidPagination(t *testing.T) {
 	h := &LiveHandler{}
 	req := httptest.NewRequest(http.MethodGet, "/live/channels?limit=501", nil)

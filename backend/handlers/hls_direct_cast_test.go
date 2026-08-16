@@ -577,6 +577,10 @@ func TestCompatibilityCastForcesStereoAACForUndecodableAudio(t *testing.T) {
 // Direct Cast remuxes to MPEG-TS but satisfies none of the fMP4 exclusions, so the playlist
 // synthesis used to reconstruct `.m4s` names for files that were never written: the receiver
 // requested segment0.m4s, got nothing, retried, and gave up mid-episode with the stream healthy.
+//
+// The direct session below is built by hand on purpose. CreateSession no longer produces that
+// state, because copying the video is refused while playlists assume a fixed segment duration,
+// so this keeps the copy envelope honest for the day that refusal is lifted.
 func TestCastPlanRecordsItsSegmentExtension(t *testing.T) {
 	direct := &HLSSession{
 		ID:             "direct-cast-ext",
@@ -625,5 +629,33 @@ func TestCastPlanRecordsItsSegmentExtension(t *testing.T) {
 	runCastArgPlanTest(t, compatibility, true)
 	if compatibility.SegmentExt != ".ts" {
 		t.Fatalf("compatibility cast also uses MPEG-TS; recorded %q", compatibility.SegmentExt)
+	}
+}
+
+// The playlist rebuild asks for an extension before the plan has recorded one, and it must not
+// guess fMP4 for a session that is writing MPEG-TS. The old check looked for ".ts\n" in the raw
+// text, which reads a CRLF playlist as fMP4 and then advertises segments that do not exist.
+func TestResolveSegmentExtPrefersTheRecordedValueThenThePlaylist(t *testing.T) {
+	recorded := &HLSSession{ID: "recorded", SegmentExt: ".ts"}
+	if got := resolveSegmentExt(recorded, []string{"segment0.m4s"}); got != ".ts" {
+		t.Fatalf("the recorded extension wins over the playlist; got %q", got)
+	}
+
+	cases := []struct {
+		name  string
+		lines []string
+		want  string
+	}{
+		{"mpegts playlist", []string{"#EXTINF:4.000000,", "segment0.ts"}, ".ts"},
+		{"mpegts playlist with carriage returns", []string{"#EXTINF:4.000000,\r", "segment0.ts\r"}, ".ts"},
+		{"fmp4 playlist", []string{"#EXTINF:4.000000,", "segment0.m4s"}, ".m4s"},
+		{"empty playlist", nil, ".m4s"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := resolveSegmentExt(&HLSSession{ID: tc.name}, tc.lines); got != tc.want {
+				t.Fatalf("resolveSegmentExt = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

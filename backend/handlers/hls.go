@@ -5175,6 +5175,28 @@ func (m *HLSManager) GetSessionStatus(w http.ResponseWriter, r *http.Request, se
 	}
 }
 
+// resolveSegmentExt reports the extension the transcode plan chose for this session's segments.
+//
+// The recorded value is the truth: the plan wrote it down when it built the FFmpeg arguments.
+// When it is missing, because the playlist is served before transcoding starts, the playlist
+// lines are the next best source, since they name segments that were really written. The lines
+// are compared trimmed so the answer does not depend on the writer's line ending.
+func resolveSegmentExt(session *HLSSession, playlistLines []string) string {
+	session.mu.RLock()
+	recorded := session.SegmentExt
+	session.mu.RUnlock()
+	if recorded != "" {
+		return recorded
+	}
+	for _, line := range playlistLines {
+		name := strings.TrimSpace(line)
+		if strings.HasPrefix(name, "segment") && strings.HasSuffix(name, ".ts") {
+			return ".ts"
+		}
+	}
+	return ".m4s"
+}
+
 // ServePlaylist serves the HLS playlist file with API key in segment URLs
 func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessionID string) {
 	session, exists := m.GetSession(sessionID)
@@ -5322,19 +5344,12 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		// Cast: it remuxes to MPEG-TS yet matches none of the fMP4 exclusions below, so this
 		// synthesised `.m4s` entries for files that were never written and the receiver stalled on
 		// the first one. The playlist itself is the fallback, because it names real segments.
-		session.mu.RLock()
-		segmentExt := session.SegmentExt
-		session.mu.RUnlock()
-		if segmentExt == "" {
-			segmentExt = ".m4s"
-			if strings.Contains(playlistContent, ".ts\n") {
-				segmentExt = ".ts"
-			}
-		}
+		segmentExt := resolveSegmentExt(session, lines)
 		for _, line := range lines {
-			if strings.HasPrefix(line, "segment") && strings.HasSuffix(line, segmentExt) {
+			name := strings.TrimSpace(line)
+			if strings.HasPrefix(name, "segment") && strings.HasSuffix(name, segmentExt) {
 				// Extract segment number from "segment0.m4s" or "segment0.ts"
-				numStr := strings.TrimPrefix(line, "segment")
+				numStr := strings.TrimPrefix(name, "segment")
 				numStr = strings.TrimSuffix(numStr, segmentExt)
 				if num, err := strconv.Atoi(numStr); err == nil && num > highestExisting {
 					highestExisting = num

@@ -206,6 +206,173 @@
     font-size: 0.8125rem;
 }
 
+.numbers-station-signal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.55rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 1.8s ease, color 0.2s ease;
+}
+
+.numbers-station-signal.carrier-detected {
+    opacity: 0.42;
+}
+
+.numbers-station-signal:hover,
+.numbers-station-signal:focus-visible {
+    color: #86efac;
+    opacity: 1;
+}
+
+.numbers-station-signal.transmission-complete {
+    color: #86efac;
+    opacity: 0.78;
+}
+
+.numbers-station-signal-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 0.65rem rgba(74, 222, 128, 0.7);
+    animation: numbersStationCarrier 2.6s steps(2, end) infinite;
+}
+
+.numbers-station-dialog {
+    width: min(34rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid rgba(74, 222, 128, 0.28);
+    border-radius: var(--radius-lg);
+    background: #07110c;
+    color: #bbf7d0;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.72), 0 0 42px rgba(34, 197, 94, 0.08);
+}
+
+.numbers-station-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.76);
+    backdrop-filter: blur(3px);
+}
+
+.numbers-station-console {
+    position: relative;
+    min-height: 25rem;
+    padding: 1.5rem;
+    overflow: hidden;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.numbers-station-console::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(180deg, transparent 0, transparent 3px, rgba(34, 197, 94, 0.035) 4px);
+}
+
+.numbers-station-close {
+    position: absolute;
+    z-index: 2;
+    top: 0.75rem;
+    right: 0.75rem;
+    border: 0;
+    background: transparent;
+    color: #4ade80;
+    cursor: pointer;
+    font: inherit;
+}
+
+.numbers-station-frequency {
+    margin-bottom: 1rem;
+    color: #4ade80;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+}
+
+.numbers-station-callsign {
+    margin: 0 0 1rem;
+    color: #86efac;
+    font: 700 0.78rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.14em;
+}
+
+.numbers-station-lines {
+    margin: 0 0 1rem;
+    color: #dcfce7;
+    font-size: 1rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
+.numbers-station-prompt {
+    color: #bbf7d0;
+    font-size: 0.85rem;
+}
+
+.numbers-station-form {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+.numbers-station-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid rgba(74, 222, 128, 0.38);
+    border-radius: var(--radius);
+    background: rgba(0, 0, 0, 0.38);
+    color: #dcfce7;
+    padding: 0.7rem 0.8rem;
+    font: inherit;
+}
+
+.numbers-station-submit {
+    border: 1px solid rgba(74, 222, 128, 0.48);
+    border-radius: var(--radius);
+    background: rgba(34, 197, 94, 0.12);
+    color: #86efac;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font: inherit;
+}
+
+.numbers-station-feedback,
+.numbers-station-hint {
+    min-height: 1.2rem;
+    margin: 0.8rem 0 0;
+    color: #fca5a5;
+    font-size: 0.75rem;
+}
+
+.numbers-station-hint {
+    color: #6ee7b7;
+    opacity: 0.72;
+}
+
+.numbers-station-reward {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    border-radius: 999px;
+    color: #86efac;
+    font-size: 0.72rem;
+}
+
+@keyframes numbersStationCarrier {
+    50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .numbers-station-signal-dot { animation: none; }
+}
+
 @media (max-width: 760px) {
     .donation-banner {
         grid-template-columns: 1fr;
@@ -281,7 +448,13 @@
     <div>
         <h1>Dashboard</h1>
         <p>Real-time monitoring and overview of your mediastorm server</p>
-        <div id="backendUptime" class="dashboard-uptime" aria-live="polite">Backend uptime loading...</div>
+        <div class="dashboard-uptime">
+            <span id="backendUptime" aria-live="polite">Backend uptime loading...</span>
+            <button id="numbersStationSignal" class="numbers-station-signal" type="button" aria-label="Unidentified carrier" title="77.77" onclick="openNumbersStation()">
+                <span class="numbers-station-signal-dot" aria-hidden="true"></span>
+                <span>77.77</span>
+            </button>
+        </div>
     </div>
     <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
         <div class="view-toggle" style="display:flex;background:var(--bg-tertiary);border-radius:var(--radius);padding:2px;">
@@ -297,6 +470,14 @@
         </button>
     </div>
 </div>
+
+<dialog id="numbersStationDialog" class="numbers-station-dialog" aria-label="Numbers Station receiver">
+    <div class="numbers-station-console">
+        <button class="numbers-station-close" type="button" aria-label="Close receiver" onclick="closeNumbersStation()">[×]</button>
+        <div class="numbers-station-frequency">NUMBERS STATION · 77.77 MHz</div>
+        <div id="numbersStationBody" aria-live="polite">TUNING...</div>
+    </div>
+</dialog>
 
 <!-- Active Streams -->
 <div class="card" style="margin-bottom: 1.5rem;">
@@ -3120,6 +3301,93 @@
         };
     }
 
+    function escapeNumbersStationText(value) {
+        return escapeHtml(String(value == null ? '' : value));
+    }
+
+    function renderNumbersStation(state) {
+        const body = document.getElementById('numbersStationBody');
+        if (!body) return;
+        if (state.completed) {
+            const signal = document.getElementById('numbersStationSignal');
+            signal?.classList.add('transmission-complete');
+            if (signal) signal.title = 'Transmission complete';
+            body.innerHTML = `
+                <h2 id="numbersStationCallsign" class="numbers-station-callsign">CARRIER SILENT</h2>
+                <div class="numbers-station-lines">TRANSMISSION COMPLETE</div>
+                <p class="numbers-station-prompt">The receiver remembers you.</p>
+                <span class="numbers-station-reward">${escapeNumbersStationText(state.reward)}</span>
+            `;
+            return;
+        }
+
+        const transmission = state.transmission || {};
+        const lines = Array.isArray(transmission.lines) ? transmission.lines.join('\n') : '';
+        body.innerHTML = `
+            <h2 id="numbersStationCallsign" class="numbers-station-callsign">${escapeNumbersStationText(transmission.callsign)}</h2>
+            <pre class="numbers-station-lines">${escapeNumbersStationText(lines)}</pre>
+            <p class="numbers-station-prompt">${escapeNumbersStationText(transmission.prompt)}</p>
+            <form class="numbers-station-form" onsubmit="submitNumbersStation(event)">
+                <input id="numbersStationAnswer" class="numbers-station-input" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Transmission response">
+                <button class="numbers-station-submit" type="submit">TRANSMIT</button>
+            </form>
+            <p id="numbersStationFeedback" class="numbers-station-feedback"></p>
+            <p class="numbers-station-hint">${escapeNumbersStationText(transmission.hint)}</p>
+        `;
+        document.getElementById('numbersStationAnswer')?.focus();
+    }
+
+    async function openNumbersStation() {
+        const dialog = document.getElementById('numbersStationDialog');
+        const body = document.getElementById('numbersStationBody');
+        if (!dialog || !body) return;
+        body.textContent = 'TUNING...';
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+        try {
+            const response = await fetch(basePath + '/api/numbers-station', { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('receiver unavailable');
+            renderNumbersStation(await response.json());
+        } catch (error) {
+            body.textContent = 'NO CARRIER';
+        }
+    }
+
+    function closeNumbersStation() {
+        const dialog = document.getElementById('numbersStationDialog');
+        if (!dialog) return;
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+    }
+
+    async function submitNumbersStation(event) {
+        event.preventDefault();
+        const input = document.getElementById('numbersStationAnswer');
+        const feedback = document.getElementById('numbersStationFeedback');
+        const answer = input?.value.trim() || '';
+        if (!answer) return;
+        input.disabled = true;
+        try {
+            const response = await fetch(basePath + '/api/numbers-station/answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ answer }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                if (feedback) feedback.textContent = payload.error || 'TRANSMISSION REJECTED';
+                input.disabled = false;
+                input.select();
+                return;
+            }
+            if (feedback) feedback.textContent = 'SIGNAL CONFIRMED';
+            window.setTimeout(() => renderNumbersStation(payload), 650);
+        } catch (error) {
+            if (feedback) feedback.textContent = 'NO CARRIER';
+            input.disabled = false;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         setDashboardDetail(dashboardDetail);
         setStreamView(currentStreamView);
@@ -3133,6 +3401,9 @@
             testEndpoints();
             refreshDebridStatus();
         }
+        window.setTimeout(() => {
+            document.getElementById('numbersStationSignal')?.classList.add('carrier-detected');
+        }, 7777);
     });
 
     document.addEventListener('visibilitychange', () => {

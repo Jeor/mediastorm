@@ -18,6 +18,14 @@ type AccountRepository interface {
 	Count(ctx context.Context) (int64, error)
 }
 
+// NumbersStationRepository stores account-level puzzle progress.
+type NumbersStationRepository interface {
+	Get(ctx context.Context, accountID string) (*models.NumbersStationProgress, error)
+	List(ctx context.Context) ([]models.NumbersStationProgress, error)
+	Upsert(ctx context.Context, progress *models.NumbersStationProgress) error
+	Advance(ctx context.Context, accountID string, expectedStage, nextStage int, completed bool, now time.Time) (bool, error)
+}
+
 // UserRepository manages user profile persistence.
 type UserRepository interface {
 	Get(ctx context.Context, id string) (*models.User, error)

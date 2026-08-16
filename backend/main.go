@@ -53,6 +53,7 @@ import (
 	"novastream/services/mdblist"
 	"novastream/services/metadata"
 	"novastream/services/notifications"
+	"novastream/services/numbersstation"
 	"novastream/services/playback"
 	"novastream/services/plex"
 	"novastream/services/prewarm"
@@ -988,6 +989,11 @@ func main() {
 	adminUIHandler.SetRemoteMediaService(remoteMediaService)
 	adminUIHandler.SetLibraryAccessService(libraryAccessService)
 
+	var numbersStationHandler *handlers.NumbersStationHandler
+	if store != nil {
+		numbersStationHandler = handlers.NewNumbersStationHandler(numbersstation.New(store))
+	}
+
 	// Login/logout routes (no auth required)
 	r.HandleFunc("/admin/login", adminUIHandler.LoginPage).Methods(http.MethodGet)
 	r.HandleFunc("/admin/login", api.RateLimitHandlerFunc(adminLoginLimiter, adminUIHandler.LoginSubmit)).Methods(http.MethodPost)
@@ -1032,6 +1038,13 @@ func main() {
 	r.HandleFunc("/admin/api/streams/sse", adminUIHandler.RequireAuth(adminUIHandler.GetStreamsSSE)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/streams/{streamID}/terminate", adminUIHandler.RequireAuth(adminUIHandler.TerminateStream)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/dashboard/stats", adminUIHandler.RequireAuth(adminUIHandler.GetDashboardStats)).Methods(http.MethodGet)
+	if numbersStationHandler != nil {
+		numbersStationLimiter := api.NewIPRateLimiter(rate.Every(6*time.Second), 10)
+		r.HandleFunc("/admin/api/numbers-station", adminUIHandler.RequireAuth(numbersStationHandler.State)).Methods(http.MethodGet)
+		r.HandleFunc("/admin/api/numbers-station/answer", adminUIHandler.RequireAuth(api.RateLimitHandlerFunc(numbersStationLimiter, numbersStationHandler.Submit))).Methods(http.MethodPost)
+		r.HandleFunc("/account/api/numbers-station", adminUIHandler.RequireAuth(numbersStationHandler.State)).Methods(http.MethodGet)
+		r.HandleFunc("/account/api/numbers-station/answer", adminUIHandler.RequireAuth(api.RateLimitHandlerFunc(numbersStationLimiter, numbersStationHandler.Submit))).Methods(http.MethodPost)
+	}
 	r.HandleFunc("/admin/api/debrid-status", adminUIHandler.RequireAuth(adminUIHandler.GetDebridStatus)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/user-settings", adminUIHandler.RequireAuth(adminUIHandler.GetUserSettings)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/user-settings", adminUIHandler.RequireAuth(adminUIHandler.SaveUserSettings)).Methods(http.MethodPut)

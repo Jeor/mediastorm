@@ -825,6 +825,7 @@ type databaseExport struct {
 	RemoteMediaItems         []models.RemoteMediaItem               `json:"remoteMediaItems,omitempty"`
 	LibraryAccessPolicies    map[string]models.LibraryAccessPolicy  `json:"libraryAccessPolicies,omitempty"`
 	Recordings               []models.Recording                     `json:"recordings,omitempty"`
+	NumbersStationProgress   []models.NumbersStationProgress        `json:"numbersStationProgress"`
 }
 
 type customListExport struct {
@@ -860,6 +861,7 @@ var databaseExportSections = []string{
 	"remoteMediaItems",
 	"libraryAccessPolicies",
 	"recordings",
+	"numbersStationProgress",
 }
 
 // exportDatabaseBytes queries durable tables and returns the export as JSON bytes.
@@ -878,6 +880,12 @@ func (s *Service) exportDatabaseBytes() ([]byte, error) {
 	for _, a := range accounts {
 		export.Accounts = append(export.Accounts, a.ToStorage())
 	}
+
+	numbersStationProgress, err := s.store.NumbersStation().List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("export numbers station progress: %w", err)
+	}
+	export.NumbersStationProgress = numbersStationProgress
 
 	users, err := s.store.Users().List(ctx)
 	if err != nil {
@@ -1130,6 +1138,12 @@ func (s *Service) importDatabaseBytes(data []byte) error {
 			u := models.User(export.Users[i])
 			if err := tx.Users().Create(ctx, &u); err != nil {
 				return fmt.Errorf("restore user %s: %w", u.ID, err)
+			}
+		}
+		for i := range export.NumbersStationProgress {
+			progress := export.NumbersStationProgress[i]
+			if err := tx.NumbersStation().Upsert(ctx, &progress); err != nil {
+				return fmt.Errorf("restore numbers station progress for %s: %w", progress.AccountID, err)
 			}
 		}
 		for i := range export.Sessions {

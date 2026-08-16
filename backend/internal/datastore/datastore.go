@@ -74,7 +74,10 @@ func (ds *DataStore) Pool() *pgxpool.Pool {
 
 // --- Repository accessors ---
 
-func (ds *DataStore) Accounts() AccountRepository       { return &pgAccountRepo{pool: ds.pool} }
+func (ds *DataStore) Accounts() AccountRepository { return &pgAccountRepo{pool: ds.pool} }
+func (ds *DataStore) NumbersStation() NumbersStationRepository {
+	return &pgNumbersStationRepo{pool: ds.pool}
+}
 func (ds *DataStore) Users() UserRepository             { return &pgUserRepo{pool: ds.pool} }
 func (ds *DataStore) Sessions() SessionRepository       { return &pgSessionRepo{pool: ds.pool} }
 func (ds *DataStore) Invitations() InvitationRepository { return &pgInvitationRepo{pool: ds.pool} }
@@ -139,7 +142,10 @@ func (ds *DataStore) WithTx(ctx context.Context, fn func(tx *Tx) error) error {
 	return pgxTx.Commit(ctx)
 }
 
-func (t *Tx) Accounts() AccountRepository       { return &pgAccountRepo{pool: t.tx} }
+func (t *Tx) Accounts() AccountRepository { return &pgAccountRepo{pool: t.tx} }
+func (t *Tx) NumbersStation() NumbersStationRepository {
+	return &pgNumbersStationRepo{pool: t.tx}
+}
 func (t *Tx) Users() UserRepository             { return &pgUserRepo{pool: t.tx} }
 func (t *Tx) Sessions() SessionRepository       { return &pgSessionRepo{pool: t.tx} }
 func (t *Tx) Invitations() InvitationRepository { return &pgInvitationRepo{pool: t.tx} }

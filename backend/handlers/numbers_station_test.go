@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -69,6 +70,38 @@ func TestNumbersStationRejectsIncorrectTransmission(t *testing.T) {
 	}
 }
 
+func TestNumbersStationAcceptsTheNextSequenceLine(t *testing.T) {
+	repo := &numbersStationTestRepository{}
+	handler := NewNumbersStationHandler(numbersstation.NewWithRepository(repo))
+	answer := numbersStationLookAndSay("1113213211")
+	req := httptest.NewRequest(http.MethodPost, "/admin/api/numbers-station/answer", strings.NewReader(`{"answer":"`+answer+`"}`))
+	req = req.WithContext(context.WithValue(req.Context(), auth.ContextKeyAccountID, "account-a"))
+	recorder := httptest.NewRecorder()
+
+	handler.Submit(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"completed":true`) {
+		t.Fatalf("response did not complete puzzle: %s", recorder.Body.String())
+	}
+}
+
+func numbersStationLookAndSay(value string) string {
+	var result strings.Builder
+	for start := 0; start < len(value); {
+		end := start + 1
+		for end < len(value) && value[end] == value[start] {
+			end++
+		}
+		result.WriteString(strconv.Itoa(end - start))
+		result.WriteByte(value[start])
+		start = end
+	}
+	return result.String()
+}
+
 func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
 	if err != nil {
@@ -85,15 +118,35 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`transform: translate(-50%, -50%)`,
 		`max-height: calc(100dvh - 2rem)`,
 		`lockNumbersStationScroll()`,
-		`addEventListener('close', unlockNumbersStationScroll)`,
+		`addEventListener('close', () =>`,
 		`numbers-station-sender.jpg`,
 		`SIGNAL ACQUIRED`,
 		`The storm is closer than the forecast says.`,
 		`numbersStationImageStatic`,
+		`inputmode="numeric"`,
+		`readNumbersStationResponse(response)`,
+		`SESSION EXPIRED — RELOAD THE DASHBOARD`,
+		`numbers-station-achievement-badge">Storm-Marked`,
+		`<p class="numbers-station-silence">RADIO SILENCE</p>`,
+		`class="numbers-station-reward" type="button" onclick="closeNumbersStation()"`,
+		`initializeNumbersStationSignal()`,
+		`markNumbersStationCompleted()`,
+		`startNumbersStationStatic()`,
+		`gain.gain.value = 0.028`,
 	} {
 		if !strings.Contains(content, required) {
 			t.Fatalf("status template missing %q", required)
 		}
+	}
+}
+
+func TestAdminShellDisablesTelephoneNumberDetection(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	if !strings.Contains(string(templateBytes), `<meta name="format-detection" content="telephone=no">`) {
+		t.Fatalf("admin shell does not disable telephone number detection")
 	}
 }
 

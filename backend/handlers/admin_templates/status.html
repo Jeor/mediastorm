@@ -206,6 +206,37 @@
     font-size: 0.8125rem;
 }
 
+.numbers-station-achievement {
+    margin-top: 0.45rem;
+}
+
+.numbers-station-achievement[hidden] {
+    display: none;
+}
+
+.numbers-station-achievement-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.24rem 0.55rem;
+    border: 1px solid rgba(74, 222, 128, 0.34);
+    border-radius: 999px;
+    background: rgba(34, 197, 94, 0.08);
+    color: #86efac;
+    font: 700 0.68rem/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.numbers-station-achievement-badge::before {
+    content: '';
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 0.55rem rgba(74, 222, 128, 0.72);
+}
+
 .numbers-station-signal {
     display: inline-flex;
     align-items: center;
@@ -233,7 +264,7 @@
 
 .numbers-station-signal.transmission-complete {
     color: #86efac;
-    opacity: 0.78;
+    opacity: 1;
 }
 
 .numbers-station-signal-dot {
@@ -458,13 +489,38 @@ body.numbers-station-open {
 }
 
 .numbers-station-reward {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     margin-top: 1rem;
     padding: 0.35rem 0.6rem;
     border: 1px solid rgba(74, 222, 128, 0.35);
     border-radius: 999px;
+    background: rgba(34, 197, 94, 0.08);
     color: #86efac;
     font-size: 0.72rem;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.numbers-station-silence {
+    margin: 0.75rem 0 0;
+    color: #6ee7b7;
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-align: center;
+    opacity: 0.72;
+}
+
+.numbers-station-audio-toggle {
+    display: block;
+    margin: 0.55rem auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #4ade80;
+    font: 0.66rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    cursor: pointer;
+    opacity: 0.72;
 }
 
 @keyframes numbersStationCarrier {
@@ -595,6 +651,9 @@ body.numbers-station-open {
                 <span class="numbers-station-signal-dot" aria-hidden="true"></span>
                 <span>77.77</span>
             </button>
+        </div>
+        <div id="numbersStationAchievement" class="numbers-station-achievement" hidden>
+            <span class="numbers-station-achievement-badge">Storm-Marked</span>
         </div>
     </div>
     <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
@@ -3447,20 +3506,24 @@ body.numbers-station-open {
     }
 
     const numbersStationSenderURL = {{json .ServerBasePath}} + '/api/static/numbers-station-sender.jpg';
+    let numbersStationAudioContext = null;
+    let numbersStationStaticSource = null;
+    let numbersStationStaticGain = null;
 
-    function renderNumbersStation(state) {
+    function markNumbersStationCompleted() {
+        const signal = document.getElementById('numbersStationSignal');
+        signal?.classList.add('carrier-detected', 'transmission-complete');
+        if (signal) signal.title = 'Persistent carrier';
+        const achievement = document.getElementById('numbersStationAchievement');
+        if (achievement) achievement.hidden = false;
+    }
+
+    function renderNumbersStation(state, options = {}) {
         const body = document.getElementById('numbersStationBody');
         if (!body) return;
         if (state.completed) {
-            const signal = document.getElementById('numbersStationSignal');
-            signal?.classList.add('transmission-complete');
-            if (signal) signal.title = 'Transmission complete';
-            body.innerHTML = `
-                <h2 id="numbersStationCallsign" class="numbers-station-callsign">SIGNAL ACQUIRED</h2>
-                <div class="numbers-station-sender">
-                    <img class="numbers-station-sender-image" data-numbers-station-sender alt="Unknown radio operator">
-                    <img class="numbers-station-sender-glitch" data-numbers-station-sender alt="" aria-hidden="true">
-                </div>
+            markNumbersStationCompleted();
+            const transcript = options.showBroadcast ? `
                 <div class="numbers-station-transcript">
                     <p>...if anyone is still listening—</p>
                     <div class="numbers-station-static-break" aria-label="Static interference">— KRRRSH — SIGNAL BREAK —</div>
@@ -3469,11 +3532,21 @@ body.numbers-station-open {
                     <div class="numbers-station-static-break" aria-label="Static interference">— SHHHK — CARRIER UNSTABLE —</div>
                     <p>When the lights turn violet, don't wait for the rain. The storm is closer than the forecast says.</p>
                 </div>
-                <span class="numbers-station-reward">${escapeNumbersStationText(state.reward)}</span>
+            ` : '<p class="numbers-station-silence">RADIO SILENCE</p>';
+            body.innerHTML = `
+                <h2 id="numbersStationCallsign" class="numbers-station-callsign">${options.showBroadcast ? 'SIGNAL ACQUIRED' : 'CARRIER PRESENT'}</h2>
+                <div class="numbers-station-sender">
+                    <img class="numbers-station-sender-image" data-numbers-station-sender alt="Unknown radio operator">
+                    <img class="numbers-station-sender-glitch" data-numbers-station-sender alt="" aria-hidden="true">
+                </div>
+                ${transcript}
+                <button id="numbersStationAudioToggle" class="numbers-station-audio-toggle" type="button" onclick="toggleNumbersStationStatic()">STATIC: OFF</button>
+                <button class="numbers-station-reward" type="button" onclick="closeNumbersStation()">${escapeNumbersStationText(state.reward)}</button>
             `;
             body.querySelectorAll('[data-numbers-station-sender]').forEach(image => {
                 image.src = numbersStationSenderURL;
             });
+            startNumbersStationStatic();
             return;
         }
 
@@ -3484,7 +3557,7 @@ body.numbers-station-open {
             <pre class="numbers-station-lines">${escapeNumbersStationText(lines)}</pre>
             <p class="numbers-station-prompt">${escapeNumbersStationText(transmission.prompt)}</p>
             <form class="numbers-station-form" onsubmit="submitNumbersStation(event)">
-                <input id="numbersStationAnswer" class="numbers-station-input" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Transmission response">
+                <input id="numbersStationAnswer" class="numbers-station-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Transmission response">
                 <button class="numbers-station-submit" type="submit">TRANSMIT</button>
             </form>
             <p id="numbersStationFeedback" class="numbers-station-feedback"></p>
@@ -3498,15 +3571,33 @@ body.numbers-station-open {
         if (!dialog || !body) return;
         body.textContent = 'TUNING...';
         lockNumbersStationScroll();
+        if (document.getElementById('numbersStationSignal')?.classList.contains('transmission-complete')) {
+            startNumbersStationStatic();
+        }
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
         try {
             const response = await fetch(basePath + '/api/numbers-station', { headers: { Accept: 'application/json' } });
-            if (!response.ok) throw new Error('receiver unavailable');
-            renderNumbersStation(await response.json());
+            const payload = await readNumbersStationResponse(response);
+            if (!response.ok || response.redirected || payload.error) {
+                body.textContent = payload.error || `RECEIVER ERROR ${response.status}`;
+                return;
+            }
+            renderNumbersStation(payload);
         } catch (error) {
-            body.textContent = 'NO CARRIER';
+            body.textContent = 'NO CARRIER — CHECK CONNECTION';
         }
+    }
+
+    async function readNumbersStationResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return response.json();
+        }
+        if (response.redirected && response.url.includes('/login')) {
+            return { error: 'SESSION EXPIRED — RELOAD THE DASHBOARD' };
+        }
+        return { error: `RECEIVER ERROR ${response.status}` };
     }
 
     function closeNumbersStation() {
@@ -3514,7 +3605,87 @@ body.numbers-station-open {
         if (!dialog) return;
         if (typeof dialog.close === 'function') dialog.close();
         else dialog.removeAttribute('open');
+        stopNumbersStationStatic();
         unlockNumbersStationScroll();
+    }
+
+    function updateNumbersStationAudioToggle() {
+        const toggle = document.getElementById('numbersStationAudioToggle');
+        if (toggle) toggle.textContent = numbersStationStaticSource ? 'STATIC: ON' : 'STATIC: OFF';
+    }
+
+    async function startNumbersStationStatic() {
+        if (numbersStationStaticSource) {
+            updateNumbersStationAudioToggle();
+            return;
+        }
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        try {
+            if (!numbersStationAudioContext) numbersStationAudioContext = new AudioContextClass();
+            if (numbersStationAudioContext.state === 'suspended') await numbersStationAudioContext.resume();
+
+            const sampleRate = numbersStationAudioContext.sampleRate;
+            const buffer = numbersStationAudioContext.createBuffer(1, sampleRate * 2, sampleRate);
+            const samples = buffer.getChannelData(0);
+            let rain = 0;
+            for (let i = 0; i < samples.length; i++) {
+                const white = Math.random() * 2 - 1;
+                rain = (rain + 0.025 * white) / 1.025;
+                samples[i] = rain * 3.2 + white * 0.08;
+            }
+
+            const source = numbersStationAudioContext.createBufferSource();
+            const highpass = numbersStationAudioContext.createBiquadFilter();
+            const lowpass = numbersStationAudioContext.createBiquadFilter();
+            const gain = numbersStationAudioContext.createGain();
+            source.buffer = buffer;
+            source.loop = true;
+            highpass.type = 'highpass';
+            highpass.frequency.value = 320;
+            lowpass.type = 'lowpass';
+            lowpass.frequency.value = 4200;
+            gain.gain.value = 0.028;
+            source.connect(highpass).connect(lowpass).connect(gain).connect(numbersStationAudioContext.destination);
+            source.start();
+            numbersStationStaticSource = source;
+            numbersStationStaticGain = gain;
+            updateNumbersStationAudioToggle();
+        } catch (error) {
+            stopNumbersStationStatic();
+        }
+    }
+
+    function stopNumbersStationStatic() {
+        if (numbersStationStaticSource) {
+            try { numbersStationStaticSource.stop(); } catch (error) {}
+            try { numbersStationStaticSource.disconnect(); } catch (error) {}
+        }
+        if (numbersStationStaticGain) {
+            try { numbersStationStaticGain.disconnect(); } catch (error) {}
+        }
+        numbersStationStaticSource = null;
+        numbersStationStaticGain = null;
+        updateNumbersStationAudioToggle();
+    }
+
+    function toggleNumbersStationStatic() {
+        if (numbersStationStaticSource) stopNumbersStationStatic();
+        else startNumbersStationStatic();
+    }
+
+    async function initializeNumbersStationSignal() {
+        try {
+            const response = await fetch(basePath + '/api/numbers-station', { headers: { Accept: 'application/json' } });
+            const payload = await readNumbersStationResponse(response);
+            if (response.ok && !response.redirected && !payload.error && payload.completed) {
+                markNumbersStationCompleted();
+                return;
+            }
+        } catch (error) {}
+        window.setTimeout(() => {
+            document.getElementById('numbersStationSignal')?.classList.add('carrier-detected');
+        }, 7777);
     }
 
     let numbersStationScrollY = 0;
@@ -3547,17 +3718,17 @@ body.numbers-station-open {
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
                 body: JSON.stringify({ answer }),
             });
-            const payload = await response.json();
-            if (!response.ok) {
+            const payload = await readNumbersStationResponse(response);
+            if (!response.ok || response.redirected || payload.error) {
                 if (feedback) feedback.textContent = payload.error || 'TRANSMISSION REJECTED';
                 input.disabled = false;
                 input.select();
                 return;
             }
             if (feedback) feedback.textContent = 'SIGNAL CONFIRMED';
-            window.setTimeout(() => renderNumbersStation(payload), 650);
+            window.setTimeout(() => renderNumbersStation(payload, { showBroadcast: true }), 650);
         } catch (error) {
-            if (feedback) feedback.textContent = 'NO CARRIER';
+            if (feedback) feedback.textContent = 'NO CARRIER — CHECK CONNECTION';
             input.disabled = false;
         }
     }
@@ -3575,10 +3746,11 @@ body.numbers-station-open {
             testEndpoints();
             refreshDebridStatus();
         }
-        window.setTimeout(() => {
-            document.getElementById('numbersStationSignal')?.classList.add('carrier-detected');
-        }, 7777);
-        document.getElementById('numbersStationDialog')?.addEventListener('close', unlockNumbersStationScroll);
+        initializeNumbersStationSignal();
+        document.getElementById('numbersStationDialog')?.addEventListener('close', () => {
+            stopNumbersStationStatic();
+            unlockNumbersStationScroll();
+        });
     });
 
     document.addEventListener('visibilitychange', () => {
@@ -3594,6 +3766,7 @@ body.numbers-station-open {
         if (dashboardStatsTimer) clearInterval(dashboardStatsTimer);
         if (fallbackPollTimer) clearInterval(fallbackPollTimer);
         if (sseRetryTimer) clearTimeout(sseRetryTimer);
+        stopNumbersStationStatic();
     });
 </script>
 {{end}}

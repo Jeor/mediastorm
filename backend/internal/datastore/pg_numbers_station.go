@@ -69,7 +69,7 @@ func (r *pgNumbersStationRepo) Upsert(ctx context.Context, progress *models.Numb
 func (r *pgNumbersStationRepo) Advance(ctx context.Context, accountID string, expectedStage, nextStage int, completed bool, now time.Time) (bool, error) {
 	tag, err := r.pool.Exec(ctx, `
 		INSERT INTO numbers_station_progress (account_id, stage, completed, started_at, updated_at, completed_at)
-		VALUES ($1, $3, $4, $5, $5, CASE WHEN $4 THEN $5 ELSE NULL END)
+		VALUES ($1, $3, $4, $5::timestamptz, $5::timestamptz, CASE WHEN $4 THEN $5::timestamptz ELSE NULL::timestamptz END)
 		ON CONFLICT (account_id) DO UPDATE SET
 			stage = EXCLUDED.stage,
 			completed = EXCLUDED.completed,

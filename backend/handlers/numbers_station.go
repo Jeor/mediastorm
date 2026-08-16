@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -23,6 +24,7 @@ func NewNumbersStationHandler(service *numbersstation.Service) *NumbersStationHa
 func (h *NumbersStationHandler) State(w http.ResponseWriter, r *http.Request) {
 	state, err := h.service.State(r.Context(), auth.GetAccountID(r))
 	if err != nil {
+		log.Printf("[numbers-station] load state failed for account %q: %v", auth.GetAccountID(r), err)
 		http.Error(w, "Unable to tune the receiver", http.StatusInternalServerError)
 		return
 	}
@@ -50,6 +52,7 @@ func (h *NumbersStationHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		log.Printf("[numbers-station] submit failed for account %q: %v", auth.GetAccountID(r), err)
 		http.Error(w, "Unable to verify the transmission", http.StatusInternalServerError)
 		return
 	}

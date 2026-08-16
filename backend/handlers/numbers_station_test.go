@@ -68,3 +68,41 @@ func TestNumbersStationRejectsIncorrectTransmission(t *testing.T) {
 		t.Fatalf("response = %s", recorder.Body.String())
 	}
 }
+
+func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	content := string(templateBytes)
+	for _, unwanted := range []string{"Complete the next line.", "numbers-station-hint", "NUMBERS STATION ·"} {
+		if strings.Contains(content, unwanted) {
+			t.Fatalf("status template still contains %q", unwanted)
+		}
+	}
+	for _, required := range []string{
+		`<div class="numbers-station-frequency">77.77 MHz</div>`,
+		`transform: translate(-50%, -50%)`,
+		`max-height: calc(100dvh - 2rem)`,
+		`lockNumbersStationScroll()`,
+		`addEventListener('close', unlockNumbersStationScroll)`,
+		`numbers-station-sender.jpg`,
+		`SIGNAL ACQUIRED`,
+		`The storm is closer than the forecast says.`,
+		`numbersStationImageStatic`,
+	} {
+		if !strings.Contains(content, required) {
+			t.Fatalf("status template missing %q", required)
+		}
+	}
+}
+
+func TestNumbersStationSenderImageIsEmbedded(t *testing.T) {
+	image, err := staticAssets.ReadFile("static/numbers-station-sender.jpg")
+	if err != nil {
+		t.Fatalf("read embedded sender image: %v", err)
+	}
+	if len(image) < 4 || image[0] != 0xff || image[1] != 0xd8 {
+		t.Fatalf("embedded sender image is not a JPEG")
+	}
+}

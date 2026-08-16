@@ -50,7 +50,7 @@ func (r *memoryRepository) Advance(_ context.Context, accountID string, expected
 	return true, nil
 }
 
-func TestSubmitAdvancesOnlyTheCurrentAccount(t *testing.T) {
+func TestCorrectAnswerCompletesOnlyTheCurrentAccount(t *testing.T) {
 	repo := newMemoryRepository()
 	service := NewWithRepository(repo)
 	answer := lookAndSay(stages[0].transmission.Lines[len(stages[0].transmission.Lines)-1])
@@ -59,8 +59,8 @@ func TestSubmitAdvancesOnlyTheCurrentAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Submit() error = %v", err)
 	}
-	if state.Stage != 1 || state.Completed {
-		t.Fatalf("Submit() state = %+v, want stage 1 incomplete", state)
+	if state.Stage != 1 || !state.Completed || state.Reward == "" || state.Transmission != nil {
+		t.Fatalf("Submit() state = %+v, want completed reward", state)
 	}
 	other, err := service.State(context.Background(), "account-b")
 	if err != nil {
@@ -84,24 +84,18 @@ func TestIncorrectAnswerDoesNotCreateProgress(t *testing.T) {
 	}
 }
 
-func TestCompletingAllTransmissionsAwardsReward(t *testing.T) {
+func TestCompletedTransmissionRemainsCompleted(t *testing.T) {
 	repo := newMemoryRepository()
 	service := NewWithRepository(repo)
-	first := lookAndSay(stages[0].transmission.Lines[len(stages[0].transmission.Lines)-1])
-	second := lookAndSay(first)
-	listener := string([]byte{99, 111, 110, 119, 97, 121})
-
-	for _, answer := range []string{first, second, "  " + strings.ToUpper(listener) + "  "} {
-		var err error
-		if _, err = service.Submit(context.Background(), "account-a", answer); err != nil {
-			t.Fatalf("Submit(%q) error = %v", answer, err)
-		}
+	answer := lookAndSay(stages[0].transmission.Lines[len(stages[0].transmission.Lines)-1])
+	if _, err := service.Submit(context.Background(), "account-a", answer); err != nil {
+		t.Fatalf("Submit() error = %v", err)
 	}
 	state, err := service.State(context.Background(), "account-a")
 	if err != nil {
 		t.Fatalf("State() error = %v", err)
 	}
-	if !state.Completed || state.Stage != len(stages) || state.Reward == "" || state.Transmission != nil {
+	if !state.Completed || state.Stage != 1 || state.StageCount != 1 || state.Reward == "" || state.Transmission != nil {
 		t.Fatalf("completed state = %+v", state)
 	}
 }

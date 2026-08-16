@@ -246,8 +246,14 @@
 }
 
 .numbers-station-dialog {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
     width: min(34rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    margin: 0;
     padding: 0;
+    overflow: hidden;
     border: 1px solid rgba(74, 222, 128, 0.28);
     border-radius: var(--radius-lg);
     background: #07110c;
@@ -262,9 +268,14 @@
 
 .numbers-station-console {
     position: relative;
-    min-height: 25rem;
+    min-height: min(25rem, calc(100dvh - 2rem));
+    max-height: calc(100dvh - 2rem);
+    box-sizing: border-box;
     padding: 1.5rem;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -342,17 +353,108 @@
     font: inherit;
 }
 
-.numbers-station-feedback,
-.numbers-station-hint {
+.numbers-station-feedback {
     min-height: 1.2rem;
     margin: 0.8rem 0 0;
     color: #fca5a5;
     font-size: 0.75rem;
 }
 
-.numbers-station-hint {
-    color: #6ee7b7;
-    opacity: 0.72;
+html.numbers-station-open {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body.numbers-station-open {
+    position: fixed;
+    top: calc(-1 * var(--numbers-station-scroll-y, 0px));
+    right: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.numbers-station-sender {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    margin: 0 0 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(74, 222, 128, 0.28);
+    border-radius: var(--radius);
+    background: #020705;
+}
+
+.numbers-station-sender-image,
+.numbers-station-sender-glitch {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 35%;
+}
+
+.numbers-station-sender-image {
+    filter: saturate(0.78) contrast(1.12) brightness(0.88);
+}
+
+.numbers-station-sender-glitch {
+    opacity: 0;
+    filter: saturate(1.7) contrast(1.55) hue-rotate(18deg);
+    mix-blend-mode: screen;
+    animation: numbersStationImageGlitch 5.2s steps(2, end) infinite;
+}
+
+.numbers-station-sender::before,
+.numbers-station-sender::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.numbers-station-sender::before {
+    background:
+        repeating-radial-gradient(circle at 17% 31%, rgba(255, 255, 255, 0.24) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(93deg, rgba(34, 197, 94, 0.18) 0 1px, rgba(255, 255, 255, 0.08) 1px 2px, transparent 2px 5px);
+    background-size: 7px 5px, 11px 9px;
+    opacity: 0.04;
+    mix-blend-mode: screen;
+    animation: numbersStationImageStatic 5.2s steps(2, end) infinite;
+}
+
+.numbers-station-sender::after {
+    background: linear-gradient(180deg, transparent 0 44%, rgba(220, 252, 231, 0.34) 47%, rgba(34, 197, 94, 0.14) 50%, transparent 54% 100%);
+    opacity: 0;
+    animation: numbersStationStaticBand 5.2s steps(1, end) infinite;
+}
+
+.numbers-station-transcript {
+    color: #bbf7d0;
+    font-size: 0.83rem;
+    line-height: 1.55;
+}
+
+.numbers-station-transcript p {
+    margin: 0 0 0.55rem;
+    opacity: 0;
+    animation: numbersStationFragmentIn 0.35s ease forwards;
+}
+
+.numbers-station-transcript p:nth-of-type(1) { animation-delay: 0.35s; }
+.numbers-station-transcript p:nth-of-type(2) { animation-delay: 1.15s; }
+.numbers-station-transcript p:nth-of-type(3) { animation-delay: 2.35s; }
+.numbers-station-transcript p:nth-of-type(4) { animation-delay: 3.55s; }
+
+.numbers-station-static-break {
+    min-height: 1.25rem;
+    margin: 0.15rem 0 0.55rem;
+    color: #86efac;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    opacity: 0.28;
+    animation: numbersStationTextStatic 1.2s steps(2, end) infinite;
 }
 
 .numbers-station-reward {
@@ -369,8 +471,47 @@
     50% { opacity: 0.25; }
 }
 
+@keyframes numbersStationImageStatic {
+    0%, 7%, 16%, 47%, 56%, 82%, 100% { opacity: 0.04; background-position: 0 0, 0 0; }
+    8%, 12%, 48%, 53%, 83%, 89% { opacity: 0.78; background-position: 19px -11px, -23px 17px; }
+    13%, 15%, 54%, 55%, 90%, 92% { opacity: 0.32; background-position: -13px 7px, 31px -19px; }
+}
+
+@keyframes numbersStationImageGlitch {
+    0%, 7%, 16%, 47%, 56%, 82%, 100% { opacity: 0; clip-path: inset(0); transform: translateX(0); }
+    8%, 12% { opacity: 0.58; clip-path: inset(12% 0 58% 0); transform: translateX(9px); }
+    48%, 53% { opacity: 0.44; clip-path: inset(61% 0 12% 0); transform: translateX(-11px); }
+    83%, 89% { opacity: 0.52; clip-path: inset(34% 0 39% 0); transform: translateX(7px); }
+}
+
+@keyframes numbersStationStaticBand {
+    0%, 7%, 16%, 47%, 56%, 82%, 100% { opacity: 0; transform: translateY(-52%); }
+    8%, 15%, 48%, 55%, 83%, 92% { opacity: 0.8; transform: translateY(56%); }
+}
+
+@keyframes numbersStationFragmentIn {
+    from { opacity: 0; filter: blur(2px); }
+    to { opacity: 1; filter: blur(0); }
+}
+
+@keyframes numbersStationTextStatic {
+    0%, 100% { opacity: 0.2; transform: translateX(0); }
+    35% { opacity: 0.9; transform: translateX(2px); }
+    58% { opacity: 0.35; transform: translateX(-1px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .numbers-station-signal-dot { animation: none; }
+    .numbers-station-signal-dot,
+    .numbers-station-sender-glitch,
+    .numbers-station-sender::before,
+    .numbers-station-sender::after,
+    .numbers-station-transcript p,
+    .numbers-station-static-break {
+        animation: none;
+    }
+
+    .numbers-station-transcript p { opacity: 1; }
+    .numbers-station-sender::before { opacity: 0.1; }
 }
 
 @media (max-width: 760px) {
@@ -474,7 +615,7 @@
 <dialog id="numbersStationDialog" class="numbers-station-dialog" aria-label="Numbers Station receiver">
     <div class="numbers-station-console">
         <button class="numbers-station-close" type="button" aria-label="Close receiver" onclick="closeNumbersStation()">[×]</button>
-        <div class="numbers-station-frequency">NUMBERS STATION · 77.77 MHz</div>
+        <div class="numbers-station-frequency">77.77 MHz</div>
         <div id="numbersStationBody" aria-live="polite">TUNING...</div>
     </div>
 </dialog>
@@ -3305,6 +3446,8 @@
         return escapeHtml(String(value == null ? '' : value));
     }
 
+    const numbersStationSenderURL = {{json .ServerBasePath}} + '/api/static/numbers-station-sender.jpg';
+
     function renderNumbersStation(state) {
         const body = document.getElementById('numbersStationBody');
         if (!body) return;
@@ -3313,11 +3456,24 @@
             signal?.classList.add('transmission-complete');
             if (signal) signal.title = 'Transmission complete';
             body.innerHTML = `
-                <h2 id="numbersStationCallsign" class="numbers-station-callsign">CARRIER SILENT</h2>
-                <div class="numbers-station-lines">TRANSMISSION COMPLETE</div>
-                <p class="numbers-station-prompt">The receiver remembers you.</p>
+                <h2 id="numbersStationCallsign" class="numbers-station-callsign">SIGNAL ACQUIRED</h2>
+                <div class="numbers-station-sender">
+                    <img class="numbers-station-sender-image" data-numbers-station-sender alt="Unknown radio operator">
+                    <img class="numbers-station-sender-glitch" data-numbers-station-sender alt="" aria-hidden="true">
+                </div>
+                <div class="numbers-station-transcript">
+                    <p>...if anyone is still listening—</p>
+                    <div class="numbers-station-static-break" aria-label="Static interference">— KRRRSH — SIGNAL BREAK —</div>
+                    <p>The pressure fell before the clouds arrived.</p>
+                    <p>There's something moving behind the front. It keeps pace with the signal—</p>
+                    <div class="numbers-station-static-break" aria-label="Static interference">— SHHHK — CARRIER UNSTABLE —</div>
+                    <p>When the lights turn violet, don't wait for the rain. The storm is closer than the forecast says.</p>
+                </div>
                 <span class="numbers-station-reward">${escapeNumbersStationText(state.reward)}</span>
             `;
+            body.querySelectorAll('[data-numbers-station-sender]').forEach(image => {
+                image.src = numbersStationSenderURL;
+            });
             return;
         }
 
@@ -3332,7 +3488,6 @@
                 <button class="numbers-station-submit" type="submit">TRANSMIT</button>
             </form>
             <p id="numbersStationFeedback" class="numbers-station-feedback"></p>
-            <p class="numbers-station-hint">${escapeNumbersStationText(transmission.hint)}</p>
         `;
         document.getElementById('numbersStationAnswer')?.focus();
     }
@@ -3342,6 +3497,7 @@
         const body = document.getElementById('numbersStationBody');
         if (!dialog || !body) return;
         body.textContent = 'TUNING...';
+        lockNumbersStationScroll();
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
         try {
@@ -3358,6 +3514,24 @@
         if (!dialog) return;
         if (typeof dialog.close === 'function') dialog.close();
         else dialog.removeAttribute('open');
+        unlockNumbersStationScroll();
+    }
+
+    let numbersStationScrollY = 0;
+
+    function lockNumbersStationScroll() {
+        numbersStationScrollY = window.scrollY;
+        document.documentElement.classList.add('numbers-station-open');
+        document.body.style.setProperty('--numbers-station-scroll-y', numbersStationScrollY + 'px');
+        document.body.classList.add('numbers-station-open');
+    }
+
+    function unlockNumbersStationScroll() {
+        if (!document.body.classList.contains('numbers-station-open')) return;
+        document.documentElement.classList.remove('numbers-station-open');
+        document.body.classList.remove('numbers-station-open');
+        document.body.style.removeProperty('--numbers-station-scroll-y');
+        window.scrollTo(0, numbersStationScrollY);
     }
 
     async function submitNumbersStation(event) {
@@ -3404,6 +3578,7 @@
         window.setTimeout(() => {
             document.getElementById('numbersStationSignal')?.classList.add('carrier-detected');
         }, 7777);
+        document.getElementById('numbersStationDialog')?.addEventListener('close', unlockNumbersStationScroll);
     });
 
     document.addEventListener('visibilitychange', () => {

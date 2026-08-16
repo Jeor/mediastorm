@@ -27,7 +27,6 @@ type Transmission struct {
 	Callsign string   `json:"callsign"`
 	Lines    []string `json:"lines,omitempty"`
 	Prompt   string   `json:"prompt"`
-	Hint     string   `json:"hint,omitempty"`
 }
 
 type State struct {
@@ -48,32 +47,9 @@ var stages = []stageDefinition{
 		transmission: Transmission{
 			Callsign: "TRANSMISSION 01",
 			Lines:    []string{"1", "11", "21", "1211", "111221", "312211", "13112221", "1113213211"},
-			Prompt:   "The carrier is still open. Complete the next line.",
-			Hint:     "Listen to each line describe the one before it.",
+			Prompt:   "The carrier is still open.",
 		},
 		answerDigests: []string{"19cb6b814d04a42ee02f897d9a03d4e10705a398a4980c36756aab69bfb81a5f"},
-	},
-	{
-		transmission: Transmission{
-			Callsign: "TRANSMISSION 02",
-			Lines:    []string{"1113213211"},
-			Prompt:   "Reception confirmed. Continue two lines beyond this carrier.",
-			Hint:     "Your first response was one of them. Listen once more.",
-		},
-		answerDigests: []string{"ab68a8cff76c48cf61b941947920da1d0b427a55ac03e039b04b7d137566fb8d"},
-	},
-	{
-		transmission: Transmission{
-			Callsign: "TRANSMISSION 03",
-			Lines:    []string{"lambda = 1.303577269...", "audioactive decay"},
-			Prompt:   "The signal's eventual growth bears its listener's name. Identify him.",
-			Hint:     "A mathematician studied how these spoken elements decay.",
-		},
-		answerDigests: []string{
-			"8f025e2af756b13db77acfc8871bf6b6d39e0f6c838c53e36c7d3ff14a6b525b",
-			"94dafc6808612068bcf379b100aea36bb8e9d4685ed8fcc994e365949bac1962",
-			"eb63f8264e1ee499dceac707e379d24f8e05a9b6164cf99441fd6592ede494de",
-		},
 	},
 }
 

@@ -57,6 +57,7 @@ func TestDefaultUserSettingsKeepsTVDisplayOptionsDisabled(t *testing.T) {
 		"moveDetailsRatingsToMetadata":     settings.Display.MoveDetailsRatingsToMetadata,
 		"hideDetailsPoster":                settings.Display.HideDetailsPoster,
 		"hideTvDrawerRail":                 settings.Display.HideTVDrawerRail,
+		"simpleMode":                       settings.Display.SimpleMode,
 		"disableTvHomeCardDimming":         settings.Display.DisableTVHomeCardDimming,
 	}
 	for name, option := range options {

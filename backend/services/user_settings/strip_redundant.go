@@ -198,6 +198,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			MoveDetailsRatingsToMetadata:           models.BoolPtr(g.Display.MoveDetailsRatingsToMetadata),
 			HideDetailsPoster:                      models.BoolPtr(g.Display.HideDetailsPoster),
 			HideTVDrawerRail:                       models.BoolPtr(g.Display.HideTVDrawerRail),
+			SimpleMode:                             models.BoolPtr(g.Display.SimpleMode),
 			DisableTVHomeCardDimming:               models.BoolPtr(g.Display.DisableTVHomeCardDimming),
 			EnableAnimations:                       models.BoolPtr(g.Display.EnableAnimations),
 			EnableHeroArtPanning:                   models.BoolPtr(g.Display.EnableHeroArtPanning),
@@ -517,6 +518,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Display.HideTVDrawerRail == nil {
 		eff.Display.HideTVDrawerRail = models.BoolPtr(g.Display.HideTVDrawerRail)
+	}
+	if eff.Display.SimpleMode == nil {
+		eff.Display.SimpleMode = models.BoolPtr(g.Display.SimpleMode)
 	}
 	if eff.Display.DisableTVHomeCardDimming == nil {
 		eff.Display.DisableTVHomeCardDimming = models.BoolPtr(g.Display.DisableTVHomeCardDimming)
@@ -1002,6 +1006,10 @@ func stripDisplay(d *models.DisplaySettings, g config.DisplaySettings) bool {
 		d.HideTVDrawerRail = nil
 		changed = true
 	}
+	if d.SimpleMode != nil && *d.SimpleMode == g.SimpleMode {
+		d.SimpleMode = nil
+		changed = true
+	}
 	if d.DisableTVHomeCardDimming != nil && *d.DisableTVHomeCardDimming == g.DisableTVHomeCardDimming {
 		d.DisableTVHomeCardDimming = nil
 		changed = true
@@ -1389,6 +1397,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.HideTVDrawerRail != nil && eff.Display.HideTVDrawerRail != nil && *cs.HideTVDrawerRail == *eff.Display.HideTVDrawerRail {
 		cs.HideTVDrawerRail = nil
+		changed = true
+	}
+	if cs.SimpleMode != nil && eff.Display.SimpleMode != nil && *cs.SimpleMode == *eff.Display.SimpleMode {
+		cs.SimpleMode = nil
 		changed = true
 	}
 	if cs.DisableTVHomeCardDimming != nil && eff.Display.DisableTVHomeCardDimming != nil && *cs.DisableTVHomeCardDimming == *eff.Display.DisableTVHomeCardDimming {

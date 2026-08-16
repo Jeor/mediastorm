@@ -57,7 +57,7 @@ var userEditableFields = map[string]map[string]struct{}{
 		"includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists",
 		"includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "enableAnimations",
 		"enableHeroArtPanning", "enableHeroArtRotation", "hideContinueWatchingHeroMetadata",
-		"moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "disableTvHomeCardDimming", "bypassFilteringForAioStreamsOnly",
+		"moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "simpleMode", "disableTvHomeCardDimming", "bypassFilteringForAioStreamsOnly",
 		"disableMobileTopCarousel", "showSeriesBackdropForMissingEpisodeArt", "blurUnwatchedEpisodeThumbnails",
 		"blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews",
 		"blurUnwatchedEpisodeOverviewsIncludeCurrent", "appLanguage",
@@ -76,7 +76,7 @@ var deviceEditableFields = map[string]map[string]struct{}{
 	"animeFiltering":   userEditableFields["animeFiltering"],
 	"ranking":          fieldSet("newestReleaseFirst"),
 	"playback":         fieldSet("preferredPlayer", "preferredAudioLanguage", "preferredSubtitleLanguage", "allowedTrackLanguages", "preferredSubtitleMode", "pauseWhenAppInactive", "useLoadingScreen", "subtitleSize", "subtitleUseCropDetectPosition", "subtitleColor", "subtitleOpacity", "subtitleFont", "subtitleBold", "subtitleOutlineEnabled", "subtitleOutlineColor", "subtitleOutlineWeight", "subtitleBackgroundEnabled", "subtitleBackgroundColor", "subtitleBackgroundOpacity", "seekForwardSeconds", "seekBackwardSeconds", "forceAacTranscoding", "autoPlayTrailersTV", "rewindOnResumeFromPause", "rewindOnPlaybackStart", "disablePrequeue", "prerollMode", "prerollAssetId", "prerollMediaScope", "prerollSkipIfPrequeueReady", "ignoreDolbyVisionCompatibilityCheck", "streamMigrationEnabled", "creditsDetectionEnabled", "creditsAutoSkip", "matchFrameRate", "liveClosedCaptionExtraction", "maxResultsPerResolution"),
-	"display":          fieldSet("navigationTabVisibility", "includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists", "includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "bypassFilteringForAioStreamsOnly", "disableMobileTopCarousel", "hideContinueWatchingHeroMetadata", "moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "disableTvHomeCardDimming", "enableAnimations", "enableHeroArtPanning", "enableHeroArtRotation", "showSeriesBackdropForMissingEpisodeArt", "blurUnwatchedEpisodeThumbnails", "blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews", "blurUnwatchedEpisodeOverviewsIncludeCurrent"),
+	"display":          fieldSet("navigationTabVisibility", "includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists", "includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "bypassFilteringForAioStreamsOnly", "disableMobileTopCarousel", "hideContinueWatchingHeroMetadata", "moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "simpleMode", "disableTvHomeCardDimming", "enableAnimations", "enableHeroArtPanning", "enableHeroArtRotation", "showSeriesBackdropForMissingEpisodeArt", "blurUnwatchedEpisodeThumbnails", "blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews", "blurUnwatchedEpisodeOverviewsIncludeCurrent"),
 	"network":          nil,
 }
 

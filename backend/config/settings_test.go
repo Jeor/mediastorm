@@ -114,6 +114,14 @@ func TestDefaultSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsDisablesSimpleMode(t *testing.T) {
+	settings := DefaultSettings()
+
+	if settings.Display.SimpleMode {
+		t.Fatal("expected simple mode to default to disabled")
+	}
+}
+
 func TestDefaultSettingsEnablesStreamMigration(t *testing.T) {
 	settings := DefaultSettings()
 

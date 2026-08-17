@@ -1086,10 +1086,6 @@
     let webPlayerSubtitleRenderFrame = null;
     let webPlayerControlsHideTimer = null;
     let webPlayerMediaRecoverAttempts = 0;
-    let webPlayerStartupRecoveryGeneration = 0;
-    let webPlayerStartupMediaRecoverTimer = null;
-    let webPlayerStartupSeekRecoveryTimer = null;
-    let webPlayerZeroStartRecoverySource = '';
     const WEB_PLAYER_VOLUME_STORAGE_KEY = 'strmr.webPlayerVolume';
     const WEB_PLAYER_AUTO_SKIP_RECAP_STORAGE_KEY = 'strmr.webPlayerAutoSkipRecap.v1';
     const WEB_PLAYER_AUTO_SKIP_INTRO_STORAGE_KEY = 'strmr.webPlayerAutoSkipIntro.v1';
@@ -1534,13 +1530,20 @@
 
     async function loadEffectiveWebPlaybackSettings() {
       if (!activeProfileId || SHARE_MODE) return webPlayerPreferences;
-      const profile = await apiCall('/users/' + encodeURIComponent(activeProfileId) + '/settings').catch(() => ({}));
-      const base = profile?.playback || {};
-      let client = {};
-      if (CLIENT_ID) client = await apiCall('/clients/' + encodeURIComponent(CLIENT_ID) + '/settings?userId=' + encodeURIComponent(activeProfileId)).catch(() => ({}));
-      let content = {};
       const contentId = webContentPreferenceId();
-      if (contentId) content = await apiCall('/users/' + encodeURIComponent(activeProfileId) + '/preferences/content/' + encodeURIComponent(contentId)).catch(() => ({}));
+      // These three are independent of each other — only their merged result
+      // (below) depends on all three — so fetch them concurrently instead of
+      // one after another to cut startup latency.
+      const [profile, client, content] = await Promise.all([
+        apiCall('/users/' + encodeURIComponent(activeProfileId) + '/settings').catch(() => ({})),
+        CLIENT_ID
+          ? apiCall('/clients/' + encodeURIComponent(CLIENT_ID) + '/settings?userId=' + encodeURIComponent(activeProfileId)).catch(() => ({}))
+          : Promise.resolve({}),
+        contentId
+          ? apiCall('/users/' + encodeURIComponent(activeProfileId) + '/preferences/content/' + encodeURIComponent(contentId)).catch(() => ({}))
+          : Promise.resolve({}),
+      ]);
+      const base = profile?.playback || {};
       const pick = (contentValue, clientValue, baseValue, fallback) => contentValue !== undefined && contentValue !== '' ? contentValue : clientValue !== undefined && clientValue !== null ? clientValue : baseValue !== undefined && baseValue !== null ? baseValue : fallback;
       const legacyCredits = Boolean(base.creditsDetection);
       webPlayerPreferences = {
@@ -1949,7 +1952,6 @@
 
     function attachWebPlayer(video, playlistUrl) {
       if (!video || !playlistUrl) return;
-      clearWebPlayerStartupRecovery();
       stopSubtitleRenderLoop();
       webPlayerDebugLog('info', 'attach player', {
         hlsSessionId,
@@ -2079,7 +2081,6 @@
         installSubtitleTrack(video);
       }, { once: true });
       if (playbackMeta.isLive) startLiveStreamInfoTracking(video);
-      armWebPlayerStartupRecovery(video);
     }
 
     function parseWebFrameRate(value) {
@@ -2177,62 +2178,6 @@
         liveFrameCallbackId = video.requestVideoFrameCallback(sampleFrame);
       };
       liveFrameCallbackId = video.requestVideoFrameCallback(sampleFrame);
-    }
-
-    function clearWebPlayerStartupRecovery() {
-      webPlayerStartupRecoveryGeneration += 1;
-      if (webPlayerStartupMediaRecoverTimer) clearTimeout(webPlayerStartupMediaRecoverTimer);
-      if (webPlayerStartupSeekRecoveryTimer) clearTimeout(webPlayerStartupSeekRecoveryTimer);
-      webPlayerStartupMediaRecoverTimer = null;
-      webPlayerStartupSeekRecoveryTimer = null;
-    }
-
-    function webPlayerHasDecodedStartupFrame(video) {
-      return Boolean(video && (video.readyState >= 2 || (!video.paused && Number(video.currentTime) > 0.25)));
-    }
-
-    function armWebPlayerStartupRecovery(video) {
-      if (!video || !hlsInstance || !hlsSessionId || playbackMeta.isLive || Number(hlsPlaybackOffset) > 0.25) return;
-      const generation = webPlayerStartupRecoveryGeneration;
-      const attachedSessionId = hlsSessionId;
-      const attachedSource = String(sourcePath || hlsPlaylistUrl || '');
-      const clearIfReady = () => {
-        if (generation !== webPlayerStartupRecoveryGeneration || !webPlayerHasDecodedStartupFrame(video)) return;
-        clearWebPlayerStartupRecovery();
-      };
-      ['loadeddata', 'canplay', 'playing', 'timeupdate'].forEach((eventName) => video.addEventListener(eventName, clearIfReady, { once: true }));
-
-      webPlayerStartupMediaRecoverTimer = window.setTimeout(() => {
-        if (generation !== webPlayerStartupRecoveryGeneration || hlsSessionId !== attachedSessionId || webPlayerHasDecodedStartupFrame(video) || !hlsInstance) return;
-        webPlayerDebugLog('warn', 'recovering stalled zero-offset media attachment', {
-          hlsSessionId,
-          readyState: video.readyState,
-          networkState: video.networkState,
-          currentTime: Number(video.currentTime || 0),
-        });
-        try {
-          hlsInstance.recoverMediaError();
-          hlsInstance.startLoad(0);
-          attemptAutoplay(video);
-        } catch {}
-      }, 6000);
-
-      webPlayerStartupSeekRecoveryTimer = window.setTimeout(() => {
-        if (generation !== webPlayerStartupRecoveryGeneration || hlsSessionId !== attachedSessionId || webPlayerHasDecodedStartupFrame(video)) return;
-        if (attachedSource && webPlayerZeroStartRecoverySource === attachedSource) return;
-        webPlayerZeroStartRecoverySource = attachedSource;
-        webPlayerDebugLog('warn', 'restarting stalled zero-offset stream at keyframe', {
-          hlsSessionId,
-          recoveryOffset: 2,
-          readyState: video.readyState,
-          networkState: video.networkState,
-          currentTime: Number(video.currentTime || 0),
-        });
-        setStatus('Aligning stream start…');
-        seekWebPlayer(2).then((succeeded) => {
-          if (!succeeded) setStatus('Stream start stalled. Try seeking forward.', true);
-        }).catch((error) => setStatus('Stream start recovery failed: ' + (error?.message || String(error)), true));
-      }, 12000);
     }
 
     function attemptAutoplay(video) {
@@ -3970,7 +3915,6 @@
       webPlayerMetadataResolved = false;
       progressCompleted = false;
       lastKnownPositivePosition = 0;
-      webPlayerZeroStartRecoverySource = '';
       syncSubtitleOffset(0, 0);
       webPlayerDisplayedSeekTarget = null;
       webPlayerQueuedSeekTarget = null;
@@ -4322,7 +4266,6 @@
 
     function stopHlsSession(options = {}) {
       clearWebMigrationStallTimer();
-      clearWebPlayerStartupRecovery();
       stopLiveStreamInfoTracking();
       if (!options.skipProgress) {
         sendWebPlayerProgress({

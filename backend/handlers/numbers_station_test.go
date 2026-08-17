@@ -120,6 +120,8 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`lockNumbersStationScroll()`,
 		`addEventListener('close', () =>`,
 		`numbers-station-sender.jpg`,
+		`numbers-station-sender numbers-station-sender-static`,
+		`aria-label="Radio static"`,
 		`SIGNAL ACQUIRED`,
 		`The storm is closer than the forecast says.`,
 		`numbersStationImageStatic`,
@@ -137,7 +139,8 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`Just static. It sounds like rain.`,
 		`onclick="showNumbersStationPreviousMessage()">PREVIOUS MESSAGE</button>`,
 		`renderNumbersStation(numbersStationCompletedState, { showBroadcast: true })`,
-		`class="numbers-station-reward" type="button" onclick="closeNumbersStation()"`,
+		`options.showReward ?`,
+		`renderNumbersStation(payload, { showBroadcast: true, showReward: true })`,
 		`initializeNumbersStationSignal()`,
 		`markNumbersStationCompleted()`,
 	} {

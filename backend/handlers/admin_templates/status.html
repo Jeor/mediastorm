@@ -423,6 +423,14 @@ body.numbers-station-open {
     filter: saturate(0.78) contrast(1.12) brightness(0.88);
 }
 
+.numbers-station-sender-static {
+    background:
+        repeating-linear-gradient(0deg, rgba(220, 252, 231, 0.08) 0 1px, transparent 1px 3px),
+        repeating-radial-gradient(circle at 43% 57%, rgba(74, 222, 128, 0.2) 0 1px, rgba(2, 7, 5, 0.84) 1px 4px),
+        #020705;
+    background-size: 100% 4px, 8px 7px, auto;
+}
+
 .numbers-station-sender-glitch {
     opacity: 0;
     filter: saturate(1.7) contrast(1.55) hue-rotate(18deg);
@@ -3565,15 +3573,18 @@ body.numbers-station-open {
                 <div class="numbers-station-static-break numbers-station-silence-heading" aria-label="Radio silence">— RADIO SILENCE —</div>
                 <p class="numbers-station-silence">Just static. It sounds like rain.</p>
             `;
-            body.innerHTML = `
-                <h2 id="numbersStationCallsign" class="numbers-station-callsign">${options.showBroadcast ? 'SIGNAL ACQUIRED' : 'CARRIER PRESENT'}</h2>
+            const carrierVisual = options.showBroadcast ? `
                 <div class="numbers-station-sender">
                     <img class="numbers-station-sender-image" data-numbers-station-sender alt="Unknown radio operator">
                     <img class="numbers-station-sender-glitch" data-numbers-station-sender alt="" aria-hidden="true">
                 </div>
+            ` : '<div class="numbers-station-sender numbers-station-sender-static" role="img" aria-label="Radio static"></div>';
+            body.innerHTML = `
+                <h2 id="numbersStationCallsign" class="numbers-station-callsign">${options.showBroadcast ? 'SIGNAL ACQUIRED' : 'CARRIER PRESENT'}</h2>
+                ${carrierVisual}
                 ${transcript}
                 ${options.showBroadcast ? '' : '<button class="numbers-station-previous" type="button" onclick="showNumbersStationPreviousMessage()">PREVIOUS MESSAGE</button>'}
-                <button class="numbers-station-reward" type="button" onclick="closeNumbersStation()">${escapeNumbersStationText(state.reward)}</button>
+                ${options.showReward ? `<button class="numbers-station-reward" type="button" onclick="closeNumbersStation()">${escapeNumbersStationText(state.reward)}</button>` : ''}
             `;
             body.querySelectorAll('[data-numbers-station-sender]').forEach(image => {
                 image.src = numbersStationSenderURL;
@@ -3704,7 +3715,7 @@ body.numbers-station-open {
             }
             input.disabled = true;
             if (feedback) feedback.textContent = 'SIGNAL CONFIRMED';
-            window.setTimeout(() => renderNumbersStation(payload, { showBroadcast: true }), 650);
+            window.setTimeout(() => renderNumbersStation(payload, { showBroadcast: true, showReward: true }), 650);
         } catch (error) {
             if (feedback) feedback.textContent = 'NO CARRIER — CHECK CONNECTION';
         }

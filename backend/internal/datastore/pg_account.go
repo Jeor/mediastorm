@@ -24,7 +24,7 @@ func (r *pgAccountRepo) Get(ctx context.Context, id string) (*models.Account, er
 func (r *pgAccountRepo) GetByUsername(ctx context.Context, username string) (*models.Account, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, username, password_hash, is_master, max_streams, expires_at, created_at, updated_at
-		FROM accounts WHERE username = $1`, username)
+		FROM accounts WHERE LOWER(username) = LOWER($1)`, username)
 	return scanAccount(row)
 }
 

@@ -1,8 +1,11 @@
 package accounts
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +13,14 @@ import (
 
 	"novastream/models"
 )
+
+type stubAccountReader struct {
+	getByUsername func(context.Context, string) (*models.Account, error)
+}
+
+func (r stubAccountReader) GetByUsername(ctx context.Context, username string) (*models.Account, error) {
+	return r.getByUsername(ctx, username)
+}
 
 // setupTestService creates a new accounts service for testing with a temp directory.
 func setupTestService(t *testing.T) *Service {
@@ -220,6 +231,58 @@ func TestAuthenticate_CaseInsensitiveUsername(t *testing.T) {
 	account, err = svc.Authenticate("TESTUSER", "mypassword")
 	if err != nil {
 		t.Fatalf("Authenticate failed with uppercase: %v", err)
+	}
+}
+
+func TestAuthenticate_RefreshesPasswordChangedByAnotherProcess(t *testing.T) {
+	oldHash, err := bcrypt.GenerateFromPassword([]byte("old-password"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hash old password: %v", err)
+	}
+	newHash, err := bcrypt.GenerateFromPassword([]byte("new-password"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hash new password: %v", err)
+	}
+
+	account := models.Account{ID: models.MasterAccountID, Username: "B Gardens", PasswordHash: string(newHash), IsMaster: true}
+	svc := &Service{
+		accountReader: stubAccountReader{getByUsername: func(_ context.Context, username string) (*models.Account, error) {
+			if !strings.EqualFold(username, account.Username) {
+				return nil, nil
+			}
+			copy := account
+			return &copy, nil
+		}},
+		accounts: map[string]models.Account{
+			account.ID: {ID: account.ID, Username: account.Username, PasswordHash: string(oldHash), IsMaster: true},
+		},
+	}
+
+	if _, err := svc.Authenticate("b gardens", "new-password"); err != nil {
+		t.Fatalf("new externally-set password did not authenticate: %v", err)
+	}
+	if _, err := svc.Authenticate("B Gardens", "old-password"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("old cached password error = %v, want %v", err, ErrInvalidCredentials)
+	}
+}
+
+func TestAuthenticate_DatabaseLookupFailureDoesNotUseCachedCredentials(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("cached-password"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	dbErr := errors.New("database unavailable")
+	svc := &Service{
+		accountReader: stubAccountReader{getByUsername: func(context.Context, string) (*models.Account, error) {
+			return nil, dbErr
+		}},
+		accounts: map[string]models.Account{
+			models.MasterAccountID: {ID: models.MasterAccountID, Username: models.MasterAccountUsername, PasswordHash: string(hash), IsMaster: true},
+		},
+	}
+
+	if _, err := svc.Authenticate(models.MasterAccountUsername, "cached-password"); !errors.Is(err, dbErr) {
+		t.Fatalf("Authenticate error = %v, want database error", err)
 	}
 }
 

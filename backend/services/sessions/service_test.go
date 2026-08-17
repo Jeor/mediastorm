@@ -1,11 +1,21 @@
 package sessions
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"novastream/models"
 )
+
+type stubSessionReader struct {
+	get func(context.Context, string) (*models.Session, error)
+}
+
+func (r stubSessionReader) Get(ctx context.Context, token string) (*models.Session, error) {
+	return r.get(ctx, token)
+}
 
 // setupTestService creates a new sessions service for testing with a temp directory.
 func setupTestService(t *testing.T) *Service {
@@ -199,6 +209,75 @@ func TestValidate_InvalidToken(t *testing.T) {
 	_, err := svc.Validate("nonexistent-token")
 	if err != ErrSessionNotFound {
 		t.Errorf("expected ErrSessionNotFound, got %v", err)
+	}
+}
+
+func TestValidate_RejectsSessionRevokedByAnotherProcess(t *testing.T) {
+	cached := models.Session{Token: "externally-revoked-token", AccountID: models.MasterAccountID, ExpiresAt: time.Now().Add(time.Hour)}
+	svc := &Service{
+		sessionReader: stubSessionReader{get: func(context.Context, string) (*models.Session, error) {
+			return nil, nil
+		}},
+		sessions: map[string]models.Session{cached.Token: cached},
+	}
+
+	if _, err := svc.Validate(cached.Token); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("Validate error = %v, want %v", err, ErrSessionNotFound)
+	}
+	if _, ok := svc.sessions[cached.Token]; ok {
+		t.Fatal("externally revoked session remained in the local cache")
+	}
+}
+
+func TestValidate_AcceptsSessionCreatedByAnotherProcess(t *testing.T) {
+	external := models.Session{Token: "externally-created-token", AccountID: models.MasterAccountID, ExpiresAt: time.Now().Add(time.Hour)}
+	svc := &Service{
+		sessionReader: stubSessionReader{get: func(_ context.Context, token string) (*models.Session, error) {
+			if token != external.Token {
+				return nil, nil
+			}
+			copy := external
+			return &copy, nil
+		}},
+		sessions: make(map[string]models.Session),
+	}
+
+	validated, err := svc.Validate(external.Token)
+	if err != nil {
+		t.Fatalf("Validate failed: %v", err)
+	}
+	if validated.Token != external.Token {
+		t.Fatalf("validated token = %q, want %q", validated.Token, external.Token)
+	}
+}
+
+func TestValidate_DatabaseLookupFailureDoesNotUseCachedSession(t *testing.T) {
+	cached := models.Session{Token: "cached-token", AccountID: models.MasterAccountID, ExpiresAt: time.Now().Add(time.Hour)}
+	dbErr := errors.New("database unavailable")
+	svc := &Service{
+		sessionReader: stubSessionReader{get: func(context.Context, string) (*models.Session, error) {
+			return nil, dbErr
+		}},
+		sessions: map[string]models.Session{cached.Token: cached},
+	}
+
+	if _, err := svc.Validate(cached.Token); !errors.Is(err, dbErr) {
+		t.Fatalf("Validate error = %v, want database error", err)
+	}
+}
+
+func TestRefresh_RejectsSessionRevokedByAnotherProcess(t *testing.T) {
+	cached := models.Session{Token: "externally-revoked-refresh-token", AccountID: models.MasterAccountID, ExpiresAt: time.Now().Add(time.Hour)}
+	svc := &Service{
+		sessionReader: stubSessionReader{get: func(context.Context, string) (*models.Session, error) {
+			return nil, nil
+		}},
+		sessions:        map[string]models.Session{cached.Token: cached},
+		sessionDuration: DefaultSessionDuration,
+	}
+
+	if _, err := svc.Refresh(cached.Token); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("Refresh error = %v, want %v", err, ErrSessionNotFound)
 	}
 }
 

@@ -41,8 +41,13 @@ type Service struct {
 	mu              sync.RWMutex
 	path            string
 	store           *datastore.DataStore
+	sessionReader   sessionReader
 	sessions        map[string]models.Session
 	sessionDuration time.Duration
+}
+
+type sessionReader interface {
+	Get(context.Context, string) (*models.Session, error)
 }
 
 // useDB returns true when the service is backed by PostgreSQL.
@@ -56,6 +61,7 @@ func NewServiceWithStore(store *datastore.DataStore, defaultDuration time.Durati
 
 	svc := &Service{
 		store:           store,
+		sessionReader:   store.Sessions(),
 		sessions:        make(map[string]models.Session),
 		sessionDuration: defaultDuration,
 	}
@@ -173,9 +179,10 @@ func (s *Service) Validate(token string) (models.Session, error) {
 		return models.Session{}, ErrInvalidToken
 	}
 
-	s.mu.RLock()
-	session, ok := s.sessions[token]
-	s.mu.RUnlock()
+	session, ok, err := s.sessionForValidation(token)
+	if err != nil {
+		return models.Session{}, fmt.Errorf("load session for validation: %w", err)
+	}
 
 	if !ok {
 		return models.Session{}, ErrSessionNotFound
@@ -190,6 +197,32 @@ func (s *Service) Validate(token string) (models.Session, error) {
 	}
 
 	return session, nil
+}
+
+// sessionForValidation treats PostgreSQL as authoritative when configured.
+// Recovery and administrative revocation can happen in another process, so a
+// session present only in this process's startup cache must not remain valid.
+func (s *Service) sessionForValidation(token string) (models.Session, bool, error) {
+	if s.sessionReader != nil {
+		session, err := s.sessionReader.Get(context.Background(), token)
+		if err != nil {
+			return models.Session{}, false, err
+		}
+
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if session == nil {
+			delete(s.sessions, token)
+			return models.Session{}, false, nil
+		}
+		s.sessions[token] = *session
+		return *session, true, nil
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	session, ok := s.sessions[token]
+	return session, ok, nil
 }
 
 // Revoke invalidates a session by its token.
@@ -273,6 +306,9 @@ func (s *Service) GetSessionsForAccount(accountID string) []models.Session {
 func (s *Service) Refresh(token string) (models.Session, error) {
 	newToken, err := generateToken()
 	if err != nil {
+		return models.Session{}, err
+	}
+	if _, err := s.Validate(token); err != nil {
 		return models.Session{}, err
 	}
 	s.mu.Lock()

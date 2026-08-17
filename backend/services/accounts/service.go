@@ -44,9 +44,14 @@ type Service struct {
 	mu                      sync.RWMutex
 	path                    string
 	store                   *datastore.DataStore
+	accountReader           accountReader
 	accounts                map[string]models.Account
 	initialMasterPassword   string
 	bootstrapCredentialPath string
+}
+
+type accountReader interface {
+	GetByUsername(context.Context, string) (*models.Account, error)
 }
 
 // InitialMasterPassword returns the bootstrap password only for the process
@@ -72,8 +77,9 @@ func (s *Service) useDB() bool { return s.store != nil }
 // NewServiceWithStore creates an accounts service backed by PostgreSQL.
 func NewServiceWithStore(store *datastore.DataStore) (*Service, error) {
 	svc := &Service{
-		store:    store,
-		accounts: make(map[string]models.Account),
+		store:         store,
+		accountReader: store.Accounts(),
+		accounts:      make(map[string]models.Account),
 	}
 	if err := svc.load(); err != nil {
 		return nil, err
@@ -269,19 +275,9 @@ func (s *Service) Authenticate(username, password string) (models.Account, error
 		return models.Account{}, ErrInvalidCredentials
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	// Find account by username (case-insensitive)
-	lowerUsername := strings.ToLower(username)
-	var account models.Account
-	found := false
-	for _, a := range s.accounts {
-		if strings.ToLower(a.Username) == lowerUsername {
-			account = a
-			found = true
-			break
-		}
+	account, found, err := s.accountForAuthentication(username)
+	if err != nil {
+		return models.Account{}, fmt.Errorf("load account for authentication: %w", err)
 	}
 
 	if !found {
@@ -301,6 +297,41 @@ func (s *Service) Authenticate(username, password string) (models.Account, error
 	}
 
 	return account, nil
+}
+
+// accountForAuthentication treats PostgreSQL as authoritative when configured.
+// Account recovery runs in a separate process, so the long-running server's
+// startup cache may otherwise retain the previous password hash indefinitely.
+func (s *Service) accountForAuthentication(username string) (models.Account, bool, error) {
+	if s.accountReader != nil {
+		account, err := s.accountReader.GetByUsername(context.Background(), username)
+		if err != nil {
+			return models.Account{}, false, err
+		}
+
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if account == nil {
+			// Remove a stale cached account if it was renamed or deleted externally.
+			for id, cached := range s.accounts {
+				if strings.EqualFold(cached.Username, username) {
+					delete(s.accounts, id)
+				}
+			}
+			return models.Account{}, false, nil
+		}
+		s.accounts[account.ID] = *account
+		return *account, true, nil
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, account := range s.accounts {
+		if strings.EqualFold(account.Username, username) {
+			return account, true, nil
+		}
+	}
+	return models.Account{}, false, nil
 }
 
 // Rename changes the username for an account.

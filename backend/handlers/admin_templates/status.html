@@ -496,6 +496,25 @@ body.numbers-station-open {
     cursor: pointer;
 }
 
+.numbers-station-previous {
+    display: block;
+    margin: 0.85rem auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #86efac;
+    font: 700 0.67rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    opacity: 0.78;
+}
+
+.numbers-station-previous:hover,
+.numbers-station-previous:focus-visible {
+    opacity: 1;
+    text-shadow: 0 0 0.55rem rgba(134, 239, 172, 0.68);
+}
+
 .numbers-station-silence-heading {
     margin: 0.75rem 0 0;
     text-align: center;
@@ -3517,6 +3536,7 @@ body.numbers-station-open {
     const numbersStationSenderURL = {{json .ServerBasePath}} + '/api/static/numbers-station-sender.jpg';
     let numbersStationAnswerTimer = null;
     let numbersStationAnswerAttempt = 0;
+    let numbersStationCompletedState = null;
 
     function markNumbersStationCompleted() {
         const signal = document.getElementById('numbersStationSignal');
@@ -3530,6 +3550,7 @@ body.numbers-station-open {
         const body = document.getElementById('numbersStationBody');
         if (!body) return;
         if (state.completed) {
+            numbersStationCompletedState = state;
             markNumbersStationCompleted();
             const transcript = options.showBroadcast ? `
                 <div class="numbers-station-transcript">
@@ -3551,6 +3572,7 @@ body.numbers-station-open {
                     <img class="numbers-station-sender-glitch" data-numbers-station-sender alt="" aria-hidden="true">
                 </div>
                 ${transcript}
+                ${options.showBroadcast ? '' : '<button class="numbers-station-previous" type="button" onclick="showNumbersStationPreviousMessage()">PREVIOUS MESSAGE</button>'}
                 <button class="numbers-station-reward" type="button" onclick="closeNumbersStation()">${escapeNumbersStationText(state.reward)}</button>
             `;
             body.querySelectorAll('[data-numbers-station-sender]').forEach(image => {
@@ -3574,6 +3596,12 @@ body.numbers-station-open {
             <p id="numbersStationFeedback" class="numbers-station-feedback" aria-live="polite"></p>
         `;
         document.getElementById('numbersStationAnswer')?.focus();
+    }
+
+    function showNumbersStationPreviousMessage() {
+        if (numbersStationCompletedState) {
+            renderNumbersStation(numbersStationCompletedState, { showBroadcast: true });
+        }
     }
 
     async function openNumbersStation() {

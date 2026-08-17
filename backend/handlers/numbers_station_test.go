@@ -135,6 +135,8 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`class="numbers-station-static-break numbers-station-silence-heading"`,
 		`— RADIO SILENCE —`,
 		`Just static. It sounds like rain.`,
+		`onclick="showNumbersStationPreviousMessage()">PREVIOUS MESSAGE</button>`,
+		`renderNumbersStation(numbersStationCompletedState, { showBroadcast: true })`,
 		`class="numbers-station-reward" type="button" onclick="closeNumbersStation()"`,
 		`initializeNumbersStationSignal()`,
 		`markNumbersStationCompleted()`,

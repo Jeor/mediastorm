@@ -85,7 +85,7 @@ func (ca *ConfigAdapter) GetConfig() *AltMountConfig {
 				QueueProcessingIntervalSeconds: 1,
 				RarMaxWorkers:                  40,
 				RarMaxCacheSizeMB:              128,
-				RarEnableMemoryPreload:         true,
+				RarEnableMemoryPreload:         false,
 				RarMaxMemoryGB:                 8,
 			},
 		}

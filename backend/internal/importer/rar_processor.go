@@ -65,8 +65,8 @@ func NewRarProcessor(poolManager pool.Manager, maxWorkers int, maxCacheSizeMB in
 		poolManager:         poolManager,
 		maxWorkers:          maxWorkers,
 		maxCacheSizeMB:      maxCacheSizeMB,
-		enableMemoryPreload: true, // Enable by default
-		maxMemoryGB:         8,    // Default 8GB limit
+		enableMemoryPreload: false,
+		maxMemoryGB:         8, // Default 8GB limit
 	}
 }
 
@@ -139,21 +139,10 @@ func (rh *rarProcessor) AnalyzeRarContentFromNzb(ctx context.Context, rarFiles [
 		"main_file", mainRarFile,
 		"total_parts", len(sortFiles),
 		"rar_files", len(rarFiles),
-		"memory_preload_enabled", rh.enableMemoryPreload)
+		"access_mode", "bounded-range")
 
-	// Try memory preloading approach first if enabled and feasible
-	if rh.enableMemoryPreload && rh.shouldUseMemoryPreload(sortFiles) {
-		rarContents, err := rh.analyzeRarWithMemoryPreload(ctx, cp, sortFiles, mainRarFile)
-		if err == nil {
-			return rarContents, nil
-		}
-
-		// If memory preload fails, log the error and fall back to streaming
-		rh.log.Warn("Memory preload approach failed, falling back to streaming",
-			"error", err)
-	}
-
-	// Fall back to original streaming approach
+	// Header indexing does not require archive-sized resident data. Always use
+	// the seekable Usenet filesystem so large RAR sets cannot exhaust the host.
 	return rh.analyzeRarWithStreaming(ctx, cp, sortFiles, mainRarFile)
 }
 

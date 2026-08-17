@@ -1,10 +1,9 @@
 package importer
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
-	"io"
 	"log/slog"
 	"path/filepath"
 	"strings"
@@ -41,6 +40,8 @@ type sevenZipContent struct {
 	Filename     string                `json:"filename"`
 	Size         int64                 `json:"size"`
 	Segments     []*metapb.SegmentData `json:"segments"`               // Segment data for this file
+	AesKey       []byte                `json:"-"`                      // Derived 7z AES key; never persist the archive password
+	AesIV        []byte                `json:"-"`                      // Per-file AES-CBC IV
 	IsDirectory  bool                  `json:"is_directory,omitempty"` // Indicates if this is a directory
 }
 
@@ -50,32 +51,29 @@ type sevenZipProcessor struct {
 	poolManager    pool.Manager
 	maxWorkers     int
 	maxCacheSizeMB int
-	// Memory preloading configuration
-	enableMemoryPreload bool
-	maxMemoryGB         int
 }
 
 // NewSevenZipProcessor creates a new 7z processor
 func NewSevenZipProcessor(poolManager pool.Manager, maxWorkers int, maxCacheSizeMB int) SevenZipProcessor {
 	return &sevenZipProcessor{
-		log:                 slog.Default().With("component", "7z-processor"),
-		poolManager:         poolManager,
-		maxWorkers:          maxWorkers,
-		maxCacheSizeMB:      maxCacheSizeMB,
-		enableMemoryPreload: true, // Enable by default
-		maxMemoryGB:         8,    // Default 8GB limit
+		log:            slog.Default().With("component", "7z-processor"),
+		poolManager:    poolManager,
+		maxWorkers:     maxWorkers,
+		maxCacheSizeMB: maxCacheSizeMB,
 	}
 }
 
 // NewSevenZipProcessorWithConfig creates a new 7z processor with memory preloading configuration
 func NewSevenZipProcessorWithConfig(poolManager pool.Manager, maxWorkers int, maxCacheSizeMB int, enableMemoryPreload bool, maxMemoryGB int) SevenZipProcessor {
+	// 7z analysis is always range-backed. Keep these legacy arguments for
+	// configuration compatibility, but never use them to preload an archive.
+	_ = enableMemoryPreload
+	_ = maxMemoryGB
 	return &sevenZipProcessor{
-		log:                 slog.Default().With("component", "7z-processor"),
-		poolManager:         poolManager,
-		maxWorkers:          maxWorkers,
-		maxCacheSizeMB:      maxCacheSizeMB,
-		enableMemoryPreload: enableMemoryPreload,
-		maxMemoryGB:         maxMemoryGB,
+		log:            slog.Default().With("component", "7z-processor"),
+		poolManager:    poolManager,
+		maxWorkers:     maxWorkers,
+		maxCacheSizeMB: maxCacheSizeMB,
 	}
 }
 
@@ -86,7 +84,7 @@ func (sp *sevenZipProcessor) CreateFileMetadataFrom7zContent(
 ) *metapb.FileMetadata {
 	now := time.Now().Unix()
 
-	return &metapb.FileMetadata{
+	meta := &metapb.FileMetadata{
 		FileSize:      content.Size,
 		SourceNzbPath: sourceNzbPath,
 		Status:        metapb.FileStatus_FILE_STATUS_HEALTHY,
@@ -94,6 +92,12 @@ func (sp *sevenZipProcessor) CreateFileMetadataFrom7zContent(
 		ModifiedAt:    now,
 		SegmentData:   content.Segments,
 	}
+	if len(content.AesKey) > 0 {
+		meta.Encryption = metapb.Encryption_HEADERS
+		meta.Password = base64.StdEncoding.EncodeToString(content.AesKey)
+		meta.Salt = base64.StdEncoding.EncodeToString(content.AesIV)
+	}
+	return meta
 }
 
 // Analyze7zContentFromNzb analyzes a 7z archive directly from NZB data without downloading
@@ -131,7 +135,7 @@ func (sp *sevenZipProcessor) Analyze7zContentFromNzb(ctx context.Context, szFile
 		"main_file", main7zFile,
 		"total_parts", len(sortFiles),
 		"sz_files", len(szFiles),
-		"memory_preload_enabled", sp.enableMemoryPreload)
+		"access_mode", "bounded-range")
 
 	// Calculate total size
 	var totalSize int64
@@ -139,20 +143,8 @@ func (sp *sevenZipProcessor) Analyze7zContentFromNzb(ctx context.Context, szFile
 		totalSize += f.Size
 	}
 
-	// For 7z, we need to read the headers which are typically at the end of the archive
-	// We'll use memory preloading for small archives and streaming for large ones
-	if sp.enableMemoryPreload && sp.shouldUseMemoryPreload(sortFiles) {
-		contents, err := sp.analyze7zWithMemoryPreload(ctx, cp, sortFiles, main7zFile, totalSize)
-		if err == nil {
-			return contents, nil
-		}
-
-		// If memory preload fails, log and fall back to streaming
-		sp.log.Warn("Memory preload approach failed, falling back to streaming",
-			"error", err)
-	}
-
-	// Fall back to streaming approach (but this requires reading more data)
+	// 7z stores the location of its file table in the signature header. Analyze it
+	// through bounded ReaderAt requests instead of downloading the media payload.
 	return sp.analyze7zWithStreaming(ctx, cp, sortFiles, main7zFile, totalSize)
 }
 
@@ -184,216 +176,42 @@ func (sp *sevenZipProcessor) Analyze7zContentFromNzbProgressive(ctx context.Cont
 	return result, nil
 }
 
-// shouldUseMemoryPreload determines if memory preloading should be used based on archive size
-func (sp *sevenZipProcessor) shouldUseMemoryPreload(szFiles []ParsedFile) bool {
-	// Calculate total size of all 7z parts
-	var totalSize int64
-	for _, file := range szFiles {
-		totalSize += file.Size
-	}
-
-	// Convert to GB
-	totalSizeGB := totalSize / (1024 * 1024 * 1024)
-
-	// Use memory preload if total size is within our memory limit
-	shouldUse := totalSizeGB <= int64(sp.maxMemoryGB)
-
-	sp.log.Debug("Memory preload decision",
-		"total_size_gb", totalSizeGB,
-		"max_memory_gb", sp.maxMemoryGB,
-		"should_use_memory_preload", shouldUse)
-
-	return shouldUse
-}
-
-// analyze7zWithMemoryPreload analyzes 7z archive by downloading to memory first
-func (sp *sevenZipProcessor) analyze7zWithMemoryPreload(ctx context.Context, cp nntppool.UsenetConnectionPool, sortFiles []ParsedFile, main7zFile string, totalSize int64) ([]sevenZipContent, error) {
-	sp.log.Info("Using memory preloading approach for 7z analysis")
-
-	// Phase 1: Download all 7z parts to memory
-	downloader := NewParallelRarDownloader(cp, sp.maxWorkers, sp.maxCacheSizeMB)
-	memoryFiles, err := downloader.DownloadRarPartsToMemory(ctx, sortFiles)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download 7z parts to memory: %w", err)
-	}
-
-	// Phase 2: Concatenate all parts into a single reader
-	reader, size := sp.createMultiPartReader(memoryFiles, sortFiles)
-
-	// Phase 3: Parse 7z headers
-	analysisStart := time.Now()
-	archiveInfo, err := parse7zHeaders(reader, size)
-	if err != nil {
-		return nil, err
-	}
-
-	analysisDuration := time.Since(analysisStart)
-
-	sp.log.Info("Successfully analyzed 7z archive from memory",
-		"main_file", main7zFile,
-		"files_found", len(archiveInfo.Files),
-		"analysis_duration", analysisDuration,
-		"is_uncompressed", archiveInfo.IsUncompressed)
-
-	// Phase 4: Convert to sevenZipContent with segment mapping
-	return sp.convertFilesToContent(archiveInfo.Files, sortFiles)
-}
-
 // analyze7zWithStreaming analyzes 7z archive by streaming from usenet
 func (sp *sevenZipProcessor) analyze7zWithStreaming(ctx context.Context, cp nntppool.UsenetConnectionPool, sortFiles []ParsedFile, main7zFile string, totalSize int64) ([]sevenZipContent, error) {
-	sp.log.Info("Using streaming approach for 7z analysis")
+	sp.log.Info("Using bounded range approach for 7z analysis")
 
-	// Create Usenet filesystem for 7z access
-	ufs := NewUsenetFileSystem(ctx, cp, sortFiles, sp.maxWorkers, sp.maxCacheSizeMB)
-
-	// For 7z, we need to create a virtual multi-part file reader
-	// The 7z signature header is at the start, but the file table is at the end
-	reader, size, err := sp.createUsenetMultiPartReader(ufs, sortFiles, main7zFile)
+	reader, size, err := sp.createUsenetMultiPartReader(ctx, cp, sortFiles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-part reader: %w", err)
 	}
 
 	// Parse 7z headers
 	analysisStart := time.Now()
-	archiveInfo, err := parse7zHeaders(reader, size)
+	archiveInfo, err := parse7zHeaders(reader, size, archivePassword(sortFiles))
 	if err != nil {
 		return nil, err
 	}
 
 	analysisDuration := time.Since(analysisStart)
 
-	sp.log.Info("Successfully analyzed 7z archive via streaming",
+	sp.log.Info("Successfully analyzed 7z archive via bounded ranges",
 		"main_file", main7zFile,
 		"files_found", len(archiveInfo.Files),
 		"analysis_duration", analysisDuration,
-		"is_uncompressed", archiveInfo.IsUncompressed)
+		"is_uncompressed", archiveInfo.IsUncompressed,
+		"range_cache_bytes", reader.cacheCapacityBytes())
 
 	// Convert to sevenZipContent with segment mapping
 	return sp.convertFilesToContent(archiveInfo.Files, sortFiles)
 }
 
-// createMultiPartReader creates a reader from in-memory files
-func (sp *sevenZipProcessor) createMultiPartReader(memoryFiles map[string][]byte, sortFiles []ParsedFile) (io.ReaderAt, int64) {
-	// Create a concatenated byte slice of all parts in order
-	var totalSize int64
-	for _, f := range sortFiles {
-		totalSize += f.Size
-	}
-
-	combined := make([]byte, 0, totalSize)
-	for _, f := range sortFiles {
-		if data, ok := memoryFiles[f.Filename]; ok {
-			combined = append(combined, data...)
-		}
-	}
-
-	return bytes.NewReader(combined), int64(len(combined))
-}
-
 // createUsenetMultiPartReader creates a reader that can read across multiple 7z parts from usenet
-func (sp *sevenZipProcessor) createUsenetMultiPartReader(ufs *UsenetFileSystem, sortFiles []ParsedFile, main7zFile string) (io.ReaderAt, int64, error) {
-	// For streaming, we create a virtual reader that maps reads across all parts
-	// This is similar to how the library handles .7z.001 multipart files
-
-	// Calculate total size and part offsets
-	var totalSize int64
-	partOffsets := make([]int64, len(sortFiles))
-	for i, f := range sortFiles {
-		partOffsets[i] = totalSize
-		totalSize += f.Size
+func (sp *sevenZipProcessor) createUsenetMultiPartReader(ctx context.Context, cp nntppool.UsenetConnectionPool, sortFiles []ParsedFile) (*multiPart7zReader, int64, error) {
+	reader, err := newMultiPart7zReader(ctx, cp, sortFiles, sp.maxWorkers, sp.maxCacheSizeMB)
+	if err != nil {
+		return nil, 0, err
 	}
-
-	reader := &multiPart7zReader{
-		ufs:         ufs,
-		sortFiles:   sortFiles,
-		partOffsets: partOffsets,
-		totalSize:   totalSize,
-	}
-
-	return reader, totalSize, nil
-}
-
-// multiPart7zReader implements io.ReaderAt for multi-part 7z archives
-type multiPart7zReader struct {
-	ufs         *UsenetFileSystem
-	sortFiles   []ParsedFile
-	partOffsets []int64 // Starting offset of each part in the combined file
-	totalSize   int64
-}
-
-// ReadAt implements io.ReaderAt for multi-part 7z files
-func (r *multiPart7zReader) ReadAt(p []byte, off int64) (n int, err error) {
-	if off >= r.totalSize {
-		return 0, io.EOF
-	}
-
-	// Find which part(s) this read spans
-	remaining := len(p)
-	totalRead := 0
-	currentOff := off
-
-	for remaining > 0 && currentOff < r.totalSize {
-		// Find the part that contains currentOff
-		partIdx := r.findPartForOffset(currentOff)
-		if partIdx < 0 || partIdx >= len(r.sortFiles) {
-			break
-		}
-
-		part := r.sortFiles[partIdx]
-		partStart := r.partOffsets[partIdx]
-		partEnd := partStart + part.Size
-
-		// Calculate how much we can read from this part
-		offsetInPart := currentOff - partStart
-		maxFromPart := partEnd - currentOff
-		toRead := int64(remaining)
-		if toRead > maxFromPart {
-			toRead = maxFromPart
-		}
-
-		// Open the file from the filesystem
-		f, err := r.ufs.Open(part.Filename)
-		if err != nil {
-			return totalRead, fmt.Errorf("failed to open part %s: %w", part.Filename, err)
-		}
-
-		// Seek to the offset within the part
-		if seeker, ok := f.(io.Seeker); ok {
-			_, err = seeker.Seek(offsetInPart, io.SeekStart)
-			if err != nil {
-				f.Close()
-				return totalRead, fmt.Errorf("failed to seek in part %s: %w", part.Filename, err)
-			}
-		}
-
-		// Read from the part
-		nr, err := io.ReadFull(f, p[totalRead:totalRead+int(toRead)])
-		f.Close()
-
-		totalRead += nr
-		currentOff += int64(nr)
-		remaining -= nr
-
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-			return totalRead, err
-		}
-	}
-
-	if totalRead == 0 && remaining > 0 {
-		return 0, io.EOF
-	}
-
-	return totalRead, nil
-}
-
-// findPartForOffset returns the index of the part containing the given offset
-func (r *multiPart7zReader) findPartForOffset(off int64) int {
-	for i := len(r.partOffsets) - 1; i >= 0; i-- {
-		if off >= r.partOffsets[i] {
-			return i
-		}
-	}
-	return 0
+	return reader, reader.totalSize, nil
 }
 
 // szPartInfo holds information about a 7z archive part for segment mapping
@@ -435,7 +253,11 @@ func (sp *sevenZipProcessor) convertFilesToContent(files []sevenZipFileEntry, so
 		}
 
 		// Map the file's byte range to segments
-		segments, err := sp.mapFileToSegments(entry.PackedOffset, entry.UncompressedSize, parts)
+		packedSize := entry.PackedSize
+		if packedSize <= 0 {
+			packedSize = entry.UncompressedSize
+		}
+		segments, err := sp.mapFileToSegments(entry.PackedOffset, packedSize, parts)
 		if err != nil {
 			sp.log.Warn("Failed to map 7z file to segments",
 				"file", entry.Name,
@@ -450,6 +272,8 @@ func (sp *sevenZipProcessor) convertFilesToContent(files []sevenZipFileEntry, so
 			Filename:     filepath.Base(entry.Name),
 			Size:         entry.UncompressedSize,
 			Segments:     segments,
+			AesKey:       append([]byte(nil), entry.AesKey...),
+			AesIV:        append([]byte(nil), entry.AesIV...),
 			IsDirectory:  false,
 		}
 		contents = append(contents, content)

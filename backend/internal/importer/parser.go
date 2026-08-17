@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,6 +22,8 @@ import (
 	metapb "novastream/internal/nzb/metadata/proto"
 	"novastream/internal/pool"
 )
+
+const maxConcurrentNZBFileParsers = 4
 
 // NzbType represents the type of NZB content
 type NzbType string
@@ -263,7 +264,10 @@ func (p *Parser) ParseFileWithContext(ctx context.Context, r io.Reader, nzbPath 
 		err        error
 	}
 
-	concPool := concpool.NewWithResults[fileResult]().WithMaxGoroutines(runtime.NumCPU())
+	// Each file parser opens NNTP body readers to inspect the first and final
+	// yEnc headers. Bounding this independently of host CPU count prevents large,
+	// obfuscated multipart releases from multiplying connection buffers in RAM.
+	concPool := concpool.NewWithResults[fileResult]().WithMaxGoroutines(maxConcurrentNZBFileParsers)
 
 	// Process files in parallel using conc pool
 	for _, file := range validFiles {

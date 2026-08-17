@@ -1,6 +1,10 @@
 package importer
 
-import "testing"
+import (
+	"testing"
+
+	"novastream/config"
+)
 
 func TestIsContentVideoPath(t *testing.T) {
 	proc := &Processor{}
@@ -67,5 +71,30 @@ func TestArchiveEarlyPlaybackSkipsSampleBeforeMain(t *testing.T) {
 
 	if want := archiveEntries[1]; selected != want {
 		t.Fatalf("selected %q, want main content %q", selected, want)
+	}
+}
+
+func TestEnsureArchiveProcessorConfigRefreshesBothProcessors(t *testing.T) {
+	cfg := &config.AltMountConfig{Import: config.ImportConfig{
+		RarMaxWorkers:          2,
+		RarMaxCacheSizeMB:      8,
+		RarEnableMemoryPreload: false,
+		RarMaxMemoryGB:         1,
+	}}
+	proc := NewProcessor(nil, nil, func() *config.AltMountConfig { return cfg })
+
+	cfg.Import.RarMaxWorkers = 3
+	cfg.Import.RarMaxCacheSizeMB = 16
+	cfg.Import.RarEnableMemoryPreload = true
+	cfg.Import.RarMaxMemoryGB = 2
+	proc.ensureRarProcessorConfig()
+
+	rp := proc.rarProcessor.(*rarProcessor)
+	if rp.maxWorkers != 3 || rp.maxCacheSizeMB != 16 || !rp.enableMemoryPreload || rp.maxMemoryGB != 2 {
+		t.Fatalf("RAR processor was not refreshed: %#v", rp)
+	}
+	sp := proc.sevenZipProcessor.(*sevenZipProcessor)
+	if sp.maxWorkers != 3 || sp.maxCacheSizeMB != 16 {
+		t.Fatalf("7z processor was not refreshed: %#v", sp)
 	}
 }

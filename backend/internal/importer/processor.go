@@ -29,6 +29,8 @@ type Processor struct {
 	log               *slog.Logger
 	rarMaxWorkers     int
 	rarMaxCacheSizeMB int
+	rarMemoryPreload  bool
+	rarMaxMemoryGB    int
 	rarConfigMu       sync.RWMutex
 
 	// Pre-compiled regex patterns for RAR file sorting
@@ -41,7 +43,7 @@ type Processor struct {
 func NewProcessor(metadataService *metadata.MetadataService, poolManager pool.Manager, configGetter config.ConfigGetter) *Processor {
 	maxWorkers := 40
 	maxCacheSizeMB := 128
-	enableMemoryPreload := true
+	enableMemoryPreload := false
 	maxMemoryGB := 8
 
 	if configGetter != nil {
@@ -67,6 +69,8 @@ func NewProcessor(metadataService *metadata.MetadataService, poolManager pool.Ma
 		configGetter:      configGetter,
 		rarMaxWorkers:     maxWorkers,
 		rarMaxCacheSizeMB: maxCacheSizeMB,
+		rarMemoryPreload:  enableMemoryPreload,
+		rarMaxMemoryGB:    maxMemoryGB,
 		log:               slog.Default().With("component", "nzb-processor"),
 
 		// Initialize pre-compiled regex patterns for RAR file sorting
@@ -119,23 +123,33 @@ func (proc *Processor) ensureRarProcessorConfig() {
 	proc.rarConfigMu.RLock()
 	currentWorkers := proc.rarMaxWorkers
 	currentCache := proc.rarMaxCacheSizeMB
+	currentMemoryPreload := proc.rarMemoryPreload
+	currentMaxMemoryGB := proc.rarMaxMemoryGB
 	proc.rarConfigMu.RUnlock()
 
-	// Check if we need to update the RAR processor
-	needsUpdate := desiredWorkers != currentWorkers || desiredCache != currentCache
+	needsUpdate := desiredWorkers != currentWorkers ||
+		desiredCache != currentCache ||
+		desiredMemoryPreload != currentMemoryPreload ||
+		desiredMaxMemoryGB != currentMaxMemoryGB
 
 	if needsUpdate {
 		proc.rarConfigMu.Lock()
 		defer proc.rarConfigMu.Unlock()
 
 		// Re-check inside the lock in case another goroutine already updated.
-		if desiredWorkers == proc.rarMaxWorkers && desiredCache == proc.rarMaxCacheSizeMB {
+		if desiredWorkers == proc.rarMaxWorkers &&
+			desiredCache == proc.rarMaxCacheSizeMB &&
+			desiredMemoryPreload == proc.rarMemoryPreload &&
+			desiredMaxMemoryGB == proc.rarMaxMemoryGB {
 			return
 		}
 
 		proc.rarProcessor = NewRarProcessorWithConfig(proc.poolManager, desiredWorkers, desiredCache, desiredMemoryPreload, desiredMaxMemoryGB)
+		proc.sevenZipProcessor = NewSevenZipProcessorWithConfig(proc.poolManager, desiredWorkers, desiredCache, desiredMemoryPreload, desiredMaxMemoryGB)
 		proc.rarMaxWorkers = desiredWorkers
 		proc.rarMaxCacheSizeMB = desiredCache
+		proc.rarMemoryPreload = desiredMemoryPreload
+		proc.rarMaxMemoryGB = desiredMaxMemoryGB
 	}
 }
 

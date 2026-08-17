@@ -2,9 +2,13 @@ package importer
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
+	"unicode/utf16"
 
 	"github.com/bodgit/sevenzip"
 )
@@ -13,7 +17,10 @@ import (
 type sevenZipFileEntry struct {
 	Name             string
 	UncompressedSize int64
+	PackedSize       int64 // Ciphertext size for AES, otherwise equal to uncompressed size
 	PackedOffset     int64 // Absolute byte offset in the archive where this file's data starts
+	AesKey           []byte
+	AesIV            []byte
 	IsDirectory      bool
 	FolderIndex      int
 }
@@ -43,9 +50,10 @@ var copyMethodID = []byte{0x00}
 // parse7zHeaders parses a 7z archive and extracts file entries with byte offsets.
 // This uses the bodgit/sevenzip library with reflection to access internal fields.
 // Returns an error if the archive uses compression (only store/Copy mode is supported).
-func parse7zHeaders(r io.ReaderAt, size int64) (*sevenZipArchiveInfo, error) {
-	// Open the archive using bodgit/sevenzip
-	reader, err := sevenzip.NewReader(r, size)
+func parse7zHeaders(r io.ReaderAt, size int64, password string) (*sevenZipArchiveInfo, error) {
+	// NewReaderWithPassword also handles archives whose next-header stream is
+	// encrypted. An empty password is equivalent to the ordinary reader path.
+	reader, err := sevenzip.NewReaderWithPassword(r, size, password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open 7z archive: %w", err)
 	}
@@ -71,7 +79,9 @@ func parse7zHeaders(r io.ReaderAt, size int64) (*sevenZipArchiveInfo, error) {
 		return nil, fmt.Errorf("failed to access Reader.si field via reflection")
 	}
 
-	// Check if the archive uses only Copy (uncompressed) method
+	// Check if the archive uses only Copy and optional AES. AES changes the bytes
+	// on Usenet but does not compress them, so it remains random-accessible at
+	// cipher block boundaries once the key and IV are derived.
 	isUncompressed, compressionError := check7zCompressionMethod(siField)
 	if compressionError != "" {
 		info.IsUncompressed = false
@@ -79,6 +89,8 @@ func parse7zHeaders(r io.ReaderAt, size int64) (*sevenZipArchiveInfo, error) {
 		return info, Err7zCompressed
 	}
 	info.IsUncompressed = isUncompressed
+
+	folderCrypto := make(map[int]*sevenZipAESInfo)
 
 	// Process each file
 	for _, file := range reader.File {
@@ -111,14 +123,41 @@ func parse7zHeaders(r io.ReaderAt, size int64) (*sevenZipArchiveInfo, error) {
 			return nil, fmt.Errorf("failed to calculate folder offset: %w", err)
 		}
 
-		// For uncompressed archives, the absolute byte offset is:
-		// Reader.start + folderOffset + file.offset
+		cryptoInfo, ok := folderCrypto[folderIndex]
+		if !ok {
+			cryptoInfo, err = get7zFolderAESInfo(siField, folderIndex, password)
+			if err != nil {
+				return nil, err
+			}
+			folderCrypto[folderIndex] = cryptoInfo
+		}
+
 		absoluteOffset := readerStart + folderOffset + fileOffset
+		packedSize := int64(file.UncompressedSize)
+		var key, iv []byte
+		if cryptoInfo != nil {
+			if fileOffset%aes.BlockSize != 0 {
+				return nil, NewNonRetryableError(
+					fmt.Sprintf("encrypted 7z file %s starts at non-block-aligned offset %d", file.Name, fileOffset), nil)
+			}
+			key = append([]byte(nil), cryptoInfo.key...)
+			iv = append([]byte(nil), cryptoInfo.iv...)
+			if fileOffset > 0 {
+				iv = make([]byte, aes.BlockSize)
+				if _, err := r.ReadAt(iv, absoluteOffset-aes.BlockSize); err != nil {
+					return nil, fmt.Errorf("read encrypted 7z IV for %s: %w", file.Name, err)
+				}
+			}
+			packedSize = roundUp7zAESSize(packedSize)
+		}
 
 		entry := sevenZipFileEntry{
 			Name:             file.Name,
 			UncompressedSize: int64(file.UncompressedSize),
+			PackedSize:       packedSize,
 			PackedOffset:     absoluteOffset,
+			AesKey:           key,
+			AesIV:            iv,
 			IsDirectory:      false,
 			FolderIndex:      folderIndex,
 		}
@@ -159,7 +198,8 @@ func check7zCompressionMethod(siField reflect.Value) (bool, string) {
 			return false, "failed to access coder field"
 		}
 
-		// Check each coder in the folder
+		// Check each coder in the folder. Copy and AES preserve byte-for-byte
+		// random access after decryption; any compression/filter coder does not.
 		for j := 0; j < codersField.Len(); j++ {
 			coderPtr := codersField.Index(j)
 			if coderPtr.IsNil() {
@@ -174,7 +214,7 @@ func check7zCompressionMethod(siField reflect.Value) (bool, string) {
 
 			// Get the coder ID as []byte
 			idBytes := idField.Bytes()
-			if !bytes.Equal(idBytes, copyMethodID) {
+			if !bytes.Equal(idBytes, copyMethodID) && !bytes.Equal(idBytes, sevenZipAESMethodID) {
 				// Found a non-Copy method - archive is compressed
 				methodName := getCompressionMethodName(idBytes)
 				return false, fmt.Sprintf("archive uses %s compression (method ID: %x)", methodName, idBytes)
@@ -183,6 +223,88 @@ func check7zCompressionMethod(siField reflect.Value) (bool, string) {
 	}
 
 	return true, ""
+}
+
+var sevenZipAESMethodID = []byte{0x06, 0xf1, 0x07, 0x01}
+
+type sevenZipAESInfo struct {
+	key []byte
+	iv  []byte
+}
+
+func get7zFolderAESInfo(siField reflect.Value, folderIndex int, password string) (*sevenZipAESInfo, error) {
+	siVal := siField.Elem()
+	unpackInfoField := siVal.FieldByName("unpackInfo")
+	if !unpackInfoField.IsValid() || unpackInfoField.IsNil() {
+		return nil, nil
+	}
+	folders := unpackInfoField.Elem().FieldByName("folder")
+	if folderIndex < 0 || folderIndex >= folders.Len() || folders.Index(folderIndex).IsNil() {
+		return nil, fmt.Errorf("invalid 7z folder index %d", folderIndex)
+	}
+	coders := folders.Index(folderIndex).Elem().FieldByName("coder")
+	for i := 0; i < coders.Len(); i++ {
+		coder := coders.Index(i)
+		if coder.IsNil() {
+			continue
+		}
+		coder = coder.Elem()
+		if !bytes.Equal(coder.FieldByName("id").Bytes(), sevenZipAESMethodID) {
+			continue
+		}
+		if password == "" {
+			return nil, Err7zEncrypted
+		}
+		properties := append([]byte(nil), coder.FieldByName("properties").Bytes()...)
+		return derive7zAESInfo(password, properties)
+	}
+	return nil, nil
+}
+
+func derive7zAESInfo(password string, properties []byte) (*sevenZipAESInfo, error) {
+	if len(properties) < 2 {
+		return nil, fmt.Errorf("invalid 7z AES properties")
+	}
+	cycles := int(properties[0] & 0x3f)
+	saltSize := int((properties[0]>>7)&1) + int(properties[1]>>4)
+	ivSize := int((properties[0]>>6)&1) + int(properties[1]&0x0f)
+	if len(properties) != 2+saltSize+ivSize || ivSize > aes.BlockSize {
+		return nil, fmt.Errorf("invalid 7z AES property lengths")
+	}
+	salt := properties[2 : 2+saltSize]
+	iv := make([]byte, aes.BlockSize)
+	copy(iv, properties[2+saltSize:])
+
+	passwordRunes := utf16.Encode([]rune(password))
+	passwordBytes := make([]byte, len(passwordRunes)*2)
+	for i, value := range passwordRunes {
+		binary.LittleEndian.PutUint16(passwordBytes[i*2:], value)
+	}
+	seed := make([]byte, 0, len(salt)+len(passwordBytes))
+	seed = append(seed, salt...)
+	seed = append(seed, passwordBytes...)
+
+	key := make([]byte, sha256.Size)
+	if cycles == 0x3f {
+		copy(key, seed)
+	} else {
+		hash := sha256.New()
+		var counter [8]byte
+		for i := uint64(0); i < uint64(1)<<cycles; i++ {
+			_, _ = hash.Write(seed)
+			binary.LittleEndian.PutUint64(counter[:], i)
+			_, _ = hash.Write(counter[:])
+		}
+		copy(key, hash.Sum(nil))
+	}
+	return &sevenZipAESInfo{key: key, iv: iv}, nil
+}
+
+func roundUp7zAESSize(size int64) int64 {
+	if size%aes.BlockSize == 0 {
+		return size
+	}
+	return size + aes.BlockSize - size%aes.BlockSize
 }
 
 // get7zFolderOffset calculates the byte offset where a folder's pack data starts.

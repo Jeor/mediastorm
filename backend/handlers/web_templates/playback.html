@@ -3837,6 +3837,7 @@
             sourcePath = nextPath;
             playbackMeta = { ...previous.meta, displayName:result?.title || previous.meta.displayName };
             applyWebMigrationMetadata(metadata);
+            renderHeader();
             await startWebPlayerFromSource({
               startOffset:Math.max(0, handoffPosition - 2),
               metadata,

@@ -1040,7 +1040,7 @@
     const WEB_PREQUEUE_POLL_MS = 1500;
     const WEB_PREQUEUE_MAX_POLLS = 40;
     const SUBTITLE_OFFSET_STEP = 0.25;
-    const WEB_WATCH_NEXT_COUNTDOWN_MS = 7000;
+    const WEB_WATCH_NEXT_COUNTDOWN_MS = 25000;
     const WEB_NEXT_EPISODE_READY_TIMEOUT_MS = 45000;
     const WEB_MIN_REWIND_PAUSE_MS = 10000;
     const WEB_MIGRATION_STALL_MS = 15000;
@@ -1091,7 +1091,9 @@
     let webPlayerStartupSeekRecoveryTimer = null;
     let webPlayerZeroStartRecoverySource = '';
     const WEB_PLAYER_VOLUME_STORAGE_KEY = 'strmr.webPlayerVolume';
-    const WEB_PLAYER_AUTO_SKIP_STORAGE_KEY = 'strmr.webPlayerAutoSkipSegments.v1';
+    const WEB_PLAYER_AUTO_SKIP_RECAP_STORAGE_KEY = 'strmr.webPlayerAutoSkipRecap.v1';
+    const WEB_PLAYER_AUTO_SKIP_INTRO_STORAGE_KEY = 'strmr.webPlayerAutoSkipIntro.v1';
+    const WEB_PLAYER_AUTO_SKIP_CREDITS_STORAGE_KEY = 'strmr.webPlayerAutoSkipCredits.v1';
     const savedWebPlayerVolume = loadWebPlayerVolumePrefs();
     let webPlayerVolume = savedWebPlayerVolume.volume;
     let webPlayerMuted = savedWebPlayerVolume.muted;
@@ -1122,7 +1124,9 @@
     let webPlayerWatchNextDeadline = 0;
     let webPlayerWatchNextTimer = null;
     let webPlayerPromptConfirmed = false;
-    let webPlayerAutoSkipPreference = loadWebAutoSkipPreference();
+    let webPlayerAutoSkipRecapPreference = loadWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_RECAP_STORAGE_KEY);
+    let webPlayerAutoSkipIntroPreference = loadWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_INTRO_STORAGE_KEY);
+    let webPlayerAutoSkipCreditsPreference = loadWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_CREDITS_STORAGE_KEY);
     let webPlayerAutoSkipInProgress = false;
     let nextEpisodeLookupComplete = false;
     let webPlayerPreferences = {
@@ -1548,38 +1552,72 @@
         creditsDetectionEnabled: Boolean(pick(undefined, client.creditsDetectionEnabled, base.creditsDetectionEnabled, legacyCredits)),
         creditsAutoSkip: Boolean(pick(undefined, client.creditsAutoSkip, base.creditsAutoSkip, legacyCredits)),
       };
-      if (webPlayerAutoSkipPreference === null) {
-        webPlayerAutoSkipPreference = Boolean(webPlayerPreferences.creditsAutoSkip);
-        persistWebAutoSkipPreference();
+      if (webPlayerAutoSkipCreditsPreference === null) {
+        webPlayerAutoSkipCreditsPreference = Boolean(webPlayerPreferences.creditsAutoSkip);
+        persistWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_CREDITS_STORAGE_KEY, webPlayerAutoSkipCreditsPreference);
+      }
+      if (webPlayerAutoSkipRecapPreference === null) {
+        webPlayerAutoSkipRecapPreference = false;
+        persistWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_RECAP_STORAGE_KEY, webPlayerAutoSkipRecapPreference);
+      }
+      if (webPlayerAutoSkipIntroPreference === null) {
+        webPlayerAutoSkipIntroPreference = false;
+        persistWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_INTRO_STORAGE_KEY, webPlayerAutoSkipIntroPreference);
       }
       return webPlayerPreferences;
     }
 
-    function loadWebAutoSkipPreference() {
+    function loadWebAutoSkipPreference(key) {
       try {
-        const value = window.localStorage?.getItem(WEB_PLAYER_AUTO_SKIP_STORAGE_KEY);
+        const value = window.localStorage?.getItem(key);
         return value === null ? null : value === 'true';
       } catch { return null; }
     }
 
-    function persistWebAutoSkipPreference() {
-      try { window.localStorage?.setItem(WEB_PLAYER_AUTO_SKIP_STORAGE_KEY, String(Boolean(webPlayerAutoSkipPreference))); } catch {}
+    function persistWebAutoSkipPreference(key, value) {
+      try { window.localStorage?.setItem(key, String(Boolean(value))); } catch {}
     }
 
-    function webAutoSkipEnabled() {
-      return Boolean(webPlayerAutoSkipPreference);
+    // Each segment kind has its own independent auto-skip toggle. 'credits'
+    // also gates the Up Next auto-advance countdown, since both fire off the
+    // same final-credits marker.
+    const WEB_AUTO_SKIP_PREFERENCE_VARS = {
+      recap: () => webPlayerAutoSkipRecapPreference,
+      intro: () => webPlayerAutoSkipIntroPreference,
+      credits: () => webPlayerAutoSkipCreditsPreference,
+    };
+
+    function webAutoSkipEnabled(type) {
+      const getter = WEB_AUTO_SKIP_PREFERENCE_VARS[type];
+      return Boolean(getter ? getter() : false);
     }
 
-    function syncWebAutoSkipControls() {
-      document.querySelectorAll('.web-auto-skip-toggle').forEach((input) => { input.checked = webAutoSkipEnabled(); });
+    function syncWebAutoSkipControls(promptType) {
+      const promptToggle = document.querySelector('#skipSegmentPrompt .web-auto-skip-toggle');
+      if (promptToggle) {
+        const type = promptType || promptToggle.dataset.skipType || 'intro';
+        promptToggle.dataset.skipType = type;
+        promptToggle.checked = webAutoSkipEnabled(type);
+      }
+      const upNextToggle = document.querySelector('#upNextCard .web-auto-skip-toggle');
+      if (upNextToggle) upNextToggle.checked = webAutoSkipEnabled('credits');
     }
 
-    function setWebAutoSkipPreference(enabled) {
-      webPlayerAutoSkipPreference = Boolean(enabled);
-      if (webPlayerAutoSkipPreference) webPlayerWatchNextAutoAdvanceBlocked = false;
-      persistWebAutoSkipPreference();
+    function setWebAutoSkipPreference(enabled, type) {
+      const value = Boolean(enabled);
+      if (type === 'recap') {
+        webPlayerAutoSkipRecapPreference = value;
+        persistWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_RECAP_STORAGE_KEY, value);
+      } else if (type === 'credits') {
+        webPlayerAutoSkipCreditsPreference = value;
+        persistWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_CREDITS_STORAGE_KEY, value);
+        if (value) webPlayerWatchNextAutoAdvanceBlocked = false;
+        else clearWatchNextCountdown();
+      } else {
+        webPlayerAutoSkipIntroPreference = value;
+        persistWebAutoSkipPreference(WEB_PLAYER_AUTO_SKIP_INTRO_STORAGE_KEY, value);
+      }
       syncWebAutoSkipControls();
-      if (!webAutoSkipEnabled()) clearWatchNextCountdown();
       updateWebSegmentPrompts();
       updateUpNextVisibility();
     }
@@ -1766,7 +1804,7 @@
           <div id="skipSegmentPrompt" class="skip-segment-prompt">
             <button id="skipSegmentButton" class="skip-segment-button" type="button" onclick="skipActiveWebSegment()"></button>
             <label class="web-auto-skip-control" title="Remember on this browser">
-              <input class="web-auto-skip-toggle" type="checkbox" onchange="setWebAutoSkipPreference(this.checked)">
+              <input class="web-auto-skip-toggle" type="checkbox" data-skip-type="intro" onchange="setWebAutoSkipPreference(this.checked, this.dataset.skipType)">
               <span>Auto</span>
             </label>
           </div>
@@ -1778,7 +1816,7 @@
                 <div id="upNextTitle" class="up-next-title"></div>
                 <div id="upNextCountdown" class="up-next-countdown"></div>
                 <label class="web-auto-skip-control up-next-auto-skip" title="Remember on this browser">
-                  <input class="web-auto-skip-toggle" type="checkbox" onchange="setWebAutoSkipPreference(this.checked)">
+                  <input class="web-auto-skip-toggle" type="checkbox" onchange="setWebAutoSkipPreference(this.checked, 'credits')">
                   <span>Auto-skip credits</span>
                 </label>
                 <div class="up-next-actions">
@@ -3005,7 +3043,7 @@
         if (generation !== webPlayerSubtitleSearchGeneration || webPlayerManualSubtitleSelection) return;
         const ranked = (Array.isArray(results) ? results : []).filter((result) => result?.id && result?.provider).sort((a,b) => subtitleReleaseScore(b) - subtitleReleaseScore(a));
         const selected = ranked[0];
-        if (!selected) { setStatus('No matching subtitles found.'); return; }
+        if (!selected) { setTransientStatus('No matching subtitles found.'); return; }
         const download = new URLSearchParams(params);
         download.set('subtitleId', selected.id);
         download.set('provider', selected.provider);
@@ -3016,7 +3054,7 @@
         webPlayerExternalSubtitle = { label: (selected.release || 'Downloaded') + ' · ' + webPlayerPreferences.subtitleLanguage, cues, result:selected };
         webPlayerSelectedSubtitleTrack = EXTERNAL_SUBTITLE_TRACK;
         webPlayerSubtitleCues = cues;
-        setStatus('Downloaded matching subtitles.');
+        setTransientStatus('Downloaded matching subtitles.');
         refreshWebTrackSheet();
         renderSubtitles();
       } catch (error) {
@@ -3139,15 +3177,16 @@
         host.classList.remove('skip-segment-visible');
         return;
       }
-      syncWebAutoSkipControls();
       const segment = activeWebSegmentAt(currentAbsoluteTime());
+      const preferenceType = segment?.type === 'outro' ? 'credits' : segment?.type === 'recap' ? 'recap' : 'intro';
+      syncWebAutoSkipControls(preferenceType);
       const skippable = segment && !webPlayerSkipDismissed.has(segment.type) && (segment.type !== 'outro' || !nextEpisodeInfo);
       host.classList.toggle('skip-segment-visible', Boolean(skippable));
       if (!skippable) return;
       button.textContent = segment.type === 'recap' ? 'Skip Recap' : segment.type === 'intro' ? 'Skip Intro' : 'Skip Credits';
-      const autoSkipIntro = webAutoSkipEnabled() && (segment.type === 'recap' || segment.type === 'intro');
-      const autoSkipFinalCredits = webAutoSkipEnabled() && segment.type === 'outro' && nextEpisodeLookupComplete && !nextEpisodeInfo;
-      if ((autoSkipIntro || autoSkipFinalCredits) && !webPlayerAutoSkipInProgress) autoSkipWebSegment(segment);
+      const autoSkipRecapOrIntro = (segment.type === 'recap' || segment.type === 'intro') && webAutoSkipEnabled(segment.type);
+      const autoSkipFinalCredits = webAutoSkipEnabled('credits') && segment.type === 'outro' && nextEpisodeLookupComplete && !nextEpisodeInfo;
+      if ((autoSkipRecapOrIntro || autoSkipFinalCredits) && !webPlayerAutoSkipInProgress) autoSkipWebSegment(segment);
     }
 
     async function performWebSegmentSkip(segment) {
@@ -3183,7 +3222,7 @@
     }
 
     function ensureWatchNextCountdown() {
-      if (!webPlayerPromptConfirmed || !webAutoSkipEnabled() || webPlayerWatchNextAutoAdvanceBlocked || upNextDismissed || playingNextEpisode) {
+      if (!webPlayerPromptConfirmed || !webAutoSkipEnabled('credits') || webPlayerWatchNextAutoAdvanceBlocked || upNextDismissed || playingNextEpisode) {
         clearWatchNextCountdown();
         return;
       }
@@ -3780,7 +3819,7 @@
               method:'POST',
               body:JSON.stringify({ result, startOffset:Math.max(0, resolvePosition - 2), profileId:activeProfileId }),
             });
-            const nextPath = resolved?.webdavPath || resolved?.streamPath || resolved?.path;
+            const nextPath = resolved?.webdavPath;
             if (!nextPath) throw new Error('Migration candidate did not resolve to a stream.');
             if (webMigrationPathIdentity(nextPath) === webMigrationPathIdentity(previous.path)) {
               throw new Error('Migration candidate resolved to the current stream.');
@@ -3836,11 +3875,6 @@
         webPlayerExternalSubtitle = previous.externalSubtitle;
         await startWebPlayerFromSource({ startOffset:previous.position, skipStopProgress:true }).catch(() => {});
         webPlayerSubtitleSearchGeneration += 1;
-        webPlayerSelectedAudioTrack = previous.selectedAudioTrack;
-        webPlayerSelectedSubtitleTrack = previous.selectedSubtitleTrack;
-        webPlayerManualAudioSelection = previous.manualAudioSelection;
-        webPlayerManualSubtitleSelection = previous.manualSubtitleSelection;
-        webPlayerExternalSubtitle = previous.externalSubtitle;
         webPlayerSubtitleCues = previous.subtitleCues;
         setStatus('Stream switch failed: ' + (error?.message || String(error)), true);
         return false;
@@ -4491,11 +4525,29 @@
       return Number.isFinite(value) && value > 0 ? formatTime(value) : '--:--';
     }
 
+    let webPlayerStatusClearTimer = null;
+
     function setStatus(message, error) {
       const status = document.getElementById('status');
       if (!status) return;
+      if (webPlayerStatusClearTimer) {
+        clearTimeout(webPlayerStatusClearTimer);
+        webPlayerStatusClearTimer = null;
+      }
       status.textContent = message || '';
       status.classList.toggle('error', Boolean(error));
+    }
+
+    // Same as setStatus, but auto-clears after durationMs — for one-off
+    // confirmations (e.g. "Downloaded matching subtitles.") that shouldn't
+    // otherwise linger over the video forever.
+    function setTransientStatus(message, durationMs = 4000) {
+      setStatus(message);
+      webPlayerStatusClearTimer = setTimeout(() => {
+        webPlayerStatusClearTimer = null;
+        const status = document.getElementById('status');
+        if (status && status.textContent === message) setStatus('');
+      }, durationMs);
     }
 
     function escapeHtml(value) {

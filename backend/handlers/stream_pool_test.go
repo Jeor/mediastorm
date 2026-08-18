@@ -84,6 +84,66 @@ type gatedReader struct {
 	release chan struct{}
 }
 
+type closeUnblocksReader struct {
+	started chan struct{}
+	closed  chan struct{}
+	once    sync.Once
+	prefix  []byte
+	sent    bool
+}
+
+func newCloseUnblocksReader(prefix []byte) *closeUnblocksReader {
+	return &closeUnblocksReader{
+		started: make(chan struct{}),
+		closed:  make(chan struct{}),
+		prefix:  prefix,
+	}
+}
+
+func (r *closeUnblocksReader) Read(p []byte) (int, error) {
+	if !r.sent {
+		r.sent = true
+		return copy(p, r.prefix), nil
+	}
+	r.once.Do(func() { close(r.started) })
+	<-r.closed
+	return 0, errors.New("response body closed")
+}
+
+func (r *closeUnblocksReader) Close() error {
+	select {
+	case <-r.closed:
+	default:
+		close(r.closed)
+	}
+	return nil
+}
+
+type reconnectingStreamProvider struct {
+	mu        sync.Mutex
+	calls     []string
+	data      []byte
+	totalSize int64
+}
+
+func (p *reconnectingStreamProvider) Stream(_ context.Context, req streaming.Request) (*streaming.Response, error) {
+	p.mu.Lock()
+	p.calls = append(p.calls, req.RangeHeader)
+	p.mu.Unlock()
+	start, ok := parseRangeStart(req.RangeHeader)
+	if !ok {
+		return nil, fmt.Errorf("missing reconnect range: %q", req.RangeHeader)
+	}
+	headers := make(http.Header)
+	headers.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, p.totalSize-1, p.totalSize))
+	return &streaming.Response{
+		Body:          io.NopCloser(bytes.NewReader(p.data)),
+		Headers:       headers,
+		Status:        http.StatusPartialContent,
+		ContentLength: int64(len(p.data)),
+	}, nil
+}
+
 func newGatedReader() *gatedReader {
 	return &gatedReader{
 		started: make(chan int),
@@ -591,6 +651,75 @@ func TestPoolSlotPausesWithoutReadersAndResumesOnReconnect(t *testing.T) {
 	slot.mu.Unlock()
 	if !cdnDone {
 		t.Fatal("slot was not marked done after cancellation")
+	}
+}
+
+func TestPoolSlotReconnectsStalledBodyAtExactNextByte(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	prefix := []byte("already-buffered-")
+	blocked := newCloseUnblocksReader(prefix)
+	recoveredData := []byte("recovered-stream-data")
+	provider := &reconnectingStreamProvider{
+		data:      recoveredData,
+		totalSize: int64(len(prefix) + len(recoveredData)),
+	}
+	slot := &poolSlot{
+		path:             "/debrid/torbox/test/file/0/movie.mkv",
+		ctx:              ctx,
+		cancel:           cancel,
+		streamer:         provider,
+		readStallTimeout: 25 * time.Millisecond,
+		lastAccess:       time.Now(),
+		lastReadAt:       time.Now(),
+		readStartedAt:    time.Now(),
+		signal:           make(chan struct{}),
+		readerChanged:    make(chan struct{}),
+	}
+	readerID := slot.registerReader(0)
+	defer slot.unregisterReader(readerID)
+	initial := &streaming.Response{
+		Body:    blocked,
+		Headers: make(http.Header),
+		Status:  http.StatusPartialContent,
+	}
+
+	done := make(chan struct{})
+	go func() {
+		slot.backgroundReader(initial)
+		close(done)
+	}()
+
+	select {
+	case <-blocked.started:
+	case <-time.After(time.Second):
+		t.Fatal("initial upstream read did not start")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("stalled upstream body was not reconnected")
+	}
+
+	slot.mu.Lock()
+	got := append([]byte(nil), slot.data...)
+	cdnErr := slot.cdnErr
+	slot.mu.Unlock()
+	if cdnErr != nil {
+		t.Fatalf("cdnErr = %v, want nil", cdnErr)
+	}
+	want := append(append([]byte(nil), prefix...), recoveredData...)
+	if !bytes.Equal(got, want) {
+		t.Fatalf("buffered data = %q, want %q", got, want)
+	}
+	provider.mu.Lock()
+	calls := append([]string(nil), provider.calls...)
+	provider.mu.Unlock()
+	wantRange := fmt.Sprintf("bytes=%d-", len(prefix))
+	if len(calls) != 1 || calls[0] != wantRange {
+		t.Fatalf("reconnect ranges = %v, want [%s]", calls, wantRange)
 	}
 }
 

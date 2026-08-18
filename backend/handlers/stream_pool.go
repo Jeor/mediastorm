@@ -26,6 +26,8 @@ const (
 	poolMaxWaitAhead    = 8 * 1024 * 1024   // reuse slot if CDN reader is within 8MB of target
 	poolWaitTimeout     = 10 * time.Second  // max time to wait for CDN reader to reach target
 	poolMinPreBuffer    = 4 * 1024 * 1024   // 4MB minimum buffer before serving starts (prevents stalls on 4K)
+	poolUpstreamStall   = 6 * time.Second   // reopen a body that stops yielding bytes while playback is active
+	poolMaxReconnects   = 2                 // consecutive no-progress reconnects before failing the slot
 )
 
 func initialPreBufferTarget(reqStart, reqEnd, totalSize int64) int64 {
@@ -77,6 +79,10 @@ type poolSlot struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	failures *streamFailureRegistry
+	streamer streaming.Provider
+
+	// Tests can shorten the watchdog without weakening the production timeout.
+	readStallTimeout time.Duration
 
 	// Metadata from CDN response
 	totalSize   int64  // total file size (from Content-Range header)
@@ -228,6 +234,13 @@ func (s *poolSlot) waitForActiveReader() bool {
 		case <-changed:
 		}
 	}
+}
+
+func (s *poolSlot) upstreamStallTimeout() time.Duration {
+	if s.readStallTimeout > 0 {
+		return s.readStallTimeout
+	}
+	return poolUpstreamStall
 }
 
 func newStreamPool(failures *streamFailureRegistry) *streamPool {
@@ -894,6 +907,7 @@ func (p *streamPool) getOrCreateInternal(waitCtx context.Context, path string, r
 		ctx:           ctx,
 		cancel:        cancel,
 		failures:      p.failures,
+		streamer:      streamer,
 		totalSize:     totalSize,
 		filename:      resp.Filename,
 		respStatus:    resp.Status,
@@ -973,8 +987,11 @@ func (p *streamPool) getOrCreate(path string, reqPos int64, streamer streaming.P
 // until another reader registers so orphaned migration candidates do not keep
 // consuming bandwidth.
 func (s *poolSlot) backgroundReader(resp *streaming.Response) {
-	defer resp.Close()
+	currentResp := resp
 	defer func() {
+		if currentResp != nil {
+			_ = currentResp.Close()
+		}
 		s.mu.Lock()
 		s.cdnDone = true
 		s.mu.Unlock()
@@ -1006,6 +1023,7 @@ func (s *poolSlot) backgroundReader(resp *streaming.Response) {
 	cdnLogAt := time.Now()
 	var cdnWindowBytes int64
 	var cdnWindowRead time.Duration
+	consecutiveNoProgressReconnects := 0
 	for {
 		// A disconnect can race with an in-flight Body.Read, so at most that
 		// single chunk is retained before the next iteration parks here. The
@@ -1036,10 +1054,32 @@ func (s *poolSlot) backgroundReader(resp *streaming.Response) {
 		}
 		s.mu.Unlock()
 
+		activeResp := currentResp
+		if activeResp == nil || activeResp.Body == nil {
+			s.mu.Lock()
+			s.cdnErr = fmt.Errorf("stream pool upstream response body unavailable")
+			s.mu.Unlock()
+			return
+		}
+
+		// A successful HTTP response can still become half-open while its body is
+		// being consumed. net/http's ResponseHeaderTimeout no longer applies at
+		// this point, and the streaming client deliberately has no whole-request
+		// timeout. Close only this response body after a sustained read stall; the
+		// reader below then reopens the same source at the exact next byte.
+		var reconnectTriggered atomic.Bool
+		stallTimer := time.AfterFunc(s.upstreamStallTimeout(), func() {
+			reconnectTriggered.Store(true)
+			log.Printf("[stream-pool] upstream body read timed out; closing for same-source reconnect: path=%q timeout=%v readers=%d",
+				s.path, s.upstreamStallTimeout(), atomic.LoadInt32(&s.readers))
+			_ = activeResp.Close()
+		})
+
 		upstreamWatch.begin()
 		readStart := time.Now()
-		n, err := resp.Body.Read(buf)
+		n, err := activeResp.Body.Read(buf)
 		upstreamWatch.end()
+		stallTimer.Stop()
 		cdnWindowRead += time.Since(readStart)
 		if n > 0 {
 			cdnWindowBytes += int64(n)
@@ -1064,15 +1104,97 @@ func (s *poolSlot) backgroundReader(resp *streaming.Response) {
 			cdnWindowBytes = 0
 			cdnWindowRead = 0
 		}
+
+		if reconnectTriggered.Load() {
+			_ = activeResp.Close()
+			currentResp = nil
+			if n == 0 {
+				consecutiveNoProgressReconnects++
+			} else {
+				consecutiveNoProgressReconnects = 0
+			}
+			if consecutiveNoProgressReconnects > poolMaxReconnects {
+				err = fmt.Errorf("upstream body stalled after %d same-source reconnects", poolMaxReconnects)
+				s.mu.Lock()
+				s.cdnErr = err
+				s.mu.Unlock()
+				log.Printf("[stream-pool] same-source reconnect exhausted: path=%q err=%v", s.path, err)
+				if s.failures != nil {
+					if record, confirmed := s.failures.recordRecognizedFailure(s.path, err); confirmed {
+						GetStreamTracker().MarkPlaybackMigrationForPath(s.path, streamFailureMigrationReason(record))
+					}
+				}
+				return
+			}
+
+			if !s.waitForActiveReader() {
+				return
+			}
+			s.mu.Lock()
+			resumeAt := s.startByte + int64(len(s.data))
+			s.mu.Unlock()
+			if s.streamer == nil {
+				err = fmt.Errorf("same-source reconnect unavailable at byte %d", resumeAt)
+				s.mu.Lock()
+				s.cdnErr = err
+				s.mu.Unlock()
+				return
+			}
+
+			replacement, openErr := s.streamer.Stream(s.ctx, streaming.Request{
+				Path:        s.path,
+				RangeHeader: fmt.Sprintf("bytes=%d-", resumeAt),
+				Method:      http.MethodGet,
+			})
+			if openErr != nil {
+				err = fmt.Errorf("same-source reconnect at byte %d: %w", resumeAt, openErr)
+				s.mu.Lock()
+				s.cdnErr = err
+				s.mu.Unlock()
+				log.Printf("[stream-pool] same-source reconnect failed: path=%q resumeAt=%d err=%v", s.path, resumeAt, openErr)
+				if s.failures != nil {
+					if record, confirmed := s.failures.recordRecognizedFailure(s.path, err); confirmed {
+						GetStreamTracker().MarkPlaybackMigrationForPath(s.path, streamFailureMigrationReason(record))
+					}
+				}
+				return
+			}
+
+			servedStart := resumeAt
+			if contentRange := replacement.Headers.Get("Content-Range"); contentRange != "" {
+				if parsed, ok := parseContentRangeStart(contentRange); ok {
+					servedStart = parsed
+				}
+			} else if replacement.Status == http.StatusOK {
+				servedStart = 0
+			}
+			if servedStart != resumeAt {
+				_ = replacement.Close()
+				err = fmt.Errorf("same-source reconnect requested byte %d but upstream served %d", resumeAt, servedStart)
+				s.mu.Lock()
+				s.cdnErr = err
+				s.mu.Unlock()
+				log.Printf("[stream-pool] same-source reconnect rejected: path=%q err=%v", s.path, err)
+				return
+			}
+
+			currentResp = replacement
+			log.Printf("[stream-pool] same-source reconnect opened: path=%q resumeAt=%d status=%d",
+				s.path, resumeAt, replacement.Status)
+			continue
+		}
+
 		if err != nil {
 			if err != io.EOF {
 				s.mu.Lock()
 				s.cdnErr = err
 				s.mu.Unlock()
 				log.Printf("[stream-pool] CDN read error: path=%q err=%v", s.path, err)
-				if record, confirmed := s.failures.recordRecognizedFailure(s.path, err); confirmed {
-					log.Printf("[stream-migration] confirmed recoverable stream failure in stream pool path=%q err=%v", s.path, err)
-					GetStreamTracker().MarkPlaybackMigrationForPath(s.path, streamFailureMigrationReason(record))
+				if s.failures != nil {
+					if record, confirmed := s.failures.recordRecognizedFailure(s.path, err); confirmed {
+						log.Printf("[stream-migration] confirmed recoverable stream failure in stream pool path=%q err=%v", s.path, err)
+						GetStreamTracker().MarkPlaybackMigrationForPath(s.path, streamFailureMigrationReason(record))
+					}
 				}
 			}
 			return

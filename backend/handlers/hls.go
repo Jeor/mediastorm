@@ -423,6 +423,9 @@ type HLSSession struct {
 	EarliestBufferedSegment int  // Earliest segment still in player's buffer from keepalive (-1 = unknown)
 	Paused                  bool // True if FFmpeg is paused (SIGSTOP) waiting for player to catch up
 	FinalSegmentCount       int  // Highest segment number created when transcoding completed (-1 = still running or unknown)
+	// SegmentExt is the extension the transcode plan actually chose (".ts" or ".m4s"), recorded
+	// so nothing has to reconstruct it from flags. Empty until the plan runs.
+	SegmentExt string
 
 	// Input error recovery (for usenet disconnections)
 	InputErrorDetected bool // Set to true when FFmpeg input stream fails (usenet disconnect)
@@ -1857,7 +1860,25 @@ func (m *HLSManager) CreateSession(ctx context.Context, path string, originalPat
 
 	normalizedPlaybackTarget := strings.ToLower(strings.TrimSpace(playbackTarget))
 	requestedDirectCastMode := castMode && isDirectCastTarget(normalizedPlaybackTarget, "")
-	directCastMode := requestedDirectCastMode && canAttemptDirectCastCopyVideo(probeData, m.lookupCastCapabilities(castReceiverHost))
+	// Refused for now, whatever the receiver can decode: copying the video is unsafe while
+	// playlists assume a fixed segment duration.
+	//
+	// A copied stream can only be cut at the source's own keyframes, so its segments run whatever
+	// length the GOP dictates — 10.4s, 1.6s, 1.1s, 9.8s measured on an ordinary x264 rip. This
+	// package derives the segment count as duration/hlsSegmentDuration and synthesises missing
+	// entries at that flat duration, so against variable segments the count is roughly double
+	// reality and the durations are invented: a receiver plays the real segments, reaches the
+	// fiction and stalls, while the server serves instantly and looks healthy.
+	//
+	// Re-encoding forces a keyframe every hlsSegmentDuration, which is what makes that model
+	// true, so the compatibility transcode remains correct. Lifting this means teaching the
+	// playlist layer to carry real per-segment durations; the copy envelope below stays intact
+	// and tested for that day. Downgrading here rather than deeper keeps DirectCastMode false,
+	// so the session is built as compatibility throughout instead of half-converted.
+	const directCastPlaylistsSupportVariableSegments = false
+	directCastMode := directCastPlaylistsSupportVariableSegments &&
+		requestedDirectCastMode &&
+		canAttemptDirectCastCopyVideo(probeData, m.lookupCastCapabilities(castReceiverHost))
 	if requestedDirectCastMode && !directCastMode {
 		// Say so at creation. The startTranscoding-side guard cannot log this
 		// case: the session is already built as compatibility by then, so
@@ -3547,6 +3568,15 @@ func (m *HLSManager) startTranscoding(ctx context.Context, session *HLSSession, 
 		log.Printf("[hls] session %s: using fMP4 segments for SDR content (testing, no codec tag forced)", session.ID)
 	}
 
+	// Remember what was actually chosen. Everything downstream that needs to name a segment
+	// re-derived this from session flags instead, and got it wrong for direct Cast: that path
+	// remuxes to MPEG-TS but satisfies none of the fMP4 exclusions, so a completed playlist was
+	// rebuilt advertising `.m4s` files that were never written. The receiver then asked for
+	// segment0.m4s, got nothing, and stopped. One recorded fact beats six reconstructions.
+	session.mu.Lock()
+	session.SegmentExt = segmentExt
+	session.mu.Unlock()
+
 	// Audio handling
 	audioCodecHandled := false
 
@@ -5145,6 +5175,28 @@ func (m *HLSManager) GetSessionStatus(w http.ResponseWriter, r *http.Request, se
 	}
 }
 
+// resolveSegmentExt reports the extension the transcode plan chose for this session's segments.
+//
+// The recorded value is the truth: the plan wrote it down when it built the FFmpeg arguments.
+// When it is missing, because the playlist is served before transcoding starts, the playlist
+// lines are the next best source, since they name segments that were really written. The lines
+// are compared trimmed so the answer does not depend on the writer's line ending.
+func resolveSegmentExt(session *HLSSession, playlistLines []string) string {
+	session.mu.RLock()
+	recorded := session.SegmentExt
+	session.mu.RUnlock()
+	if recorded != "" {
+		return recorded
+	}
+	for _, line := range playlistLines {
+		name := strings.TrimSpace(line)
+		if strings.HasPrefix(name, "segment") && strings.HasSuffix(name, ".ts") {
+			return ".ts"
+		}
+	}
+	return ".m4s"
+}
+
 // ServePlaylist serves the HLS playlist file with API key in segment URLs
 func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessionID string) {
 	session, exists := m.GetSession(sessionID)
@@ -5288,15 +5340,16 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		// Find the highest segment number in the current playlist
 		highestExisting := -1
 		lines := strings.Split(playlistContent, "\n")
-		// Determine segment extension based on actual session format.
-		segmentExt := ".m4s"
-		if session.usesStableCastTimeline() || (session.forceAAC && !session.DirectCastMode && !session.HasDV && !session.HasHDR) {
-			segmentExt = ".ts" // Stable Cast and non-direct forceAAC sessions use MPEG-TS for compatibility.
-		}
+		// The extension the plan actually chose. Deriving it from flags here is what broke direct
+		// Cast: it remuxes to MPEG-TS yet matches none of the fMP4 exclusions below, so this
+		// synthesised `.m4s` entries for files that were never written and the receiver stalled on
+		// the first one. The playlist itself is the fallback, because it names real segments.
+		segmentExt := resolveSegmentExt(session, lines)
 		for _, line := range lines {
-			if strings.HasPrefix(line, "segment") && strings.HasSuffix(line, segmentExt) {
+			name := strings.TrimSpace(line)
+			if strings.HasPrefix(name, "segment") && strings.HasSuffix(name, segmentExt) {
 				// Extract segment number from "segment0.m4s" or "segment0.ts"
-				numStr := strings.TrimPrefix(line, "segment")
+				numStr := strings.TrimPrefix(name, "segment")
 				numStr = strings.TrimSuffix(numStr, segmentExt)
 				if num, err := strconv.Atoi(numStr); err == nil && num > highestExisting {
 					highestExisting = num

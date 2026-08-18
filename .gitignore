@@ -6,6 +6,10 @@ vendor/
 backend/bin/
 backend/novastream
 backend/novastream.exe
+backend/mediastorm
+backend/mediastorm.exe
+backend/mediastorm-darwin
+backend/mediastorm-linux
 experiments/**/target/
 *.ipa
 frontend/scripts/build-appstore.sh

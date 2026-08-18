@@ -225,6 +225,42 @@ func validateImageDimensions(config image.Config) error {
 	return nil
 }
 
+// prepareProxyImage preserves JPEG source bytes when no downscale is required.
+// Re-encoding an already correctly-sized JPEG only adds generation loss, which
+// is especially visible in large TV hero artwork. Images that do need resizing
+// are decoded, downscaled, and encoded at the requested quality.
+func prepareProxyImage(imageData []byte, targetWidth, quality int) ([]byte, error) {
+	imageConfig, imageFormat, err := image.DecodeConfig(bytes.NewReader(imageData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image")
+	}
+	if err := validateImageDimensions(imageConfig); err != nil {
+		return nil, err
+	}
+
+	if imageFormat == "jpeg" && (targetWidth <= 0 || targetWidth >= imageConfig.Width) {
+		return imageData, nil
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(imageData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image")
+	}
+
+	if targetWidth > 0 && targetWidth < imageConfig.Width {
+		targetHeight := int(float64(imageConfig.Height) * (float64(targetWidth) / float64(imageConfig.Width)))
+		dst := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
+		draw.CatmullRom.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+		img = dst
+	}
+
+	var output bytes.Buffer
+	if err := jpeg.Encode(&output, img, &jpeg.Options{Quality: quality}); err != nil {
+		return nil, fmt.Errorf("failed to encode image")
+	}
+	return output.Bytes(), nil
+}
+
 func normalizeProxyWidth(width int) int {
 	if width <= 0 {
 		return 0
@@ -298,59 +334,18 @@ func (h *ImageHandler) ensureCached(sourceURL string, targetWidth, quality int) 
 	if err != nil {
 		return cachePath, nil, false, err
 	}
-	imageConfig, _, err := image.DecodeConfig(bytes.NewReader(imageData))
+	preparedData, err := prepareProxyImage(imageData, targetWidth, quality)
 	if err != nil {
-		return cachePath, nil, false, fmt.Errorf("failed to decode image")
-	}
-	if err := validateImageDimensions(imageConfig); err != nil {
+		log.Printf("[ImageProxy] Transform error for %s: %v", requestsecurity.URLForLog(sourceURL), err)
 		return cachePath, nil, false, err
 	}
-	img, _, err := image.Decode(bytes.NewReader(imageData))
-	if err != nil {
-		log.Printf("[ImageProxy] Decode error for %s: %v", requestsecurity.URLForLog(sourceURL), err)
-		return cachePath, nil, false, fmt.Errorf("failed to decode image")
-	}
 
-	// Resize if requested
-	if targetWidth > 0 {
-		bounds := img.Bounds()
-		origWidth := bounds.Dx()
-		origHeight := bounds.Dy()
-
-		// Only resize if target is smaller than original
-		if targetWidth < origWidth {
-			ratio := float64(targetWidth) / float64(origWidth)
-			targetHeight := int(float64(origHeight) * ratio)
-
-			// Create new image with target dimensions
-			dst := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
-
-			// Use CatmullRom for high quality downscaling
-			draw.CatmullRom.Scale(dst, dst.Bounds(), img, bounds, draw.Over, nil)
-			img = dst
-		}
-	}
-
-	// Encode as JPEG for consistent output and better compression
+	// Cache either the untouched JPEG source or the resized JPEG variant.
 	tmpPath := cachePath + ".tmp"
-	f, err := os.Create(tmpPath)
-	if err != nil {
+	if err := os.WriteFile(tmpPath, preparedData, 0644); err != nil {
 		log.Printf("[ImageProxy] Cache create error: %v", err)
-		var buf bytes.Buffer
-		if encodeErr := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); encodeErr != nil {
-			return cachePath, nil, false, fmt.Errorf("failed to encode image")
-		}
-		return cachePath, buf.Bytes(), false, nil
+		return cachePath, preparedData, false, nil
 	}
-
-	// Encode to temp file
-	if err := jpeg.Encode(f, img, &jpeg.Options{Quality: quality}); err != nil {
-		f.Close()
-		os.Remove(tmpPath)
-		log.Printf("[ImageProxy] Encode error: %v", err)
-		return cachePath, nil, false, fmt.Errorf("failed to encode image")
-	}
-	f.Close()
 
 	// Atomic rename
 	if err := os.Rename(tmpPath, cachePath); err != nil {

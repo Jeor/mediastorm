@@ -80,3 +80,31 @@ func TestIsBlankProxyImageDataTreatsDecodeFailureAsNonBlank(t *testing.T) {
 		t.Fatal("decode failures must be handled by the normal image error path")
 	}
 }
+
+func TestPrepareProxyImagePreservesJPEGWhenDownscaleIsNotNeeded(t *testing.T) {
+	source := encodeTestImage(t, solidTestImage(color.RGBA{R: 80, G: 60, B: 40, A: 255}), "jpeg")
+
+	got, err := prepareProxyImage(source, 3840, 100)
+	if err != nil {
+		t.Fatalf("prepareProxyImage: %v", err)
+	}
+	if !bytes.Equal(got, source) {
+		t.Fatal("expected original JPEG bytes to be preserved")
+	}
+}
+
+func TestPrepareProxyImageDownscalesAtRequestedQuality(t *testing.T) {
+	source := encodeTestImage(t, solidTestImage(color.RGBA{R: 80, G: 60, B: 40, A: 255}), "jpeg")
+
+	got, err := prepareProxyImage(source, 4, 100)
+	if err != nil {
+		t.Fatalf("prepareProxyImage: %v", err)
+	}
+	config, format, err := image.DecodeConfig(bytes.NewReader(got))
+	if err != nil {
+		t.Fatalf("decode resized image: %v", err)
+	}
+	if format != "jpeg" || config.Width != 4 || config.Height != 6 {
+		t.Fatalf("resized image = %s %dx%d, want jpeg 4x6", format, config.Width, config.Height)
+	}
+}

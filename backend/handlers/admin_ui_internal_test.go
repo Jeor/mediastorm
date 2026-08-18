@@ -42,6 +42,65 @@ func TestNotificationsTemplateLoads(t *testing.T) {
 	}
 }
 
+func TestAdminShellUsesClearPeopleNavigationAndConsistentIcons(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`class="admin-icon-sprite"`,
+		`href="#admin-icon-settings"`,
+		`<span>Users &amp; Profiles</span>`,
+		`class="admin-topbar-identity"`,
+		`aria-label="Signed in as {{.Username}}"`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("admin shell missing navigation consistency marker %q", marker)
+		}
+	}
+
+	for _, obsolete := range []string{
+		`<span>Kids &amp; Family</span>`,
+		`href="{{.BasePath}}/accounts" class="admin-avatar"`,
+	} {
+		if strings.Contains(source, obsolete) {
+			t.Fatalf("admin shell still contains ambiguous navigation marker %q", obsolete)
+		}
+	}
+}
+
+func TestAdminOnboardingAndWalkthroughShareGuidanceLanguage(t *testing.T) {
+	baseBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	onboardingBytes, err := adminTemplates.ReadFile("admin_templates/onboarding.html")
+	if err != nil {
+		t.Fatalf("read onboarding template: %v", err)
+	}
+
+	baseSource := string(baseBytes)
+	onboardingSource := string(onboardingBytes)
+	for _, marker := range []string{
+		`id="adminWalkthroughKicker">Guided setup`,
+		`<strong>Users &amp; Profiles</strong>`,
+	} {
+		if !strings.Contains(baseSource, marker) {
+			t.Fatalf("admin walkthrough missing consistency marker %q", marker)
+		}
+	}
+	for _, marker := range []string{
+		`class="onboarding-kicker">Guided setup`,
+		`onboarding-panel-heading`,
+	} {
+		if !strings.Contains(onboardingSource, marker) {
+			t.Fatalf("admin onboarding missing consistency marker %q", marker)
+		}
+	}
+}
+
 func TestToolsTemplateIncludesProfileScrobLinking(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/tools.html")
 	if err != nil {
@@ -227,10 +286,13 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 
 	for _, marker := range []string{
 		`id="settingsCategoryNav"`,
-		`id="settingsBasicBtn" class="settings-level-btn"`,
+		`id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true"`,
 		`id="settingsAdvancedBtn"`,
 		`autocomplete="off" autocapitalize="none" spellcheck="false"`,
-		`let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';`,
+		`let settingsLevel = 'advanced';`,
+		`localStorage.removeItem('mediastorm-settings-level');`,
+		`Editing scope`,
+		`class="settings-scope-current"`,
 		`.page-header-controls .form-select {`,
 		`height: 40px;`,
 		`function setSettingsLevel(level)`,
@@ -288,7 +350,7 @@ func TestAdminSettingsRendersUsenetIndexerTableWithoutChangingContracts(t *testi
 	}
 }
 
-func TestAdminSettingsRendersDebridAndTorrentProviderTablesWithoutChangingContracts(t *testing.T) {
+func TestAdminSettingsRendersProviderTablesWithoutChangingContracts(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {
 		t.Fatalf("read settings template: %v", err)
@@ -296,11 +358,13 @@ func TestAdminSettingsRendersDebridAndTorrentProviderTablesWithoutChangingContra
 	source := string(templateBytes)
 
 	for _, marker := range []string{
-		`const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers'])`,
+		`const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines'])`,
 		`function renderProviderTableSection(sectionKey, sectionDef, items, basePath, options)`,
 		`function renderProviderEditFields(sectionKey, sectionDef, item, index, basePath)`,
 		`if (sectionKey === 'debridProviders')`,
 		`if (sectionKey === 'torrentScrapers')`,
+		`if (sectionKey === 'usenet')`,
+		`if (sectionKey === 'usenetEngines')`,
 		`data-label="Priority">' + (index + 1)`,
 		`id="test-btn-' + sectionKey + '-' + index + '"`,
 		`onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">Test</button>`,
@@ -319,7 +383,7 @@ func TestAdminSettingsRendersDebridAndTorrentProviderTablesWithoutChangingContra
 		}
 	}
 
-	for _, sectionKey := range []string{"debridProviders", "torrentScrapers"} {
+	for _, sectionKey := range []string{"debridProviders", "torrentScrapers", "usenet", "usenetEngines"} {
 		if strings.Contains(source, `reorderArrayItem('`+sectionKey+`'`) {
 			t.Fatalf("%s table must preserve stable credential-bearing array indices", sectionKey)
 		}

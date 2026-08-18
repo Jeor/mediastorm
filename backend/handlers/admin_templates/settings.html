@@ -520,6 +520,7 @@
 .settings-scope-panel {
     margin-bottom: 1rem;
 }
+.settings-scope-current { display: none; }
 .settings-scope-bar {
     display: flex;
     align-items: center;
@@ -605,6 +606,7 @@
     color: var(--text-muted);
     font-size: 0.75rem;
 }
+.settings-basic-note { color: var(--text-muted); font-size: 0.6875rem; }
 .settings-scope-tree-storage { display: none; }
 .indexer-table-shell {
     overflow-x: auto;
@@ -677,6 +679,7 @@
 .provider-type-badge.debrid { color: var(--accent); background: rgba(99, 102, 241, 0.14); border-color: rgba(99, 102, 241, 0.35); }
 .provider-type-badge.torrent { color: var(--warning); background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35); }
 .provider-type-badge.direct { color: var(--success); background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.35); }
+.provider-type-badge.usenet { color: var(--text-secondary); background: var(--bg-tertiary); border-color: var(--border); }
 .provider-type-name { color: var(--text-muted); font-size: 0.7rem; text-transform: none; }
 .indexer-actions { display: flex; align-items: center; gap: 0.25rem; }
 .indexer-action-btn {
@@ -770,14 +773,33 @@
     .settings-level-help { margin: 0; }
 }
 @media (max-width: 640px) {
+    .settings-scope-panel {
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--bg-secondary);
+    }
+    .settings-scope-current {
+        display: grid;
+        gap: 0.15rem;
+        margin-bottom: 0.65rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .settings-scope-current-label { color: var(--accent-hover); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .settings-scope-current strong { color: var(--text-primary); font-size: 0.9375rem; }
+    .settings-scope-current-meta { color: var(--text-muted); font-size: 0.75rem; line-height: 1.4; }
     .settings-scope-bar { align-items: stretch; flex-direction: column; }
-    .settings-scope-label { padding: 0.2rem 0; }
+    .settings-scope-bar > .settings-scope-label { display: none; }
     .settings-scope-server-btn,
     .settings-scope-select-wrap,
     .settings-scope-select-wrap select { width: 100%; max-width: none; }
     .settings-scope-select-wrap::before { display: none; }
     .settings-scope-spacer { display: none; }
-    .settings-view-compact { justify-content: space-between; }
+    .settings-view-compact { display: grid; grid-template-columns: auto minmax(0, 1fr); justify-content: stretch; gap: 0.35rem 0.6rem; }
+    .settings-view-compact .settings-level-switch { justify-self: start; }
+    .settings-view-compact .settings-basic-note { grid-column: 1 / -1; }
+    .settings-cascade-copy { margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px solid var(--border); line-height: 1.45; }
     .settings-section-description { white-space: normal; }
     #settingsContainer .section-header { align-items: flex-start; }
     #settingsContainer .section-header-actions { padding-top: 0.15rem; }
@@ -878,6 +900,11 @@
 </div>
 
 <section class="settings-scope-panel" aria-label="Settings scope">
+    <div class="settings-scope-current" aria-live="polite">
+        <span class="settings-scope-current-label">Editing scope</span>
+        <strong id="settingsScopeCurrentName">Server defaults</strong>
+        <span class="settings-scope-current-meta" id="settingsScopeCurrentMeta">Applies to every user and device unless overridden.</span>
+    </div>
     <div class="settings-scope-bar">
         <span class="settings-scope-label">Scope:</span>
         {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
@@ -896,9 +923,10 @@
         <div class="settings-view-compact">
             <span class="settings-scope-label">View:</span>
             <div class="settings-level-switch" aria-label="Settings detail level">
-                <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+                <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is not available yet">Basic</button>
                 <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
             </div>
+            <span class="settings-basic-note">Basic unavailable</span>
         </div>
     </div>
     <p class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides</p>
@@ -1149,13 +1177,16 @@
     const settingsDebugSessionId = 'settings-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     let editShelfEscapeHandler = null;
     let activeSettingsGroup = '';
-    let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';
+    let settingsLevel = 'advanced';
+    localStorage.removeItem('mediastorm-settings-level');
     let expandedIndexerEditIndex = -1;
     const expandedProviderEditIndexes = {
         debridProviders: -1,
         torrentScrapers: -1,
+        usenet: -1,
+        usenetEngines: -1,
     };
-    const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers']);
+    const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines']);
     const settingsSectionDescriptions = {
         indexers: 'Configure indexers and search providers',
         debridProviders: 'Real-Debrid, AllDebrid, Premiumize',
@@ -1260,8 +1291,8 @@
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = (level === 'basic') ? 'basic' : 'advanced';
-        localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        settingsLevel = 'advanced';
+        localStorage.removeItem('mediastorm-settings-level');
         renderSettings();
     }
 
@@ -1297,9 +1328,7 @@
         document.getElementById('settingsBasicBtn')?.classList.toggle('active', settingsLevel === 'basic');
         document.getElementById('settingsAdvancedBtn')?.classList.toggle('active', settingsLevel === 'advanced');
         const help = document.getElementById('settingsLevelHelp');
-        if (help) help.textContent = settingsLevel === 'basic'
-            ? 'Showing common settings. Switch to Advanced or search to find everything else.'
-            : 'Showing all settings.';
+        if (help) help.textContent = 'Showing all settings. Basic view is not available yet.';
     }
 
     function updateSettingsScopeBarState() {
@@ -1311,6 +1340,8 @@
         const isServer = !selectedUserId;
         const isPerson = !!selectedUserId && !selectedClientId;
         const isDevice = !!selectedClientId;
+        const currentName = document.getElementById('settingsScopeCurrentName');
+        const currentMeta = document.getElementById('settingsScopeCurrentMeta');
         serverButton?.classList.toggle('active', isServer);
         personWrap?.classList.toggle('active', isPerson);
         deviceWrap?.classList.toggle('active', isDevice);
@@ -1318,6 +1349,16 @@
         if (clientSelector) {
             clientSelector.disabled = !selectedUserId || clientsForUser.length === 0;
             if (clientSelector.value !== selectedClientId) clientSelector.value = selectedClientId;
+        }
+        if (currentName) {
+            const selectedPersonName = userSelector?.selectedOptions?.[0]?.textContent?.trim();
+            const selectedDeviceName = clientSelector?.selectedOptions?.[0]?.textContent?.trim();
+            currentName.textContent = isDevice ? (selectedDeviceName || 'Selected device') : (isPerson ? (selectedPersonName || 'Selected person') : 'Server defaults');
+        }
+        if (currentMeta) {
+            currentMeta.textContent = isDevice
+                ? 'Overrides server and person settings for this device only.'
+                : (isPerson ? 'Overrides server defaults for every device using this profile.' : 'Applies to every user and device unless overridden.');
         }
     }
 
@@ -6824,6 +6865,12 @@
             const provider = String(item.provider || '').trim();
             return provider ? '<span class="provider-type-badge debrid">' + escapeHtml(provider) + '</span>' : '';
         }
+        if (sectionKey === 'usenet') return '<span class="provider-type-badge usenet">NNTP</span>';
+        if (sectionKey === 'usenetEngines') {
+            const engineType = String(item.type || '').trim();
+            return '<span class="provider-type-badge usenet">APP</span>' +
+                (engineType ? '<span class="provider-type-name">' + escapeHtml(engineType) + '</span>' : '');
+        }
         if (sectionKey !== 'torrentScrapers') return '';
         const scraperType = String(item.type || '').trim();
         if (!scraperType) return '';
@@ -6840,7 +6887,8 @@
             const statusInput = renderInput('enabled', sectionDef.fields.enabled, item.enabled, basePath + '.' + index, sectionKey)
                 .replace('<label class="toggle">', '<label class="toggle" aria-label="Enable ' + escapeHtml(name).replace(/"/g, '&quot;') + '">');
             const isEditing = expandedProviderEditIndexes[sectionKey] === index;
-            const credentialMask = item.apiKey ? '••••••••' : 'Not set';
+            const credentialValue = options.credentialValue ? options.credentialValue(item) : item.apiKey;
+            const credentialMask = credentialValue ? '••••••••' : 'Not set';
             const badges = renderProviderTableBadges(sectionKey, item);
             const badgesHtml = badges ? '<span class="provider-type-badges">' + badges + '</span>' : '';
             const editHint = sectionKey === 'torrentScrapers' && item.type === 'aiostreams' && item.enabled && (currentSettings.streaming?.indexerTimeoutSec || 5) <= 5
@@ -6852,7 +6900,7 @@
                     badgesHtml + '</td>' +
                 '<td data-label="Status"><span class="indexer-status">' + statusInput + '<span class="indexer-status-text ' + (item.enabled ? 'enabled' : '') + '">' + (item.enabled ? 'On' : 'Off') + '</span></span></td>' +
                 '<td data-label="Priority">' + (index + 1) + '</td>' +
-                '<td data-label="API Key"><span class="indexer-api-mask">' + credentialMask + '</span></td>' +
+                '<td data-label="' + escapeHtml(options.credentialLabel || 'API Key') + '"><span class="indexer-api-mask">' + credentialMask + '</span></td>' +
                 '<td data-label="Actions"><div class="indexer-actions">' +
                     '<button id="test-btn-' + sectionKey + '-' + index + '" class="indexer-action-btn" type="button" onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">Test</button>' +
                     '<button class="indexer-action-btn" type="button" aria-expanded="' + isEditing + '" onclick="toggleProviderEditor(\'' + sectionKey + '\', ' + index + ', event)">' + (isEditing ? 'Close' : 'Edit') + '</button>' +
@@ -6865,7 +6913,7 @@
             return mainRow + editRow;
         }).join('');
         const table = items.length > 0
-            ? '<div class="indexer-table-shell provider-table-shell"><table class="indexer-table provider-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">API Key</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            ? '<div class="indexer-table-shell provider-table-shell"><table class="indexer-table provider-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">' + (options.credentialLabel || 'API Key') + '</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
             : '<div class="indexer-empty-state"><strong>' + options.emptyTitle + '</strong><p class="form-hint">' + options.emptyHint + '</p></div>';
         const hasChanges = sectionHasChanges(sectionKey);
         const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
@@ -6954,6 +7002,30 @@
                 emptyTitle: 'No torrent or streaming sources configured',
                 emptyHint: 'Add a configured source to make torrent or direct-stream results available.',
                 addLabel: 'Add Source',
+            });
+        }
+        if (sectionKey === 'usenet') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Usenet server',
+                secondary: item => item.host ? item.host + ':' + (item.port || 119) : 'Host not set',
+                credentialLabel: 'Password',
+                credentialValue: item => item.password,
+                intro: 'Configure NNTP servers used to retrieve Usenet content. Order reflects connection priority.',
+                emptyTitle: 'No Usenet servers configured',
+                emptyHint: 'Add a server to make Usenet downloads available.',
+                addLabel: 'Add Usenet Server',
+            });
+        }
+        if (sectionKey === 'usenetEngines') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Usenet app',
+                secondary: item => item.baseUrl || item.type || 'API URL not set',
+                credentialLabel: 'API Key',
+                credentialValue: item => item.apiKey || item.password || item.webdavPassword,
+                intro: 'Configure optional NZB and WebDAV apps used for Usenet playback.',
+                emptyTitle: 'No Usenet apps configured',
+                emptyHint: 'Add an app such as AltMount, NZBDav, or Decypharr when your setup uses one.',
+                addLabel: 'Add Usenet App',
             });
         }
         let profileInheritanceControls = '';

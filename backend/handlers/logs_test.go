@@ -802,6 +802,25 @@ func TestEnrichFrontendLogSummaries_AddsClientIdentityAndLastSeen(t *testing.T) 
 	}
 }
 
+func TestEnrichFrontendLogSummaries_UsesNewestProfileAssociation(t *testing.T) {
+	newest := time.Date(2026, time.August, 17, 22, 0, 0, 0, time.UTC)
+	older := newest.Add(-time.Hour)
+	summaries := []frontendLogSummary{{ClientID: "shared-ipad", UploadedAt: newest}}
+	clients := []models.Client{
+		{ID: "shared-ipad", UserID: "yia", LastSeenAt: newest},
+		{ID: "shared-ipad", UserID: "playa", LastSeenAt: older},
+	}
+	users := []models.User{{ID: "yia", Name: "Yia"}, {ID: "playa", Name: "Playa"}}
+
+	got := enrichFrontendLogSummaries(summaries, clients, users)
+	if got[0].ProfileName != "Yia" {
+		t.Fatalf("expected newest profile Yia, got %q", got[0].ProfileName)
+	}
+	if got[0].LastSeenAt == nil || !got[0].LastSeenAt.Equal(newest) {
+		t.Fatalf("expected newest last-seen %s, got %v", newest, got[0].LastSeenAt)
+	}
+}
+
 func TestLogsHandler_LogPackagesUseLastTenThousandLines(t *testing.T) {
 	tempDir := t.TempDir()
 	logFile := filepath.Join(tempDir, "backend.log")

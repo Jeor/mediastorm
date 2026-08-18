@@ -13285,7 +13285,10 @@ func (h *AdminUIHandler) GetLogs(w http.ResponseWriter, r *http.Request) {
 func enrichFrontendLogSummaries(summaries []frontendLogSummary, clients []models.Client, users []models.User) []frontendLogSummary {
 	clientsByID := make(map[string]models.Client, len(clients))
 	for _, client := range clients {
-		clientsByID[client.ID] = client
+		existing, ok := clientsByID[client.ID]
+		if !ok || client.LastSeenAt.After(existing.LastSeenAt) {
+			clientsByID[client.ID] = client
+		}
 	}
 	profileNamesByID := make(map[string]string, len(users))
 	for _, user := range users {

@@ -275,6 +275,38 @@ func TestUnknownTrackPolicyRejects(t *testing.T) {
 	}
 }
 
+func TestAllowedAudioTracksReject(t *testing.T) {
+	tests := []struct {
+		name     string
+		allowed  []string
+		streams  []AudioStreamInfo
+		rejected bool
+	}{
+		{name: "empty allowlist permits all", streams: []AudioStreamInfo{{Language: "rus"}}},
+		{name: "allowed language present", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Language: "rus"}, {Language: "eng"}}},
+		{name: "language in title is recognized", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Title: "English Dolby Atmos"}}},
+		{name: "disallowed language is rejected", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Language: "rus"}}, rejected: true},
+		{name: "unknown language is rejected", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Index: 1}}, rejected: true},
+		{name: "missing audio tracks is rejected", allowed: []string{"eng"}, rejected: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := allowedAudioTracksReject(tt.allowed, tt.streams)
+			if got != tt.rejected {
+				t.Fatalf("allowedAudioTracksReject() = %v, want %v", got, tt.rejected)
+			}
+		})
+	}
+}
+
+func TestFindAllowedAudioTrackFallsBackWithinAllowlist(t *testing.T) {
+	streams := []AudioStreamInfo{{Index: 1, Language: "rus"}, {Index: 2, Language: "fra"}}
+	if got := findAllowedAudioTrack(streams, []string{"fra"}, "eng"); got != 2 {
+		t.Fatalf("findAllowedAudioTrack() = %d, want allowed French track 2", got)
+	}
+}
+
 func TestCanonicalPrequeueTitleID(t *testing.T) {
 	tests := []struct {
 		name      string

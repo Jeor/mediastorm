@@ -241,6 +241,82 @@ func unknownTrackPolicyRejects(policy string, audioStreams []AudioStreamInfo, su
 	return false, ""
 }
 
+func normalizeAllowedTrackLanguages(languages []string) []string {
+	seen := make(map[string]struct{}, len(languages))
+	normalized := make([]string, 0, len(languages))
+	for _, language := range languages {
+		code := strings.ToLower(sanitizeLanguageCode(language))
+		if code == "" {
+			continue
+		}
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+		normalized = append(normalized, code)
+	}
+	return normalized
+}
+
+func copyOptionalStringSlice(values *[]string) []string {
+	if values == nil {
+		return nil
+	}
+	return append([]string(nil), (*values)...)
+}
+
+func findAllowedAudioTrack(streams []AudioStreamInfo, allowedLanguages []string, preferredLanguage string) int {
+	allowedLanguages = normalizeAllowedTrackLanguages(allowedLanguages)
+	if len(allowedLanguages) == 0 {
+		return FindAudioTrackByLanguage(streams, preferredLanguage)
+	}
+
+	preferredLanguage = strings.ToLower(sanitizeLanguageCode(preferredLanguage))
+	if preferredLanguage != "" {
+		for _, allowedLanguage := range allowedLanguages {
+			if matchesLanguage(preferredLanguage, "", allowedLanguage) {
+				if selected := FindAudioTrackByLanguage(streams, preferredLanguage); selected >= 0 {
+					return selected
+				}
+				break
+			}
+		}
+	}
+
+	for _, allowedLanguage := range allowedLanguages {
+		if selected := FindAudioTrackByLanguage(streams, allowedLanguage); selected >= 0 {
+			return selected
+		}
+	}
+	return -1
+}
+
+func allowedAudioTracksReject(allowedLanguages []string, streams []AudioStreamInfo) (bool, string) {
+	allowedLanguages = normalizeAllowedTrackLanguages(allowedLanguages)
+	if len(allowedLanguages) == 0 {
+		return false, ""
+	}
+	if len(streams) == 0 {
+		return true, fmt.Sprintf("no audio tracks were found for allowed languages %v", allowedLanguages)
+	}
+	if findAllowedAudioTrack(streams, allowedLanguages, "") >= 0 {
+		return false, ""
+	}
+
+	available := make([]string, 0, len(streams))
+	for _, stream := range streams {
+		language := strings.TrimSpace(stream.Language)
+		if language == "" {
+			language = strings.TrimSpace(stream.Title)
+		}
+		if language == "" {
+			language = "unknown"
+		}
+		available = append(available, language)
+	}
+	return true, fmt.Sprintf("audio languages %v do not match allowed languages %v", available, allowedLanguages)
+}
+
 // DefaultExternalURLValidator probes a pre-resolved external stream URL (e.g.
 // AIOStreams/Comet proxy links) and returns an error when the link has expired,
 // so callers can drop the stale ready entry and force a fresh re-search. It is
@@ -348,12 +424,13 @@ type ClientSettingsProvider interface {
 }
 
 type prequeueScopePlayback struct {
-	PreferredAudioLanguage     string `json:"preferredAudioLanguage,omitempty"`
-	PreferredSubtitleLanguage  string `json:"preferredSubtitleLanguage,omitempty"`
-	PreferredSubtitleMode      string `json:"preferredSubtitleMode,omitempty"`
-	ForceAACTranscoding        bool   `json:"forceAacTranscoding,omitempty"`
-	IgnoreDVCompatibilityCheck *bool  `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"`
-	MaxResultsPerResolution    *int   `json:"maxResultsPerResolution,omitempty"`
+	PreferredAudioLanguage     string   `json:"preferredAudioLanguage,omitempty"`
+	PreferredSubtitleLanguage  string   `json:"preferredSubtitleLanguage,omitempty"`
+	AllowedTrackLanguages      []string `json:"allowedTrackLanguages,omitempty"`
+	PreferredSubtitleMode      string   `json:"preferredSubtitleMode,omitempty"`
+	ForceAACTranscoding        bool     `json:"forceAacTranscoding,omitempty"`
+	IgnoreDVCompatibilityCheck *bool    `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"`
+	MaxResultsPerResolution    *int     `json:"maxResultsPerResolution,omitempty"`
 }
 
 type prequeueScopeSignature struct {
@@ -396,6 +473,7 @@ func configPlaybackToUserPlayback(p config.PlaybackSettings) models.PlaybackSett
 	return models.PlaybackSettings{
 		PreferredAudioLanguage:     p.PreferredAudioLanguage,
 		PreferredSubtitleLanguage:  p.PreferredSubtitleLanguage,
+		AllowedTrackLanguages:      models.StringSlicePtr(p.AllowedTrackLanguages),
 		PreferredSubtitleMode:      p.PreferredSubtitleMode,
 		ForceAACTranscoding:        models.BoolPtr(p.ForceAACTranscoding),
 		IgnoreDVCompatibilityCheck: models.BoolPtr(p.IgnoreDVCompatibilityCheck),
@@ -450,6 +528,9 @@ func applyClientScopeOverrides(sig *prequeueScopeSignature, clientSettings *mode
 	if clientSettings.PreferredSubtitleLanguage != nil {
 		sig.Playback.PreferredSubtitleLanguage = *clientSettings.PreferredSubtitleLanguage
 	}
+	if clientSettings.AllowedTrackLanguages != nil {
+		sig.Playback.AllowedTrackLanguages = append([]string(nil), (*clientSettings.AllowedTrackLanguages)...)
+	}
 	if clientSettings.PreferredSubtitleMode != nil {
 		sig.Playback.PreferredSubtitleMode = *clientSettings.PreferredSubtitleMode
 	}
@@ -493,6 +574,7 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 			global.Playback = prequeueScopePlayback{
 				PreferredAudioLanguage:     defaults.Playback.PreferredAudioLanguage,
 				PreferredSubtitleLanguage:  defaults.Playback.PreferredSubtitleLanguage,
+				AllowedTrackLanguages:      append([]string(nil), globalSettings.Playback.AllowedTrackLanguages...),
 				PreferredSubtitleMode:      defaults.Playback.PreferredSubtitleMode,
 				ForceAACTranscoding:        models.BoolVal(defaults.Playback.ForceAACTranscoding, false),
 				IgnoreDVCompatibilityCheck: defaults.Playback.IgnoreDVCompatibilityCheck,
@@ -513,6 +595,7 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 			effective.Playback = prequeueScopePlayback{
 				PreferredAudioLanguage:     userSettings.Playback.PreferredAudioLanguage,
 				PreferredSubtitleLanguage:  userSettings.Playback.PreferredSubtitleLanguage,
+				AllowedTrackLanguages:      copyOptionalStringSlice(userSettings.Playback.AllowedTrackLanguages),
 				PreferredSubtitleMode:      userSettings.Playback.PreferredSubtitleMode,
 				ForceAACTranscoding:        models.BoolVal(userSettings.Playback.ForceAACTranscoding, false),
 				IgnoreDVCompatibilityCheck: userSettings.Playback.IgnoreDVCompatibilityCheck,
@@ -1738,6 +1821,8 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// Priority: client settings > user settings > global settings > default
 	var hdrDVPolicy models.HDRDVPolicy
 	unknownTrackPolicy := "none"
+	var allowedTrackLanguages []string
+	var playbackDefaults models.UserSettings
 
 	// Layer 1: Start with global settings
 	if h.configManager != nil {
@@ -1745,6 +1830,8 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		if err == nil {
 			hdrDVPolicy = models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy)
 			unknownTrackPolicy = string(globalSettings.Filtering.UnknownTrackPolicy)
+			allowedTrackLanguages = normalizeAllowedTrackLanguages(globalSettings.Playback.AllowedTrackLanguages)
+			playbackDefaults.Playback.AllowedTrackLanguages = models.StringSlicePtr(allowedTrackLanguages)
 		}
 	}
 
@@ -1756,6 +1843,9 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		}
 		if err == nil && userSettings != nil && userSettings.Filtering.UnknownTrackPolicy != "" {
 			unknownTrackPolicy = userSettings.Filtering.UnknownTrackPolicy
+		}
+		if effectiveSettings, effectiveErr := h.userSettingsSvc.GetWithDefaults(userID, playbackDefaults); effectiveErr == nil {
+			allowedTrackLanguages = normalizeAllowedTrackLanguages(copyOptionalStringSlice(effectiveSettings.Playback.AllowedTrackLanguages))
 		}
 	}
 
@@ -1770,6 +1860,10 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			unknownTrackPolicy = *clientSettings.UnknownTrackPolicy
 			log.Printf("[prequeue] Using client-specific unknown track policy: %s", unknownTrackPolicy)
 		}
+		if err == nil && clientSettings != nil && clientSettings.AllowedTrackLanguages != nil {
+			allowedTrackLanguages = normalizeAllowedTrackLanguages(*clientSettings.AllowedTrackLanguages)
+			log.Printf("[prequeue] Using client-specific allowed track languages: %v", allowedTrackLanguages)
+		}
 	}
 
 	// Default to allowing all content
@@ -1779,7 +1873,8 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	unknownTrackPolicy = normalizeUnknownTrackPolicy(unknownTrackPolicy)
 	needsDVCheck := hdrDVPolicy == models.HDRDVPolicyIncludeHDR
 	needsUnknownTrackCheck := unknownTrackPolicyNeedsProbe(unknownTrackPolicy)
-	log.Printf("[prequeue] HDR/DV policy: %s, needsDVCheck: %v, unknownTrackPolicy: %s, needsUnknownTrackCheck: %v", hdrDVPolicy, needsDVCheck, unknownTrackPolicy, needsUnknownTrackCheck)
+	needsAllowedLanguageCheck := len(allowedTrackLanguages) > 0
+	log.Printf("[prequeue] HDR/DV policy: %s, needsDVCheck: %v, unknownTrackPolicy: %s, needsUnknownTrackCheck: %v, allowedTrackLanguages: %v, needsAllowedLanguageCheck: %v", hdrDVPolicy, needsDVCheck, unknownTrackPolicy, needsUnknownTrackCheck, allowedTrackLanguages, needsAllowedLanguageCheck)
 
 	// Resolution phase — iterate through combined ranked results (same order as search UI)
 	var resolution *models.PlaybackResolution
@@ -1937,7 +2032,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			}
 		}
 
-		if needsUnknownTrackCheck && probeResult == nil && h.metadataProber != nil {
+		if (needsUnknownTrackCheck || needsAllowedLanguageCheck) && probeResult == nil && h.metadataProber != nil {
 			metadata, probeErr := h.metadataProber.ProbeVideoMetadata(ctx, resolution.WebDAVPath)
 			if probeErr != nil {
 				log.Printf("[prequeue] Track metadata probe failed for %s: %v, trying next result", result.Title, probeErr)
@@ -1946,6 +2041,28 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 				continue
 			}
 			metadataResult = metadata
+		}
+
+		if needsAllowedLanguageCheck {
+			var audioStreams []AudioStreamInfo
+			switch {
+			case probeResult != nil:
+				audioStreams = probeResult.AudioStreams
+			case metadataResult != nil:
+				audioStreams = metadataResult.AudioStreams
+			default:
+				lastErr = fmt.Errorf("allowed audio languages %v require track metadata, but no track prober is available", allowedTrackLanguages)
+				log.Printf("[prequeue] Rejecting result [%d] because allowed track languages cannot be verified: %s", i, result.Title)
+				resolution = nil
+				continue
+			}
+
+			if rejected, reason := allowedAudioTracksReject(allowedTrackLanguages, audioStreams); rejected {
+				lastErr = fmt.Errorf("%s", reason)
+				log.Printf("[prequeue] Result [%d] rejected by allowed track languages: %s; trying next result: %s", i, reason, result.Title)
+				resolution = nil
+				continue
+			}
 		}
 
 		if needsUnknownTrackCheck {
@@ -2068,6 +2185,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 					Playback: models.PlaybackSettings{
 						PreferredAudioLanguage:    globalSettings.Playback.PreferredAudioLanguage,
 						PreferredSubtitleLanguage: globalSettings.Playback.PreferredSubtitleLanguage,
+						AllowedTrackLanguages:     models.StringSlicePtr(globalSettings.Playback.AllowedTrackLanguages),
 						PreferredSubtitleMode:     globalSettings.Playback.PreferredSubtitleMode,
 					},
 				}
@@ -2084,6 +2202,8 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		userSettings, err := h.userSettingsSvc.GetWithDefaults(userID, defaults)
 		if err != nil {
 			log.Printf("[prequeue] Failed to get user settings (non-fatal): %v", err)
+		} else {
+			allowedTrackLanguages = normalizeAllowedTrackLanguages(copyOptionalStringSlice(userSettings.Playback.AllowedTrackLanguages))
 		}
 
 		// Log after user settings merge (before content overrides)
@@ -2099,6 +2219,10 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 				}
 				if clientSettings.PreferredSubtitleLanguage != nil {
 					userSettings.Playback.PreferredSubtitleLanguage = *clientSettings.PreferredSubtitleLanguage
+				}
+				if clientSettings.AllowedTrackLanguages != nil {
+					userSettings.Playback.AllowedTrackLanguages = clientSettings.AllowedTrackLanguages
+					allowedTrackLanguages = normalizeAllowedTrackLanguages(*clientSettings.AllowedTrackLanguages)
 				}
 				if clientSettings.PreferredSubtitleMode != nil {
 					userSettings.Playback.PreferredSubtitleMode = *clientSettings.PreferredSubtitleMode
@@ -2212,8 +2336,9 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 
 		// Process track selection using probe results
 		if len(audioStreams) > 0 || len(subtitleStreams) > 0 {
-			log.Printf("[prequeue] User track preferences: audioLang=%q, subLang=%q, subMode=%q",
+			log.Printf("[prequeue] User track preferences: audioLang=%q, allowedTrackLanguages=%v, subLang=%q, subMode=%q",
 				userSettings.Playback.PreferredAudioLanguage,
+				allowedTrackLanguages,
 				userSettings.Playback.PreferredSubtitleLanguage,
 				userSettings.Playback.PreferredSubtitleMode)
 
@@ -2221,12 +2346,12 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 				log.Printf("[prequeue] Audio stream[%d]: index=%d codec=%q lang=%q title=%q", i, stream.Index, stream.Codec, stream.Language, stream.Title)
 			}
 
-			if userSettings.Playback.PreferredAudioLanguage != "" {
-				selectedAudioTrack = h.findAudioTrackByLanguage(audioStreams, userSettings.Playback.PreferredAudioLanguage)
+			if userSettings.Playback.PreferredAudioLanguage != "" || len(allowedTrackLanguages) > 0 {
+				selectedAudioTrack = findAllowedAudioTrack(audioStreams, allowedTrackLanguages, userSettings.Playback.PreferredAudioLanguage)
 				if selectedAudioTrack >= 0 {
-					log.Printf("[prequeue] Selected audio track %d for language %q", selectedAudioTrack, userSettings.Playback.PreferredAudioLanguage)
+					log.Printf("[prequeue] Selected audio track %d for preferred language %q within allowed languages %v", selectedAudioTrack, userSettings.Playback.PreferredAudioLanguage, allowedTrackLanguages)
 				} else {
-					log.Printf("[prequeue] No audio track found matching language %q", userSettings.Playback.PreferredAudioLanguage)
+					log.Printf("[prequeue] No audio track found matching preferred language %q within allowed languages %v", userSettings.Playback.PreferredAudioLanguage, allowedTrackLanguages)
 				}
 			} else {
 				log.Printf("[prequeue] No preferred audio language set in user settings")

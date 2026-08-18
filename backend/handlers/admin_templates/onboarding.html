@@ -8,7 +8,7 @@
 .onboarding-progress-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
 .onboarding-progress-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.875rem; color: var(--text-secondary); font-size: 0.875rem; }
 .onboarding-progress-track { height: 6px; background: var(--bg-tertiary); border-radius: 999px; overflow: hidden; margin-bottom: 1rem; }
-.onboarding-progress-fill { height: 100%; width: 0%; background: var(--success); border-radius: 999px; transition: width 0.25s ease; }
+.onboarding-progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width 0.25s ease; }
 .onboarding-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
 .onboarding-step-button { width: 100%; min-height: 72px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); border-radius: var(--radius); padding: 0.625rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 0.5rem; cursor: pointer; text-align: left; transition: border-color 0.2s, background 0.2s, color 0.2s, opacity 0.2s; }
 .onboarding-step-button:hover:not(:disabled) { border-color: var(--accent); color: var(--text-primary); }
@@ -26,6 +26,9 @@
 .onboarding-panel { display: none; }
 .onboarding-panel.active { display: block; }
 .onboarding-panel .card-body { padding: 1.5rem; }
+.onboarding-kicker { margin-bottom: 0.35rem; color: var(--accent-hover); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.onboarding-panel-heading { min-height: 52px; align-items: center; }
+.onboarding-panel-heading h2 { font-size: 1rem; }
 .onboarding-actions { display: flex; justify-content: space-between; margin-top: 1rem; gap: 0.75rem; }
 .step-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
 .inline-result { font-size: 0.8125rem; color: var(--text-secondary); min-height: 1.25rem; }
@@ -64,8 +67,9 @@
 {{define "content"}}
 <div class="page-header" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
     <div>
+        <div class="onboarding-kicker">Guided setup</div>
         <h1>Admin Onboarding</h1>
-        <p>Finish the core setup needed for accounts, profiles, and playback.</p>
+        <p>Finish the core setup needed for users, profiles, sources, and playback.</p>
     </div>
     <button class="btn btn-secondary" onclick="skipOnboarding()">Skip for now</button>
 </div>
@@ -83,7 +87,7 @@
     </div>
     <div>
         <section class="card onboarding-panel active" data-panel="0">
-            <div class="card-header"><h2>Master Admin Account</h2></div>
+            <div class="card-header onboarding-panel-heading"><h2>Master Admin Account</h2></div>
             <div class="card-body">
                 <div id="passwordStatus" class="check-item" style="margin-bottom: 1rem;"></div>
                 <form onsubmit="saveMasterAdminAccount(event)" class="setup-grid">
@@ -110,7 +114,7 @@
         </section>
 
         <section class="card onboarding-panel" data-panel="1">
-            <div class="card-header"><h2>Streaming Source</h2></div>
+            <div class="card-header onboarding-panel-heading"><h2>Streaming Source</h2></div>
             <div class="card-body">
                 <div class="form-group">
                     <label class="form-label">Service Mode</label>
@@ -130,7 +134,7 @@
         </section>
 
         <section class="card onboarding-panel" data-panel="2">
-            <div class="card-header"><h2>Search Source</h2></div>
+            <div class="card-header onboarding-panel-heading"><h2>Search Source</h2></div>
             <div class="card-body">
                 <div class="source-section">
                     <div class="source-section-header">
@@ -154,7 +158,7 @@
         </section>
 
         <section class="card onboarding-panel" data-panel="3">
-            <div class="card-header"><h2>Metadata Basics</h2></div>
+            <div class="card-header onboarding-panel-heading"><h2>Metadata Basics</h2></div>
             <div class="card-body">
                 <div class="setup-grid">
                     <div class="form-group">
@@ -175,7 +179,7 @@
         </section>
 
         <section class="card onboarding-panel" data-panel="4">
-            <div class="card-header">
+            <div class="card-header onboarding-panel-heading">
                 <h2>Profiles</h2>
                 <button class="btn btn-secondary btn-sm" onclick="loadAccountsAndProfiles()">Refresh</button>
             </div>
@@ -216,7 +220,7 @@
         </section>
 
         <section class="card onboarding-panel" data-panel="5">
-            <div class="card-header"><h2>Review</h2></div>
+            <div class="card-header onboarding-panel-heading"><h2>Review</h2></div>
             <div class="card-body">
                 <div class="checklist" id="reviewChecklist"></div>
             </div>

@@ -2232,32 +2232,6 @@
             flex: 0 0 20px;
         }
 
-        .admin-topbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-left: auto;
-        }
-
-        .admin-topbar-action {
-            display: inline-flex;
-            width: 32px;
-            height: 32px;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            border-radius: 50%;
-            text-decoration: none;
-        }
-
-        .admin-topbar-action:hover,
-        .admin-topbar-action:focus-visible {
-            color: var(--text-primary);
-            background: var(--bg-hover);
-            outline: none;
-        }
-
-        .admin-topbar-action svg,
         .admin-mobile-menu svg {
             width: 18px;
             height: 18px;
@@ -2473,13 +2447,12 @@
                     </div>
                 </details>
 
-                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations") (hasSuffix .CurrentPath "/notifications")}}open{{end}}>
+                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}open{{end}}>
                     <summary data-walkthrough-target="settings"><span>Manage</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
                         <a href="{{.BasePath}}/settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.4V9.6h.1A1.7 1.7 0 0 0 4.2 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.66 3.8l.06.06A1.7 1.7 0 0 0 8.6 4.2a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.4h4v.1a1.7 1.7 0 0 0 1 1.7 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1Z"/></svg><span>Settings</span></a>
                         <a href="{{.BasePath}}/tasks" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-5V2"/><path d="M20 7a9 9 0 1 0 1 8"/></svg><span>Automations</span></a>
                         <a href="{{.BasePath}}/integrations" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h8M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0Z"/><path d="M12 16v5"/></svg><span>Integrations</span></a>
-                        <a href="{{.BasePath}}/notifications" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/notifications"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M14 21h-4"/></svg><span>Notifications</span></a>
                     </div>
                 </details>
 
@@ -2541,11 +2514,6 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
                 {{if .IsAdmin}}<a href="{{.BasePath}}/search" class="admin-topbar-search" aria-label="Open search diagnostics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search…</span></a>{{end}}
-                <div class="admin-topbar-actions">
-                    <a href="{{.BasePath}}/notifications" class="admin-topbar-action" aria-label="Notifications">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    </a>
-                </div>
             </header>
 
             <main class="main-content">

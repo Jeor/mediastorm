@@ -480,7 +480,7 @@ func TestSharedShellRendersOnlyRegisteredRoleLinksAndContextualLabels(t *testing
 	if !strings.Contains(adminHTML, `aria-label="Admin navigation"`) {
 		t.Fatal("admin shell is missing its contextual navigation label")
 	}
-	for _, removedShortcut := range []string{`href="/admin/kids-settings"`, `aria-label="Open user management"`} {
+	for _, removedShortcut := range []string{`href="/admin/kids-settings"`, `aria-label="Open user management"`, `href="/admin/notifications"`, `aria-label="Notifications"`} {
 		if strings.Contains(adminHTML, removedShortcut) {
 			t.Fatalf("admin shell still renders removed shortcut %q", removedShortcut)
 		}
@@ -497,8 +497,8 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
 		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 23 {
-		t.Fatalf("shared shell navigation SVG count = %d, want 23", got)
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 22 {
+		t.Fatalf("shared shell navigation SVG count = %d, want 22", got)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,

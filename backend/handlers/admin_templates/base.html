@@ -2599,9 +2599,6 @@
                 </button>
                 {{if .IsAdmin}}<a href="{{.BasePath}}/search" class="admin-topbar-search" aria-label="Open search diagnostics"><svg class="sidebar-nav-icon" aria-hidden="true"><use href="#admin-icon-search"></use></svg><span>Search…</span></a>{{end}}
                 <div class="admin-topbar-actions">
-                    <a href="{{.BasePath}}/notifications" class="admin-topbar-action" aria-label="Notifications">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    </a>
                     <span class="admin-topbar-identity" aria-label="Signed in as {{.Username}}">
                         <span class="admin-avatar" aria-hidden="true">{{if .IsAdmin}}A{{else}}U{{end}}</span>
                         <span class="admin-topbar-identity-name">{{.Username}}</span>

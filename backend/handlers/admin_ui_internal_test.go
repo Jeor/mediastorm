@@ -71,6 +71,21 @@ func TestAdminShellUsesClearPeopleNavigationAndConsistentIcons(t *testing.T) {
 	}
 }
 
+func TestAdminShellKeepsNotificationsOutOfTopbar(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	if strings.Contains(source, `href="{{.BasePath}}/notifications" class="admin-topbar-action"`) {
+		t.Fatal("admin shell still exposes the notification bell in the topbar")
+	}
+	if !strings.Contains(source, `<span>Notifications</span>`) {
+		t.Fatal("admin shell removed notifications from the primary navigation")
+	}
+}
+
 func TestAdminOnboardingAndWalkthroughShareGuidanceLanguage(t *testing.T) {
 	baseBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
 	if err != nil {
@@ -684,6 +699,67 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("status template missing basic-dashboard marker %q", marker)
+		}
+	}
+}
+
+func TestAdminDashboardUpdateNoticeUsesCompactVersionFields(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`class="dashboard-update-versions"`,
+		`id="dashboardUpdateCurrent"`,
+		`id="dashboardUpdateLatest"`,
+		`class="dashboard-update-instruction">Update through Docker.`,
+		`current.textContent = currentLabel;`,
+		`latest.textContent = latestLabel;`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("status template missing compact update marker %q", marker)
+		}
+	}
+	if strings.Contains(source, `message.textContent = `) {
+		t.Fatal("dashboard update notice still builds an unstructured sentence")
+	}
+}
+
+func TestAdminDashboardStylesOnlyActiveStreamScrollbar(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`class="table-container active-streams-scroll"`,
+		`.active-streams-scroll {`,
+		`scrollbar-color: var(--border) transparent;`,
+		`.active-streams-scroll::-webkit-scrollbar-thumb`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("status template missing scoped active-stream scrollbar marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSettingsScopeOptionsKeepDarkThemeContrast(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`.settings-scope-select-wrap option {`,
+		`background: var(--bg-secondary);`,
+		`color: var(--text-primary);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing scope-option contrast marker %q", marker)
 		}
 	}
 }

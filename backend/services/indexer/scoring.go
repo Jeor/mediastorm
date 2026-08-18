@@ -105,6 +105,13 @@ func ScoreResult(result models.NZBResult, ctx ScoringContext) (int, []models.Sco
 			Reason:    reason,
 		})
 	}
+	if result.Attributes["countryMatch"] == "true" {
+		breakdown = append(breakdown, models.ScoreBreakdownItem{
+			Criterion: "Country Match",
+			Points:    0,
+			Reason:    fmt.Sprintf("explicit release country %s matches expected country", result.Attributes["releaseCountry"]),
+		})
+	}
 
 	if ctx.UseDownloadRanking {
 		points, reason := scoreDownloadPreferredTerms(result, ctx.DownloadPreferredTerms, scoreBand*(n+1))

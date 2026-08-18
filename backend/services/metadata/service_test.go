@@ -21,6 +21,7 @@ func TestApplyTVDBMovieExtendedMetadataCopiesGenresWithoutExternalIDs(t *testing
 	title := models.Title{}
 
 	applyTVDBMovieExtendedMetadata(&title, tvdbMovieExtendedData{
+		OriginalCountry: "usa",
 		Genres: []tvdbGenre{
 			{Name: "Drama"},
 			{Name: "Thriller"},
@@ -44,6 +45,9 @@ func TestApplyTVDBMovieExtendedMetadataCopiesGenresWithoutExternalIDs(t *testing
 	if strings.Join(title.Genres, ",") != "Drama,Thriller" {
 		t.Fatalf("Genres = %+v, want Drama/Thriller", title.Genres)
 	}
+	if title.CountryCode != "usa" {
+		t.Fatalf("CountryCode = %q, want provider country usa", title.CountryCode)
+	}
 }
 
 func TestApplyTVDBSeriesIdentityPreservesAnimeSignals(t *testing.T) {
@@ -54,7 +58,8 @@ func TestApplyTVDBSeriesIdentityPreservesAnimeSignals(t *testing.T) {
 	}
 
 	applyTVDBSeriesIdentity(&title, tvdbSeriesExtendedData{
-		Name: "機動戦艦ナデシコ",
+		Name:            "機動戦艦ナデシコ",
+		OriginalCountry: "jpn",
 		Genres: []tvdbGenre{
 			{Name: "Science Fiction"},
 			{Name: "Animation"},
@@ -67,6 +72,9 @@ func TestApplyTVDBSeriesIdentityPreservesAnimeSignals(t *testing.T) {
 	}
 	if got := strings.Join(title.Genres, ","); got != "Animation,Comedy,Science Fiction,Anime" {
 		t.Fatalf("Genres = %q, want merged TVDB identity genres", got)
+	}
+	if title.CountryCode != "jpn" {
+		t.Fatalf("CountryCode = %q, want provider country jpn", title.CountryCode)
 	}
 }
 

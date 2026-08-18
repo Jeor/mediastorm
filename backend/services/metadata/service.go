@@ -1390,7 +1390,7 @@ func seriesDetailsCacheKey(lang string, tvdbID int64, seasonType string) string 
 	if st == "" {
 		st = "default"
 	}
-	return cacheKey("tvdb", "series", "details", "v15", lang, strconv.FormatInt(tvdbID, 10), st)
+	return cacheKey("tvdb", "series", "details", "v16", lang, strconv.FormatInt(tvdbID, 10), st)
 }
 
 func applyTVDBSeriesIdentity(title *models.Title, extended tvdbSeriesExtendedData) {
@@ -1403,6 +1403,7 @@ func applyTVDBSeriesIdentity(title *models.Title, extended tvdbSeriesExtendedDat
 		title.OriginalName = originalName
 	}
 	title.Genres = mergeMetadataGenres(title.Genres, tvdbGenreNames(extended.Genres))
+	title.CountryCode = strings.TrimSpace(firstNonEmpty(extended.OriginalCountry, extended.OriginalNetwork.Country))
 }
 
 func mergeMetadataGenres(groups ...[]string) []string {
@@ -2624,6 +2625,7 @@ func (s *Service) Search(ctx context.Context, query string, mediaType string) ([
 			ImageURL        string            `json:"image_url"`
 			Thumbnail       string            `json:"thumbnail"`
 			Network         string            `json:"network"`
+			Country         string            `json:"country"`
 			RemoteIDs       []struct {
 				ID         string `json:"id"`
 				SourceName string `json:"sourceName"`
@@ -2703,14 +2705,15 @@ func (s *Service) Search(ctx context.Context, query string, mediaType string) ([
 				}
 			}
 			title := models.Title{
-				Name:      name,
-				Overview:  overview,
-				Year:      year,
-				Language:  language,
-				MediaType: entryMediaType,
-				TVDBID:    tvdbID,
-				Network:   strings.TrimSpace(d.Network),
-				Adult:     isAdultMetadataValue(d.Adult),
+				Name:        name,
+				Overview:    overview,
+				Year:        year,
+				Language:    language,
+				MediaType:   entryMediaType,
+				TVDBID:      tvdbID,
+				Network:     strings.TrimSpace(d.Network),
+				CountryCode: strings.TrimSpace(d.Country),
+				Adult:       isAdultMetadataValue(d.Adult),
 			}
 			if entryMediaType == "movie" {
 				title.Status = models.MovieReleaseStatusUnknown
@@ -8773,6 +8776,7 @@ func seriesReleaseStatusFromTVDBExtended(ext tvdbSeriesExtendedData, fallback mo
 
 func applyTVDBMovieExtendedMetadata(title *models.Title, ext tvdbMovieExtendedData) {
 	applyTVDBArtworks(title, ext.Artworks)
+	title.CountryCode = strings.TrimSpace(ext.OriginalCountry)
 	if len(title.Genres) == 0 {
 		if genres := tvdbGenreNames(ext.Genres); len(genres) > 0 {
 			title.Genres = genres

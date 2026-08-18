@@ -28,6 +28,7 @@ type ParsedTitle struct {
 	Complete   bool     `json:"complete,omitempty"`
 	Volumes    []int    `json:"volumes,omitempty"`
 	Site       string   `json:"site,omitempty"`
+	Country    string   `json:"country,omitempty"`
 	BitDepth   string   `json:"bit_depth,omitempty"`
 	HDR        []string `json:"hdr,omitempty"`
 }
@@ -56,6 +57,7 @@ func fromTorrentInfo(info *ptt.TorrentInfo) *ParsedTitle {
 		Complete:   info.Complete,
 		Volumes:    info.Volumes,
 		Site:       info.Site,
+		Country:    info.Country,
 		BitDepth:   info.BitDepth,
 		HDR:        info.HDR,
 	}

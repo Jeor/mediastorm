@@ -1163,17 +1163,18 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 	}
 
 	var payload struct {
-		ID               int64   `json:"id"`
-		Name             string  `json:"name"`
-		OriginalName     string  `json:"original_name"`
-		Overview         string  `json:"overview"`
-		OriginalLanguage string  `json:"original_language"`
-		FirstAirDate     string  `json:"first_air_date"`
-		PosterPath       string  `json:"poster_path"`
-		BackdropPath     string  `json:"backdrop_path"`
-		Status           string  `json:"status"`
-		Popularity       float64 `json:"popularity"`
-		VoteAverage      float64 `json:"vote_average"`
+		ID               int64    `json:"id"`
+		Name             string   `json:"name"`
+		OriginalName     string   `json:"original_name"`
+		Overview         string   `json:"overview"`
+		OriginalLanguage string   `json:"original_language"`
+		FirstAirDate     string   `json:"first_air_date"`
+		PosterPath       string   `json:"poster_path"`
+		BackdropPath     string   `json:"backdrop_path"`
+		Status           string   `json:"status"`
+		Popularity       float64  `json:"popularity"`
+		VoteAverage      float64  `json:"vote_average"`
+		OriginCountry    []string `json:"origin_country"`
 		Genres           []struct {
 			ID   int    `json:"id"`
 			Name string `json:"name"`
@@ -1221,6 +1222,9 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 	}
 	if len(payload.Networks) > 0 {
 		title.Network = strings.TrimSpace(payload.Networks[0].Name)
+	}
+	if len(payload.OriginCountry) > 0 {
+		title.CountryCode = strings.TrimSpace(payload.OriginCountry[0])
 	}
 	return title, nil
 }
@@ -1931,17 +1935,20 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 	}
 
 	var movie struct {
-		ID               int64  `json:"id"`
-		Title            string `json:"title"`
-		OriginalTitle    string `json:"original_title"`
-		OriginalLanguage string `json:"original_language"`
-		Overview         string `json:"overview"`
-		PosterPath       string `json:"poster_path"`
-		BackdropPath     string `json:"backdrop_path"`
-		ReleaseDate      string `json:"release_date"`
-		IMDBId           string `json:"imdb_id"`
-		Runtime          int    `json:"runtime"`
-		Genres           []struct {
+		ID                  int64  `json:"id"`
+		Title               string `json:"title"`
+		OriginalTitle       string `json:"original_title"`
+		OriginalLanguage    string `json:"original_language"`
+		Overview            string `json:"overview"`
+		PosterPath          string `json:"poster_path"`
+		BackdropPath        string `json:"backdrop_path"`
+		ReleaseDate         string `json:"release_date"`
+		IMDBId              string `json:"imdb_id"`
+		Runtime             int    `json:"runtime"`
+		ProductionCountries []struct {
+			Code string `json:"iso_3166_1"`
+		} `json:"production_countries"`
+		Genres []struct {
 			ID   int    `json:"id"`
 			Name string `json:"name"`
 		} `json:"genres"`
@@ -1970,6 +1977,9 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 	}
 	if originalLanguage := strings.TrimSpace(movie.OriginalLanguage); originalLanguage != "" {
 		title.Language = originalLanguage
+	}
+	if len(movie.ProductionCountries) > 0 {
+		title.CountryCode = strings.TrimSpace(movie.ProductionCountries[0].Code)
 	}
 
 	if year := parseTMDBYear(movie.ReleaseDate, ""); year != 0 {

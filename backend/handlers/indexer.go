@@ -86,6 +86,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	var episodeAirYear int
 	var episodeReleased bool
 	var absoluteEpisodeNumber int
+	var countryCode string
 	if mediaType == "series" && h.MetadataSvc != nil {
 		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
 		if seriesMeta != nil {
@@ -96,6 +97,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 			episodeAirYear = seriesMeta.EpisodeAirYear
 			episodeReleased = seriesMeta.EpisodeReleased
 			absoluteEpisodeNumber = seriesMeta.AbsoluteEpisodeNumber
+			countryCode = seriesMeta.CountryCode
 			if year == 0 && seriesMeta.Year > 0 {
 				year = seriesMeta.Year
 				log.Printf("[indexer] Populated year %d from series metadata", year)
@@ -118,6 +120,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 			IMDBID: imdbID,
 		}
 		if movieTitle, err := h.MovieMetadataSvc.MovieInfo(r.Context(), movieQuery); err == nil && movieTitle != nil {
+			countryCode = strings.TrimSpace(movieTitle.CountryCode)
 			if isAnimeTitle(movieTitle) {
 				isAnime = true
 				log.Printf("[indexer] Movie %q is anime (genres=%v originalName=%q language=%q) - applying anime language preferences",
@@ -133,6 +136,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 		IMDBID:                imdbID,
 		MediaType:             mediaType,
 		Year:                  year,
+		CountryCode:           countryCode,
 		UserID:                userID,
 		ClientID:              clientID,
 		EpisodeResolver:       episodeResolver,
@@ -274,6 +278,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	var episodeAirYear int
 	var episodeReleased bool
 	var absoluteEpisodeNumber int
+	var countryCode string
 	if mediaType == "series" && h.MetadataSvc != nil {
 		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
 		if seriesMeta != nil {
@@ -284,6 +289,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 			episodeAirYear = seriesMeta.EpisodeAirYear
 			episodeReleased = seriesMeta.EpisodeReleased
 			absoluteEpisodeNumber = seriesMeta.AbsoluteEpisodeNumber
+			countryCode = seriesMeta.CountryCode
 			if year == 0 && seriesMeta.Year > 0 {
 				year = seriesMeta.Year
 			}
@@ -298,6 +304,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 			IMDBID: imdbID,
 		}
 		if movieTitle, err := h.MovieMetadataSvc.MovieInfo(r.Context(), movieQuery); err == nil && movieTitle != nil {
+			countryCode = strings.TrimSpace(movieTitle.CountryCode)
 			if isAnimeTitle(movieTitle) {
 				isAnime = true
 				log.Printf("[indexer] Movie %q is anime (genres=%v originalName=%q language=%q) - applying anime language preferences",
@@ -313,6 +320,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 		IMDBID:                imdbID,
 		MediaType:             mediaType,
 		Year:                  year,
+		CountryCode:           countryCode,
 		UserID:                userID,
 		ClientID:              clientID,
 		EpisodeResolver:       episodeResolver,
@@ -447,6 +455,7 @@ type seriesSearchMetadata struct {
 	EpisodeAirYear        int    // Year the target episode actually aired (may differ from series premiere year)
 	EpisodeReleased       bool   // True only when metadata confirms the target episode has aired
 	AbsoluteEpisodeNumber int
+	CountryCode           string
 }
 
 // getSeriesSearchMetadata fetches series metadata for search, including episode resolver
@@ -486,8 +495,9 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 	}
 
 	result := &seriesSearchMetadata{
-		IsDaily: details.Title.IsDaily,
-		Year:    details.Title.Year,
+		IsDaily:     details.Title.IsDaily,
+		Year:        details.Title.Year,
+		CountryCode: details.Title.CountryCode,
 	}
 
 	result.IsAnime = isAnimeTitle(&details.Title)

@@ -1664,6 +1664,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	var targetAirDate string
 	var episodeAirYear int
 	var episodeReleased bool
+	var countryCode string
 	if mediaType == "series" && h.metadataSvc != nil {
 		seriesMeta := h.createEpisodeResolverAndLookupAbsoluteEp(ctx, titleID, titleName, year, imdbID, targetEpisode)
 		episodeResolver = seriesMeta.EpisodeResolver
@@ -1673,6 +1674,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		targetAirDate = seriesMeta.TargetAirDate
 		episodeAirYear = seriesMeta.EpisodeAirYear
 		episodeReleased = seriesMeta.EpisodeReleased
+		countryCode = seriesMeta.CountryCode
 		if imdbID == "" && seriesMeta.IMDBID != "" {
 			imdbID = seriesMeta.IMDBID
 			log.Printf("[prequeue] Populated IMDb ID %s from series metadata", imdbID)
@@ -1714,6 +1716,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			IMDBID:  imdbID,
 		}
 		if movieTitle, err := h.movieMetadataSvc.MovieInfo(ctx, movieQuery); err == nil && movieTitle != nil {
+			countryCode = strings.TrimSpace(movieTitle.CountryCode)
 			if isAnimeTitle(movieTitle) {
 				isAnime = true
 				log.Printf("[prequeue] Movie %q is anime (genres=%v originalName=%q language=%q) - applying anime language preferences",
@@ -1730,6 +1733,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		MediaType:       mediaType,
 		IMDBID:          imdbID,
 		Year:            year,
+		CountryCode:     countryCode,
 		UserID:          userID,
 		ClientID:        clientID,
 		EpisodeResolver: episodeResolver,
@@ -1750,6 +1754,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		IMDBID:                searchOpts.IMDBID,
 		MediaType:             searchOpts.MediaType,
 		Year:                  searchOpts.Year,
+		CountryCode:           searchOpts.CountryCode,
 		UserID:                searchOpts.UserID,
 		ClientID:              searchOpts.ClientID,
 		EpisodeResolver:       searchOpts.EpisodeResolver,
@@ -2730,6 +2735,7 @@ type SeriesMetadataResult struct {
 	IsAnime         bool   // True for anime content - requires waiting for Nyaa scraper
 	Year            int    // Series premiere year from metadata (used when frontend doesn't provide it)
 	IMDBID          string // Resolved IMDb ID used by ID-aware search providers
+	CountryCode     string // Original production country used to disambiguate regional remakes
 }
 
 // createEpisodeResolverAndLookupAbsoluteEp fetches series metadata, creates an episode resolver,
@@ -2769,6 +2775,7 @@ func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.C
 		result.Year = details.Title.Year
 	}
 	result.IMDBID = strings.TrimSpace(details.Title.IMDBID)
+	result.CountryCode = strings.TrimSpace(details.Title.CountryCode)
 
 	// Check if this is a daily show from the metadata
 	result.IsDaily = details.Title.IsDaily

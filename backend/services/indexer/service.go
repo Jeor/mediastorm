@@ -969,7 +969,20 @@ func compareDeterministicTieBreaker(i, j models.NZBResult) int {
 	return 0
 }
 
+func compareCountryMatch(i, j models.NZBResult) int {
+	if i.Attributes["countryMatch"] != j.Attributes["countryMatch"] {
+		if i.Attributes["countryMatch"] == "true" {
+			return -1
+		}
+		return 1
+	}
+	return 0
+}
+
 func compareByRankingCriteria(i, j models.NZBResult, scoringCtx ScoringContext) int {
+	if cmp := compareCountryMatch(i, j); cmp != 0 {
+		return cmp
+	}
 	if cmp := compareEpisodeYearMatch(i, j); cmp != 0 {
 		return cmp
 	}
@@ -1104,6 +1117,9 @@ func sortScoredResultsByRankingBundle(results []models.ScoredNZBResult, baseCtx 
 // results, retaining their existing deterministic order.
 func sortResultsNewestReleaseFirst(results []models.NZBResult) {
 	sort.SliceStable(results, func(i, j int) bool {
+		if cmp := compareCountryMatch(results[i], results[j]); cmp != 0 {
+			return cmp < 0
+		}
 		iMissing := results[i].PublishDate.IsZero()
 		jMissing := results[j].PublishDate.IsZero()
 		if iMissing != jMissing {
@@ -1118,6 +1134,9 @@ func sortResultsNewestReleaseFirst(results []models.NZBResult) {
 
 func sortScoredResultsNewestReleaseFirst(results []models.ScoredNZBResult) {
 	sort.SliceStable(results, func(i, j int) bool {
+		if cmp := compareCountryMatch(results[i].NZBResult, results[j].NZBResult); cmp != 0 {
+			return cmp < 0
+		}
 		iMissing := results[i].PublishDate.IsZero()
 		jMissing := results[j].PublishDate.IsZero()
 		if iMissing != jMissing {
@@ -1201,6 +1220,7 @@ type SearchOptions struct {
 	IMDBID                string
 	MediaType             string                      // "movie" or "series"
 	Year                  int                         // Release year (for movies)
+	CountryCode           string                      // Original production country from metadata
 	UserID                string                      // Optional: user ID for per-user filtering settings
 	ClientID              string                      // Optional: client ID for per-client filtering settings
 	TotalSeriesEpisodes   int                         // Deprecated: use EpisodeResolver instead
@@ -1264,6 +1284,7 @@ type searchCacheOptions struct {
 	IMDBID                string
 	MediaType             string
 	Year                  int
+	CountryCode           string
 	UserID                string
 	TotalSeriesEpisodes   int
 	HasEpisodeResolver    bool
@@ -1286,6 +1307,7 @@ func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 		IMDBID:                opts.IMDBID,
 		MediaType:             opts.MediaType,
 		Year:                  opts.Year,
+		CountryCode:           opts.CountryCode,
 		UserID:                opts.UserID,
 		TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
 		HasEpisodeResolver:    opts.EpisodeResolver != nil,
@@ -2145,6 +2167,7 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 	return filter.Options{
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
+		ExpectedCountry:       opts.CountryCode,
 		EpisodeAirYear:        opts.EpisodeAirYear,
 		IsMovie:               isMovie,
 		MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
@@ -3030,6 +3053,7 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 	filterOpts := filter.Options{
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
+		ExpectedCountry:       opts.CountryCode,
 		EpisodeAirYear:        opts.EpisodeAirYear,
 		IsMovie:               isMovie,
 		MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),

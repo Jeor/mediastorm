@@ -51,3 +51,13 @@ func TestParseTitle(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTitlePreservesCountry(t *testing.T) {
+	result, err := ParseTitle("Shameless.UK.S01E01.DVDRip.x264")
+	if err != nil {
+		t.Fatalf("ParseTitle failed: %v", err)
+	}
+	if result.Country != "UK" {
+		t.Fatalf("Country = %q, want UK", result.Country)
+	}
+}

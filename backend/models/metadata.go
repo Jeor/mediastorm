@@ -57,6 +57,7 @@ type Title struct {
 	Overview          string      `json:"overview"`
 	Year              int         `json:"year"`
 	Language          string      `json:"language"`
+	CountryCode       string      `json:"countryCode,omitempty"` // Original production country (ISO 3166 where available)
 	Poster            *Image      `json:"poster,omitempty"`
 	TextPoster        *Image      `json:"textPoster,omitempty"` // Original poster with text (preserved when Poster is overridden with textless)
 	Backdrop          *Image      `json:"backdrop,omitempty"`

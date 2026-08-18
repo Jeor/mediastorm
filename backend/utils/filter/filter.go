@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/mozillazg/go-unidecode"
+	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 
 	"novastream/internal/mediaresolve"
@@ -131,6 +132,7 @@ func (r *SeriesEpisodeResolver) GetEpisodesForSeasons(seasons []int) int {
 type Options struct {
 	ExpectedTitle       string
 	ExpectedYear        int
+	ExpectedCountry     string      // Original production country; normalized before comparison
 	EpisodeAirYear      int         // Year the target episode aired (allows results tagged with this year)
 	IsMovie             bool        // true for movies, false for TV shows
 	MaxSizeMovieGB      float64     // Maximum size in GB for movies (0 = no limit)
@@ -148,6 +150,34 @@ type Options struct {
 	TargetAbsoluteEpisode int    // Target absolute episode number for anime (e.g., 1153 for One Piece)
 	IsDaily               bool   // True for daily shows (talk shows, news) - filter by date
 	TargetAirDate         string // For daily shows: air date in YYYY-MM-DD format
+}
+
+// NormalizeCountryCode canonicalizes ISO 3166 alpha-2/alpha-3 values and the
+// release-scene UK alias to the ISO alpha-2 form used for comparisons.
+func NormalizeCountryCode(value string) string {
+	compact := strings.ToUpper(strings.Join(strings.FieldsFunc(strings.TrimSpace(value), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}), ""))
+	if compact == "" {
+		return ""
+	}
+	switch compact {
+	case "UNITEDKINGDOM", "GREATBRITAIN":
+		compact = "GB"
+	case "UNITEDSTATES", "UNITEDSTATESOFAMERICA":
+		compact = "US"
+	case "AUSTRALIA":
+		compact = "AU"
+	case "NEWZEALAND":
+		compact = "NZ"
+	case "CANADA":
+		compact = "CA"
+	}
+	region, err := language.ParseRegion(compact)
+	if err != nil {
+		return compact
+	}
+	return region.Canonicalize().String()
 }
 
 // filteredResult holds a result with its HDR status for sorting
@@ -355,6 +385,20 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			result.Attributes["titleMatch"] = "strong"
 		} else {
 			result.Attributes["titleMatch"] = "loose"
+		}
+
+		expectedCountry := NormalizeCountryCode(opts.ExpectedCountry)
+		releaseCountry := NormalizeCountryCode(parsed.Country)
+		if expectedCountry != "" && releaseCountry != "" {
+			result.Attributes["releaseCountry"] = releaseCountry
+			result.Attributes["expectedCountry"] = expectedCountry
+			if releaseCountry != expectedCountry {
+				reason := fmt.Sprintf("explicit country %s does not match expected %s", strings.ToUpper(parsed.Country), expectedCountry)
+				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+				reject(result, reason)
+				continue
+			}
+			result.Attributes["countryMatch"] = "true"
 		}
 
 		// ptt-go does not recognize some common anime absolute formats, such as

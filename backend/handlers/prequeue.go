@@ -18,6 +18,7 @@ import (
 
 	"novastream/config"
 	"novastream/internal/auth"
+	"novastream/internal/importer"
 	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/internal/requestsecurity"
@@ -1949,6 +1950,22 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			resolution, lastErr = h.waitForPlaybackQueue(ctx, prequeueID, resolution.QueueID, result.Title)
 		}
 		if lastErr != nil || resolution == nil || resolution.WebDAVPath == "" {
+			if importer.IsArticleUnavailable(lastErr) && h.badStreamsSvc != nil {
+				provider := result.Attributes["provider"]
+				if provider == "" {
+					provider = result.Attributes["debridProvider"]
+				}
+				if _, markErr := h.badStreamsSvc.Mark(badstreams.MarkRequest{
+					ReleaseName: result.Title,
+					ServiceType: string(result.ServiceType),
+					Provider:    provider,
+					Reason:      "prequeue:usenet-articles-unavailable",
+				}); markErr != nil {
+					log.Printf("[prequeue] Failed to mark unavailable Usenet result bad for %s: %v", result.Title, markErr)
+				} else {
+					log.Printf("[prequeue] Marked unavailable Usenet result bad: %s", result.Title)
+				}
+			}
 			if debrid.IsBlockedContentError(lastErr) {
 				log.Printf("[prequeue] Provider blocked selected file for result [%d] (%s) %s; trying next result: %v", i, result.ServiceType, result.Title, lastErr)
 			} else {

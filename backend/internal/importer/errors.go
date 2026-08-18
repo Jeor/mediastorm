@@ -63,3 +63,14 @@ var ErrNoRetryable = &NonRetryableError{
 	message: "no retryable errors found",
 	cause:   nil,
 }
+
+// ErrArticleUnavailable identifies releases whose sampled articles are absent
+// from every configured provider. Callers can use this to permanently reject
+// the release instead of repeatedly attempting to import it.
+var ErrArticleUnavailable = errors.New("article not available from any provider")
+
+// IsArticleUnavailable reports whether an import failed because its sampled
+// articles were unavailable from every configured provider.
+func IsArticleUnavailable(err error) bool {
+	return errors.Is(err, ErrArticleUnavailable)
+}

@@ -3,6 +3,7 @@ package importer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,7 +17,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/javi11/nntpcli"
 	"github.com/javi11/nzbparser"
-	concpool "github.com/sourcegraph/conc/pool"
+	"golang.org/x/sync/errgroup"
 	"novastream/internal/encryption"
 	"novastream/internal/encryption/rclone"
 	metapb "novastream/internal/nzb/metadata/proto"
@@ -258,57 +259,19 @@ func (p *Parser) ParseFileWithContext(ctx context.Context, r io.Reader, nzbPath 
 	default:
 	}
 
-	// Use conc pool for parallel processing with proper error handling
-	type fileResult struct {
-		parsedFile *ParsedFile
-		err        error
-	}
-
 	// Each file parser opens NNTP body readers to inspect the first and final
 	// yEnc headers. Bounding this independently of host CPU count prevents large,
 	// obfuscated multipart releases from multiplying connection buffers in RAM.
-	concPool := concpool.NewWithResults[fileResult]().WithMaxGoroutines(maxConcurrentNZBFileParsers)
-
-	// Process files in parallel using conc pool
-	for _, file := range validFiles {
-		concPool.Go(func() fileResult {
-			// Check for context cancellation before processing each file
-			select {
-			case <-ctx.Done():
-				return fileResult{err: ctx.Err()}
-			default:
-			}
-
-			parsedFile, err := p.parseFileWithContext(ctx, file, n.Meta, n.Files, parsed.Filename)
-
-			return fileResult{
-				parsedFile: parsedFile,
-				err:        err,
-			}
-		})
-	}
-
-	// Wait for all goroutines to complete and collect results
-	results := concPool.Wait()
-
-	// Check for context cancellation after parallel processing
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
-	// Check for errors and collect valid results
-	var parsedFiles []*ParsedFile
-	for i, result := range results {
-		if result.err != nil {
-			// If it's a context error, return it directly
-			if result.err == context.Canceled || result.err == context.DeadlineExceeded {
-				return nil, result.err
-			}
-			return nil, fmt.Errorf("failed to parse file %s: %w", validFiles[i].Subject, result.err)
+	parsedFiles, err := runBoundedFileParsers(ctx, len(validFiles), func(parseCtx context.Context, i int) (*ParsedFile, error) {
+		file := validFiles[i]
+		parsedFile, parseErr := p.parseFileWithContext(parseCtx, file, n.Meta, n.Files, parsed.Filename)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse file %s: %w", file.Subject, parseErr)
 		}
-		parsedFiles = append(parsedFiles, result.parsedFile)
+		return parsedFile, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Aggregate results in the original order
@@ -337,6 +300,38 @@ func (p *Parser) ParseFileWithContext(ctx context.Context, r io.Reader, nzbPath 
 	parsed.Type = p.determineNzbType(parsed.Files)
 
 	return parsed, nil
+}
+
+// runBoundedFileParsers preserves file order while canceling sibling probes as
+// soon as one volume proves the release cannot be parsed. This prevents a bad
+// multi-volume NZB from serially probing every remaining volume.
+func runBoundedFileParsers(ctx context.Context, count int, parse func(context.Context, int) (*ParsedFile, error)) ([]*ParsedFile, error) {
+	group, parseCtx := errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentNZBFileParsers)
+	results := make([]*ParsedFile, count)
+
+	for i := 0; i < count; i++ {
+		if err := parseCtx.Err(); err != nil {
+			break
+		}
+		i := i
+		group.Go(func() error {
+			parsedFile, err := parse(parseCtx, i)
+			if err != nil {
+				return err
+			}
+			results[i] = parsedFile
+			return nil
+		})
+	}
+
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
 // parseFile processes a single file entry from the NZB (legacy, no context)
@@ -376,13 +371,19 @@ func (p *Parser) parseFileWithContext(ctx context.Context, file nzbparser.NzbFil
 		default:
 		}
 
-		firstPartHeaders, err := p.fetchYencHeaders(file.Segments[0], nil)
+		firstPartHeaders, err := p.fetchYencHeaders(ctx, file.Segments[0], nil)
 		if err != nil {
 			if requiresEncryptedRarVolume(meta, file.Filename, file.Subject) {
 				p.log.Warn("required encrypted RAR volume is unavailable",
 					"filename", file.Filename, "error", err)
 				return nil, NewNonRetryableError(
 					fmt.Sprintf("required encrypted RAR volume %s is incomplete", file.Filename), err)
+			}
+			if IsArticleUnavailable(err) && !isRecovery {
+				p.log.Warn("required content article is unavailable; rejecting NZB",
+					"filename", file.Filename, "error", err)
+				return nil, NewNonRetryableError(
+					fmt.Sprintf("required content article for %s is unavailable", file.Filename), err)
 			}
 			// A transiently missing first article must not abort the import: the
 			// filename comes from the (now-repaired) subject and the uniform body
@@ -410,8 +411,11 @@ func (p *Parser) parseFileWithContext(ctx context.Context, file nzbparser.NzbFil
 
 		// Reuse the already-fetched segment-0 PartSize when available; normalization
 		// recovers the uniform body size from other segments if it was not.
-		err := p.normalizeSegmentSizesWithYenc(file.Segments, firstPartSize)
+		err := p.normalizeSegmentSizesWithYenc(ctx, file.Segments, firstPartSize)
 		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
 			// Normalization only errors when the uniform body part size could not be
 			// resolved from ANY sampled segment — i.e. a genuinely damaged volume, not
 			// a single transiently-missing article. Falling back to the overhead-laden
@@ -599,7 +603,7 @@ func (p *Parser) fetchActualFileSizeFromYencHeader(file nzbparser.NzbFile) (int6
 }
 
 // fetchYencPartSize fetches the yenc header to get the actual part size for a specific segment
-func (p *Parser) fetchYencHeaders(segment nzbparser.NzbSegment, groups []string) (nntpcli.YencHeaders, error) {
+func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegment, groups []string) (nntpcli.YencHeaders, error) {
 	if p.poolManager == nil {
 		return nntpcli.YencHeaders{}, NewNonRetryableError("no pool manager available", nil)
 	}
@@ -613,7 +617,7 @@ func (p *Parser) fetchYencHeaders(segment nzbparser.NzbSegment, groups []string)
 	err = retry.Do(
 		func() error {
 			// Create context with timeout for each retry attempt
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 			defer cancel()
 
 			// Get a connection from the pool
@@ -623,7 +627,7 @@ func (p *Parser) fetchYencHeaders(segment nzbparser.NzbSegment, groups []string)
 				// This is a permanent error that shouldn't be retried
 				errMsg := err.Error()
 				if strings.Contains(errMsg, "not found in any") || strings.Contains(errMsg, "no such article") {
-					return NewNonRetryableError("article not available", err)
+					return NewNonRetryableError("article not available", fmt.Errorf("%w: %v", ErrArticleUnavailable, err))
 				}
 				return fmt.Errorf("failed to get body reader: %w", err)
 			}
@@ -674,7 +678,7 @@ func (p *Parser) fetchYencHeaders(segment nzbparser.NzbSegment, groups []string)
 // yEnc part sizes. firstPartSize is the segment-0 PartSize already obtained by the
 // caller; when it is > 0 we skip re-fetching segment 0 (a redundant whole-article
 // pull) and only fetch the last segment, whose size differs from the rest.
-func (p *Parser) normalizeSegmentSizesWithYenc(segments []nzbparser.NzbSegment, firstPartSize int64) error {
+func (p *Parser) normalizeSegmentSizesWithYenc(ctx context.Context, segments []nzbparser.NzbSegment, firstPartSize int64) error {
 	if len(segments) < 2 {
 		// Not enough segments to determine if normalization is needed
 		return nil
@@ -684,18 +688,21 @@ func (p *Parser) normalizeSegmentSizesWithYenc(segments []nzbparser.NzbSegment, 
 	// so if the caller's segment-0 fetch was missing we can recover it from any other
 	// leading segment — a single transiently-absent article must not defeat sizing.
 	if firstPartSize <= 0 {
-		firstPartSize = p.fetchUniformPartSize(segments)
+		var err error
+		firstPartSize, err = p.fetchUniformPartSize(ctx, segments)
 		if firstPartSize <= 0 {
-			return fmt.Errorf("could not resolve uniform yEnc part size from any leading segment")
+			return fmt.Errorf("could not resolve uniform yEnc part size from any leading segment: %w", err)
 		}
 	}
 
 	// Fetch PartSize from the last segment (its size differs from the uniform body
-	// parts). If that single article is unavailable, fall back to its declared size:
-	// the inaccuracy is confined to this file's final segment, which is far preferable
-	// to failing the entire multi-volume import over one missing article.
+	// parts). A confirmed all-provider miss makes the content incomplete and is
+	// terminal; transient header failures can still fall back to the declared size.
 	var lastPartSize int64
-	if lastPartHeaders, err := p.fetchYencHeaders(segments[len(segments)-1], nil); err != nil {
+	if lastPartHeaders, err := p.fetchYencHeaders(ctx, segments[len(segments)-1], nil); err != nil {
+		if IsArticleUnavailable(err) {
+			return err
+		}
 		p.log.Warn("last segment yEnc header unavailable; keeping declared size for final segment",
 			"error", err, "segments", len(segments))
 	} else {
@@ -710,17 +717,26 @@ func (p *Parser) normalizeSegmentSizesWithYenc(segments []nzbparser.NzbSegment, 
 // segments, trying several leading segments so that a single transiently-missing
 // article does not defeat size normalization. The last segment is never sampled
 // because its size differs from the body. Returns 0 if none could be resolved.
-func (p *Parser) fetchUniformPartSize(segments []nzbparser.NzbSegment) int64 {
+func (p *Parser) fetchUniformPartSize(ctx context.Context, segments []nzbparser.NzbSegment) (int64, error) {
 	maxTries := 5
 	if limit := len(segments) - 1; maxTries > limit {
 		maxTries = limit
 	}
+	var lastErr error
 	for i := 0; i < maxTries; i++ {
-		if h, err := p.fetchYencHeaders(segments[i], nil); err == nil && h.PartSize > 0 {
-			return int64(h.PartSize)
+		h, err := p.fetchYencHeaders(ctx, segments[i], nil)
+		if err == nil && h.PartSize > 0 {
+			return int64(h.PartSize), nil
+		}
+		if IsArticleUnavailable(err) {
+			return 0, err
+		}
+		lastErr = err
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
 		}
 	}
-	return 0
+	return 0, lastErr
 }
 
 // applyNormalizedSizes overrides segment byte counts with the resolved yEnc part

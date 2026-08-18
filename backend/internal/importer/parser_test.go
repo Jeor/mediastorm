@@ -2,10 +2,59 @@ package importer
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/javi11/nzbparser"
 )
+
+func TestRunBoundedFileParsersCancelsSiblingsOnTerminalFailure(t *testing.T) {
+	terminalErr := NewNonRetryableError("missing release", ErrArticleUnavailable)
+	var canceled atomic.Int32
+	started := make(chan struct{})
+	var startedOnce sync.Once
+
+	_, err := runBoundedFileParsers(context.Background(), maxConcurrentNZBFileParsers+8, func(ctx context.Context, i int) (*ParsedFile, error) {
+		if i == 0 {
+			select {
+			case <-started:
+				return nil, terminalErr
+			case <-time.After(time.Second):
+				return nil, errors.New("sibling parser did not start")
+			}
+		}
+		startedOnce.Do(func() { close(started) })
+		select {
+		case <-ctx.Done():
+			canceled.Add(1)
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+			return &ParsedFile{}, nil
+		}
+	})
+
+	if !IsArticleUnavailable(err) {
+		t.Fatalf("expected article-unavailable error, got %v", err)
+	}
+	if canceled.Load() == 0 {
+		t.Fatal("expected at least one in-flight sibling parser to be canceled")
+	}
+}
+
+func TestIsArticleUnavailableThroughWrapping(t *testing.T) {
+	err := NewNonRetryableError("parse failed", fmt.Errorf("header lookup: %w", ErrArticleUnavailable))
+	if !IsArticleUnavailable(fmt.Errorf("playback failed: %w", err)) {
+		t.Fatal("expected wrapped article-unavailable error to remain identifiable")
+	}
+	if IsArticleUnavailable(errors.New("temporary provider failure")) {
+		t.Fatal("temporary error must not be classified as unavailable articles")
+	}
+}
 
 func sizes(segs []nzbparser.NzbSegment) []int {
 	out := make([]int, len(segs))

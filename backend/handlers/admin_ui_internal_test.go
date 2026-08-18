@@ -179,6 +179,29 @@ func TestAdminSettingsSaveCommitsPendingTextArrayInputs(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsSensitiveFieldsAllowOnlyOneReveal(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"const lockedSensitiveFields = new Set();",
+		`onfocus="revealSensitiveField(this,`,
+		`onblur="lockSensitiveField(this,`,
+		"if (lockedSensitiveFields.has(sensitiveFieldPath(basePath, fieldKey))) return;",
+		"if (input.value !== '') return;",
+		"input.type = 'text';",
+		"input.type = 'password';",
+		"lockedSensitiveFields.add(sensitiveFieldPath(basePath, fieldKey));",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing one-time sensitive-field reveal marker %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsInheritedTermListsShowEffectiveValuesAndReplacementSemantics(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

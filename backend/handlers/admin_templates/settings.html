@@ -782,6 +782,9 @@
     const settingsDebugSessionId = 'settings-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     let editShelfEscapeHandler = null;
     let activeSettingsGroup = '';
+    // Sensitive settings may be revealed only until their first blur. Keep the
+    // lock outside renderSettings so rerendering cannot make them viewable again.
+    const lockedSensitiveFields = new Set();
     // Basic mode remains visible as a roadmap affordance, but all settings stay
     // available until its contents have been reviewed section by section.
     let settingsLevel = 'advanced';
@@ -3854,7 +3857,7 @@
                 const colorValue = /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#ffffff';
                 return '<input type="color" class="color-input'+invalidClass+'" id="'+id+'" value="'+colorValue+'" '+isReadonly+' style="width:44px;height:36px;min-width:44px;padding:2px;border-radius:6px;cursor:pointer;" onchange="handleFieldChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
             case 'password':
-                return '<input type="password" class="form-input'+invalidClass+'" id="'+id+'" value="'+escapeHtml(value || '').replace(/"/g, '&quot;')+'" '+isReadonly+' oninput="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)" onchange="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
+                return '<input type="password" class="form-input'+invalidClass+'" id="'+id+'" value="'+escapeHtml(value || '').replace(/"/g, '&quot;')+'" '+isReadonly+' onfocus="revealSensitiveField(this, \''+basePath+'\', \''+fieldKey+'\')" onblur="lockSensitiveField(this, \''+basePath+'\', \''+fieldKey+'\')" oninput="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)" onchange="handleFieldInputChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
             case 'tags':
                 const tags = Array.isArray(value) ? value : [];
                 const tagsHtml = tags.map((tag, idx) => '<span class="tag" title="'+escapeHtml(tag).replace(/"/g, '&quot;')+'"><span class="tag-text">'+escapeHtml(tag)+'</span><span class="tag-remove" onclick="removeTagByIndex(\''+basePath+'\', \''+fieldKey+'\', '+idx+')">&times;</span></span>').join('');
@@ -3929,6 +3932,21 @@
             value = value ? 'true' : 'false';
         }
         setValue(basePath ? basePath+'.'+fieldKey : fieldKey, value);
+    }
+
+    function sensitiveFieldPath(basePath, fieldKey) {
+        return basePath ? basePath+'.'+fieldKey : fieldKey;
+    }
+
+    function revealSensitiveField(input, basePath, fieldKey) {
+        if (lockedSensitiveFields.has(sensitiveFieldPath(basePath, fieldKey))) return;
+        if (input.value !== '') return;
+        input.type = 'text';
+    }
+
+    function lockSensitiveField(input, basePath, fieldKey) {
+        input.type = 'password';
+        lockedSensitiveFields.add(sensitiveFieldPath(basePath, fieldKey));
     }
 
     function allowOnlyOneEnabledUsenetEngine(basePath) {

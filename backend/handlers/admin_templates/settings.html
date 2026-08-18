@@ -535,9 +535,9 @@
 .settings-scope-server-btn,
 .settings-scope-select-wrap {
     min-height: 30px;
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: transparent;
+    background: var(--bg-secondary);
     color: var(--text-muted);
 }
 .settings-scope-server-btn {
@@ -552,6 +552,7 @@
     display: flex;
     align-items: center;
 }
+.settings-scope-control-label { display: none; }
 .settings-scope-select-wrap::before {
     content: '\2192';
     margin: 0 0.35rem 0 0.05rem;
@@ -571,9 +572,14 @@
     cursor: pointer;
 }
 .settings-scope-server-btn.active,
-.settings-scope-select-wrap.active select {
-    border-color: rgba(99, 102, 241, 0.35);
+.settings-scope-select-wrap.active {
+    border-color: var(--accent);
     background: rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.18);
+}
+.settings-scope-server-btn.active,
+.settings-scope-select-wrap.active,
+.settings-scope-select-wrap.active select {
     color: var(--accent-hover);
 }
 .settings-scope-server-btn:focus-visible,
@@ -770,14 +776,58 @@
     .settings-level-help { margin: 0; }
 }
 @media (max-width: 640px) {
-    .settings-scope-bar { align-items: stretch; flex-direction: column; }
-    .settings-scope-label { padding: 0.2rem 0; }
+    .settings-scope-panel {
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.025);
+    }
+    .settings-scope-bar { align-items: stretch; flex-direction: column; gap: 0.55rem; }
+    .settings-scope-label { padding: 0; font-size: 0.6875rem; letter-spacing: 0.07em; text-transform: uppercase; }
     .settings-scope-server-btn,
-    .settings-scope-select-wrap,
-    .settings-scope-select-wrap select { width: 100%; max-width: none; }
+    .settings-scope-select-wrap { width: 100%; max-width: none; min-height: 48px; }
+    .settings-scope-server-btn { padding: 0.65rem 0.75rem; text-align: left; font-size: 0.875rem; }
+    .settings-scope-select-wrap {
+        display: grid;
+        grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr) 18px;
+        gap: 0.6rem;
+        padding: 0.45rem 0.65rem;
+    }
+    .settings-scope-control-label {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .settings-scope-select-wrap select {
+        width: 100%;
+        max-width: none;
+        min-height: 32px;
+        padding: 0;
+        border: 0;
+        appearance: none;
+        background: transparent;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        text-align: right;
+    }
+    .settings-scope-select-wrap::after {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        transform: rotate(45deg) translateY(-2px);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+    .settings-scope-select-wrap.active::after { color: var(--accent-hover); }
     .settings-scope-select-wrap::before { display: none; }
     .settings-scope-spacer { display: none; }
-    .settings-view-compact { justify-content: space-between; }
+    .settings-view-compact { justify-content: space-between; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+    .settings-cascade-copy { margin-top: 0.65rem; line-height: 1.45; }
     .settings-section-description { white-space: normal; }
     #settingsContainer .section-header { align-items: flex-start; }
     #settingsContainer .section-header-actions { padding-top: 0.15rem; }
@@ -882,21 +932,23 @@
         <span class="settings-scope-label">Scope:</span>
         {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
         <label class="settings-scope-select-wrap" id="settingsPersonScopeWrap">
+            <span class="settings-scope-control-label">Person</span>
             <select id="userSelector" aria-label="Person" onchange="selectSettingsScope(this.value ? 'person' : 'server', this.value)">
-                {{if .IsAdmin}}<option value="">Person</option>{{end}}
+                {{if .IsAdmin}}<option value="">Choose a person</option>{{end}}
                 {{range .Users}}
                 <option value="{{.ID}}">{{.Name}}</option>
                 {{end}}
             </select>
         </label>
         <label class="settings-scope-select-wrap" id="settingsDeviceScopeWrap">
-            <select id="clientSelector" aria-label="Device" onchange="selectSettingsScope(this.value ? 'device' : 'person', selectedUserId, this.value)"><option value="">Device</option></select>
+            <span class="settings-scope-control-label">Device</span>
+            <select id="clientSelector" aria-label="Device" onchange="selectSettingsScope(this.value ? 'device' : 'person', selectedUserId, this.value)"><option value="">Choose a device</option></select>
         </label>
         <span class="settings-scope-spacer"></span>
         <div class="settings-view-compact">
             <span class="settings-scope-label">View:</span>
             <div class="settings-level-switch" aria-label="Settings detail level">
-                <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+                <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is not ready yet">Basic</button>
                 <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
             </div>
         </div>
@@ -1152,7 +1204,9 @@
     // Sensitive settings may be revealed only until their first blur. Keep the
     // lock outside renderSettings so rerendering cannot make them viewable again.
     const lockedSensitiveFields = new Set();
-    let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';
+    const basicSettingsReady = false;
+    let settingsLevel = 'advanced';
+    localStorage.setItem('mediastorm-settings-level', settingsLevel);
     let expandedIndexerEditIndex = -1;
     const expandedProviderEditIndexes = {
         debridProviders: -1,
@@ -1263,7 +1317,7 @@
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = (level === 'basic') ? 'basic' : 'advanced';
+        settingsLevel = (basicSettingsReady && level === 'basic') ? 'basic' : 'advanced';
         localStorage.setItem('mediastorm-settings-level', settingsLevel);
         renderSettings();
     }
@@ -2124,16 +2178,17 @@
 
             // Show client selector if there are clients
             if (clientsForUser.length > 0) {
-                clientSelector.innerHTML = `<option value="">Profile Defaults</option>` +
+                clientSelector.innerHTML = `<option value="">No device (person defaults)</option>` +
                     clientsForUser.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-                clientSelector.style.display = 'block';
             } else {
-                clientSelector.style.display = 'none';
+                clientSelector.innerHTML = '<option value="">No devices</option>';
             }
+            clientSelector.style.display = 'block';
         } else {
             userSettings = null;
             originalUserSettings = null;
-            clientSelector.style.display = 'none';
+            clientSelector.innerHTML = '<option value="">Choose a person first</option>';
+            clientSelector.style.display = 'block';
         }
         renderSettings();
         updateRevertButtonVisibility();

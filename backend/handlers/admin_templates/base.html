@@ -2113,11 +2113,21 @@
         }
 
         .sidebar-nav-icon {
-            width: 16px;
-            flex: 0 0 16px;
-            color: var(--accent);
-            text-align: center;
-            font-size: 0.75rem;
+            width: 20px;
+            height: 20px;
+            flex: 0 0 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            color: var(--text-muted);
+        }
+
+        .sidebar-nav-link:hover .sidebar-nav-icon,
+        .sidebar-nav-link:focus-visible .sidebar-nav-icon,
+        .sidebar-nav-link.active .sidebar-nav-icon {
+            color: var(--accent-hover);
         }
 
         .admin-sidebar-footer {
@@ -2214,6 +2224,12 @@
         .admin-topbar-search:focus-visible {
             color: var(--text-secondary);
             outline: none;
+        }
+
+        .admin-topbar-search svg {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 20px;
         }
 
         .admin-topbar-actions {
@@ -2440,7 +2456,7 @@
                     <summary><span>Overview</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
                         <a href="{{.BasePath}}" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}active{{end}}" data-walkthrough-target="dashboard">
-                            <span class="sidebar-nav-icon">⌂</span><span>Dashboard</span>
+                            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg><span>Dashboard</span>
                         </a>
                     </div>
                 </details>
@@ -2449,10 +2465,10 @@
                     <summary><span>Playback</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
                         <a href="{{.BasePath}}/playback" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/playback"}}active{{end}}">
-                            <span class="sidebar-nav-icon">▷</span><span>Admin Player</span>
+                            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/></svg><span>Admin Player</span>
                         </a>
                         <a href="{{.ServerBasePath}}/watch" class="sidebar-nav-link">
-                            <span class="sidebar-nav-icon">▣</span><span>Web App</span>
+                            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Web App</span>
                         </a>
                     </div>
                 </details>
@@ -2460,21 +2476,21 @@
                 <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations") (hasSuffix .CurrentPath "/notifications")}}open{{end}}>
                     <summary data-walkthrough-target="settings"><span>Manage</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}"><span class="sidebar-nav-icon">⚙</span><span>Settings</span></a>
-                        <a href="{{.BasePath}}/tasks" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}"><span class="sidebar-nav-icon">⟳</span><span>Automations</span></a>
-                        <a href="{{.BasePath}}/integrations" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}"><span class="sidebar-nav-icon">⌁</span><span>Integrations</span></a>
-                        <a href="{{.BasePath}}/notifications" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/notifications"}}active{{end}}"><span class="sidebar-nav-icon">◉</span><span>Notifications</span></a>
+                        <a href="{{.BasePath}}/settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.4V9.6h.1A1.7 1.7 0 0 0 4.2 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.66 3.8l.06.06A1.7 1.7 0 0 0 8.6 4.2a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.4h4v.1a1.7 1.7 0 0 0 1 1.7 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1Z"/></svg><span>Settings</span></a>
+                        <a href="{{.BasePath}}/tasks" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-5V2"/><path d="M20 7a9 9 0 1 0 1 8"/></svg><span>Automations</span></a>
+                        <a href="{{.BasePath}}/integrations" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h8M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0Z"/><path d="M12 16v5"/></svg><span>Integrations</span></a>
+                        <a href="{{.BasePath}}/notifications" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/notifications"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M14 21h-4"/></svg><span>Notifications</span></a>
                     </div>
                 </details>
 
                 <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/history") (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule") (hasSuffix .CurrentPath "/recordings") (hasSuffix .CurrentPath "/library") (hasSuffix .CurrentPath "/prequeue")}}open{{end}}>
                     <summary data-walkthrough-target="media" data-walkthrough-mobile-target="media"><span>Media</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/history" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}"><span class="sidebar-nav-icon">◷</span><span>Watch History</span></a>
-                        <a href="{{.BasePath}}/schedule" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}"><span class="sidebar-nav-icon">□</span><span>Schedule</span></a>
-                        <a href="{{.BasePath}}/recordings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}"><span class="sidebar-nav-icon">●</span><span>Recordings</span></a>
-                        {{if .IsAdmin}}<a href="{{.BasePath}}/library" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}"><span class="sidebar-nav-icon">▤</span><span>Library</span></a>{{end}}
-                        {{if .IsAdmin}}<a href="{{.BasePath}}/prequeue" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/prequeue"}}active{{end}}"><span class="sidebar-nav-icon">≡</span><span>Prequeue</span></a>{{end}}
+                        <a href="{{.BasePath}}/history" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Watch History</span></a>
+                        <a href="{{.BasePath}}/schedule" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Schedule</span></a>
+                        <a href="{{.BasePath}}/recordings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><span>Recordings</span></a>
+                        {{if .IsAdmin}}<a href="{{.BasePath}}/library" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6l2 2h8v12H4Z"/></svg><span>Library</span></a>{{end}}
+                        {{if .IsAdmin}}<a href="{{.BasePath}}/prequeue" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/prequeue"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Prequeue</span></a>{{end}}
                     </div>
                 </details>
 
@@ -2482,25 +2498,24 @@
                 <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}open{{end}}>
                     <summary data-walkthrough-target="system" data-walkthrough-mobile-target="system"><span>System</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}"><span class="sidebar-nav-icon">⌕</span><span>Search Diagnostics</span></a>
-                        <a href="{{.BasePath}}/connections" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}"><span class="sidebar-nav-icon">⇄</span><span>Connections</span></a>
-                        <a href="{{.BasePath}}/backup" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}"><span class="sidebar-nav-icon">⇧</span><span>Backup</span></a>
-                        <a href="{{.BasePath}}/performance" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}"><span class="sidebar-nav-icon">◇</span><span>Performance</span></a>
-                        <a href="{{.BasePath}}/tools" class="sidebar-nav-link {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}active{{end}}"><span class="sidebar-nav-icon">⚒</span><span>Maintenance</span></a>
-                        <a href="{{.BasePath}}/logs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}"><span class="sidebar-nav-icon">≡</span><span>Logs</span></a>
-                        <a href="{{.BasePath}}/tools/hidden-items" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/hidden-items"}}active{{end}}"><span class="sidebar-nav-icon">◌</span><span>Hidden Items</span></a>
-                        <a href="{{.BasePath}}/tools/resolved-nzbs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/resolved-nzbs"}}active{{end}}"><span class="sidebar-nav-icon">✓</span><span>Resolved NZBs</span></a>
-                        <a href="{{.BasePath}}/tools/bad-streams" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/bad-streams"}}active{{end}}"><span class="sidebar-nav-icon">⊗</span><span>Bad Streams</span></a>
-                        <a href="{{.BasePath}}/tools/share-links" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/share-links"}}active{{end}}"><span class="sidebar-nav-icon">↗</span><span>Share Links</span></a>
+                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search Diagnostics</span></a>
+                        <a href="{{.BasePath}}/connections" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/></svg><span>Connections</span></a>
+                        <a href="{{.BasePath}}/backup" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg><span>Backup</span></a>
+                        <a href="{{.BasePath}}/performance" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Performance</span></a>
+                        <a href="{{.BasePath}}/tools" class="sidebar-nav-link {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7 3-3 3 3-3 3M4 20l8-8"/><path d="m5 4 15 15M4 5l3-1 1 3-3 1Z"/></svg><span>Maintenance</span></a>
+                        <a href="{{.BasePath}}/logs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg><span>Logs</span></a>
+                        <a href="{{.BasePath}}/tools/hidden-items" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/hidden-items"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.5 10.7a2 2 0 0 0 2.8 2.8M9.5 5.3A10.8 10.8 0 0 1 12 5c5 0 9 7 9 7a15 15 0 0 1-2.1 2.7M6.2 6.2C4.2 7.6 3 12 3 12s4 7 9 7c1.2 0 2.4-.4 3.4-1"/></svg><span>Hidden Items</span></a>
+                        <a href="{{.BasePath}}/tools/resolved-nzbs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/resolved-nzbs"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span>Resolved NZBs</span></a>
+                        <a href="{{.BasePath}}/tools/bad-streams" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/bad-streams"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg><span>Bad Streams</span></a>
+                        <a href="{{.BasePath}}/tools/share-links" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/share-links"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/></svg><span>Share Links</span></a>
                     </div>
                 </details>
                 {{end}}
 
-                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/accounts") (hasSuffix .CurrentPath "/kids-settings")}}open{{end}}>
+                <details class="sidebar-group" {{if hasSuffix .CurrentPath "/accounts"}}open{{end}}>
                     <summary><span>People</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/accounts" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/accounts"}}active{{end}}" data-walkthrough-target="accounts"><span class="sidebar-nav-icon">⊕</span><span>Users</span></a>
-                        <a href="{{.BasePath}}/kids-settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/kids-settings"}}active{{end}}"><span class="sidebar-nav-icon">♥</span><span>Kids &amp; Family</span></a>
+                        <a href="{{.BasePath}}/accounts" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/accounts"}}active{{end}}" data-walkthrough-target="accounts"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="4"/><path d="M17 11a3 3 0 0 1 0 6M20 20v-1.5a3.5 3.5 0 0 0-2-3.2"/></svg><span>Users</span></a>
                     </div>
                 </details>
             </nav>
@@ -2525,12 +2540,11 @@
                 <button class="admin-mobile-menu" type="button" aria-label="Open navigation" aria-controls="adminSidebar" aria-expanded="false" onclick="toggleMenu()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
-                {{if .IsAdmin}}<a href="{{.BasePath}}/search" class="admin-topbar-search" aria-label="Open search diagnostics"><span aria-hidden="true">⌕</span><span>Search…</span></a>{{end}}
+                {{if .IsAdmin}}<a href="{{.BasePath}}/search" class="admin-topbar-search" aria-label="Open search diagnostics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search…</span></a>{{end}}
                 <div class="admin-topbar-actions">
                     <a href="{{.BasePath}}/notifications" class="admin-topbar-action" aria-label="Notifications">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                     </a>
-                    <a href="{{.BasePath}}/accounts" class="admin-avatar" aria-label="Open user management">A</a>
                 </div>
             </header>
 

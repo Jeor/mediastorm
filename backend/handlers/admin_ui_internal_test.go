@@ -269,10 +269,12 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 
 	for _, marker := range []string{
 		`id="settingsCategoryNav"`,
-		`id="settingsBasicBtn" class="settings-level-btn"`,
+		`id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true"`,
 		`id="settingsAdvancedBtn"`,
 		`autocomplete="off" autocapitalize="none" spellcheck="false"`,
-		`let settingsLevel = (localStorage.getItem('mediastorm-settings-level') === 'basic') ? 'basic' : 'advanced';`,
+		`const basicSettingsReady = false;`,
+		`let settingsLevel = 'advanced';`,
+		`settingsLevel = (basicSettingsReady && level === 'basic') ? 'basic' : 'advanced';`,
 		`.page-header-controls .form-select {`,
 		`height: 40px;`,
 		`function setSettingsLevel(level)`,
@@ -293,6 +295,30 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing progressive-disclosure marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSettingsMobileScopeControlsShowClearState(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`class="settings-scope-control-label">Person</span>`,
+		`class="settings-scope-control-label">Device</span>`,
+		`<option value="">Choose a person</option>`,
+		`<option value="">Choose a device</option>`,
+		`clientSelector.innerHTML = '<option value="">Choose a person first</option>';`,
+		`clientSelector.innerHTML = '<option value="">No devices</option>';`,
+		`.settings-scope-select-wrap.active {`,
+		`grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr) 18px;`,
+		`.settings-scope-select-wrap::after {`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing clear mobile-scope marker %q", marker)
 		}
 	}
 }
@@ -452,6 +478,37 @@ func TestSharedShellRendersOnlyRegisteredRoleLinksAndContextualLabels(t *testing
 	}
 	if !strings.Contains(adminHTML, `aria-label="Admin navigation"`) {
 		t.Fatal("admin shell is missing its contextual navigation label")
+	}
+	for _, removedShortcut := range []string{`href="/admin/kids-settings"`, `aria-label="Open user management"`} {
+		if strings.Contains(adminHTML, removedShortcut) {
+			t.Fatalf("admin shell still renders removed shortcut %q", removedShortcut)
+		}
+	}
+}
+
+func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
+		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
+	}
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 23 {
+		t.Fatalf("shared shell navigation SVG count = %d, want 23", got)
+	}
+	for _, marker := range []string{
+		`.sidebar-nav-icon {`,
+		`width: 20px;`,
+		`height: 20px;`,
+		`stroke: currentColor;`,
+		`stroke-width: 1.8;`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("shared shell missing consistent navigation icon marker %q", marker)
+		}
 	}
 }
 

@@ -316,6 +316,7 @@ func TestAdminSettingsMobileScopeControlsShowClearState(t *testing.T) {
 		`.settings-scope-select-wrap.active {`,
 		`grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr) 18px;`,
 		`.settings-scope-select-wrap::after {`,
+		`.settings-view-compact { align-self: flex-start; justify-content: flex-start;`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing clear mobile-scope marker %q", marker)

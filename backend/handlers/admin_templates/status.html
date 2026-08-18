@@ -206,6 +206,11 @@
     font-weight: 700;
 }
 
+.dashboard-uptime-count {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+}
+
 .dashboard-v4 {
     display: grid;
     gap: 1.25rem;
@@ -220,6 +225,9 @@
 }
 
 .dashboard-page-header h1 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
     margin-bottom: 0.25rem;
 }
 
@@ -292,7 +300,12 @@
 }
 
 .numbers-station-achievement {
-    margin-top: 0.45rem;
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    z-index: 1;
+    transform: translateX(-50%);
+    transition: opacity 0.18s ease, visibility 0.18s ease;
 }
 
 .numbers-station-achievement[hidden] {
@@ -303,14 +316,23 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.24rem 0.55rem;
+    padding: 0.42rem 0.7rem 0.46rem;
     border: 1px solid rgba(74, 222, 128, 0.34);
-    border-radius: 999px;
-    background: rgba(34, 197, 94, 0.08);
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+    background: rgba(17, 35, 25, 0.98);
     color: #86efac;
     font: 700 0.68rem/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.numbers-station-achievement-badge:hover,
+.numbers-station-achievement-badge:focus-visible {
+    background: rgba(24, 52, 35, 0.98);
+    color: #bbf7d0;
 }
 
 .numbers-station-achievement-badge::before {
@@ -326,7 +348,6 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    margin-left: 0.55rem;
     padding: 0;
     border: 0;
     background: transparent;
@@ -348,8 +369,21 @@
 }
 
 .numbers-station-signal.transmission-complete {
-    color: #86efac;
-    opacity: 1;
+    display: none;
+}
+
+.admin-topbar.numbers-station-achievement-present {
+    margin-bottom: 1.9rem;
+}
+
+.admin-topbar.numbers-station-achievement-scrolled {
+    margin-bottom: 0;
+}
+
+.admin-topbar.numbers-station-achievement-scrolled .numbers-station-achievement {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .numbers-station-signal-dot {
@@ -741,8 +775,18 @@ body.numbers-station-open {
 {{define "content"}}
 <div class="dashboard-v4">
 <div class="page-header dashboard-page-header">
-    <h1>Dashboard</h1>
+    <h1>
+        <span>Dashboard</span>
+        <button id="numbersStationSignal" class="numbers-station-signal" type="button" aria-label="Unidentified carrier" title="77.77" onclick="openNumbersStation()">
+            <span class="numbers-station-signal-dot" aria-hidden="true"></span>
+            <span>77.77</span>
+        </button>
+    </h1>
     <p>System overview and quick actions</p>
+</div>
+
+<div id="numbersStationAchievement" class="numbers-station-achievement" hidden>
+    <button class="numbers-station-achievement-badge" type="button" onclick="openNumbersStation()" aria-label="Storm-Marked — open Numbers Station">Storm-Marked</button>
 </div>
 
 <div class="dashboard-toolbar" aria-label="Dashboard controls">
@@ -821,13 +865,6 @@ body.numbers-station-open {
         <div class="dashboard-summary-label">Backend Uptime</div>
         <div class="dashboard-uptime">
             <span id="backendUptime" aria-live="polite">Loading…</span>
-            <button id="numbersStationSignal" class="numbers-station-signal" type="button" aria-label="Unidentified carrier" title="77.77" onclick="openNumbersStation()">
-                <span class="numbers-station-signal-dot" aria-hidden="true"></span>
-                <span>77.77</span>
-            </button>
-        </div>
-        <div id="numbersStationAchievement" class="numbers-station-achievement" hidden>
-            <span class="numbers-station-achievement-badge">Storm-Marked</span>
         </div>
         <div class="dashboard-summary-meta">Live server runtime</div>
     </section>
@@ -2422,7 +2459,7 @@ body.numbers-station-open {
         const uptimeEl = document.getElementById('backendUptime');
         if (!uptimeEl || !backendStartedAtMs) return;
         const elapsedSeconds = Math.max(0, (Date.now() - backendStartedAtMs) / 1000);
-        uptimeEl.textContent = `Backend up for ${formatBackendUptime(elapsedSeconds)} (since ${formatBackendStartedAt(backendStartedAtMs)})`;
+        uptimeEl.innerHTML = `Backend up for <span class="dashboard-uptime-count">${formatBackendUptime(elapsedSeconds)}</span> (since ${formatBackendStartedAt(backendStartedAtMs)})`;
     }
 
     function startBackendUptimeTimer() {
@@ -2443,7 +2480,7 @@ body.numbers-station-open {
                 renderBackendUptime();
                 startBackendUptimeTimer();
             } else {
-                uptimeEl.textContent = `Backend up for ${formatBackendUptime(status.uptime_seconds)} (since unknown)`;
+                uptimeEl.innerHTML = `Backend up for <span class="dashboard-uptime-count">${formatBackendUptime(status.uptime_seconds)}</span> (since unknown)`;
             }
         } catch (error) {
             console.warn('Failed to load backend uptime:', error);
@@ -3678,9 +3715,18 @@ body.numbers-station-open {
     function markNumbersStationCompleted() {
         const signal = document.getElementById('numbersStationSignal');
         signal?.classList.add('carrier-detected', 'transmission-complete');
-        if (signal) signal.title = 'Persistent carrier';
         const achievement = document.getElementById('numbersStationAchievement');
-        if (achievement) achievement.hidden = false;
+        const topbar = document.querySelector('.admin-topbar');
+        if (achievement && topbar) {
+            topbar.appendChild(achievement);
+            achievement.hidden = false;
+            topbar.classList.add('numbers-station-achievement-present');
+            updateNumbersStationAchievementVisibility();
+        }
+    }
+
+    function updateNumbersStationAchievementVisibility() {
+        document.querySelector('.admin-topbar')?.classList.toggle('numbers-station-achievement-scrolled', window.scrollY > 0);
     }
 
     function renderNumbersStation(state, options = {}) {
@@ -3709,7 +3755,7 @@ body.numbers-station-open {
                 </div>
             ` : '<div class="numbers-station-sender numbers-station-sender-static" role="img" aria-label="Radio static"></div>';
             body.innerHTML = `
-                <h2 id="numbersStationCallsign" class="numbers-station-callsign">${options.showBroadcast ? 'SIGNAL ACQUIRED' : 'CARRIER PRESENT'}</h2>
+                <h2 id="numbersStationCallsign" class="numbers-station-callsign">${options.showBroadcast ? 'SIGNAL ACQUIRED' : 'NO CARRIER'}</h2>
                 ${carrierVisual}
                 ${transcript}
                 ${options.showBroadcast ? '' : '<button class="numbers-station-previous" type="button" onclick="showNumbersStationPreviousMessage()">PREVIOUS MESSAGE</button>'}
@@ -3864,6 +3910,7 @@ body.numbers-station-open {
             refreshDebridStatus();
         }
         initializeNumbersStationSignal();
+        window.addEventListener('scroll', updateNumbersStationAchievementVisibility, { passive: true });
         document.getElementById('numbersStationDialog')?.addEventListener('close', () => {
             unlockNumbersStationScroll();
         });

@@ -128,8 +128,12 @@ func TestAdminSettingsUsesHierarchyScopeTree(t *testing.T) {
 	source := string(templateBytes)
 
 	for _, marker := range []string{
-		`id="settingsScopeTree"`,
-		`class="settings-scope-tree"`,
+		`id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage"`,
+		`class="settings-scope-bar"`,
+		`id="settingsServerScopeBtn"`,
+		`id="userSelector" aria-label="Person"`,
+		`id="clientSelector" aria-label="Device"`,
+		`function updateSettingsScopeBarState()`,
 		`function renderSettingsScopeTree()`,
 		`function renderSettingsPersonScope(profile)`,
 		`function selectSettingsScope(kind, profileId, clientId = '')`,
@@ -150,16 +154,16 @@ func TestAdminSettingsUsesHierarchyScopeTree(t *testing.T) {
 		`readonly aria-autocomplete="none"`,
 		`function handleSettingsSearchInput(input)`,
 		`data-bwignore="true" data-protonpass-ignore="true" data-form-type="other"`,
-		`#clientSelector { display: none !important; }`,
+		`clientSelector.disabled = !selectedUserId || clientsForUser.length === 0;`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing hierarchy scope marker %q", marker)
 		}
 	}
 
-	if strings.Contains(source, `<select id="userSelector" class="form-select"`) ||
-		strings.Contains(source, `<select id="clientSelector" class="form-select"`) {
-		t.Fatal("settings page still exposes dropdown scope selectors")
+	if strings.Contains(source, `<select id="userSelector" hidden`) ||
+		strings.Contains(source, `<select id="clientSelector" hidden`) {
+		t.Fatal("settings page hides the approved horizontal scope selectors")
 	}
 	if strings.Contains(source, `name="mediastorm-settings-filter"`) {
 		t.Fatal("settings search retains a stable field name that autofill can target")

@@ -271,12 +271,35 @@
     gap: 0.5rem;
 }
 
-.dashboard-toolbar .view-toggle {
+.dashboard-toolbar .settings-level-switch {
     display: flex;
-    padding: 2px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    width: max-content;
+    flex: 0 0 auto;
+    gap: 0.2rem;
+    padding: 0.15rem;
+    border-radius: 8px;
     background: var(--bg-tertiary);
+}
+
+.dashboard-toolbar .settings-level-btn {
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.dashboard-toolbar .settings-level-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.dashboard-toolbar .settings-level-btn.active {
+    color: var(--text-primary);
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent);
 }
 
 .dashboard-summary-grid {
@@ -817,7 +840,10 @@ body.numbers-station-open {
         flex-direction: column;
     }
 
-    .dashboard-toolbar .view-toggle,
+    .dashboard-toolbar .settings-level-switch {
+        align-self: flex-end;
+    }
+
     .dashboard-toolbar .btn {
         width: 100%;
     }
@@ -847,9 +873,9 @@ body.numbers-station-open {
 </div>
 
 <div class="dashboard-toolbar" aria-label="Dashboard controls">
-    <div class="view-toggle">
-        <button id="dashboardBasicBtn" class="view-toggle-btn dashboard-detail-btn" type="button" onclick="setDashboardDetail('basic')">Basic</button>
-        <button id="dashboardAdvancedBtn" class="view-toggle-btn dashboard-detail-btn" type="button" onclick="setDashboardDetail('advanced')">Advanced</button>
+    <div class="settings-level-switch" aria-label="Dashboard detail level">
+        <button id="dashboardBasicBtn" class="settings-level-btn" type="button" onclick="setDashboardDetail('basic')">Basic</button>
+        <button id="dashboardAdvancedBtn" class="settings-level-btn" type="button" onclick="setDashboardDetail('advanced')">Advanced</button>
     </div>
     <button class="btn btn-secondary" type="button" onclick="refreshStatus()">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1570,12 +1596,6 @@ body.numbers-station-open {
     .view-toggle-btn.active {
         background: var(--accent);
         color: white;
-    }
-    .dashboard-detail-btn {
-        width: auto;
-        min-width: 64px;
-        padding: 0 0.65rem;
-        font-size: 0.75rem;
     }
     .view-toggle-btn svg {
         stroke: currentColor;

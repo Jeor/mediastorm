@@ -717,6 +717,10 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 		`<div class="card live-limits-card dashboard-advanced-detail"`,
 		`<div class="grid grid-2 dashboard-advanced-detail"`,
 		`document.querySelectorAll('.dashboard-advanced-detail')`,
+		`class="settings-level-switch" aria-label="Dashboard detail level"`,
+		`id="dashboardBasicBtn" class="settings-level-btn"`,
+		`.dashboard-toolbar .settings-level-switch {`,
+		`width: max-content`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("status template missing basic-dashboard marker %q", marker)

@@ -427,6 +427,12 @@
 .settings-level-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
 .settings-category-btn.active,
 .settings-level-btn.active { color: var(--text-primary); background: rgba(99, 102, 241, 0.15); border-color: var(--accent); }
+.settings-category-btn:focus-visible,
+.settings-level-btn:focus-visible,
+.settings-home-link:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: 2px;
+}
 .settings-level-section {
     margin-top: 0.55rem;
     padding-top: 0.7rem;
@@ -617,6 +623,339 @@
     font-size: 0.75rem;
 }
 .settings-scope-tree-storage { display: none; }
+
+.settings-page-shell {
+    display: grid;
+    gap: 1rem;
+}
+
+.settings-page-header {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.settings-page-kicker,
+.settings-category-breadcrumb {
+    color: var(--accent-hover);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.settings-page-header h1 {
+    margin: 0;
+    font-size: 1.875rem;
+}
+
+.settings-page-header > p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.settings-command-bar {
+    display: grid;
+    grid-template-columns: minmax(260px, 430px) auto minmax(180px, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 1.25rem;
+}
+
+.settings-search-wrap {
+    position: relative;
+    min-width: 0;
+}
+
+.settings-search-wrap > svg {
+    position: absolute;
+    top: 50%;
+    left: 0.9rem;
+    width: 17px;
+    height: 17px;
+    color: var(--text-muted);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.settings-search-wrap .form-input {
+    width: 100%;
+    min-height: 48px;
+    padding-left: 2.65rem;
+}
+
+.settings-command-bar .settings-level-switch {
+    display: flex;
+    width: 220px;
+    padding: 0.2rem;
+}
+
+.settings-command-bar .settings-level-btn {
+    min-height: 44px;
+    flex: 1;
+}
+
+.settings-save-state {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-self: end;
+    gap: 0.55rem;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.settings-save-state.unsaved {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.08);
+    color: #fbbf24;
+}
+
+.settings-scope-panel {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+}
+
+.settings-scope-heading {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.settings-scope-panel .settings-scope-bar {
+    min-height: 44px;
+    padding: 0;
+}
+
+.settings-scope-panel .settings-scope-server-btn,
+.settings-scope-panel .settings-scope-select-wrap,
+.settings-scope-panel .settings-scope-select-wrap select {
+    min-height: 44px;
+}
+
+.settings-scope-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.settings-scope-actions .btn {
+    min-height: 40px;
+}
+
+.settings-home[hidden],
+.settings-workspace[hidden],
+.settings-sticky-save[hidden] {
+    display: none !important;
+}
+
+.settings-home {
+    display: grid;
+    gap: 1rem;
+}
+
+.settings-attention-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(245, 158, 11, 0.58);
+    border-radius: 9px;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.settings-attention-banner strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+}
+
+.settings-attention-banner p {
+    margin: 0.2rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.settings-home-heading {
+    margin-top: 0.5rem;
+}
+
+.settings-home-heading h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1875rem;
+}
+
+.settings-home-heading p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.settings-category-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.settings-category-card {
+    position: relative;
+    display: grid;
+    min-height: 132px;
+    align-content: start;
+    gap: 0.55rem;
+    padding: 1rem 3.25rem 1rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.settings-category-card:hover {
+    border-color: rgba(99, 102, 241, 0.65);
+    background: rgba(99, 102, 241, 0.08);
+    transform: translateY(-1px);
+}
+
+.settings-category-card:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: 2px;
+}
+
+.settings-category-card-title {
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+.settings-category-card-description,
+.settings-category-card-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
+.settings-category-card-meta {
+    margin-top: auto;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.settings-category-card-arrow {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    color: var(--accent-hover);
+    font-size: 1.25rem;
+    transform: translateY(-50%);
+}
+
+.settings-workspace {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.settings-sidebar {
+    position: sticky;
+    top: 1rem;
+    display: block;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+}
+
+.settings-home-link {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.settings-category-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.settings-category-header h2 {
+    margin: 0.3rem 0 0.3rem;
+    font-size: 1.75rem;
+}
+
+.settings-category-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.settings-category-summary {
+    align-self: end;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.settings-sticky-save {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    border-radius: 10px;
+    background: rgba(38, 28, 14, 0.97);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.settings-sticky-save strong {
+    color: #fbbf24;
+    font-size: 0.8125rem;
+}
+
+.settings-sticky-save p {
+    margin: 0.15rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+}
+
+.settings-sticky-save-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.settings-sticky-save-actions .btn {
+    min-height: 44px;
+}
 .indexer-table-shell {
     overflow-x: auto;
     border-radius: var(--radius);
@@ -872,6 +1211,101 @@
     .indexer-url { max-width: 100%; }
     .indexer-actions { flex-wrap: wrap; }
 }
+
+@media (max-width: 900px) {
+    .settings-command-bar {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .settings-save-state {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+    }
+
+    .settings-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-sidebar {
+        position: static;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    .settings-category-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.65rem 0 0.15rem;
+        scrollbar-width: thin;
+    }
+
+    .settings-category-btn {
+        width: auto;
+        min-height: 44px;
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 760px) {
+    .settings-page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .settings-command-bar {
+        grid-template-columns: 1fr;
+        margin-top: 0.85rem;
+    }
+
+    .settings-command-bar .settings-level-switch {
+        width: 100%;
+    }
+
+    .settings-save-state {
+        grid-column: auto;
+    }
+
+    .settings-scope-panel {
+        padding: 0.85rem;
+    }
+
+    .settings-scope-actions {
+        align-items: stretch;
+        flex-direction: column;
+        margin-top: 0.75rem;
+    }
+
+    .settings-scope-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .settings-category-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-category-card {
+        min-height: 118px;
+    }
+
+    .settings-category-header {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-category-summary {
+        align-self: start;
+    }
+
+    .settings-sticky-save {
+        bottom: 0.5rem;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settings-sticky-save-actions .btn {
+        flex: 1;
+    }
+}
 </style>
 {{end}}
 
@@ -892,49 +1326,30 @@
     </div>
 </div>
 {{else}}
-<div class="page-header page-header-flex" style="display: flex; align-items: center; justify-content: space-between;">
-    <div>
-        <h1>Settings</h1>
-        <p>{{if .IsAdmin}}Configure your Mediastorm server{{else}}Configure profile settings{{end}}</p>
+<div class="settings-page-shell">
+<header class="settings-page-header">
+    <div class="settings-page-kicker">Configure</div>
+    <h1>Settings</h1>
+    <p>Find, understand, and safely customize MediaStorm.</p>
+    <div class="settings-command-bar">
+        <label class="settings-search-wrap" for="settingsSearch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Search every setting" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)">
+        </label>
+        <div class="settings-level-switch" aria-label="Settings detail level">
+            <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is not ready yet">Basic</button>
+            <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
+        </div>
+        <div id="settingsSaveState" class="settings-save-state" role="status" aria-live="polite">
+            <span aria-hidden="true">✓</span>
+            <span id="settingsSaveStateText">All changes saved</span>
+        </div>
     </div>
-    <div class="page-header-controls" style="display: flex; gap: 0.5rem; align-items: center;">
-        <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)" style="min-width: 200px;">
-        <button id="identifyClientBtn" class="btn btn-secondary" style="display: none;" onclick="identifyClient()" title="Send ping to identify this device">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            Identify
-        </button>
-        <button id="revertBtn" class="btn btn-secondary" style="display: none;" onclick="revertToGlobal()" title="Reset all settings to inherit from parent defaults">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                <path d="M3 3v5h5"/>
-            </svg>
-            Use Parent Defaults
-        </button>
-        <button id="propagateBtn" class="btn btn-secondary" style="display: none;" onclick="propagateSettings()" title="Review child scopes with custom settings">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14"/>
-                <path d="M19 12l-7 7-7-7"/>
-            </svg>
-            <span id="propagateBtnLabel">Review Customizations</span>
-        </button>
-        <button class="btn btn-primary" onclick="saveAllSettings()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Save
-        </button>
-    </div>
-</div>
+</header>
 
 <section class="settings-scope-panel" aria-label="Settings scope">
+    <span class="settings-scope-heading">Current scope · <span id="settingsScopeName">Server defaults</span></span>
     <div class="settings-scope-bar">
-        <span class="settings-scope-label">Scope:</span>
         {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
         <label class="settings-scope-select-wrap" id="settingsPersonScopeWrap">
             <span class="settings-scope-control-label">Person</span>
@@ -950,28 +1365,65 @@
             <select id="clientSelector" aria-label="Device" onchange="selectSettingsScope(this.value ? 'device' : 'person', selectedUserId, this.value)"><option value="">Choose a device</option></select>
         </label>
         <span class="settings-scope-spacer"></span>
-        <div class="settings-view-compact">
-            <span class="settings-scope-label">View:</span>
-            <div class="settings-level-switch" aria-label="Settings detail level">
-                <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is not ready yet">Basic</button>
-                <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
-            </div>
+        <div class="settings-scope-actions">
+            <button id="identifyClientBtn" class="btn btn-secondary" style="display: none;" onclick="identifyClient()" title="Send ping to identify this device">Identify device</button>
+            <button id="revertBtn" class="btn btn-secondary" style="display: none;" onclick="revertToGlobal()" title="Reset all settings to inherit from parent defaults">Use Parent Defaults</button>
+            <button id="propagateBtn" class="btn btn-secondary" style="display: none;" onclick="propagateSettings()" title="Review child scopes with custom settings"><span id="propagateBtnLabel">Review Customizations</span></button>
         </div>
     </div>
-    <p class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides</p>
+    <p id="settingsCascadeCopy" class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides. Applies to all people and devices unless overridden.</p>
     <div id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage" aria-hidden="true"></div>
-    <div id="settingsCategoryNav" hidden aria-hidden="true"></div>
     <div id="settingsLevelHelp" hidden aria-hidden="true"></div>
 </section>
 
-<div class="settings-workspace">
+<section id="settingsHome" class="settings-home">
+    <div id="settingsAttentionBanner" class="settings-attention-banner" hidden>
+        <div>
+            <strong id="settingsAttentionTitle">Settings need attention</strong>
+            <p id="settingsAttentionCopy">Review the highlighted configuration issues.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="openFirstSettingsIssue()">Review issue →</button>
+    </div>
+    <div class="settings-home-heading">
+        <h2>Settings categories</h2>
+        <p>Choose a task area. Search also finds Advanced and technical settings.</p>
+    </div>
+    <div id="settingsCategoryCards" class="settings-category-grid"></div>
+</section>
+
+<div id="settingsCategoryWorkspace" class="settings-workspace" hidden>
+    <aside class="settings-sidebar" aria-label="Settings categories">
+        <div class="settings-sidebar-label">Settings</div>
+        <button class="settings-home-link" type="button" onclick="setSettingsGroup('')">← Settings home</button>
+        <nav id="settingsCategoryNav" class="settings-category-nav" aria-label="Settings category navigation"></nav>
+    </aside>
     <main class="settings-main">
+        <header class="settings-category-header">
+            <div>
+                <div class="settings-category-breadcrumb">Settings</div>
+                <h2 id="settingsCategoryTitle">All settings</h2>
+                <p id="settingsCategoryDescription">Browse every available MediaStorm setting.</p>
+            </div>
+            <div id="settingsCategorySummary" class="settings-category-summary"></div>
+        </header>
         <div id="settingsContainer">
             <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
                 <div class="spinner"></div>
             </div>
         </div>
     </main>
+</div>
+
+<div id="settingsStickySave" class="settings-sticky-save" hidden>
+    <div>
+        <strong>Unsaved changes</strong>
+        <p>Your edits stay on this device until you save them.</p>
+    </div>
+    <div class="settings-sticky-save-actions">
+        <button class="btn btn-secondary" type="button" onclick="resetSettings()">Discard</button>
+        <button class="btn btn-primary" type="button" onclick="saveAllSettings()">Save changes</button>
+    </div>
+</div>
 </div>
 
 <!-- Test Result Modal -->
@@ -1248,6 +1700,14 @@
         { id: 'interface', label: 'Interface' },
         { id: 'server', label: 'Server & Network' }
     ];
+    const settingsLandingGroups = [
+        { id: 'sources', label: 'Sources', description: 'Indexers, torrent scrapers, Usenet, debrid, and media sources.' },
+        { id: 'search', label: 'Search & Quality', description: 'Search behavior, filtering, quality, release terms, and ordering.' },
+        { id: 'playback', label: 'Playback & Subtitles', description: 'Playback, streams, transcoding, subtitles, and Live TV.' },
+        { id: 'interface', label: 'Home & Appearance', description: 'Shelves, discovery, display, branding, and visibility.' },
+        { id: 'metadata', label: 'Metadata & Integrations', description: 'Metadata providers, Plex, Trakt, and external services.' },
+        { id: 'server', label: 'Server & Network', description: 'Server, storage, WebDAV, networking, and maintenance.' }
+    ];
     const settingsOverviewSectionOrder = new Map([
         'indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines',
         'streaming', 'filtering', 'animeFiltering', 'ranking',
@@ -1314,8 +1774,12 @@
         'usenetEngines.apiPath', 'usenetEngines.priority', 'usenetEngines.config.webdavPathPrefix', 'usenetEngines.pollIntervalSeconds', 'usenetEngines.timeoutSeconds'
     ]);
     const requestedSettingsSection = window.location.hash.replace(/^#/, '');
+    const requestedSettingsCategory = new URLSearchParams(window.location.search).get('category') || '';
+    if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
+        activeSettingsGroup = requestedSettingsCategory;
+    }
     if (requestedSettingsSection && schema[requestedSettingsSection]?.group) {
-        activeSettingsGroup = schema[requestedSettingsSection].group;
+        activeSettingsGroup = settingsOverviewGroupForSection(requestedSettingsSection, schema[requestedSettingsSection]);
     }
     if (advancedSections.has(requestedSettingsSection)) {
         settingsLevel = 'advanced';
@@ -1329,15 +1793,26 @@
 
     function setSettingsGroup(groupId) {
         activeSettingsGroup = groupId;
+        searchTerm = '';
+        filteredSections = null;
+        filteredFields = null;
+        const searchInput = document.getElementById('settingsSearch');
+        if (searchInput) searchInput.value = '';
+        const url = new URL(window.location.href);
+        if (groupId) url.searchParams.set('category', groupId);
+        else url.searchParams.delete('category');
+        url.hash = '';
+        history.pushState({}, '', url);
         renderSettings();
+        requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
     function renderSettingsWorkspaceNavigation() {
         renderSettingsScopeTree();
         updateSettingsScopeBarState();
         const nav = document.getElementById('settingsCategoryNav');
-        const availableGroups = groups.filter(group => Object.entries(schema).some(([key, def]) => {
-            if (def.group !== group.id || def.hidden) return false;
+        const availableGroups = settingsLandingGroups.filter(group => Object.entries(schema).some(([key, def]) => {
+            if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id || def.hidden) return false;
             if (settingsLevel === 'basic' && advancedSections.has(key)) return false;
             if (selectedClientId && !clientConfigSections.includes(key)) return false;
             if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
@@ -1348,16 +1823,18 @@
             activeSettingsGroup = '';
         }
         if (nav) {
-            const allCustomizationCount = availableGroups.reduce((total, group) => total + settingsGroupCustomizationCount(group.id), 0);
-            const allButton = '<button type="button" class="settings-category-btn '+(!activeSettingsGroup ? 'active' : '')+'"'+(!activeSettingsGroup ? ' aria-current="page"' : '')+' onclick="setSettingsGroup(\'\')"><span class="settings-category-btn-copy"><span>All</span>'+renderCustomizationCount(allCustomizationCount)+'</span></button>';
-            nav.innerHTML = allButton + availableGroups.map(group => {
+            nav.innerHTML = availableGroups.map(group => {
                 const isActive = group.id === activeSettingsGroup;
-                const customizationCount = settingsGroupCustomizationCount(group.id);
+                const customizationCount = settingsOverviewCustomizationCount(group.id);
                 return '<button type="button" class="settings-category-btn '+(isActive ? 'active' : '')+'"'+(isActive ? ' aria-current="page"' : '')+' onclick="setSettingsGroup(\''+group.id+'\')"><span class="settings-category-btn-copy"><span>'+group.label+'</span>'+renderCustomizationCount(customizationCount)+'</span></button>';
             }).join('');
         }
-        document.getElementById('settingsBasicBtn')?.classList.toggle('active', settingsLevel === 'basic');
-        document.getElementById('settingsAdvancedBtn')?.classList.toggle('active', settingsLevel === 'advanced');
+        const basicButton = document.getElementById('settingsBasicBtn');
+        const advancedButton = document.getElementById('settingsAdvancedBtn');
+        basicButton?.classList.toggle('active', settingsLevel === 'basic');
+        advancedButton?.classList.toggle('active', settingsLevel === 'advanced');
+        basicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
+        advancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
         const help = document.getElementById('settingsLevelHelp');
         if (help) help.textContent = settingsLevel === 'basic'
             ? 'Showing common settings. Switch to Advanced or search to find everything else.'
@@ -1381,6 +1858,16 @@
             clientSelector.disabled = !selectedUserId || clientsForUser.length === 0;
             if (clientSelector.value !== selectedClientId) clientSelector.value = selectedClientId;
         }
+        const scopeName = document.getElementById('settingsScopeName');
+        const cascadeCopy = document.getElementById('settingsCascadeCopy');
+        if (scopeName) scopeName.textContent = settingsScopeDisplayName();
+        if (cascadeCopy) {
+            cascadeCopy.textContent = isDevice
+                ? 'Overrides this device only · inherits from the selected person, then Server defaults.'
+                : (isPerson
+                    ? 'Applies to this person and their devices unless a device overrides it.'
+                    : 'Settings cascade: Server defaults → Person overrides → Device overrides. Applies to all people and devices unless overridden.');
+        }
     }
 
     function settingsOverviewGroupForSection(sectionKey, sectionDef) {
@@ -1397,6 +1884,105 @@
             services: 'metadata',
             server: 'server'
         }[sectionDef.group] || 'metadata';
+    }
+
+    function settingsAvailableSectionsForOverview(groupId) {
+        return Object.entries(schema).filter(([key, def]) => {
+            if (!def.group || def.hidden || settingsOverviewGroupForSection(key, def) !== groupId) return false;
+            if (settingsLevel === 'basic' && advancedSections.has(key)) return false;
+            if (selectedClientId && !clientConfigSections.includes(key)) return false;
+            if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
+            if (!selectedUserId && def.inheritFrom) return false;
+            return true;
+        });
+    }
+
+    function settingsScopeDisplayName() {
+        if (selectedClientId) {
+            const client = clientsForUser.find(candidate => candidate.id === selectedClientId);
+            return 'Device · ' + (client?.nickname || client?.name || 'Selected device');
+        }
+        if (selectedUserId) {
+            const profile = profilesData.find(candidate => candidate.id === selectedUserId);
+            return 'Person · ' + (profile?.name || 'Selected person');
+        }
+        return 'Server defaults';
+    }
+
+    function settingsCategoryMeta(groupId) {
+        const customizationCount = settingsOverviewCustomizationCount(groupId);
+        if (customizationCount > 0) return customizationCount + ' customized';
+        if (!selectedUserId && groupId === 'server') return 'Server only';
+        if (selectedUserId || selectedClientId) return 'Inherited unless customized';
+        const configured = settingsAvailableSectionsForOverview(groupId).reduce((total, [key, def]) => total + settingsSectionConfiguredCount(key, def), 0);
+        return configured > 0 ? configured + ' configured' : 'Using defaults';
+    }
+
+    function renderSettingsLanding() {
+        const cards = document.getElementById('settingsCategoryCards');
+        if (cards) {
+            cards.innerHTML = settingsLandingGroups
+                .filter(group => settingsAvailableSectionsForOverview(group.id).length > 0)
+                .map(group => '<button type="button" class="settings-category-card" onclick="setSettingsGroup(\''+group.id+'\')">' +
+                    '<span class="settings-category-card-title">'+escapeHtml(group.label)+'</span>' +
+                    '<span class="settings-category-card-description">'+escapeHtml(group.description)+'</span>' +
+                    '<span class="settings-category-card-meta">'+escapeHtml(settingsCategoryMeta(group.id))+'</span>' +
+                    '<span class="settings-category-card-arrow" aria-hidden="true">→</span>' +
+                '</button>').join('');
+        }
+
+        const issueKeys = Object.keys(validationErrors);
+        const attention = document.getElementById('settingsAttentionBanner');
+        if (attention) attention.hidden = issueKeys.length === 0 || !!selectedUserId;
+        if (issueKeys.length > 0) {
+            const issueCount = issueKeys.reduce((total, key) => total + Math.max(1, getSectionErrorCount(key)), 0);
+            const firstLabel = schema[issueKeys[0]]?.label || issueKeys[0];
+            const title = document.getElementById('settingsAttentionTitle');
+            const copy = document.getElementById('settingsAttentionCopy');
+            if (title) title.textContent = issueCount + (issueCount === 1 ? ' setting needs attention' : ' settings need attention');
+            if (copy) copy.textContent = 'Review ' + firstLabel + (issueKeys.length > 1 ? ' and other highlighted sections.' : '.');
+        }
+    }
+
+    function renderSettingsCategoryHeader() {
+        const group = settingsLandingGroups.find(candidate => candidate.id === activeSettingsGroup);
+        const title = document.getElementById('settingsCategoryTitle');
+        const description = document.getElementById('settingsCategoryDescription');
+        const summary = document.getElementById('settingsCategorySummary');
+        if (title) title.textContent = searchTerm ? 'Search results' : (group?.label || 'All settings');
+        if (description) description.textContent = searchTerm
+            ? 'Every matching setting is shown, including advanced and technical options.'
+            : (group?.description || 'Browse every available MediaStorm setting.');
+        if (summary) {
+            const count = searchTerm && filteredSections ? filteredSections.size : (group ? settingsAvailableSectionsForOverview(group.id).length : 0);
+            summary.textContent = count + (count === 1 ? ' section' : ' sections') + ' · ' + settingsScopeDisplayName();
+        }
+    }
+
+    function openFirstSettingsIssue() {
+        const firstKey = Object.keys(validationErrors)[0];
+        if (!firstKey || !schema[firstKey]) return;
+        activeSettingsGroup = settingsOverviewGroupForSection(firstKey, schema[firstKey]);
+        const url = new URL(window.location.href);
+        url.searchParams.set('category', activeSettingsGroup);
+        url.hash = firstKey;
+        history.pushState({}, '', url);
+        renderSettings();
+        requestAnimationFrame(() => document.getElementById('section-' + firstKey)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+
+    function settingsHasUnsavedChanges() {
+        return Object.keys(schema).some(sectionHasChanges);
+    }
+
+    function updateSettingsSaveStatus() {
+        const hasChanges = settingsHasUnsavedChanges();
+        const state = document.getElementById('settingsSaveState');
+        const stateText = document.getElementById('settingsSaveStateText');
+        const sticky = document.getElementById('settingsStickySave');
+        state?.classList.toggle('unsaved', hasChanges);
+        if (stateText) stateText.textContent = hasChanges ? 'Unsaved changes' : 'All changes saved';
+        if (sticky) sticky.hidden = !hasChanges;
     }
 
     function settingsSectionRowDescription(sectionKey, sectionDef) {
@@ -1553,6 +2139,13 @@
         if (!selectedUserId && !selectedClientId) return 0;
         return Object.entries(schema)
             .filter(([, def]) => def.group === groupId && !def.hidden)
+            .reduce((total, [sectionKey]) => total + settingsSectionCustomizationCount(sectionKey), 0);
+    }
+
+    function settingsOverviewCustomizationCount(groupId) {
+        if (!selectedUserId && !selectedClientId) return 0;
+        return Object.entries(schema)
+            .filter(([sectionKey, def]) => def.group && !def.hidden && settingsOverviewGroupForSection(sectionKey, def) === groupId)
             .reduce((total, [sectionKey]) => total + settingsSectionCustomizationCount(sectionKey), 0);
     }
 
@@ -4518,6 +5111,7 @@
         section.querySelectorAll('.section-save-btn').forEach(button => {
             button.disabled = !hasChanges;
         });
+        updateSettingsSaveStatus();
     }
 
     function handleFieldInputChange(basePath, fieldKey, value) {
@@ -11204,11 +11798,11 @@
         const rowDescription = settingsSectionRowDescription(sectionKey, sectionDef);
         const configuredBadge = renderSettingsSectionBadge(sectionKey, sectionDef);
         return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'">' +
-            '<div class="section-header" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)">' +
+            '<div class="section-header" role="button" tabindex="0" aria-expanded="'+(isOpen ? 'true' : 'false')+'" aria-controls="section-content-'+sectionKey+'" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)">' +
                 '<div class="section-title">'+getIcon(sectionDef.icon)+'<span class="settings-section-copy"><span class="settings-section-label">'+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</span><span class="settings-section-description">'+escapeHtml(rowDescription)+'</span></span></div>' +
                 '<div class="section-header-actions">'+configuredBadge+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></div>' +
             '</div>' +
-            '<div class="section-content">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div>' +
+            '<div class="section-content" id="section-content-'+sectionKey+'">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div>' +
         '</div>';
     }
 
@@ -11961,6 +12555,20 @@
         // Run validation before rendering
         validationErrors = validateSettings();
 
+        const settingsHome = document.getElementById('settingsHome');
+        const settingsWorkspace = document.getElementById('settingsCategoryWorkspace');
+        const sectionHash = window.location.hash.replace(/^#/, '');
+        const showHome = !activeSettingsGroup && !searchTerm && !schema[sectionHash];
+        if (settingsHome) settingsHome.hidden = !showHome;
+        if (settingsWorkspace) settingsWorkspace.hidden = showHome;
+        if (showHome) {
+            container.innerHTML = '';
+            renderSettingsLanding();
+            updateSettingsSaveStatus();
+            return;
+        }
+        renderSettingsCategoryHeader();
+
         // Save currently open sections before re-rendering
         const openSection = container.querySelector('.section.open')?.id.replace('section-', '') || '';
 
@@ -11978,9 +12586,13 @@
         }
 
         // Add validation warning banner if there are issues
-        const totalErrors = Object.keys(validationErrors).length;
+        const visibleErrorKeys = Object.keys(validationErrors).filter(key => {
+            if (!activeSettingsGroup || searchTerm || !schema[key]) return true;
+            return settingsOverviewGroupForSection(key, schema[key]) === activeSettingsGroup;
+        });
+        const totalErrors = visibleErrorKeys.length;
         if (totalErrors > 0 && !selectedUserId) {
-            const errorSections = Object.keys(validationErrors).map(key => {
+            const errorSections = visibleErrorKeys.map(key => {
                 const sectionDef = schema[key];
                 return sectionDef?.label || key;
             }).join(', ');
@@ -11995,6 +12607,7 @@
         let totalMatchingSections = 0;
 
         for (const group of settingsOverviewGroups) {
+            if (activeSettingsGroup && !searchTerm && group.id !== activeSettingsGroup) continue;
             const groupSections = Object.entries(schema).filter(([key, def]) => {
                 if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
@@ -12036,10 +12649,16 @@
             // Keep progressive disclosure intact while searching: open the first match only.
             const firstMatch = filteredSections.values().next().value;
             const section = document.getElementById('section-'+firstMatch);
-            if (section) section.classList.add('open');
+            if (section) {
+                section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            }
         } else if (openSection) {
             const section = document.getElementById('section-'+openSection);
-            if (section) section.classList.add('open');
+            if (section) {
+                section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            }
         }
 
         if (window.location.hash) {
@@ -12047,6 +12666,7 @@
             if (section) {
                 container.querySelectorAll('.section.open').forEach(open => open.classList.remove('open'));
                 section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
                 section.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
@@ -12054,6 +12674,7 @@
         // Initialize drag-drop for provider priority and shelves
         initDragDrop();
         initFileUploadStatuses();
+        updateSettingsSaveStatus();
     }
 
     function toggleSettingsSection(header) {
@@ -12232,11 +12853,25 @@
     });
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.substring(1);
-        if (hash) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
-            const section = document.getElementById('section-'+hash);
-            if (section) { section.classList.add('open'); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        if (hash && schema[hash]) {
+            activeSettingsGroup = settingsOverviewGroupForSection(hash, schema[hash]);
+            renderSettings();
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
+                const section = document.getElementById('section-'+hash);
+                if (section) { section.classList.add('open'); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            });
         }
+    });
+    window.addEventListener('popstate', () => {
+        const category = new URLSearchParams(window.location.search).get('category') || '';
+        activeSettingsGroup = settingsLandingGroups.some(group => group.id === category) ? category : '';
+        renderSettings();
+    });
+    window.addEventListener('beforeunload', event => {
+        if (!settingsHasUnsavedChanges()) return;
+        event.preventDefault();
+        event.returnValue = '';
     });
 </script>
 {{end}}

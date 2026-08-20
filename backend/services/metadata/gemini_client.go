@@ -44,6 +44,9 @@ type geminiClient struct {
 	throttleMu  sync.Mutex
 	lastRequest time.Time
 	minInterval time.Duration
+	// Shared across language-scoped Service copies so duplicate in-flight
+	// recommendation requests hit the provider once.
+	inflight sync.Map
 }
 
 func newGeminiClient(apiKey string, httpc *http.Client, cache *fileCache) *geminiClient {
@@ -175,6 +178,38 @@ func (c *geminiClient) resolvedBaseURL() string {
 		return c.baseURL
 	}
 	return c.defaultBaseURL()
+}
+
+const aiSingleflightTimeout = 90 * time.Second
+
+func (c *geminiClient) singleflight(ctx context.Context, key string, fetch func(context.Context) (any, error)) (any, error) {
+	if c == nil {
+		return nil, errors.New("AI provider not configured")
+	}
+	call := &cachedFetchInflightResult{done: make(chan struct{})}
+	actual, loaded := c.inflight.LoadOrStore(key, call)
+	if loaded {
+		inflight := actual.(*cachedFetchInflightResult)
+		select {
+		case <-inflight.done:
+			return inflight.value, inflight.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	defer func() {
+		c.inflight.Delete(key)
+		close(call.done)
+	}()
+
+	// Detach from the caller so an aborted duplicate request cannot cancel
+	// the shared provider call that other waiters still need.
+	fetchCtx, cancel := context.WithTimeout(context.Background(), aiSingleflightTimeout)
+	defer cancel()
+	value, err := fetch(fetchCtx)
+	call.value = value
+	call.err = err
+	return value, err
 }
 
 // geminiRequest is the request body for the Gemini generateContent API.

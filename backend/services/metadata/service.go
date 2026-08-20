@@ -6130,15 +6130,33 @@ func (s *Service) GetAISimilar(ctx context.Context, seedTitle string, mediaType 
 		return nil, fmt.Errorf("AI provider API key not configured")
 	}
 
-	// Check cache first
+	language := ""
+	if s.client != nil {
+		language = s.client.language
+	}
 	providerLabel := s.ai.providerLabel()
-	cacheID := cacheKey("ai", s.ai.provider, s.ai.modelName(), "similar", mediaType, seedTitle, s.client.language)
+	cacheID := cacheKey("ai", s.ai.provider, s.ai.modelName(), "similar", mediaType, seedTitle, language)
 	var cached []models.TrendingItem
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
 		log.Printf("[metadata] AI similar cache hit seed=%q count=%d", seedTitle, len(cached))
 		return cached, nil
 	}
 
+	value, err := s.ai.singleflight(ctx, cacheID, func(fetchCtx context.Context) (any, error) {
+		var cached []models.TrendingItem
+		if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
+			return cached, nil
+		}
+		return s.fetchAISimilarRecommendations(fetchCtx, seedTitle, mediaType, providerLabel, cacheID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	items, _ := value.([]models.TrendingItem)
+	return items, nil
+}
+
+func (s *Service) fetchAISimilarRecommendations(ctx context.Context, seedTitle, mediaType, providerLabel, cacheID string) ([]models.TrendingItem, error) {
 	recs, err := s.ai.getSimilarRecommendations(ctx, seedTitle, mediaType)
 	if err != nil {
 		return nil, fmt.Errorf("%s similar: %w", providerLabel, err)
@@ -6190,15 +6208,33 @@ func (s *Service) GetAICustomRecommendations(ctx context.Context, query string) 
 		return nil, fmt.Errorf("AI provider API key not configured")
 	}
 
-	// Check cache (hash the query for a stable key)
+	language := ""
+	if s.client != nil {
+		language = s.client.language
+	}
 	providerLabel := s.ai.providerLabel()
-	cacheID := cacheKey("ai", s.ai.provider, s.ai.modelName(), "custom", fmt.Sprintf("%x", sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))), s.client.language)
+	cacheID := cacheKey("ai", s.ai.provider, s.ai.modelName(), "custom", fmt.Sprintf("%x", sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))), language)
 	var cached []models.TrendingItem
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
 		log.Printf("[metadata] AI custom cache hit query=%q count=%d", query, len(cached))
 		return cached, nil
 	}
 
+	value, err := s.ai.singleflight(ctx, cacheID, func(fetchCtx context.Context) (any, error) {
+		var cached []models.TrendingItem
+		if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
+			return cached, nil
+		}
+		return s.fetchAICustomRecommendations(fetchCtx, query, providerLabel, cacheID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	items, _ := value.([]models.TrendingItem)
+	return items, nil
+}
+
+func (s *Service) fetchAICustomRecommendations(ctx context.Context, query, providerLabel, cacheID string) ([]models.TrendingItem, error) {
 	recs, err := s.ai.getCustomRecommendations(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("%s custom: %w", providerLabel, err)

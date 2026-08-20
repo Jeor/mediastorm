@@ -3,9 +3,15 @@ package metadata
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestAIClientOpenAICompatibleProviderUsesChatCompletions(t *testing.T) {
@@ -96,5 +102,171 @@ func TestAIClientAnthropicProviderUsesMessagesAPI(t *testing.T) {
 	}
 	if len(recs) != 1 || recs[0].Title != "Severance" {
 		t.Fatalf("unexpected recommendations: %+v", recs)
+	}
+}
+
+func TestGetAICustomRecommendationsCoalescesInFlightCalls(t *testing.T) {
+	var aiHits atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+
+	aiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if aiHits.Add(1) == 1 {
+			close(started)
+		}
+		select {
+		case <-release:
+		case <-time.After(2 * time.Second):
+			t.Error("timed out waiting to release AI handler")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"[{\"title\":\"Superbad\",\"year\":2007,\"mediaType\":\"movie\"}]"}}]}`))
+	}))
+	defer aiServer.Close()
+
+	svc := &Service{
+		ai: newAIClient(AIConfig{
+			Provider: "openai",
+			APIKey:   "test-key",
+			Model:    "test-model",
+			BaseURL:  aiServer.URL,
+		}, aiServer.Client(), nil),
+		tmdb: &tmdbClient{
+			apiKey:      "tmdb-key",
+			language:    "en",
+			httpc:       &http.Client{Transport: staticTMDBSearchTransport(t, "Superbad", 123)},
+			minInterval: time.Millisecond,
+		},
+		cache: newFileCache(t.TempDir(), 1),
+	}
+
+	const callers = 3
+	var wg sync.WaitGroup
+	errs := make([]error, callers)
+	counts := make([]int, callers)
+	wg.Add(callers)
+	for i := 0; i < callers; i++ {
+		go func(i int) {
+			defer wg.Done()
+			items, err := svc.GetAICustomRecommendations(context.Background(), "funny movies")
+			errs[i] = err
+			counts[i] = len(items)
+		}(i)
+	}
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("AI provider was never called")
+	}
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+	wg.Wait()
+
+	if got := aiHits.Load(); got != 1 {
+		t.Fatalf("AI provider hits = %d, want 1", got)
+	}
+	for i := 0; i < callers; i++ {
+		if errs[i] != nil {
+			t.Fatalf("caller %d error: %v", i, errs[i])
+		}
+		if counts[i] != 1 {
+			t.Fatalf("caller %d items = %d, want 1", i, counts[i])
+		}
+	}
+}
+
+func TestGetAICustomRecommendationsCanceledWaiterDoesNotRetrigger(t *testing.T) {
+	var aiHits atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+
+	aiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if aiHits.Add(1) == 1 {
+			close(started)
+		}
+		select {
+		case <-release:
+		case <-time.After(2 * time.Second):
+			t.Error("timed out waiting to release AI handler")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"[{\"title\":\"Superbad\",\"year\":2007,\"mediaType\":\"movie\"}]"}}]}`))
+	}))
+	defer aiServer.Close()
+
+	svc := &Service{
+		ai: newAIClient(AIConfig{
+			Provider: "openai",
+			APIKey:   "test-key",
+			Model:    "test-model",
+			BaseURL:  aiServer.URL,
+		}, aiServer.Client(), nil),
+		tmdb: &tmdbClient{
+			apiKey:      "tmdb-key",
+			language:    "en",
+			httpc:       &http.Client{Transport: staticTMDBSearchTransport(t, "Superbad", 123)},
+			minInterval: time.Millisecond,
+		},
+		cache: newFileCache(t.TempDir(), 1),
+	}
+
+	leaderErr := make(chan error, 1)
+	go func() {
+		_, err := svc.GetAICustomRecommendations(context.Background(), "funny movies")
+		leaderErr <- err
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("AI provider was never called")
+	}
+
+	waiterCtx, cancelWaiter := context.WithCancel(context.Background())
+	waiterErr := make(chan error, 1)
+	go func() {
+		_, err := svc.GetAICustomRecommendations(waiterCtx, "funny movies")
+		waiterErr <- err
+	}()
+	time.Sleep(20 * time.Millisecond)
+	cancelWaiter()
+
+	select {
+	case err := <-waiterErr:
+		if err == nil {
+			t.Fatal("canceled waiter returned nil error")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("canceled waiter never returned")
+	}
+
+	close(release)
+	select {
+	case err := <-leaderErr:
+		if err != nil {
+			t.Fatalf("leader error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("leader never returned")
+	}
+	if got := aiHits.Load(); got != 1 {
+		t.Fatalf("AI provider hits = %d, want 1", got)
+	}
+}
+
+func staticTMDBSearchTransport(t *testing.T, title string, id int) roundTripFunc {
+	t.Helper()
+	return func(r *http.Request) (*http.Response, error) {
+		if !strings.Contains(r.URL.Path, "/search/") {
+			t.Errorf("unexpected TMDB path %s", r.URL.Path)
+		}
+		body := `{"results":[{"id":` + strconv.Itoa(id) + `,"title":"` + title + `","media_type":"movie","release_date":"2007-08-17"}]}`
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Request:    r,
+		}, nil
 	}
 }

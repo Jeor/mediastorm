@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="format-detection" content="telephone=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -38,7 +38,6 @@
             box-sizing: border-box;
         }
 
-        /* Prevent zooming on mobile */
         html {
             touch-action: manipulation;
         }
@@ -1978,29 +1977,28 @@
             inset: 0 auto 0 0;
             z-index: 300;
             display: flex;
-            width: 240px;
+            width: 248px;
             min-height: 100vh;
             flex-direction: column;
             border-right: 1px solid var(--border);
-            background: #111118;
+            background: var(--bg-secondary);
         }
 
         .admin-sidebar-brand {
             display: flex;
-            min-height: 56px;
+            min-height: 72px;
             align-items: center;
-            gap: 0.625rem;
+            gap: 0.75rem;
             padding: 0.75rem 1rem;
             color: var(--text-primary);
             text-decoration: none;
-            border-bottom: 1px solid rgba(42, 42, 54, 0.55);
         }
 
         .admin-sidebar-brand img {
-            width: 24px;
-            height: 24px;
+            width: 40px;
+            height: 40px;
             flex: 0 0 auto;
-            border-radius: 6px;
+            border-radius: 10px;
         }
 
         .admin-sidebar-brand-copy {
@@ -2011,21 +2009,25 @@
         }
 
         .admin-sidebar-brand-title {
-            font-size: 1rem;
+            font-size: 0.9375rem;
             font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
         }
 
         .admin-sidebar-brand-build {
             color: var(--text-muted);
             font-size: 0.6875rem;
             font-weight: 400;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
         }
 
         .admin-sidebar-nav {
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
-            padding: 0.5rem 0.75rem 1rem;
+            padding: 0.125rem 0.75rem 1rem;
             scrollbar-width: thin;
             scrollbar-color: var(--border) transparent;
         }
@@ -2034,20 +2036,40 @@
             margin: 0;
         }
 
+        .sidebar-section-label,
+        .sidebar-subgroup-label {
+            color: var(--text-muted);
+            font-size: 0.625rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-section-label {
+            padding: 0.5rem 0.5rem 0.25rem;
+        }
+
+        .sidebar-section-label:not(:first-child) {
+            margin-top: 0.5rem;
+        }
+
+        .sidebar-subgroup-label {
+            padding: 0.625rem 0.75rem 0.25rem 2.75rem;
+        }
+
         .sidebar-group > summary {
             display: flex;
-            min-height: 32px;
+            min-height: 44px;
             cursor: pointer;
             list-style: none;
             align-items: center;
             justify-content: space-between;
-            padding: 0.45rem 0.75rem;
-            color: var(--text-muted);
-            border-radius: 6px;
-            font-size: 0.6875rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
+            gap: 0.5rem;
+            padding: 0.625rem 0.75rem;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
 
         .sidebar-group > summary::-webkit-details-marker {
@@ -2056,13 +2078,38 @@
 
         .sidebar-group > summary:hover,
         .sidebar-group > summary:focus-visible {
-            background: rgba(255, 255, 255, 0.025);
-            color: var(--text-secondary);
-            outline: none;
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-group.current > summary {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .sidebar-group.current > summary::before {
+            content: '';
+            position: absolute;
+            inset: 8px auto 8px 0;
+            width: 3px;
+            border-radius: 3px;
+            background: var(--accent);
+        }
+
+        .sidebar-group-summary-main {
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .sidebar-group > summary {
+            position: relative;
         }
 
         .sidebar-group-chevron {
-            font-size: 0.625rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
             transition: transform 0.16s ease;
         }
 
@@ -2076,16 +2123,34 @@
             padding-bottom: 0.25rem;
         }
 
+        .sidebar-group-items .sidebar-nav-link {
+            width: calc(100% - 0.5rem);
+            margin-left: 0.5rem;
+            padding-left: 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        .sidebar-primary-link + .sidebar-secondary-link {
+            margin-top: -0.125rem;
+        }
+
+        .sidebar-secondary-link {
+            min-height: 36px !important;
+            padding-left: 2.75rem !important;
+            color: var(--text-muted);
+            font-size: 0.75rem !important;
+        }
+
         .sidebar-nav-link {
             position: relative;
             display: flex;
-            min-height: 36px;
+            min-height: 44px;
             align-items: center;
             gap: 0.625rem;
             padding: 0.5rem 0.75rem;
             color: var(--text-secondary);
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 0.875rem;
             font-weight: 500;
             line-height: 1.2;
@@ -2095,12 +2160,11 @@
         .sidebar-nav-link:focus-visible {
             color: var(--text-primary);
             background: var(--bg-hover);
-            outline: none;
         }
 
         .sidebar-nav-link.active {
             color: var(--text-primary);
-            background: rgba(99, 102, 241, 0.14);
+            background: var(--bg-hover);
         }
 
         .sidebar-nav-link.active::before {
@@ -2130,6 +2194,18 @@
             color: var(--accent-hover);
         }
 
+        .sidebar-admin-badge {
+            margin-left: auto;
+            padding: 0.2rem 0.4rem;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            font-size: 0.5625rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
         .admin-sidebar-footer {
             flex: 0 0 auto;
             padding: 0.75rem;
@@ -2138,15 +2214,15 @@
 
         .admin-sidebar-user {
             display: grid;
-            grid-template-columns: 32px minmax(0, 1fr) auto;
+            grid-template-columns: 36px minmax(0, 1fr) 44px;
             align-items: center;
             gap: 0.625rem;
         }
 
         .admin-avatar {
             display: inline-flex;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             align-items: center;
             justify-content: center;
             flex: 0 0 auto;
@@ -2175,9 +2251,23 @@
         }
 
         .admin-sidebar-logout {
-            color: #9ca3f1;
-            font-size: 0.75rem;
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            font-size: 1rem;
             text-decoration: none;
+        }
+
+        .admin-sidebar-logout:hover,
+        .admin-sidebar-logout:focus-visible {
+            color: var(--text-primary);
+            background: var(--bg-hover);
         }
 
         .admin-sidebar-version {
@@ -2187,10 +2277,10 @@
 
         .admin-workspace {
             display: flex;
-            width: calc(100% - 240px);
+            width: calc(100% - 248px);
             min-width: 0;
             min-height: 100vh;
-            margin-left: 240px;
+            margin-left: 248px;
             flex-direction: column;
         }
 
@@ -2198,8 +2288,8 @@
             position: sticky;
             top: 0;
             z-index: 250;
-            display: flex;
-            min-height: 48px;
+            display: none;
+            min-height: 64px;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
@@ -2239,14 +2329,14 @@
 
         .admin-mobile-menu {
             display: none;
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             align-items: center;
             justify-content: center;
             padding: 0;
             color: var(--text-primary);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: 8px;
             background: var(--bg-tertiary);
             cursor: pointer;
         }
@@ -2255,8 +2345,31 @@
             width: 100%;
             max-width: none;
             margin: 0;
-            padding: 1.5rem 2rem 2rem;
+            padding: 1.75rem 2.5rem 2rem;
             flex: 1 1 auto;
+        }
+
+        .admin-mobile-brand {
+            display: none;
+            min-width: 0;
+            overflow: hidden;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-overflow: ellipsis;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .sidebar-nav-link:focus-visible,
+        .sidebar-group > summary:focus-visible,
+        .admin-sidebar-brand:focus-visible,
+        .admin-sidebar-logout:focus-visible,
+        .admin-mobile-menu:focus-visible,
+        .admin-topbar-search:focus-visible {
+            outline: 2px solid var(--accent-hover);
+            outline-offset: 2px;
         }
 
         .admin-statusbar {
@@ -2378,12 +2491,27 @@
             }
 
             .admin-topbar {
+                display: flex;
                 padding-inline: 1rem;
+            }
+
+            .admin-mobile-brand {
+                display: block;
             }
 
             .admin-topbar-search {
                 min-width: 0;
-                margin-right: auto;
+                margin-left: auto;
+                padding: 0.5rem;
+            }
+
+            .admin-topbar-search span {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0 0 0 0);
+                white-space: nowrap;
             }
 
             .main-content {
@@ -2421,76 +2549,72 @@
                 <img src="{{brandingURL "web-icon" "icon-rounded.png"}}" alt="">
                 <span class="admin-sidebar-brand-copy">
                     <span class="admin-sidebar-brand-title">Mediastorm</span>
-                    <span class="admin-sidebar-brand-build">build {{.BuildID}}</span>
+                    <span class="admin-sidebar-brand-build">{{if .IsAdmin}}Admin{{else}}Account{{end}} · build {{.BuildID}}</span>
                 </span>
             </a>
 
             <nav class="admin-sidebar-nav" id="navMenu">
-                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}open{{end}}>
-                    <summary><span>Overview</span><span class="sidebar-group-chevron">›</span></summary>
+                <div class="sidebar-section-label">Overview</div>
+
+                <a href="{{.BasePath}}" class="sidebar-nav-link sidebar-primary-link {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}active{{end}}" {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}aria-current="page"{{end}} data-walkthrough-target="dashboard">
+                    <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg><span>Dashboard</span>
+                </a>
+
+                <a href="{{.BasePath}}/playback" class="sidebar-nav-link sidebar-primary-link {{if hasSuffix .CurrentPath "/playback"}}active{{end}}" {{if hasSuffix .CurrentPath "/playback"}}aria-current="page"{{end}}>
+                    <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/></svg><span>Playback</span>
+                </a>
+                <a href="{{.ServerBasePath}}/watch" class="sidebar-nav-link sidebar-secondary-link"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Open web app</span></a>
+
+                <details class="sidebar-group {{if or (hasSuffix .CurrentPath "/history") (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule") (hasSuffix .CurrentPath "/recordings") (hasSuffix .CurrentPath "/library")}}current{{end}}" {{if or (hasSuffix .CurrentPath "/history") (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule") (hasSuffix .CurrentPath "/recordings") (hasSuffix .CurrentPath "/library")}}open{{end}}>
+                    <summary data-walkthrough-target="media" data-walkthrough-mobile-target="media"><span class="sidebar-group-summary-main"><span>Library &amp; activity</span></span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/status") (eq .CurrentPath .BasePath)}}active{{end}}" data-walkthrough-target="dashboard">
-                            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg><span>Dashboard</span>
-                        </a>
+                        {{if .IsAdmin}}<a href="{{.BasePath}}/library" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}" {{if hasSuffix .CurrentPath "/library"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6l2 2h8v12H4Z"/></svg><span>Library</span></a>{{end}}
+                        <a href="{{.BasePath}}/history" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}" {{if hasSuffix .CurrentPath "/history"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Watch history</span></a>
+                        <a href="{{.BasePath}}/schedule" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}" {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Schedule</span></a>
+                        <a href="{{.BasePath}}/recordings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}" {{if hasSuffix .CurrentPath "/recordings"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><span>Recordings</span></a>
                     </div>
                 </details>
 
-                <details class="sidebar-group" {{if hasSuffix .CurrentPath "/playback"}}open{{end}}>
-                    <summary><span>Playback</span><span class="sidebar-group-chevron">›</span></summary>
+                <details class="sidebar-group {{if hasSuffix .CurrentPath "/accounts"}}current{{end}}" {{if hasSuffix .CurrentPath "/accounts"}}open{{end}}>
+                    <summary><span class="sidebar-group-summary-main"><span>People &amp; access</span></span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/playback" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/playback"}}active{{end}}">
-                            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/></svg><span>Admin Player</span>
-                        </a>
-                        <a href="{{.ServerBasePath}}/watch" class="sidebar-nav-link">
-                            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Web App</span>
-                        </a>
+                        <a href="{{.BasePath}}/accounts" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/accounts"}}active{{end}}" {{if hasSuffix .CurrentPath "/accounts"}}aria-current="page"{{end}} data-walkthrough-target="accounts"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="4"/><path d="M17 11a3 3 0 0 1 0 6M20 20v-1.5a3.5 3.5 0 0 0-2-3.2"/></svg><span>Households &amp; people</span></a>
                     </div>
                 </details>
 
-                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}open{{end}}>
-                    <summary data-walkthrough-target="settings"><span>Manage</span><span class="sidebar-group-chevron">›</span></summary>
-                    <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.4V9.6h.1A1.7 1.7 0 0 0 4.2 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.66 3.8l.06.06A1.7 1.7 0 0 0 8.6 4.2a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.4h4v.1a1.7 1.7 0 0 0 1 1.7 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1Z"/></svg><span>Settings</span></a>
-                        <a href="{{.BasePath}}/tasks" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-5V2"/><path d="M20 7a9 9 0 1 0 1 8"/></svg><span>Automations</span></a>
-                        <a href="{{.BasePath}}/integrations" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h8M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0Z"/><path d="M12 16v5"/></svg><span>Integrations</span></a>
-                    </div>
-                </details>
+                <div class="sidebar-section-label">Configure</div>
 
-                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/history") (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule") (hasSuffix .CurrentPath "/recordings") (hasSuffix .CurrentPath "/library") (hasSuffix .CurrentPath "/prequeue")}}open{{end}}>
-                    <summary data-walkthrough-target="media" data-walkthrough-mobile-target="media"><span>Media</span><span class="sidebar-group-chevron">›</span></summary>
+                <details class="sidebar-group {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}current{{end}}" {{if or (hasSuffix .CurrentPath "/settings") (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}open{{end}}>
+                    <summary data-walkthrough-target="settings"><span class="sidebar-group-summary-main"><span>Settings</span></span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/history" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/history"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Watch History</span></a>
-                        <a href="{{.BasePath}}/schedule" class="sidebar-nav-link {{if or (hasSuffix .CurrentPath "/calendar") (hasSuffix .CurrentPath "/schedule")}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span>Schedule</span></a>
-                        <a href="{{.BasePath}}/recordings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/recordings"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><span>Recordings</span></a>
-                        {{if .IsAdmin}}<a href="{{.BasePath}}/library" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/library"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6l2 2h8v12H4Z"/></svg><span>Library</span></a>{{end}}
-                        {{if .IsAdmin}}<a href="{{.BasePath}}/prequeue" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/prequeue"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Prequeue</span></a>{{end}}
+                        <a href="{{.BasePath}}/settings" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}" {{if hasSuffix .CurrentPath "/settings"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.4V9.6h.1A1.7 1.7 0 0 0 4.2 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.66 3.8l.06.06A1.7 1.7 0 0 0 8.6 4.2a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.4h4v.1a1.7 1.7 0 0 0 1 1.7 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1Z"/></svg><span>Settings home</span></a>
+                        <a href="{{.BasePath}}/integrations" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/integrations"}}active{{end}}" {{if hasSuffix .CurrentPath "/integrations"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h8M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0Z"/><path d="M12 16v5"/></svg><span>Integrations</span></a>
+                        <a href="{{.BasePath}}/tasks" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/tasks"}}active{{end}}" {{if hasSuffix .CurrentPath "/tasks"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-5V2"/><path d="M20 7a9 9 0 1 0 1 8"/></svg><span>Automations</span></a>
                     </div>
                 </details>
 
                 {{if .IsAdmin}}
-                <details class="sidebar-group" {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}open{{end}}>
-                    <summary data-walkthrough-target="system" data-walkthrough-mobile-target="system"><span>System</span><span class="sidebar-group-chevron">›</span></summary>
+                <details class="sidebar-group {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/prequeue") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}current{{end}}" {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/prequeue") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}open{{end}}>
+                    <summary data-walkthrough-target="system" data-walkthrough-mobile-target="system"><span class="sidebar-group-summary-main"><span>System tools</span></span><span class="sidebar-admin-badge">Admin</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search Diagnostics</span></a>
-                        <a href="{{.BasePath}}/connections" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/></svg><span>Connections</span></a>
-                        <a href="{{.BasePath}}/backup" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg><span>Backup</span></a>
-                        <a href="{{.BasePath}}/performance" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Performance</span></a>
-                        <a href="{{.BasePath}}/tools" class="sidebar-nav-link {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7 3-3 3 3-3 3M4 20l8-8"/><path d="m5 4 15 15M4 5l3-1 1 3-3 1Z"/></svg><span>Maintenance</span></a>
-                        <a href="{{.BasePath}}/logs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg><span>Logs</span></a>
-                        <a href="{{.BasePath}}/tools/hidden-items" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/hidden-items"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.5 10.7a2 2 0 0 0 2.8 2.8M9.5 5.3A10.8 10.8 0 0 1 12 5c5 0 9 7 9 7a15 15 0 0 1-2.1 2.7M6.2 6.2C4.2 7.6 3 12 3 12s4 7 9 7c1.2 0 2.4-.4 3.4-1"/></svg><span>Hidden Items</span></a>
-                        <a href="{{.BasePath}}/tools/resolved-nzbs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/resolved-nzbs"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span>Resolved NZBs</span></a>
-                        <a href="{{.BasePath}}/tools/bad-streams" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/bad-streams"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg><span>Bad Streams</span></a>
-                        <a href="{{.BasePath}}/tools/share-links" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/share-links"}}active{{end}}"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/></svg><span>Share Links</span></a>
+                        <div class="sidebar-subgroup-label">Monitor</div>
+                        <a href="{{.BasePath}}/connections" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}" {{if hasSuffix .CurrentPath "/connections"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/></svg><span>Connections</span></a>
+                        <a href="{{.BasePath}}/performance" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}" {{if hasSuffix .CurrentPath "/performance"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Performance</span></a>
+                        <a href="{{.BasePath}}/logs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}" {{if hasSuffix .CurrentPath "/logs"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg><span>Logs</span></a>
+                        <div class="sidebar-subgroup-label">Find</div>
+                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}" {{if hasSuffix .CurrentPath "/search"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search</span></a>
+                        <div class="sidebar-subgroup-label">Maintain</div>
+                        <a href="{{.BasePath}}/tools" class="sidebar-nav-link {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}active{{end}}" {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7 3-3 3 3-3 3M4 20l8-8"/><path d="m5 4 15 15M4 5l3-1 1 3-3 1Z"/></svg><span>Maintenance</span></a>
+                        <a href="{{.BasePath}}/backup" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}" {{if hasSuffix .CurrentPath "/backup"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg><span>Backup</span></a>
+                        <div class="sidebar-subgroup-label">Records</div>
+                        <a href="{{.BasePath}}/prequeue" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/prequeue"}}active{{end}}" {{if hasSuffix .CurrentPath "/prequeue"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Prequeue</span></a>
+                        <a href="{{.BasePath}}/tools/hidden-items" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/hidden-items"}}active{{end}}" {{if hasSuffix .CurrentPath "/hidden-items"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.5 10.7a2 2 0 0 0 2.8 2.8M9.5 5.3A10.8 10.8 0 0 1 12 5c5 0 9 7 9 7a15 15 0 0 1-2.1 2.7M6.2 6.2C4.2 7.6 3 12 3 12s4 7 9 7c1.2 0 2.4-.4 3.4-1"/></svg><span>Hidden items</span></a>
+                        <a href="{{.BasePath}}/tools/resolved-nzbs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/resolved-nzbs"}}active{{end}}" {{if hasSuffix .CurrentPath "/resolved-nzbs"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span>Resolved NZBs</span></a>
+                        <a href="{{.BasePath}}/tools/bad-streams" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/bad-streams"}}active{{end}}" {{if hasSuffix .CurrentPath "/bad-streams"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg><span>Bad streams</span></a>
+                        <a href="{{.BasePath}}/tools/share-links" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/share-links"}}active{{end}}" {{if hasSuffix .CurrentPath "/share-links"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/></svg><span>Share links</span></a>
                     </div>
                 </details>
                 {{end}}
-
-                <details class="sidebar-group" {{if hasSuffix .CurrentPath "/accounts"}}open{{end}}>
-                    <summary><span>People</span><span class="sidebar-group-chevron">›</span></summary>
-                    <div class="sidebar-group-items">
-                        <a href="{{.BasePath}}/accounts" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/accounts"}}active{{end}}" data-walkthrough-target="accounts"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="4"/><path d="M17 11a3 3 0 0 1 0 6M20 20v-1.5a3.5 3.5 0 0 0-2-3.2"/></svg><span>Users</span></a>
-                    </div>
-                </details>
             </nav>
 
             <footer class="admin-sidebar-footer">
@@ -2500,7 +2624,7 @@
                         <span class="admin-sidebar-user-name">{{.Username}}</span>
                         <span class="admin-sidebar-user-role">{{if .IsAdmin}}Administrator{{else}}Account{{end}}</span>
                     </span>
-                    <a href="{{.BasePath}}/logout" class="admin-sidebar-logout">Logout</a>
+                    <a href="{{.BasePath}}/logout" class="admin-sidebar-logout" aria-label="Sign out" title="Sign out">↗</a>
                 </div>
                 <div class="admin-sidebar-version">v{{.Version}}</div>
             </footer>
@@ -2513,6 +2637,7 @@
                 <button class="admin-mobile-menu" type="button" aria-label="Open navigation" aria-controls="adminSidebar" aria-expanded="false" onclick="toggleMenu()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
+                <span class="admin-mobile-brand">Mediastorm</span>
                 {{if .IsAdmin}}<a href="{{.BasePath}}/search" class="admin-topbar-search" aria-label="Open search diagnostics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search…</span></a>{{end}}
             </header>
 

@@ -271,6 +271,213 @@
 .settings-workspace {
     display: block;
 }
+.settings-page .page-header {
+    gap: 1rem;
+}
+.settings-header-copy {
+    min-width: 0;
+    max-width: 44rem;
+}
+.settings-header-copy p {
+    max-width: 70ch;
+}
+.settings-page.sources-overview .settings-detail-action {
+    display: none !important;
+}
+.sources-mobile-nav {
+    display: none;
+}
+.sources-overview-list {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+.sources-overview-row {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto auto auto;
+    gap: 0.9rem;
+    min-height: 76px;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+.sources-overview-row:last-child {
+    border-bottom: 0;
+}
+.sources-overview-row:hover,
+.sources-overview-row:focus-visible {
+    background: var(--bg-hover);
+    outline: none;
+}
+.sources-overview-row:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+.sources-overview-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-hover);
+}
+.sources-overview-icon svg {
+    width: 20px;
+    height: 20px;
+}
+.sources-overview-copy {
+    min-width: 0;
+}
+.sources-overview-copy strong,
+.sources-index-copy strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.925rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+.sources-overview-copy span,
+.sources-index-copy span {
+    display: block;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sources-overview-count {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.sources-overview-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.sources-overview-state::before {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    content: '';
+}
+.sources-overview-state.configured::before {
+    background: var(--success);
+}
+.sources-overview-state.warning {
+    color: var(--warning, #eab308);
+}
+.sources-overview-state.warning::before {
+    background: var(--warning, #eab308);
+}
+.sources-row-open {
+    color: var(--accent-hover);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.sources-empty-state {
+    padding: 3rem 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+    text-align: center;
+}
+.sources-empty-state strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--text-primary);
+}
+.sources-focus-layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+.sources-index {
+    position: sticky;
+    top: 64px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+.sources-index-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 48px;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+.sources-index-header strong {
+    font-size: 0.875rem;
+}
+.sources-back-button {
+    min-height: 32px;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sources-back-button:hover,
+.sources-back-button:focus-visible {
+    border-color: var(--accent);
+    color: var(--text-primary);
+    outline: none;
+}
+.sources-index-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: center;
+    min-height: 58px;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.sources-index-row:last-child {
+    border-bottom: 0;
+}
+.sources-index-row:hover,
+.sources-index-row:focus-visible {
+    background: var(--bg-hover);
+    outline: none;
+}
+.sources-index-row.active {
+    background: rgba(99, 102, 241, 0.14);
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+.sources-index-row .settings-section-badge {
+    font-size: 0.6875rem;
+}
+.sources-editor {
+    min-width: 0;
+}
+.sources-editor > .section {
+    margin: 0 !important;
+}
+.sources-editor > .section > .section-header {
+    cursor: default;
+}
 .settings-sidebar {
     display: none;
 }
@@ -779,8 +986,63 @@
     .settings-level-section .settings-sidebar-label { padding: 0; }
     .settings-level-switch { display: flex; }
     .settings-level-help { margin: 0; }
+    .sources-focus-layout { grid-template-columns: 1fr; }
+    .sources-index { display: none; }
+    .settings-page.sources-detail .page-header { display: none !important; }
+    .settings-page.sources-detail .sources-mobile-nav {
+        position: sticky;
+        top: 48px;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        margin: -1.25rem -1rem 1rem;
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(17, 17, 24, 0.97);
+    }
+    .sources-mobile-title {
+        overflow: hidden;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        font-weight: 650;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .settings-page.sources-detail .settings-header-save { display: none !important; }
 }
 @media (max-width: 640px) {
+    .settings-page.sources-overview .page-header {
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+    .settings-page.sources-overview .page-header-controls {
+        display: block !important;
+        width: 100%;
+    }
+    .settings-page.sources-overview #settingsSearch {
+        width: 100%;
+        min-width: 0 !important;
+    }
+    .sources-overview-row {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        min-height: 78px;
+        padding: 0.75rem;
+    }
+    .sources-overview-icon {
+        width: 38px;
+        height: 38px;
+    }
+    .sources-overview-count,
+    .sources-overview-state {
+        display: none;
+    }
+    .sources-overview-copy span {
+        white-space: normal;
+    }
     .settings-scope-panel {
         padding: 0.75rem;
         border: 1px solid var(--border);
@@ -892,14 +1154,15 @@
     </div>
 </div>
 {{else}}
+<div id="settingsPage" class="settings-page">
 <div class="page-header page-header-flex" style="display: flex; align-items: center; justify-content: space-between;">
-    <div>
-        <h1>Settings</h1>
-        <p>{{if .IsAdmin}}Configure your Mediastorm server{{else}}Configure profile settings{{end}}</p>
+    <div class="settings-header-copy">
+        <h1 id="settingsPageTitle">Settings</h1>
+        <p id="settingsPageDescription">{{if .IsAdmin}}Configure your Mediastorm server{{else}}Configure profile settings{{end}}</p>
     </div>
     <div class="page-header-controls" style="display: flex; gap: 0.5rem; align-items: center;">
         <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)" style="min-width: 200px;">
-        <button id="identifyClientBtn" class="btn btn-secondary" style="display: none;" onclick="identifyClient()" title="Send ping to identify this device">
+        <button id="identifyClientBtn" class="btn btn-secondary settings-detail-action" style="display: none;" onclick="identifyClient()" title="Send ping to identify this device">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
@@ -907,21 +1170,21 @@
             </svg>
             Identify
         </button>
-        <button id="revertBtn" class="btn btn-secondary" style="display: none;" onclick="revertToGlobal()" title="Reset all settings to inherit from parent defaults">
+        <button id="revertBtn" class="btn btn-secondary settings-detail-action" style="display: none;" onclick="revertToGlobal()" title="Reset all settings to inherit from parent defaults">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                 <path d="M3 3v5h5"/>
             </svg>
             Use Parent Defaults
         </button>
-        <button id="propagateBtn" class="btn btn-secondary" style="display: none;" onclick="propagateSettings()" title="Review child scopes with custom settings">
+        <button id="propagateBtn" class="btn btn-secondary settings-detail-action" style="display: none;" onclick="propagateSettings()" title="Review child scopes with custom settings">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 5v14"/>
                 <path d="M19 12l-7 7-7-7"/>
             </svg>
             <span id="propagateBtnLabel">Review Customizations</span>
         </button>
-        <button class="btn btn-primary" onclick="saveAllSettings()">
+        <button id="settingsSaveButton" class="btn btn-primary settings-detail-action settings-header-save" onclick="saveAllSettings()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                 <polyline points="17 21 17 13 7 13 7 21"/>
@@ -932,7 +1195,13 @@
     </div>
 </div>
 
-<section class="settings-scope-panel" aria-label="Settings scope">
+<nav class="sources-mobile-nav" aria-label="Source detail actions">
+    <button class="sources-back-button" type="button" onclick="closeSourceSection()">Back</button>
+    <span id="settingsMobileTitle" class="sources-mobile-title">Source</span>
+    <button class="btn btn-primary" type="button" onclick="saveAllSettings()">Save</button>
+</nav>
+
+<section id="settingsScopePanel" class="settings-scope-panel" aria-label="Settings scope">
     <div class="settings-scope-bar">
         <span class="settings-scope-label">Scope:</span>
         {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
@@ -972,6 +1241,7 @@
             </div>
         </div>
     </main>
+</div>
 </div>
 
 <!-- Test Result Modal -->
@@ -1313,7 +1583,14 @@
         'liveTV.sources.proxyUrl', 'liveTV.sources.playlistCacheTtlHours', 'liveTV.sources.probeSizeMb', 'liveTV.sources.analyzeDurationSec', 'liveTV.sources.lowLatency',
         'usenetEngines.apiPath', 'usenetEngines.priority', 'usenetEngines.config.webdavPathPrefix', 'usenetEngines.pollIntervalSeconds', 'usenetEngines.timeoutSeconds'
     ]);
-    const requestedSettingsSection = window.location.hash.replace(/^#/, '');
+    let requestedSettingsSection = window.location.hash.replace(/^#/, '');
+    let settingsWorkspaceMode = new URLSearchParams(window.location.search).get('workspace') === 'sources'
+        || (requestedSettingsSection && isSourceWorkspaceSection(requestedSettingsSection))
+        ? 'sources'
+        : 'all';
+    let activeSourceSection = settingsWorkspaceMode === 'sources' && isSourceWorkspaceSection(requestedSettingsSection)
+        ? requestedSettingsSection
+        : '';
     if (requestedSettingsSection && schema[requestedSettingsSection]?.group) {
         activeSettingsGroup = schema[requestedSettingsSection].group;
     }
@@ -1398,6 +1675,105 @@
             server: 'server'
         }[sectionDef.group] || 'metadata';
     }
+
+    function isSourceWorkspaceSection(sectionKey) {
+        const sectionDef = schema[sectionKey];
+        return !!sectionDef && settingsOverviewGroupForSection(sectionKey, sectionDef) === 'sources';
+    }
+
+    function settingsSectionIsAvailable(key, def, respectSearch = true) {
+        if (!def?.group || def.hidden) return false;
+        if (settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)) return false;
+        if (respectSearch && filteredSections !== null && !filteredSections.has(key)) return false;
+        if (selectedClientId && !clientConfigSections.includes(key)) return false;
+        if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
+        if (!selectedUserId && def.inheritFrom) return false;
+        return true;
+    }
+
+    function sourceSettingsEntries(respectSearch = true) {
+        return Object.entries(schema).filter(([sectionKey, sectionDef]) => {
+            return isSourceWorkspaceSection(sectionKey) && settingsSectionIsAvailable(sectionKey, sectionDef, respectSearch);
+        }).sort((a, b) => {
+            const aOrder = settingsOverviewSectionOrder.has(a[0]) ? settingsOverviewSectionOrder.get(a[0]) : 1000 + (a[1].order ?? 999);
+            const bOrder = settingsOverviewSectionOrder.has(b[0]) ? settingsOverviewSectionOrder.get(b[0]) : 1000 + (b[1].order ?? 999);
+            return aOrder - bOrder;
+        });
+    }
+
+    function sourceWorkspaceHref(sectionKey = '') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('workspace', 'sources');
+        url.hash = sectionKey ? encodeURIComponent(sectionKey) : '';
+        return url.pathname + url.search + url.hash;
+    }
+
+    function syncSettingsShellNavigation() {
+        const sourceLink = document.querySelector('[data-settings-workspace="sources"]');
+        const sourceGroup = document.querySelector('[data-admin-destination="sources"]');
+        const experienceGroup = document.querySelector('[data-admin-destination="experience"]');
+        if (!sourceLink || !sourceGroup || !experienceGroup) return;
+        const isSources = settingsWorkspaceMode === 'sources';
+        sourceLink.classList.toggle('active', isSources);
+        sourceGroup.toggleAttribute('open', isSources);
+        experienceGroup.toggleAttribute('open', !isSources);
+    }
+
+    function syncSettingsWorkspaceChrome() {
+        const page = document.getElementById('settingsPage');
+        const title = document.getElementById('settingsPageTitle');
+        const description = document.getElementById('settingsPageDescription');
+        const search = document.getElementById('settingsSearch');
+        const mobileTitle = document.getElementById('settingsMobileTitle');
+        const sectionDef = activeSourceSection ? schema[activeSourceSection] : null;
+        const isSources = settingsWorkspaceMode === 'sources';
+        const isDetail = isSources && !!sectionDef;
+
+        page?.classList.toggle('sources-overview', isSources && !isDetail);
+        page?.classList.toggle('sources-detail', isDetail);
+        if (title) title.textContent = isSources ? (sectionDef?.label || 'Sources') : 'Settings';
+        if (description) {
+            description.textContent = isSources
+                ? (sectionDef ? settingsSectionRowDescription(activeSourceSection, sectionDef) : 'Manage the services that power discovery and streaming.')
+                : (isAdmin ? 'Configure your Mediastorm server' : 'Configure profile settings');
+        }
+        if (search) search.placeholder = isSources ? 'Find a source or setting' : 'Search settings...';
+        if (mobileTitle) mobileTitle.textContent = sectionDef?.label || 'Sources';
+        syncSettingsShellNavigation();
+    }
+
+    function openSourceSection(event, sectionKey) {
+        event?.preventDefault();
+        if (!isSourceWorkspaceSection(sectionKey)) return false;
+        settingsWorkspaceMode = 'sources';
+        activeSourceSection = sectionKey;
+        requestedSettingsSection = sectionKey;
+        window.history.pushState({workspace: 'sources', section: sectionKey}, '', sourceWorkspaceHref(sectionKey));
+        renderSettings();
+        window.requestAnimationFrame(() => window.scrollTo({top: 0, behavior: 'auto'}));
+        return false;
+    }
+
+    function closeSourceSection() {
+        settingsWorkspaceMode = 'sources';
+        activeSourceSection = '';
+        requestedSettingsSection = '';
+        window.history.replaceState({workspace: 'sources'}, '', sourceWorkspaceHref());
+        renderSettings();
+        window.requestAnimationFrame(() => document.getElementById('settingsSearch')?.focus({preventScroll: true}));
+    }
+
+    function syncSettingsWorkspaceFromLocation() {
+        requestedSettingsSection = window.location.hash.replace(/^#/, '');
+        const workspace = new URLSearchParams(window.location.search).get('workspace');
+        settingsWorkspaceMode = workspace === 'sources' || isSourceWorkspaceSection(requestedSettingsSection) ? 'sources' : 'all';
+        activeSourceSection = settingsWorkspaceMode === 'sources' && isSourceWorkspaceSection(requestedSettingsSection)
+            ? requestedSettingsSection
+            : '';
+        renderSettings();
+    }
+
+    window.addEventListener('popstate', syncSettingsWorkspaceFromLocation);
 
     function settingsSectionRowDescription(sectionKey, sectionDef) {
         if (settingsSectionDescriptions[sectionKey]) return settingsSectionDescriptions[sectionKey];
@@ -11954,6 +12330,69 @@
         return '<div class="array-items">' + profilesHtml + '</div>' + addButton + renderAddProfileForm();
     }
 
+    function renderSourceOverviewRow(sectionKey, sectionDef) {
+        const configuredCount = settingsSectionConfiguredCount(sectionKey, sectionDef);
+        const errorCount = getSectionErrorCount(sectionKey);
+        const statusClass = errorCount > 0 ? 'warning' : (configuredCount > 0 ? 'configured' : '');
+        const statusLabel = errorCount > 0 ? 'Needs attention' : (configuredCount > 0 ? 'Configured' : 'Not configured');
+        const countLabel = configuredCount > 0 ? configuredCount + ' configured' : 'No entries yet';
+        const encodedKey = encodeURIComponent(sectionKey);
+        return '<a class="sources-overview-row" href="' + escapeHtml(sourceWorkspaceHref(sectionKey)) + '" onclick="return openSourceSection(event, decodeURIComponent(\'' + encodedKey + '\'))">'
+            + '<span class="sources-overview-icon" aria-hidden="true">' + getIcon(sectionDef.icon) + '</span>'
+            + '<span class="sources-overview-copy"><strong>' + escapeHtml(sectionDef.label || sectionKey) + '</strong><span>' + escapeHtml(settingsSectionRowDescription(sectionKey, sectionDef)) + '</span></span>'
+            + '<span class="sources-overview-count">' + escapeHtml(countLabel) + '</span>'
+            + '<span class="sources-overview-state ' + statusClass + '">' + escapeHtml(statusLabel) + '</span>'
+            + '<span class="sources-row-open">Open</span>'
+            + '</a>';
+    }
+
+    function renderSourceIndexRow(sectionKey, sectionDef) {
+        const configuredCount = settingsSectionConfiguredCount(sectionKey, sectionDef);
+        const encodedKey = encodeURIComponent(sectionKey);
+        const badge = configuredCount > 0 ? '<span class="settings-section-badge">' + configuredCount + '</span>' : '';
+        return '<a class="sources-index-row ' + (sectionKey === activeSourceSection ? 'active' : '') + '" '
+            + (sectionKey === activeSourceSection ? 'aria-current="page" ' : '')
+            + 'href="' + escapeHtml(sourceWorkspaceHref(sectionKey)) + '" onclick="return openSourceSection(event, decodeURIComponent(\'' + encodedKey + '\'))">'
+            + '<span class="sources-index-copy"><strong>' + escapeHtml(sectionDef.label || sectionKey) + '</strong><span>' + escapeHtml(settingsSectionRowDescription(sectionKey, sectionDef)) + '</span></span>'
+            + badge
+            + '</a>';
+    }
+
+    function renderSourcesWorkspace(bannerHtml) {
+        const allEntries = sourceSettingsEntries(false);
+        const activeEntry = activeSourceSection
+            ? allEntries.find(([sectionKey]) => sectionKey === activeSourceSection)
+            : null;
+
+        if (activeSourceSection && !activeEntry) {
+            activeSourceSection = '';
+            requestedSettingsSection = '';
+            window.history.replaceState({workspace: 'sources'}, '', sourceWorkspaceHref());
+        }
+
+        syncSettingsWorkspaceChrome();
+
+        if (!activeSourceSection) {
+            const entries = sourceSettingsEntries(true);
+            if (entries.length === 0) {
+                const emptyTitle = searchTerm ? 'No matching sources' : 'No sources available at this scope';
+                const emptyCopy = searchTerm ? 'Try a different search term.' : 'Choose a different scope to continue.';
+                return bannerHtml + '<div class="sources-empty-state"><strong>' + escapeHtml(emptyTitle) + '</strong><span>' + escapeHtml(emptyCopy) + '</span></div>';
+            }
+            return bannerHtml + '<div class="sources-overview-list" aria-label="Source settings">'
+                + entries.map(([sectionKey, sectionDef]) => renderSourceOverviewRow(sectionKey, sectionDef)).join('')
+                + '</div>';
+        }
+
+        const sectionDef = schema[activeSourceSection];
+        const indexHtml = allEntries.map(([sectionKey, entryDef]) => renderSourceIndexRow(sectionKey, entryDef)).join('');
+        return bannerHtml
+            + '<div class="sources-focus-layout">'
+            + '<aside class="sources-index" aria-label="Source settings index"><div class="sources-index-header"><strong>Sources</strong><button class="sources-back-button" type="button" onclick="closeSourceSection()">Overview</button></div>' + indexHtml + '</aside>'
+            + '<section class="sources-editor" aria-label="' + escapeHtml(sectionDef.label || activeSourceSection) + '">' + renderSection(activeSourceSection, sectionDef) + '</section>'
+            + '</div>';
+    }
+
     function renderSettings() {
         const container = document.getElementById('settingsContainer');
         renderSettingsWorkspaceNavigation();
@@ -11978,14 +12417,29 @@
         }
 
         // Add validation warning banner if there are issues
-        const totalErrors = Object.keys(validationErrors).length;
+        const visibleErrorKeys = Object.keys(validationErrors).filter(key => settingsWorkspaceMode !== 'sources' || isSourceWorkspaceSection(key));
+        const totalErrors = visibleErrorKeys.length;
         if (totalErrors > 0 && !selectedUserId) {
-            const errorSections = Object.keys(validationErrors).map(key => {
+            const errorSections = visibleErrorKeys.map(key => {
                 const sectionDef = schema[key];
                 return sectionDef?.label || key;
             }).join(', ');
             bannerHtml += '<div style="background: rgba(234, 179, 8, 0.1); border: 1px solid var(--warning, #eab308); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.75rem;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--warning, #eab308)" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div><strong style="color: var(--warning, #eab308);">Configuration warning</strong><p style="margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.875rem;">Some recommended settings may be incomplete. Issues found in: '+errorSections+'</p></div></div>';
         }
+
+        if (settingsWorkspaceMode === 'sources') {
+            container.innerHTML = renderSourcesWorkspace(bannerHtml);
+            if (activeSourceSection) {
+                const section = document.getElementById('section-' + activeSourceSection);
+                section?.classList.add('open');
+                section?.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            }
+            initDragDrop();
+            initFileUploadStatuses();
+            return;
+        }
+
+        syncSettingsWorkspaceChrome();
 
         // Render sections grouped by their group property
         // Sections with their own group are shown at top level, even if they have a parent (for data access)
@@ -11997,18 +12451,7 @@
         for (const group of settingsOverviewGroups) {
             const groupSections = Object.entries(schema).filter(([key, def]) => {
                 if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
-                // Skip hidden sections
-                if (def.hidden) return false;
-                if (settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)) return false;
-                // If search is active, only show matching sections
-                if (filteredSections !== null && !filteredSections.has(key)) return false;
-                // If a client is selected, only show client-configurable sections
-                if (selectedClientId && !clientConfigSections.includes(key)) return false;
-                // If a user is selected (but not client), show per-user sections
-                if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
-                // Hide per-user-only sections (with inheritFrom) when viewing global settings
-                if (!selectedUserId && def.inheritFrom) return false;
-                return true;
+                return settingsSectionIsAvailable(key, def);
             }).sort((a, b) => {
                 const aOrder = settingsOverviewSectionOrder.has(a[0]) ? settingsOverviewSectionOrder.get(a[0]) : 1000 + (a[1].order ?? 999);
                 const bOrder = settingsOverviewSectionOrder.has(b[0]) ? settingsOverviewSectionOrder.get(b[0]) : 1000 + (b[1].order ?? 999);
@@ -12059,6 +12502,11 @@
     function toggleSettingsSection(header) {
         const section = header.closest('.section');
         if (!section) return;
+        if (settingsWorkspaceMode === 'sources' && activeSourceSection) {
+            section.classList.add('open');
+            header.setAttribute('aria-expanded', 'true');
+            return;
+        }
         const shouldOpen = !section.classList.contains('open');
         document.querySelectorAll('#settingsContainer .section.open').forEach(openSection => {
             openSection.classList.remove('open');

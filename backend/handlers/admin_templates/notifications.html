@@ -5,15 +5,15 @@
 {{define "title"}}Notifications - mediastorm{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <div>
+<div class="page-header" data-page-group="People &amp; communication">
+    <div class="page-header-copy">
+        <div class="page-kicker">People &amp; communication</div>
         <h1>Notifications</h1>
-        <p>Configure notification destinations for <strong>{{.Profile.Name}}</strong>.</p>
+        <p>Choose where updates for <strong>{{.Profile.Name}}</strong> are sent and which events trigger them.</p>
     </div>
-</div>
-
-<div style="margin-bottom: 1rem;">
-    <a class="btn btn-secondary btn-sm" href="{{.BasePath}}/accounts">← Back to Profiles</a>
+    <div class="page-header-actions">
+        <a class="btn btn-secondary btn-sm" href="{{.BasePath}}/accounts">← Back to people</a>
+    </div>
 </div>
 
 <div class="card" style="margin-bottom: 1.5rem;">

@@ -5,17 +5,20 @@
 {{define "title"}}Users - {{if .IsAdmin}}mediastorm Admin{{else}}mediastorm account{{end}}{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>Users</h1>
-    <p>Manage sign-in, people, and registered devices{{if not .IsAdmin}} for your household{{end}}</p>
+<div class="page-header" data-page-group="People &amp; communication">
+    <div class="page-header-copy">
+        <div class="page-kicker">People &amp; communication</div>
+        <h1>Users</h1>
+        <p>Manage sign-in accounts, viewer profiles, registered devices, and access{{if not .IsAdmin}} for your household{{end}}.</p>
+    </div>
 </div>
 
-<div class="tabs" style="margin-bottom: 1.5rem;">
-    <button class="tab active" onclick="switchTab('households')" id="tab-households">{{if .IsAdmin}}Households{{else}}Household{{end}}</button>
-    <button class="tab" onclick="switchTab('tasks')" id="tab-tasks">Automations</button>
+<div class="tabs" style="margin-bottom: 1.5rem;" role="tablist" aria-label="People and access areas">
+    <button class="tab active" onclick="switchTab('households')" id="tab-households" role="tab" aria-selected="true">{{if .IsAdmin}}Households{{else}}Household{{end}}</button>
+    <button class="tab" onclick="switchTab('tasks')" id="tab-tasks" role="tab" aria-selected="false">Automations</button>
     {{if .IsAdmin}}
-    <button class="tab" onclick="switchTab('invitations')" id="tab-invitations">Invitations</button>
-    <button class="tab" onclick="switchTab('connections')" id="tab-connections">Remote Access</button>
+    <button class="tab" onclick="switchTab('invitations')" id="tab-invitations" role="tab" aria-selected="false">Invitations</button>
+    <button class="tab" onclick="switchTab('connections')" id="tab-connections" role="tab" aria-selected="false">Remote access</button>
     {{end}}
 </div>
 
@@ -292,9 +295,14 @@ async function saveGlobalMaxStreams() {
 }
 
 function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+    });
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
+    const activeTab = document.getElementById('tab-' + tab);
+    activeTab.classList.add('active');
+    activeTab.setAttribute('aria-selected', 'true');
     document.getElementById('content-' + tab).classList.add('active');
 }
 

@@ -5,9 +5,12 @@
 {{define "title"}}Library - mediastorm Admin{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>Library Management</h1>
-    <p>Add local, Plex, and Jellyfin libraries, inspect their files, and control playback sources.</p>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
+        <h1>Library</h1>
+        <p>Add local or connected libraries, scan files, and manage playback sources.</p>
+    </div>
 </div>
 
 <div class="grid grid-2" style="align-items: start;">
@@ -84,16 +87,21 @@
                     </div>
                     <div class="form-hint">Use the browser to pick a folder on the server filesystem.</div>
                 </div>
-                <div class="form-group local-library-field">
-                    <label class="form-label" for="libraryFilterOutTerms">Filter Out Terms</label>
-                    <textarea id="libraryFilterOutTerms" class="form-input" rows="4" placeholder="Trailer&#10;Featurette&#10;Sample"></textarea>
-                    <div class="form-hint">One term per line or comma-separated. Matching is case-insensitive against the relative file path.</div>
-                </div>
-                <div class="form-group local-library-field">
-                    <label class="form-label" for="libraryMinFileSizeMb" id="libraryMinFileSizeLabel">Minimum Movie File Size (MB)</label>
-                    <input id="libraryMinFileSizeMb" class="form-input" type="number" min="0" step="1" placeholder="0">
-                    <div class="form-hint" id="libraryMinFileSizeHint">Files smaller than this are ignored during scans. Use `0` to disable the limit.</div>
-                </div>
+                <details class="form-disclosure local-library-field">
+                    <summary>Advanced scan options</summary>
+                    <div class="form-disclosure-content">
+                        <div class="form-group">
+                            <label class="form-label" for="libraryFilterOutTerms">Filter out terms</label>
+                            <textarea id="libraryFilterOutTerms" class="form-input" rows="4" placeholder="Trailer&#10;Featurette&#10;Sample"></textarea>
+                            <div class="form-hint">One term per line or comma-separated. Matching is case-insensitive against the relative file path.</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="libraryMinFileSizeMb" id="libraryMinFileSizeLabel">Minimum movie file size (MB)</label>
+                            <input id="libraryMinFileSizeMb" class="form-input" type="number" min="0" step="1" placeholder="0">
+                            <div class="form-hint" id="libraryMinFileSizeHint">Files smaller than this are ignored during scans. Use `0` to disable the limit.</div>
+                        </div>
+                    </div>
+                </details>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button class="btn btn-primary" type="submit" id="librarySubmitBtn">Add Library</button>
                     <button class="btn btn-secondary" type="button" id="cancelLibraryEditBtn" style="display: none;">Cancel Edit</button>
@@ -102,16 +110,14 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2>Scan Notes</h2>
-        </div>
+    <details class="card disclosure-card">
+        <summary>How library scanning works</summary>
         <div class="card-body" style="display: grid; gap: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">
             <p>Movie and show libraries try to match filenames to metadata automatically. Other libraries are still ffprobed and indexed, but skipped for metadata matching.</p>
             <p>Low-confidence items stay visible for manual cleanup. Manual fixes are preserved until the next scan re-evaluates the file.</p>
             <p>File details come from `ffprobe`, so the server needs `ffprobe` available in the configured transmux settings.</p>
         </div>
-    </div>
+    </details>
 </div>
 
 <div class="card" style="margin-top: 1.25rem;">
@@ -1407,6 +1413,8 @@ function editLibrary(id) {
   document.getElementById('libraryRootPath').value = library.rootPath || '';
   document.getElementById('libraryFilterOutTerms').value = formatFilterOutTerms(library.filterOutTerms);
   document.getElementById('libraryMinFileSizeMb').value = bytesToMegabytesString(library.minFileSizeBytes);
+  document.querySelector('.form-disclosure.local-library-field').open =
+    (Array.isArray(library.filterOutTerms) && library.filterOutTerms.length > 0) || Number(library.minFileSizeBytes) > 0;
   syncLibraryFormSettings();
   document.getElementById('libraryForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

@@ -340,6 +340,50 @@
             margin-bottom: 1.5rem;
         }
 
+        .page-header[data-page-group] {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem 1.5rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid rgba(42, 42, 54, 0.72);
+        }
+
+        .page-header-copy {
+            min-width: 0;
+            max-width: 760px;
+        }
+
+        .page-kicker {
+            margin-bottom: 0.35rem;
+            color: var(--accent-hover);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .page-header-actions,
+        .page-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.625rem;
+            flex-wrap: wrap;
+        }
+
+        .page-header-actions {
+            flex: 0 0 auto;
+        }
+
+        .page-toolbar {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: rgba(22, 22, 30, 0.72);
+        }
+
         .page-header h1 {
             font-size: 1.75rem;
             font-weight: 600;
@@ -356,6 +400,63 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             overflow: hidden;
+        }
+
+        .card-subtitle,
+        .section-summary {
+            margin-top: 0.25rem;
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            font-weight: 400;
+            line-height: 1.45;
+        }
+
+        .disclosure-card > summary,
+        .form-disclosure > summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            min-height: 48px;
+            padding: 0.875rem 1.25rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .disclosure-card > summary::-webkit-details-marker,
+        .form-disclosure > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .disclosure-card > summary::after,
+        .form-disclosure > summary::after {
+            content: '+';
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .disclosure-card[open] > summary,
+        .form-disclosure[open] > summary {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .disclosure-card[open] > summary::after,
+        .form-disclosure[open] > summary::after {
+            content: '−';
+        }
+
+        .form-disclosure {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(28, 28, 38, 0.5);
+        }
+
+        .form-disclosure-content {
+            padding: 1rem;
         }
 
         .card-header {
@@ -563,8 +664,9 @@
 
         .form-input:focus,
         .form-select:focus {
-            outline: none;
+            outline: 2px solid transparent;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(95, 98, 237, 0.18);
         }
 
         .form-input::placeholder {
@@ -642,6 +744,19 @@
             transition: all 0.2s;
             border: none;
             text-decoration: none;
+            min-height: 40px;
+        }
+
+        .btn:focus-visible,
+        .form-input:focus-visible,
+        .form-select:focus-visible,
+        textarea:focus-visible,
+        .section-header:focus-visible,
+        .tab:focus-visible,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--accent-hover);
+            outline-offset: 2px;
         }
 
         .btn svg {
@@ -741,6 +856,7 @@
 
         .table-container {
             overflow-x: auto;
+            scrollbar-gutter: stable;
         }
 
         table {
@@ -792,6 +908,16 @@
             border-radius: var(--radius-lg);
             margin-bottom: 1rem;
             overflow: hidden;
+        }
+
+        .section.is-destructive,
+        .card.is-destructive {
+            border-color: rgba(239, 68, 68, 0.38);
+        }
+
+        .section.is-destructive .section-title svg,
+        .card.is-destructive .card-header svg {
+            color: var(--danger);
         }
 
         .section-header {
@@ -2517,6 +2643,35 @@
             .main-content {
                 padding: 1.25rem 1rem 1.5rem;
             }
+
+            .page-header[data-page-group] {
+                align-items: stretch;
+                flex-direction: column;
+                padding-bottom: 1rem;
+            }
+
+            .page-header-actions,
+            .page-toolbar {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .page-header-actions > .btn,
+            .page-toolbar > .btn {
+                min-height: 44px;
+            }
+
+            .page-header-actions > .form-select,
+            .page-toolbar > .form-select,
+            .page-toolbar > .form-input {
+                flex: 1 1 180px;
+                min-height: 44px;
+            }
+
+            th,
+            td {
+                padding: 0.75rem;
+            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -2594,15 +2749,19 @@
                 </details>
 
                 {{if .IsAdmin}}
-                <details class="sidebar-group {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/prequeue") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}current{{end}}" {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/logs") (hasSuffix .CurrentPath "/prequeue") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}open{{end}}>
-                    <summary data-walkthrough-target="system" data-walkthrough-mobile-target="system"><span class="sidebar-group-summary-main"><span>System tools</span></span><span class="sidebar-admin-badge">Admin</span><span class="sidebar-group-chevron">›</span></summary>
+                <details class="sidebar-group {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/logs")}}current{{end}}" {{if or (hasSuffix .CurrentPath "/search") (hasSuffix .CurrentPath "/connections") (hasSuffix .CurrentPath "/performance") (hasSuffix .CurrentPath "/logs")}}open{{end}}>
+                    <summary data-walkthrough-target="system" data-walkthrough-mobile-target="system"><span class="sidebar-group-summary-main"><span>Operations</span></span><span class="sidebar-admin-badge">Admin</span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
-                        <div class="sidebar-subgroup-label">Monitor</div>
                         <a href="{{.BasePath}}/connections" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/connections"}}active{{end}}" {{if hasSuffix .CurrentPath "/connections"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/></svg><span>Connections</span></a>
                         <a href="{{.BasePath}}/performance" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/performance"}}active{{end}}" {{if hasSuffix .CurrentPath "/performance"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg><span>Performance</span></a>
                         <a href="{{.BasePath}}/logs" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/logs"}}active{{end}}" {{if hasSuffix .CurrentPath "/logs"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg><span>Logs</span></a>
-                        <div class="sidebar-subgroup-label">Find</div>
-                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}" {{if hasSuffix .CurrentPath "/search"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search</span></a>
+                        <a href="{{.BasePath}}/search" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/search"}}active{{end}}" {{if hasSuffix .CurrentPath "/search"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Search test</span></a>
+                    </div>
+                </details>
+
+                <details class="sidebar-group {{if or (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/prequeue") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}current{{end}}" {{if or (hasSuffix .CurrentPath "/backup") (hasSuffix .CurrentPath "/tools") (hasSuffix .CurrentPath "/prequeue") (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")}}open{{end}}>
+                    <summary><span class="sidebar-group-summary-main"><span>Maintenance &amp; records</span></span><span class="sidebar-admin-badge">Admin</span><span class="sidebar-group-chevron">›</span></summary>
+                    <div class="sidebar-group-items">
                         <div class="sidebar-subgroup-label">Maintain</div>
                         <a href="{{.BasePath}}/tools" class="sidebar-nav-link {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}active{{end}}" {{if and (hasSuffix .CurrentPath "/tools") (not (or (hasSuffix .CurrentPath "/hidden-items") (hasSuffix .CurrentPath "/resolved-nzbs") (hasSuffix .CurrentPath "/bad-streams") (hasSuffix .CurrentPath "/share-links")))}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7 3-3 3 3-3 3M4 20l8-8"/><path d="m5 4 15 15M4 5l3-1 1 3-3 1Z"/></svg><span>Maintenance</span></a>
                         <a href="{{.BasePath}}/backup" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/backup"}}active{{end}}" {{if hasSuffix .CurrentPath "/backup"}}aria-current="page"{{end}}><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg><span>Backup</span></a>

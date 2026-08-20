@@ -1232,6 +1232,7 @@ type SearchOptions struct {
 	EpisodeAirYear        int                         // Year the target episode aired (for year filter tolerance)
 	EpisodeReleased       bool                        // True only when metadata confirms the target episode has aired
 	IncludeFiltered       bool                        // When true, return filtered results alongside passed results
+	IncludeScoreBreakdown bool                        // When true, attach per-criterion scoring details (admin search tester)
 	SkipFilter            bool                        // When true, skip filtering entirely (used by SearchTest)
 	UseDownloadRanking    bool                        // When true, apply download-only preferred terms as a final ranking boost
 }
@@ -1757,7 +1758,7 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		if rankingBundle.NewestReleaseFirst {
 			sortScoredResultsNewestReleaseFirst(scored)
 		}
-		return scored, nil
+		return capScoredResults(scored, opts.MaxResults), nil
 	}
 	if opts.IsAnime && models.BoolVal(animeSettings.AnimeLanguageEnabled, false) {
 		langCode := ""
@@ -1817,9 +1818,11 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		resultCtx := s.buildScoringContextForResult(opts, settings, filterBundle, rankingBundle, animeSettings, fr.Result)
 		score, breakdown := ScoreResult(fr.Result, resultCtx)
 		sr := models.ScoredNZBResult{
-			NZBResult:      fr.Result,
-			TotalScore:     score,
-			ScoreBreakdown: breakdown,
+			NZBResult:  fr.Result,
+			TotalScore: score,
+		}
+		if opts.IncludeScoreBreakdown {
+			sr.ScoreBreakdown = breakdown
 		}
 		if fr.Passed {
 			sr.FilterStatus = "passed"
@@ -1859,9 +1862,18 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		sortScoredResultsNewestReleaseFirst(filtered)
 	}
 
-	// Combine: passed first, then filtered
+	// Combine: passed first, then filtered. Cap after ranking so MaxResults is a
+	// presentation limit, not a per-source fetch limit.
 	result := append(passed, filtered...)
-	return result, nil
+	return capScoredResults(result, opts.MaxResults), nil
+}
+
+func capScoredResults(results []models.ScoredNZBResult, max int) []models.ScoredNZBResult {
+	if max <= 0 || len(results) <= max {
+		return results
+	}
+	log.Printf("[indexer] MaxResults=%d applied after ranking: %d -> %d", max, len(results), max)
+	return results[:max]
 }
 
 // SearchTest runs search with full scoring breakdown and filter details for the admin search tester.
@@ -1871,6 +1883,9 @@ func (s *Service) SearchTest(ctx context.Context, opts SearchOptions) ([]models.
 
 	searchOpts := opts
 	searchOpts.IncludeFiltered = true
+	searchOpts.IncludeScoreBreakdown = true
+	// Admin tester needs the full scored set, including filtered rejects.
+	searchOpts.MaxResults = 0
 	result, err := s.SearchWithScoring(ctx, searchOpts)
 	if err != nil {
 		return nil, err

@@ -959,11 +959,21 @@ func TestSearchWithScoringDoesNotCapRawDebridBeforeRanking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchWithScoring returned error: %v", err)
 	}
-	if len(scored) < 2 {
-		t.Fatalf("expected raw source cap to be ignored before ranking, got %d result(s)", len(scored))
+	if len(scored) != 1 {
+		t.Fatalf("expected MaxResults to apply after ranking, got %d result(s)", len(scored))
 	}
 	if got := scored[0].Title; got != "Movie.2024.2160p.large" {
 		t.Fatalf("expected full raw set to be ranked before limiting, got first title %q", got)
+	}
+
+	uncappedOpts := opts
+	uncappedOpts.MaxResults = 0
+	uncapped, err := svc.SearchWithScoring(t.Context(), uncappedOpts)
+	if err != nil {
+		t.Fatalf("uncapped SearchWithScoring returned error: %v", err)
+	}
+	if len(uncapped) < 2 {
+		t.Fatalf("expected uncapped search to keep the full ranked set, got %d result(s)", len(uncapped))
 	}
 
 	testResults, err := svc.SearchTest(t.Context(), opts)
@@ -971,10 +981,132 @@ func TestSearchWithScoringDoesNotCapRawDebridBeforeRanking(t *testing.T) {
 		t.Fatalf("SearchTest returned error: %v", err)
 	}
 	if len(testResults) < 2 {
-		t.Fatalf("expected search test raw source cap to be ignored before ranking, got %d result(s)", len(testResults))
+		t.Fatalf("expected search test to ignore MaxResults, got %d result(s)", len(testResults))
 	}
 	if got := testResults[0].Title; got != "Movie.2024.2160p.large" {
 		t.Fatalf("expected search test to rank full raw set before limiting, got first title %q", got)
+	}
+	if len(testResults[0].ScoreBreakdown) == 0 {
+		t.Fatal("expected search test to include score breakdown")
+	}
+}
+
+func TestSearchWithScoringOmitsScoreBreakdownByDefault(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "settings.json")
+	mgr := config.NewManager(cfgPath)
+
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	svc := NewService(mgr, nil, stubDebridSearchService{
+		results: []models.NZBResult{
+			{
+				Title:       "Movie.2024.1080p.WEB-DL",
+				Indexer:     "Test",
+				ServiceType: models.ServiceTypeDebrid,
+				Attributes:  map[string]string{"resolution": "1080p"},
+			},
+		},
+	})
+
+	opts := SearchOptions{
+		Query:           "Movie 2024",
+		MediaType:       "movie",
+		Year:            2024,
+		IncludeFiltered: true,
+	}
+	scored, err := svc.SearchWithScoring(t.Context(), opts)
+	if err != nil {
+		t.Fatalf("SearchWithScoring returned error: %v", err)
+	}
+	if len(scored) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(scored))
+	}
+	if len(scored[0].ScoreBreakdown) != 0 {
+		t.Fatalf("expected client search to omit score breakdown, got %#v", scored[0].ScoreBreakdown)
+	}
+
+	opts.IncludeScoreBreakdown = true
+	withBreakdown, err := svc.SearchWithScoring(t.Context(), opts)
+	if err != nil {
+		t.Fatalf("SearchWithScoring with breakdown returned error: %v", err)
+	}
+	if len(withBreakdown) != 1 || len(withBreakdown[0].ScoreBreakdown) == 0 {
+		t.Fatal("expected score breakdown when IncludeScoreBreakdown is set")
+	}
+}
+
+func TestSearchWithScoringCapsPassedBeforeFiltered(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "settings.json")
+	mgr := config.NewManager(cfgPath)
+
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	settings.Filtering.FilterOutTerms = []string{"CAM"}
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	svc := NewService(mgr, nil, stubDebridSearchService{
+		results: []models.NZBResult{
+			{
+				Title:       "Movie.2024.1080p.WEB-DL",
+				Indexer:     "Test",
+				ServiceType: models.ServiceTypeDebrid,
+				SizeBytes:   100,
+				Attributes:  map[string]string{"resolution": "1080p"},
+			},
+			{
+				Title:       "Movie.2024.720p.WEB-DL",
+				Indexer:     "Test",
+				ServiceType: models.ServiceTypeDebrid,
+				SizeBytes:   50,
+				Attributes:  map[string]string{"resolution": "720p"},
+			},
+			{
+				Title:       "Movie.2024.CAM",
+				Indexer:     "Test",
+				ServiceType: models.ServiceTypeDebrid,
+				SizeBytes:   10,
+				Attributes:  map[string]string{"resolution": "480p"},
+			},
+			{
+				Title:       "Movie.2024.CAM.2",
+				Indexer:     "Test",
+				ServiceType: models.ServiceTypeDebrid,
+				SizeBytes:   8,
+				Attributes:  map[string]string{"resolution": "480p"},
+			},
+		},
+	})
+
+	scored, err := svc.SearchWithScoring(t.Context(), SearchOptions{
+		Query:           "Movie 2024",
+		MediaType:       "movie",
+		Year:            2024,
+		MaxResults:      3,
+		IncludeFiltered: true,
+	})
+	if err != nil {
+		t.Fatalf("SearchWithScoring returned error: %v", err)
+	}
+	if len(scored) != 3 {
+		t.Fatalf("expected 3 results after cap, got %d", len(scored))
+	}
+	passed := 0
+	filtered := 0
+	for _, result := range scored {
+		if result.FilterStatus == "filtered" {
+			filtered++
+			continue
+		}
+		passed++
+	}
+	if passed != 2 || filtered != 1 {
+		t.Fatalf("expected 2 passed then 1 filtered, got passed=%d filtered=%d", passed, filtered)
 	}
 }
 

@@ -5,13 +5,54 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/javi11/nntpcli"
 	"github.com/javi11/nzbparser"
 )
+
+type panicYencReader struct {
+	called atomic.Bool
+}
+
+func (r *panicYencReader) GetYencHeaders() (nntpcli.YencHeaders, error) {
+	r.called.Store(true)
+	panic("nil internal reader")
+}
+
+func (r *panicYencReader) Read([]byte) (int, error) { return 0, io.EOF }
+func (r *panicYencReader) Close() error             { return nil }
+
+func TestGetYencHeadersWithContextDoesNotUseReaderAfterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	reader := &panicYencReader{}
+
+	_, err := getYencHeadersWithContext(ctx, reader)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context cancellation, got %v", err)
+	}
+	if reader.called.Load() {
+		t.Fatal("canceled yEnc lookup called into the body reader")
+	}
+}
+
+func TestGetYencHeadersWithContextContainsReaderPanic(t *testing.T) {
+	reader := &panicYencReader{}
+
+	_, err := getYencHeadersWithContext(context.Background(), reader)
+	if err == nil || !strings.Contains(err.Error(), "body reader panicked") {
+		t.Fatalf("expected contained reader panic, got %v", err)
+	}
+	if !reader.called.Load() {
+		t.Fatal("expected body reader to be called")
+	}
+}
 
 func TestRunBoundedFileParsersCancelsSiblingsOnTerminalFailure(t *testing.T) {
 	terminalErr := NewNonRetryableError("missing release", ErrArticleUnavailable)

@@ -590,7 +590,7 @@ func (p *Parser) fetchActualFileSizeFromYencHeader(file nzbparser.NzbFile) (int6
 	defer r.Close()
 
 	// Get yenc headers
-	h, err := r.GetYencHeaders()
+	h, err := getYencHeadersWithContext(ctx, r)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get yenc headers: %w", err)
 	}
@@ -637,8 +637,10 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 				return fmt.Errorf("no connection pool available")
 			}
 
-			// Get yenc headers
-			h, err := r.GetYencHeaders()
+			// A sibling file parser may cancel this context while BodyReader is
+			// returning. Some nntppool versions can then return a non-nil wrapper
+			// whose internal reader is nil, so never call into it after cancellation.
+			h, err := getYencHeadersWithContext(ctx, r)
 			if err != nil {
 				return fmt.Errorf("failed to get yenc headers: %w", err)
 			}
@@ -647,6 +649,7 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 			return nil
 		},
 		retry.Attempts(3),
+		retry.Context(ctx),
 		retry.Delay(1*time.Second),
 		retry.DelayType(retry.BackOffDelay),
 		retry.MaxDelay(5*time.Second),
@@ -670,6 +673,30 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 	}
 
 	return result, nil
+}
+
+// getYencHeadersWithContext contains failures from the external NNTP reader at
+// the importer boundary. In particular, nntppool may return a typed wrapper
+// around a nil reader when BodyReader races with context cancellation. Calling
+// GetYencHeaders on that wrapper panics instead of returning an error.
+func getYencHeadersWithContext(ctx context.Context, reader nntpcli.ArticleBodyReader) (headers nntpcli.YencHeaders, err error) {
+	if ctx != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nntpcli.YencHeaders{}, ctxErr
+		}
+	}
+	if reader == nil {
+		return nntpcli.YencHeaders{}, errors.New("NNTP body reader is nil")
+	}
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			headers = nntpcli.YencHeaders{}
+			err = fmt.Errorf("NNTP body reader panicked while reading yEnc headers: %v", recovered)
+		}
+	}()
+
+	return reader.GetYencHeaders()
 }
 
 // normalizeSegmentSizesWithYenc normalizes segment sizes using yEnc PartSize headers

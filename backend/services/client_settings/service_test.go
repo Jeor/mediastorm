@@ -98,6 +98,7 @@ func TestTVDisplayOptionsMakeClientSettingsNonEmpty(t *testing.T) {
 		"hideDetailsPoster":                      {HideDetailsPoster: models.BoolPtr(false)},
 		"hideTvDrawerRail":                       {HideTVDrawerRail: models.BoolPtr(false)},
 		"simpleMode":                             {SimpleMode: models.BoolPtr(false)},
+		"simpleModeHomeShelves":                  {SimpleModeHomeShelves: models.StringSlicePtr([]string{"watchlist"})},
 		"disableTvHomeCardDimming":               {DisableTVHomeCardDimming: models.BoolPtr(false)},
 		"showSeriesBackdropForMissingEpisodeArt": {ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(false)},
 	} {

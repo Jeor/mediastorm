@@ -65,6 +65,19 @@ func TestDefaultUserSettingsKeepsTVDisplayOptionsDisabled(t *testing.T) {
 			t.Fatalf("%s should be explicitly disabled by default", name)
 		}
 	}
+	if settings.Display.SimpleModeHomeShelves == nil {
+		t.Fatal("simple mode home shelves should default to the built-in M.O.M. Mode™ list")
+	}
+	want := DefaultSimpleModeHomeShelfIDs()
+	got := *settings.Display.SimpleModeHomeShelves
+	if len(got) != len(want) {
+		t.Fatalf("simple mode home shelves = %#v, want %#v", got, want)
+	}
+	for i, id := range want {
+		if got[i] != id {
+			t.Fatalf("simple mode home shelves = %#v, want %#v", got, want)
+		}
+	}
 }
 
 func TestDefaultUserSettingsDisablesSeriesBackdropForMissingEpisodeArt(t *testing.T) {

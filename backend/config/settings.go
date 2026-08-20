@@ -735,6 +735,11 @@ type HomeShelvesSettings struct {
 	HomeHeroScale                   float64 `json:"homeHeroScale,omitempty"`                   // TV upper hero/art scale, 0.5-1.0 (default 1.0)
 }
 
+// DefaultSimpleModeHomeShelfIDs is the built-in M.O.M. Mode™ home shelf order.
+func DefaultSimpleModeHomeShelfIDs() []string {
+	return []string{"top-ten", "continue-watching", "watch-something", "trending-movies", "trending-tv"}
+}
+
 // DefaultHomeShelfConfigs returns the built-in home shelves in their default order.
 func DefaultHomeShelfConfigs() []ShelfConfig {
 	return []ShelfConfig{
@@ -1307,6 +1312,8 @@ type DisplaySettings struct {
 	HideTVDrawerRail bool `json:"hideTvDrawerRail,omitempty"`
 	// SimpleMode reduces the frontend to essential browsing and playback choices.
 	SimpleMode bool `json:"simpleMode,omitempty"`
+	// SimpleModeHomeShelves is the ordered list of configured home shelf IDs shown in M.O.M. Mode™.
+	SimpleModeHomeShelves []string `json:"simpleModeHomeShelves,omitempty"`
 	// DisableTVHomeCardDimming keeps trailing home shelf cards fully visible on TV platforms.
 	DisableTVHomeCardDimming bool `json:"disableTvHomeCardDimming,omitempty"`
 	// EnableAnimations controls application UI motion such as animated scrolling and transitions.
@@ -1863,6 +1870,7 @@ func DefaultSettings() Settings {
 			EnableHeroArtPanning:                   true,
 			EnableHeroArtRotation:                  true,
 			DisableTVHomeCardDimming:               false,
+			SimpleModeHomeShelves:                  DefaultSimpleModeHomeShelfIDs(),
 			ShowSeriesBackdropForMissingEpisodeArt: false,
 			Appearance: AppearanceSettings{
 				FontScale:    floatPtr(1.0),
@@ -2556,6 +2564,9 @@ func (m *Manager) Load() (Settings, error) {
 	}
 	if s.Display.WatchStateIconStyle == "" {
 		s.Display.WatchStateIconStyle = "colored"
+	}
+	if len(s.Display.SimpleModeHomeShelves) == 0 {
+		s.Display.SimpleModeHomeShelves = DefaultSimpleModeHomeShelfIDs()
 	}
 	s.Display.CleanPosters = true
 

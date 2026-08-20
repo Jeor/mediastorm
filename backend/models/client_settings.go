@@ -38,6 +38,7 @@ type ClientFilterSettings struct {
 	HideDetailsPoster                            *bool               `json:"hideDetailsPoster,omitempty"`
 	HideTVDrawerRail                             *bool               `json:"hideTvDrawerRail,omitempty"`
 	SimpleMode                                   *bool               `json:"simpleMode,omitempty"`
+	SimpleModeHomeShelves                        *[]string           `json:"simpleModeHomeShelves,omitempty"`
 	DisableTVHomeCardDimming                     *bool               `json:"disableTvHomeCardDimming,omitempty"`
 	EnableAnimations                             *bool               `json:"enableAnimations,omitempty"`
 	EnableHeroArtPanning                         *bool               `json:"enableHeroArtPanning,omitempty"`
@@ -132,6 +133,7 @@ func (c *ClientFilterSettings) IsEmpty() bool {
 		c.HideDetailsPoster == nil &&
 		c.HideTVDrawerRail == nil &&
 		c.SimpleMode == nil &&
+		c.SimpleModeHomeShelves == nil &&
 		c.DisableTVHomeCardDimming == nil &&
 		c.EnableAnimations == nil &&
 		c.EnableHeroArtPanning == nil &&

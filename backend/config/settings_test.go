@@ -152,6 +152,19 @@ func TestDefaultSettingsDisablesSimpleMode(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsIncludesSimpleModeHomeShelves(t *testing.T) {
+	settings := DefaultSettings()
+	want := DefaultSimpleModeHomeShelfIDs()
+	if len(settings.Display.SimpleModeHomeShelves) != len(want) {
+		t.Fatalf("simple mode home shelves = %#v, want %#v", settings.Display.SimpleModeHomeShelves, want)
+	}
+	for i, id := range want {
+		if settings.Display.SimpleModeHomeShelves[i] != id {
+			t.Fatalf("simple mode home shelves = %#v, want %#v", settings.Display.SimpleModeHomeShelves, want)
+		}
+	}
+}
+
 func TestDefaultSettingsEnablesStreamMigration(t *testing.T) {
 	settings := DefaultSettings()
 

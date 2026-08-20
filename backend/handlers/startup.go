@@ -1528,6 +1528,7 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			HideDetailsPoster:                      models.BoolPtr(globalSettings.Display.HideDetailsPoster),
 			HideTVDrawerRail:                       models.BoolPtr(globalSettings.Display.HideTVDrawerRail),
 			SimpleMode:                             models.BoolPtr(globalSettings.Display.SimpleMode),
+			SimpleModeHomeShelves:                  models.StringSlicePtr(globalSettings.Display.SimpleModeHomeShelves),
 			DisableTVHomeCardDimming:               models.BoolPtr(globalSettings.Display.DisableTVHomeCardDimming),
 			EnableAnimations:                       models.BoolPtr(globalSettings.Display.EnableAnimations),
 			EnableHeroArtPanning:                   models.BoolPtr(globalSettings.Display.EnableHeroArtPanning),

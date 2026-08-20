@@ -1909,7 +1909,7 @@
         if (!fieldDef) return undefined;
         if (fieldDef.type === 'boolean') return false;
         if (fieldDef.type === 'number') return 0;
-        if (['tags', 'weighted-tags', 'multiselect'].includes(fieldDef.type)) return [];
+        if (['tags', 'weighted-tags', 'multiselect', 'ordered-multiselect'].includes(fieldDef.type)) return [];
         if (['text', 'password', 'select'].includes(fieldDef.type)) return '';
         return undefined;
     }
@@ -2856,9 +2856,9 @@
         {
             key: 'display',
             label: 'Display',
-            description: 'Badge Icon Style, navigation tabs, TV home/details layout, unreleased visibility, filtering bypass, episode privacy, appearance',
+            description: 'Badge Icon Style, navigation tabs, M.O.M. Mode, TV home/details layout, unreleased visibility, filtering bypass, episode privacy, appearance',
             detailSection: 'Display',
-            detailFields: ['Badge Icon Style', 'Navigation Tabs', 'Include Unreleased Movies in Lists', 'Include Unreleased Shows in Lists', 'Include Unreleased Movies in Search', 'Include Unreleased Shows in Search', 'Bypass Filtering for AIOStreams Only', 'Enable Application Animations', 'Enable Hero Art Panning', 'Enable Hero Art Rotation', 'Hide Continue Watching Hero Details', 'Move Details Ratings Up', 'Hide Details Poster', 'Hide TV Drawer Rail', 'Keep TV Home Cards Visible', 'Blur Unwatched Episode Thumbnails', 'Blur Unwatched Episode Overview', 'appearance', 'Show Parsed Metadata Badges', 'Badge Visibility'],
+            detailFields: ['Badge Icon Style', 'Navigation Tabs', 'Include Unreleased Movies in Lists', 'Include Unreleased Shows in Lists', 'Include Unreleased Movies in Search', 'Include Unreleased Shows in Search', 'Bypass Filtering for AIOStreams Only', 'Enable Application Animations', 'Enable Hero Art Panning', 'Enable Hero Art Rotation', 'Hide Continue Watching Hero Details', 'Move Details Ratings Up', 'Hide Details Poster', 'Hide TV Drawer Rail', 'M.O.M. Mode™', 'M.O.M. Mode™ Home Shelves', 'Keep TV Home Cards Visible', 'Blur Unwatched Episode Thumbnails', 'Blur Unwatched Episode Overview', 'appearance', 'Show Parsed Metadata Badges', 'Badge Visibility'],
             userPaths: [
                 'display.watchStateIconStyle',
                 'display.navigationTabVisibility',
@@ -2875,6 +2875,7 @@
                 'display.hideDetailsPoster',
                 'display.hideTvDrawerRail',
                 'display.simpleMode',
+                'display.simpleModeHomeShelves',
                 'display.disableTvHomeCardDimming',
                 'display.blurUnwatchedEpisodeThumbnails',
                 'display.showSeriesBackdropForMissingEpisodeArt',
@@ -2900,6 +2901,7 @@
                 'hideDetailsPoster',
                 'hideTvDrawerRail',
                 'simpleMode',
+                'simpleModeHomeShelves',
                 'disableTvHomeCardDimming',
                 'blurUnwatchedEpisodeThumbnails',
                 'showSeriesBackdropForMissingEpisodeArt',
@@ -4470,14 +4472,16 @@
                 }).join('');
                 return '<div class="checkboxes-group'+invalidClass+'" id="'+id+'_container">'+checkboxesHtml+'</div>';
             case 'multiselect':
+            case 'ordered-multiselect':
                 const msSelected = Array.isArray(value) ? value : [];
+                const msOrdered = fieldDef.type === 'ordered-multiselect';
                 const msTagsHtml = msSelected.length === 0 && fieldDef.optionsFrom === 'profiles'
                     ? '<span class="tag"><span class="tag-text">All profiles</span></span>'
                     : msSelected.map(v => '<span class="tag" title="'+escapeHtml(v).replace(/"/g, '&quot;')+'"><span class="tag-text">'+escapeHtml(resolveMultiselectValueLabel(fieldDef, v))+'</span></span>').join('');
                 const endpoint = fieldDef.optionsEndpoint || '';
                 const optionsFrom = fieldDef.optionsFrom || '';
                 return '<div class="multiselect-container'+invalidClass+'" id="'+id+'_container">' + msTagsHtml +
-                    '<button type="button" class="multiselect-btn" onclick="openMultiselectModal(\''+basePath+'\', \''+fieldKey+'\', \''+endpoint+'\', \''+fieldDef.label+'\', \''+optionsFrom+'\')">Select...</button></div>';
+                    '<button type="button" class="multiselect-btn" onclick="openMultiselectModal(\''+basePath+'\', \''+fieldKey+'\', \''+endpoint+'\', \''+fieldDef.label+'\', \''+optionsFrom+'\', '+msOrdered+')">'+ (msOrdered ? 'Select &amp; Order...' : 'Select...') +'</button></div>';
             case 'file_upload':
                 const uploadEndpoint = fieldDef.endpoint || '';
                 const acceptTypes = fieldDef.accept || '';
@@ -4863,7 +4867,8 @@
         fieldKey: '',
         options: [],
         selected: [],
-        searchTerm: ''
+        searchTerm: '',
+        ordered: false
     };
 
     function resolveMultiselectValueLabel(fieldDef, value) {
@@ -4871,14 +4876,25 @@
             const profile = profilesData.find(p => p.id === value);
             return profile?.name || value;
         }
+        if (fieldDef?.optionsFrom === 'homeShelves') {
+            const shelves = ensureBuiltInHomeShelfConfig(getValue('homeShelves.shelves') || []);
+            const shelf = shelves.find(item => item && item.id === value);
+            if (shelf) {
+                return shelf.name ? `${shelf.name}` : value;
+            }
+        }
         return value;
     }
 
-    async function openMultiselectModal(sectionPath, fieldKey, endpoint, label, optionsFrom) {
+    async function openMultiselectModal(sectionPath, fieldKey, endpoint, label, optionsFrom, ordered) {
         multiselectState.basePath = sectionPath;
         multiselectState.fieldKey = fieldKey;
+        multiselectState.ordered = !!ordered;
         const fullPath = sectionPath ? sectionPath+'.'+fieldKey : fieldKey;
-        multiselectState.selected = [...(getValue(fullPath) || [])];
+        const currentValue = getValue(fullPath);
+        multiselectState.selected = Array.isArray(currentValue) && currentValue.length > 0
+            ? [...currentValue]
+            : (optionsFrom === 'homeShelves' ? ['top-ten', 'continue-watching', 'watch-something', 'trending-movies', 'trending-tv'] : []);
         multiselectState.searchTerm = '';
 
         // Disable body scrolling
@@ -4921,6 +4937,18 @@
                 label: profile.name || profile.id
             }));
             renderMultiselectOptions();
+        } else if (optionsFrom === 'homeShelves') {
+            const shelves = ensureBuiltInHomeShelfConfig(getValue('homeShelves.shelves') || []);
+            multiselectState.options = shelves
+                .slice()
+                .filter(isAdminVisibleHomeShelf)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .filter(shelf => shelf && shelf.id)
+                .map(shelf => ({
+                    value: shelf.id,
+                    label: shelf.name ? shelf.name : shelf.id
+                }));
+            renderMultiselectOptions();
         } else if (endpoint) {
             try {
                 const apiUrl = basePath + '/api' + endpoint;  // basePath is the global admin path ("/admin")
@@ -4962,11 +4990,29 @@
         );
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="multiselect-empty">No categories found</div>';
+            container.innerHTML = '<div class="multiselect-empty">No options found</div>';
             return;
         }
 
-        container.innerHTML = filtered.map(opt => {
+        const optionByValue = new Map(multiselectState.options.map(opt => [opt.value, opt]));
+        const selectedHtml = multiselectState.ordered
+            ? '<div class="multiselect-selected-order">' +
+                (multiselectState.selected.length === 0
+                    ? '<div class="multiselect-empty" style="padding:0.75rem;">Select at least one shelf</div>'
+                    : multiselectState.selected.map((value, index) => {
+                        const opt = optionByValue.get(value);
+                        const label = opt?.label || value;
+                        return `<div class="multiselect-order-row">
+                            <span class="multiselect-order-index">${index + 1}</span>
+                            <span class="multiselect-option-label">${escapeHtml(label)}</span>
+                            <button type="button" class="btn btn-sm btn-secondary" ${index === 0 ? 'disabled' : ''} onclick="moveMultiselectOption(${index}, -1)">Up</button>
+                            <button type="button" class="btn btn-sm btn-secondary" ${index === multiselectState.selected.length - 1 ? 'disabled' : ''} onclick="moveMultiselectOption(${index}, 1)">Down</button>
+                        </div>`;
+                    }).join('')) +
+              '</div>'
+            : '';
+
+        container.innerHTML = selectedHtml + filtered.map(opt => {
             const isSelected = multiselectState.selected.includes(opt.value);
             const countHtml = opt.count !== undefined ? '<span class="multiselect-option-count">(' + opt.count + ' channels)</span>' : '';
             return `<label class="multiselect-option ${isSelected ? 'selected' : ''}">
@@ -4975,6 +5021,16 @@
                 ${countHtml}
             </label>`;
         }).join('');
+    }
+
+    function moveMultiselectOption(index, direction) {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= multiselectState.selected.length) return;
+        const selected = [...multiselectState.selected];
+        const [moved] = selected.splice(index, 1);
+        selected.splice(nextIndex, 0, moved);
+        multiselectState.selected = selected;
+        renderMultiselectOptions();
     }
 
     function filterMultiselectOptions(searchTerm) {

@@ -199,6 +199,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			HideDetailsPoster:                      models.BoolPtr(g.Display.HideDetailsPoster),
 			HideTVDrawerRail:                       models.BoolPtr(g.Display.HideTVDrawerRail),
 			SimpleMode:                             models.BoolPtr(g.Display.SimpleMode),
+			SimpleModeHomeShelves:                  models.StringSlicePtr(g.Display.SimpleModeHomeShelves),
 			DisableTVHomeCardDimming:               models.BoolPtr(g.Display.DisableTVHomeCardDimming),
 			EnableAnimations:                       models.BoolPtr(g.Display.EnableAnimations),
 			EnableHeroArtPanning:                   models.BoolPtr(g.Display.EnableHeroArtPanning),
@@ -521,6 +522,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Display.SimpleMode == nil {
 		eff.Display.SimpleMode = models.BoolPtr(g.Display.SimpleMode)
+	}
+	if eff.Display.SimpleModeHomeShelves == nil {
+		eff.Display.SimpleModeHomeShelves = models.StringSlicePtr(g.Display.SimpleModeHomeShelves)
 	}
 	if eff.Display.DisableTVHomeCardDimming == nil {
 		eff.Display.DisableTVHomeCardDimming = models.BoolPtr(g.Display.DisableTVHomeCardDimming)
@@ -1010,6 +1014,10 @@ func stripDisplay(d *models.DisplaySettings, g config.DisplaySettings) bool {
 		d.SimpleMode = nil
 		changed = true
 	}
+	if d.SimpleModeHomeShelves != nil && stringSliceEqualOrdered(*d.SimpleModeHomeShelves, g.SimpleModeHomeShelves) {
+		d.SimpleModeHomeShelves = nil
+		changed = true
+	}
 	if d.DisableTVHomeCardDimming != nil && *d.DisableTVHomeCardDimming == g.DisableTVHomeCardDimming {
 		d.DisableTVHomeCardDimming = nil
 		changed = true
@@ -1401,6 +1409,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.SimpleMode != nil && eff.Display.SimpleMode != nil && *cs.SimpleMode == *eff.Display.SimpleMode {
 		cs.SimpleMode = nil
+		changed = true
+	}
+	if cs.SimpleModeHomeShelves != nil && eff.Display.SimpleModeHomeShelves != nil && stringSliceEqualOrdered(*cs.SimpleModeHomeShelves, *eff.Display.SimpleModeHomeShelves) {
+		cs.SimpleModeHomeShelves = nil
 		changed = true
 	}
 	if cs.DisableTVHomeCardDimming != nil && eff.Display.DisableTVHomeCardDimming != nil && *cs.DisableTVHomeCardDimming == *eff.Display.DisableTVHomeCardDimming {

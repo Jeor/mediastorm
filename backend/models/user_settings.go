@@ -135,6 +135,8 @@ type DisplaySettings struct {
 	HideTVDrawerRail *bool `json:"hideTvDrawerRail,omitempty"`
 	// SimpleMode reduces the frontend to essential browsing and playback choices.
 	SimpleMode *bool `json:"simpleMode,omitempty"`
+	// SimpleModeHomeShelves is the ordered list of configured home shelf IDs shown in M.O.M. Mode™.
+	SimpleModeHomeShelves *[]string `json:"simpleModeHomeShelves,omitempty"`
 	// DisableTVHomeCardDimming keeps trailing home shelf cards fully visible on TV platforms.
 	DisableTVHomeCardDimming *bool `json:"disableTvHomeCardDimming,omitempty"`
 	// EnableAnimations controls application UI motion such as animated scrolling and transitions.
@@ -526,6 +528,11 @@ type HomeShelvesSettings struct {
 	DisableTvLandscapeCardExpansion *bool         `json:"disableTvLandscapeCardExpansion,omitempty"` // Keep TV shelf cards in portrait when focused
 	HomeShelfScale                  *float64      `json:"homeShelfScale,omitempty"`                  // TV home shelf/card scale, 0.5-1.0 (default 1.0)
 	HomeHeroScale                   *float64      `json:"homeHeroScale,omitempty"`                   // TV upper hero/art scale, 0.5-1.0 (default 1.0)
+}
+
+// DefaultSimpleModeHomeShelfIDs is the built-in M.O.M. Mode™ home shelf order.
+func DefaultSimpleModeHomeShelfIDs() []string {
+	return []string{"top-ten", "continue-watching", "watch-something", "trending-movies", "trending-tv"}
 }
 
 // DefaultHomeShelfConfigs returns the built-in home shelves in their default order.
@@ -1082,6 +1089,7 @@ func DefaultUserSettings() UserSettings {
 			HideDetailsPoster:                         BoolPtr(false),
 			HideTVDrawerRail:                          BoolPtr(false),
 			SimpleMode:                                BoolPtr(false),
+			SimpleModeHomeShelves:                     StringSlicePtr(DefaultSimpleModeHomeShelfIDs()),
 			DisableTVHomeCardDimming:                  BoolPtr(false),
 			EnableAnimations:                          BoolPtr(true),
 			EnableHeroArtPanning:                      BoolPtr(true),

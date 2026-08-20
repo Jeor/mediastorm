@@ -108,13 +108,14 @@ func TestUserEditableSettingsSchemaIncludesSupportedScopes(t *testing.T) {
 		"display.badgeVisibility",
 		"display.enableAnimations",
 		"display.simpleMode",
+		"display.simpleModeHomeShelves",
 		"filtering.debrid.hdrDvPolicy",
 		"filtering.preferredScraper",
 	})
 	if got := strings.Join(schema["display.badgeVisibility"].Scopes, ","); got != "profile" {
 		t.Fatalf("badge visibility scopes = %q", got)
 	}
-	for _, path := range []string{"display.enableAnimations", "display.simpleMode", "filtering.debrid.hdrDvPolicy"} {
+	for _, path := range []string{"display.enableAnimations", "display.simpleMode", "display.simpleModeHomeShelves", "filtering.debrid.hdrDvPolicy"} {
 		if got := strings.Join(schema[path].Scopes, ","); got != "profile,device" {
 			t.Fatalf("%s scopes = %q", path, got)
 		}
@@ -131,6 +132,26 @@ func TestUserEditableSettingsSchemaResolvesScraperOptions(t *testing.T) {
 	options, ok := schema["filtering.preferredScraper"].Options.([]map[string]string)
 	if !ok || len(options) != 2 || options[0]["value"] != "Torrentio" || options[1]["value"] != "Comet" {
 		t.Fatalf("unexpected scraper options: %#v", schema["filtering.preferredScraper"].Options)
+	}
+}
+
+func TestUserEditableSettingsSchemaResolvesSimpleModeHomeShelves(t *testing.T) {
+	schema := userEditableSettingsSchemaForSettings([]string{"display.simpleModeHomeShelves"}, config.Settings{
+		HomeShelves: config.HomeShelvesSettings{
+			Shelves: []config.ShelfConfig{
+				{ID: "top-ten", Name: "Top 10 Today"},
+				{ID: "tonight", Name: "Tonight"},
+				{ID: "custom-list", Name: "Family Favorites"},
+			},
+		},
+	})
+	field := schema["display.simpleModeHomeShelves"]
+	if field.Type != "ordered-multiselect" {
+		t.Fatalf("simple mode home shelves type = %q", field.Type)
+	}
+	options, ok := field.Options.([]map[string]string)
+	if !ok || len(options) != 2 || options[0]["value"] != "top-ten" || options[1]["value"] != "custom-list" {
+		t.Fatalf("unexpected simple mode shelf options: %#v", field.Options)
 	}
 }
 
@@ -166,6 +187,9 @@ func TestSettingsTemplateUsesCompactEditablePencilToggle(t *testing.T) {
 		"@media (hover: hover) and (pointer: fine)",
 		`aria-label="Settings scope"`,
 		"Settings cascade: Server defaults → Person overrides → Device overrides",
+		"ordered-multiselect",
+		"openMultiselectModal",
+		"moveMultiselectOption",
 	} {
 		if !strings.Contains(template, expected) {
 			t.Fatalf("settings template missing %q", expected)

@@ -361,6 +361,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Display.SimpleMode == nil {
 			settings.Display.SimpleMode = defaults.Display.SimpleMode
 		}
+		if settings.Display.SimpleModeHomeShelves == nil {
+			settings.Display.SimpleModeHomeShelves = defaults.Display.SimpleModeHomeShelves
+		}
 		if settings.Display.DisableTVHomeCardDimming == nil {
 			settings.Display.DisableTVHomeCardDimming = defaults.Display.DisableTVHomeCardDimming
 		}
@@ -800,6 +803,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Display.HideDetailsPoster != nil ||
 		s.Display.HideTVDrawerRail != nil ||
 		s.Display.SimpleMode != nil ||
+		s.Display.SimpleModeHomeShelves != nil ||
 		s.Display.DisableTVHomeCardDimming != nil ||
 		s.Display.EnableAnimations != nil ||
 		s.Display.EnableHeroArtPanning != nil ||

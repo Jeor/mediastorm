@@ -436,7 +436,7 @@ async fn run_speed_client(invite: &str, bytes: u64) -> Result<()> {
 
     let mut received = 0u64;
     while let Some(chunk) = recv.read_chunk(SPEED_CHUNK_BYTES).await? {
-        received += chunk.bytes.len() as u64;
+        received += chunk.len() as u64;
     }
 
     let elapsed = started.elapsed();

@@ -427,6 +427,15 @@ type HLSSession struct {
 	// so nothing has to reconstruct it from flags. Empty until the plan runs.
 	SegmentExt string
 
+	// SubtitleTimestampBaseSeconds is where this session's MPEG-TS timeline starts, which is not
+	// where its sidecar WebVTT starts. FFmpeg's TS muxer preloads by 1.4s unless told otherwise,
+	// while an extracted VTT is always 0-based, so a player that maps WebVTT 0 onto TS 0 shows
+	// every cue 1.4s early. The web path avoids it by pinning the video to a zero origin
+	// (`-muxpreload 0`); a cast cannot, because a stable receiver timeline needs
+	// `-output_ts_offset`. Recorded here so the subtitle response can state the offset
+	// explicitly, rather than have anything reconstruct it from ffmpeg flags.
+	SubtitleTimestampBaseSeconds float64
+
 	// Input error recovery (for usenet disconnections)
 	InputErrorDetected bool // Set to true when FFmpeg input stream fails (usenet disconnect)
 	RecoveryAttempts   int  // Number of times we've attempted to recover this session
@@ -562,6 +571,10 @@ const (
 
 	// Matroska-specific tuning for pipe-based seeks
 	matroskaHeaderPrefixBytes int64 = 2 * 1024 * 1024 // copy 2MB of header metadata
+	// mpegtsDefaultPreloadSeconds is where FFmpeg's MPEG-TS muxer starts its clock when nothing
+	// overrides it: 1.4s, i.e. a first PTS of 126000 at 90kHz. Verified against a produced
+	// segment (`audio start_pts=126000`), not assumed.
+	mpegtsDefaultPreloadSeconds = 1.4
 	matroskaSeekBackoffBytes  int64 = 8 * 1024 * 1024 // request a little earlier to land on cluster boundary
 	matroskaMaxClusterScan    int64 = 32 * 1024 * 1024
 
@@ -3649,6 +3662,21 @@ func (m *HLSManager) startTranscoding(ctx context.Context, session *HLSSession, 
 		args = append(args, "-muxpreload", "0", "-muxdelay", "0")
 	}
 
+	// Whatever the flags above settled on, state the resulting TS origin once. `-muxpreload 0`
+	// pins it to zero; otherwise the muxer preloads by its default 1.4s, and a stable cast
+	// timeline adds the `-output_ts_offset` applied earlier. A sidecar VTT is 0-based either way,
+	// so this is exactly the correction its response has to carry.
+	subtitleTimestampBase := mpegtsDefaultPreloadSeconds
+	if webSubtitleRendition {
+		subtitleTimestampBase = 0
+	}
+	if stableCastMode && castSegmentStartNumber > 0 {
+		subtitleTimestampBase += float64(castSegmentStartNumber) * hlsSegmentDuration
+	}
+	session.mu.Lock()
+	session.SubtitleTimestampBaseSeconds = subtitleTimestampBase
+	session.mu.Unlock()
+
 	// Subtitle handling: All subtitles are served via sidecar VTT files for consistent overlay rendering.
 	// - fMP4 (Dolby Vision/HDR): Extract ALL text-based tracks upfront as additional ffmpeg outputs
 	// - MPEG-TS: On-demand extraction via extractSubtitleTrack when a track is requested
@@ -6077,7 +6105,7 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Post-process VTT to merge karaoke character cues (from ASS conversion)
-	processedContent := mergeKaraokeCues(string(content))
+	processedContent := withWebVTTTimestampMap(mergeKaraokeCues(string(content)), session.subtitleTimestampBase())
 
 	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache") // Don't cache since file is growing
@@ -6094,6 +6122,37 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 
 	w.Write([]byte(processedContent))
 	log.Printf("[hls] served subtitles for session %s track %d, size=%d bytes", sessionID, requestedTrack, len(processedContent))
+}
+
+// subtitleTimestampBase reports where this session's MPEG-TS clock starts, in seconds.
+func (s *HLSSession) subtitleTimestampBase() float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.SubtitleTimestampBaseSeconds
+}
+
+// withWebVTTTimestampMap states the WebVTT-to-MPEG-TS alignment inside the cue file, which is the
+// only way an HLS client can learn it.
+//
+// Our own overlay is told the same thing out of band, through `X-Subtitle-Start-Offset`, but a
+// Cast receiver never sees our headers: it reads the playlist and the VTT and nothing else. With
+// no `X-TIMESTAMP-MAP` it assumes WebVTT zero is TS zero, and since the muxer's clock starts at
+// 1.4s every cue lands 1.4s early — visible on screen, and worse on a stable cast timeline where
+// the offset is a whole run of segments.
+//
+// Left alone when the file already carries a map, or when it has no header to attach one to.
+func withWebVTTTimestampMap(content string, baseSeconds float64) string {
+	if baseSeconds <= 0 || strings.Contains(content, "X-TIMESTAMP-MAP") {
+		return content
+	}
+	trimmed := strings.TrimLeft(content, "\ufeff")
+	if !strings.HasPrefix(trimmed, "WEBVTT") {
+		return content
+	}
+	rest := trimmed[len("WEBVTT"):]
+	// 90kHz is the MPEG-TS clock WebVTT maps onto, fixed by the container.
+	mapping := fmt.Sprintf("\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:%d", int64(math.Round(baseSeconds*90000)))
+	return "WEBVTT" + mapping + rest
 }
 
 func (s *HLSSession) subtitleExtractionOffset(track int) (float64, bool) {

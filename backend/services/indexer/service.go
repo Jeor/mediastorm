@@ -2198,6 +2198,7 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 		TargetSeason:          parsedQuery.Season,
 		TargetEpisode:         parsedQuery.Episode,
 		TargetAbsoluteEpisode: opts.AbsoluteEpisodeNumber,
+		IsAnime:               opts.IsAnime,
 	}
 }
 
@@ -3082,6 +3083,7 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 		TargetSeason:          baseParsed.Season,
 		TargetEpisode:         baseParsed.Episode,
 		TargetAbsoluteEpisode: opts.AbsoluteEpisodeNumber,
+		IsAnime:               opts.IsAnime,
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 	}

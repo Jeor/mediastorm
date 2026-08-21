@@ -24,6 +24,7 @@ type FilterOptions struct {
 	TargetSeason          int    // Target season number (e.g., 22 for S22E68)
 	TargetEpisode         int    // Target episode number within season (e.g., 68 for S22E68)
 	TargetAbsoluteEpisode int    // Target absolute episode number for anime (e.g., 1153 for One Piece)
+	IsAnime               bool   // True when metadata identifies the series as anime
 	IsDaily               bool   // True for daily shows (talk shows, news) - filter by date
 	TargetAirDate         string // For daily shows: air date in YYYY-MM-DD format
 }
@@ -48,6 +49,7 @@ func FilterResults(results []models.NZBResult, opts FilterOptions) []models.NZBR
 		TargetSeason:          opts.TargetSeason,
 		TargetEpisode:         opts.TargetEpisode,
 		TargetAbsoluteEpisode: opts.TargetAbsoluteEpisode,
+		IsAnime:               opts.IsAnime,
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 	}

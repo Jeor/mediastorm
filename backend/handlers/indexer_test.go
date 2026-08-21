@@ -417,6 +417,7 @@ func TestIndexerHandler_SearchSeriesInfersMissingAbsoluteEpisode(t *testing.T) {
 		TargetSeason:          23,
 		TargetEpisode:         17,
 		TargetAbsoluteEpisode: fake.lastOpts.AbsoluteEpisodeNumber,
+		IsAnime:               fake.lastOpts.IsAnime,
 	}
 	results := filter.Results([]models.NZBResult{{Title: "One Piece S01E1172 1080p WEB-DL"}}, filterOpts)
 	if len(results) != 1 {

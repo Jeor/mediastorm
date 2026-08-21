@@ -1789,6 +1789,25 @@ func TestTargetEpisodeFiltering(t *testing.T) {
 	}
 }
 
+func TestTargetEpisodeFiltering_NonAnimeIgnoresAbsoluteNumber(t *testing.T) {
+	results := []models.NZBResult{
+		{Title: "Coronation.Street.S64E154.1080p.WEB-DL"},
+		{Title: "Coronation.Street.S64E153.1080p.WEB-DL"},
+	}
+
+	filtered := Results(results, Options{
+		ExpectedTitle:         "Coronation Street",
+		TargetSeason:          64,
+		TargetEpisode:         154,
+		TargetAbsoluteEpisode: 11084,
+		IsAnime:               false,
+	})
+
+	if len(filtered) != 1 || filtered[0].Title != results[0].Title {
+		t.Fatalf("expected only seasonal episode S64E154 to pass, got %#v", filtered)
+	}
+}
+
 func TestFormulaOneRoundFiltering(t *testing.T) {
 	results := []models.NZBResult{
 		{Title: "04.F1.2026.R01.Australian.Grand.Prix.Qualifying.F1TV.UHD.2160p.Multi.mkv"},

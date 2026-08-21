@@ -255,6 +255,7 @@ func TestAnimeFilter_OnePiece_SeasonPackRejection(t *testing.T) {
 		TargetSeason:          22,
 		TargetEpisode:         68,
 		TargetAbsoluteEpisode: 1153,
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 	}
 
@@ -357,6 +358,7 @@ func TestAnimeFilter_NadesicoAbsoluteFallbackResults(t *testing.T) {
 		TargetSeason:          1,
 		TargetEpisode:         1,
 		TargetAbsoluteEpisode: 1,
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 	}
 
@@ -440,6 +442,7 @@ func TestAnimeFilter_DrStone_SeasonMatching(t *testing.T) {
 		TargetSeason:          3,
 		TargetEpisode:         10,
 		TargetAbsoluteEpisode: 45, // 24 + 11 + 10
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 		AlternateTitles:       []string{"Dr. Stone", "Dr.Stone"},
 	}
@@ -529,6 +532,7 @@ func TestAnimeFilter_KaijuNo8_Season2(t *testing.T) {
 		TargetSeason:          2,
 		TargetEpisode:         4,
 		TargetAbsoluteEpisode: 16, // 12 + 4
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 		AlternateTitles:       []string{"Kaiju No. 8", "Kaiju No.8"},
 	}
@@ -618,6 +622,7 @@ func TestAnimeFilter_RecordOfRagnarok_Season2(t *testing.T) {
 		TargetSeason:          2,
 		TargetEpisode:         1,
 		TargetAbsoluteEpisode: 13, // 12 + 1
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 		AlternateTitles:       []string{"Shuumatsu no Valkyrie", "Shuumatsu no Walkure"},
 	}
@@ -707,6 +712,7 @@ func TestAnimeFilter_DemonSlayer_Season3(t *testing.T) {
 		TargetSeason:          3,
 		TargetEpisode:         5,
 		TargetAbsoluteEpisode: 49, // 26 + 18 + 5
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 		AlternateTitles:       []string{"Kimetsu no Yaiba", "Demon Slayer Kimetsu no Yaiba"},
 	}
@@ -796,6 +802,7 @@ func TestAnimeFilter_AttackOnTitan_FinalSeason(t *testing.T) {
 		TargetSeason:          4,
 		TargetEpisode:         20,
 		TargetAbsoluteEpisode: 79, // 25 + 12 + 22 + 20
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 		AlternateTitles:       []string{"Shingeki no Kyojin"},
 	}
@@ -882,6 +889,7 @@ func TestAnimeFilter_S01ENNNN_Format(t *testing.T) {
 				TargetSeason:          tt.targetSeason,
 				TargetEpisode:         tt.targetEpisode,
 				TargetAbsoluteEpisode: tt.absoluteEp,
+				IsAnime:               true,
 				EpisodeResolver:       resolver,
 			}
 
@@ -945,6 +953,7 @@ func TestAnimeFilter_WithoutResolver_LimitedFiltering(t *testing.T) {
 		TargetSeason:          22,
 		TargetEpisode:         68,
 		TargetAbsoluteEpisode: 1153,
+		IsAnime:               true,
 		EpisodeResolver:       nil, // No resolver
 	}
 
@@ -1009,6 +1018,7 @@ func TestAnimeFilter_MultiSeasonPack(t *testing.T) {
 		TargetSeason:          22,
 		TargetEpisode:         68,
 		TargetAbsoluteEpisode: 1153,
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 	}
 
@@ -1062,6 +1072,7 @@ func TestAnimeFilter_BatchReleaseWithEpisodeRange(t *testing.T) {
 		TargetSeason:          3,
 		TargetEpisode:         10,
 		TargetAbsoluteEpisode: 45,
+		IsAnime:               true,
 		EpisodeResolver:       resolver,
 		AlternateTitles:       []string{"Dr. Stone"},
 	}

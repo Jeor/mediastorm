@@ -653,6 +653,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 			TargetSeason:          parsed.Season,
 			TargetEpisode:         parsed.Episode,
 			TargetAbsoluteEpisode: opts.AbsoluteEpisodeNumber,
+			IsAnime:               opts.IsAnime,
 			IsDaily:               opts.IsDaily,
 			TargetAirDate:         opts.TargetAirDate,
 		}

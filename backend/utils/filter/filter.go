@@ -148,6 +148,7 @@ type Options struct {
 	TargetSeason          int    // Target season number (e.g., 22 for S22E68)
 	TargetEpisode         int    // Target episode number within season (e.g., 68 for S22E68)
 	TargetAbsoluteEpisode int    // Target absolute episode number for anime (e.g., 1153 for One Piece)
+	IsAnime               bool   // True when metadata identifies the series as anime
 	IsDaily               bool   // True for daily shows (talk shows, news) - filter by date
 	TargetAirDate         string // For daily shows: air date in YYYY-MM-DD format
 }
@@ -1514,12 +1515,13 @@ func shouldRejectByTargetEpisode(parsed *parsett.ParsedTitle, opts Options) (boo
 	hasSeason := len(parsed.Seasons) > 0
 
 	if hasEpisodes {
-		// Detect anime absolute format: either no season (fansub style) or S01E#### with high episode
+		// Detect anime absolute format only for titles identified as anime. Long-running
+		// non-anime series can also have high seasonal and absolute episode numbers.
 		isAnimeAbsoluteFormat := false
-		if !hasSeason {
+		if opts.IsAnime && !hasSeason {
 			// Fansub style: "[SubsPlease] Anime - 1153 (1080p)" - no season, just episode
 			isAnimeAbsoluteFormat = true
-		} else if len(parsed.Seasons) == 1 && (parsed.Seasons[0] == 1 || opts.TargetAbsoluteEpisode > 0) {
+		} else if opts.IsAnime && len(parsed.Seasons) == 1 && (parsed.Seasons[0] == 1 || opts.TargetAbsoluteEpisode > 0) {
 			// SxxE#### style - check if episode number suggests absolute (> typical season length).
 			// Some indexers normalize long-running anime absolute releases as S01E1161,
 			// while others use the current TVDB season as S23E1161. Only treat these

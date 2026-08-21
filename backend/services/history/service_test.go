@@ -913,7 +913,7 @@ func TestListPlaybackProgressOverlaysActiveMovieProgress(t *testing.T) {
 	}
 }
 
-func TestUpdatePlaybackProgressNotifiesWatchStateChangedHook(t *testing.T) {
+func TestUpdatePlaybackProgressNotifiesWatchStateChangedHookOnlyForMeaningfulChanges(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
 	if err != nil {
@@ -938,6 +938,48 @@ func TestUpdatePlaybackProgressNotifiesWatchStateChangedHook(t *testing.T) {
 
 	if len(changedUsers) != 1 || changedUsers[0] != "secondary-profile" {
 		t.Fatalf("expected hook to be called for secondary-profile, got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:12345",
+		Position:  90,
+		Duration:  300,
+		MovieName: "Test Movie",
+		Year:      2024,
+	}); err != nil {
+		t.Fatalf("second UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 1 {
+		t.Fatalf("position-only heartbeat notified hook; got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:67890",
+		Position:  30,
+		Duration:  300,
+		MovieName: "Another Movie",
+		Year:      2025,
+	}); err != nil {
+		t.Fatalf("new-item UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 2 || changedUsers[1] != "secondary-profile" {
+		t.Fatalf("expected new item to notify hook; got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:12345",
+		Position:  275,
+		Duration:  300,
+		MovieName: "Test Movie",
+		Year:      2024,
+	}); err != nil {
+		t.Fatalf("threshold UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 3 || changedUsers[2] != "secondary-profile" {
+		t.Fatalf("expected watched threshold to notify hook once; got %#v", changedUsers)
 	}
 }
 

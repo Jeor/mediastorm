@@ -252,6 +252,14 @@ func (s *Service) invalidateContinueWatchingLocked(userID string) {
 	s.notifyWatchStateChanged(userID)
 }
 
+// invalidateContinueWatchingCacheLocked refreshes position-sensitive Continue
+// Watching data without notifying broader consumers whose inputs did not
+// change. In particular, ordinary playback heartbeats do not change the set of
+// series used by the calendar.
+func (s *Service) invalidateContinueWatchingCacheLocked(userID string) {
+	delete(s.continueWatchingCache, userID)
+}
+
 func (s *Service) notifyWatchStateChanged(userID string) {
 	s.changeMu.RLock()
 	fn := s.watchStateChanged
@@ -4832,6 +4840,8 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 	// Normalize itemID to lowercase for consistent key matching
 	normalizedItemID := update.ItemID
 	key := makeWatchKey(update.MediaType, normalizedItemID)
+	_, hadExistingProgress := findMatchingPlaybackProgress(perUser, key, update)
+	watchStateChanged := !hadExistingProgress
 
 	// Calculate percent watched
 	var percentWatched float64
@@ -4980,10 +4990,12 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 				}
 				if isSeriesLevelPlaybackMarker(existingProg) {
 					delete(perUser, existingKey)
+					watchStateChanged = true
 					continue
 				}
 				existingProg.HiddenFromContinueWatching = false
 				perUser[existingKey] = existingProg
+				watchStateChanged = true
 			}
 		}
 	}
@@ -4996,8 +5008,17 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 	persistDuration = time.Since(persistStartedAt)
 
 	if !excludeFromHistoryShelves {
-		// Invalidate continue watching cache for this user since VOD progress changed.
-		s.invalidateContinueWatchingLocked(userID)
+		// Continue Watching includes the current position, so refresh it on every
+		// heartbeat. Notify calendar and other broad watch-state consumers only
+		// when membership/visibility can change, not for position-only updates.
+		// A threshold-crossing update is followed by UpdateWatchHistory below,
+		// which performs the broad notification after it clears progress. Keep
+		// this stage cache-only so that transition emits one notification.
+		if watchStateChanged && percentWatched < 90 {
+			s.invalidateContinueWatchingLocked(userID)
+		} else {
+			s.invalidateContinueWatchingCacheLocked(userID)
+		}
 	}
 
 	// Grab real-time scrobbler reference while holding the lock
@@ -5335,6 +5356,21 @@ func findMatchingMeaningfulPlaybackProgress(perUser map[string]models.PlaybackPr
 		if !hasMeaningfulProgressValues(progress.Position, progress.PercentWatched) {
 			continue
 		}
+		if !playbackProgressMatchesUpdate(key, progress, incomingKey, update) {
+			continue
+		}
+		if !found || preferPlaybackProgress(progress, best) {
+			best = progress
+			found = true
+		}
+	}
+	return best, found
+}
+
+func findMatchingPlaybackProgress(perUser map[string]models.PlaybackProgress, incomingKey string, update models.PlaybackProgressUpdate) (models.PlaybackProgress, bool) {
+	var best models.PlaybackProgress
+	found := false
+	for key, progress := range perUser {
 		if !playbackProgressMatchesUpdate(key, progress, incomingKey, update) {
 			continue
 		}

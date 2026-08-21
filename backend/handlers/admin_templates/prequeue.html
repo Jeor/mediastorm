@@ -59,12 +59,13 @@
 {{end}}
 
 {{define "content"}}
-<div class="page-header page-header-flex" style="display: flex; align-items: center; justify-content: space-between;">
-    <div>
-        <h1>Active Prequeues</h1>
-        <p>Pre-resolved and in-progress playback queue entries, including permanent manual items</p>
+<div class="page-header" data-page-group="Maintenance &amp; records">
+    <div class="page-header-copy">
+        <div class="page-kicker">Maintenance &amp; records</div>
+        <h1>Prequeue</h1>
+        <p>Review pre-resolved and in-progress playback entries, including permanent manual items.</p>
     </div>
-    <div class="page-header-controls prequeue-header-actions">
+    <div class="page-header-actions prequeue-header-actions">
         <a class="btn btn-secondary prequeue-back-button" href="{{.BasePath}}/tools">Back to Maintenance</a>
         <span class="prequeue-auto-refresh-label" id="autoRefreshLabel" style="font-size: 0.8rem; color: var(--text-muted);">Auto-refresh: on</span>
         <button class="btn btn-secondary" onclick="toggleAutoRefresh()" id="autoRefreshBtn">

@@ -3,9 +3,12 @@
 {{define "title"}}Hidden Items - mediastorm Admin{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>Hidden Items</h1>
-    <p>Manage titles hidden from home shelves, watchlist, Explore More, and list pages.</p>
+<div class="page-header" data-page-group="Maintenance &amp; records">
+    <div class="page-header-copy">
+        <div class="page-kicker">Maintenance &amp; records</div>
+        <h1>Hidden items</h1>
+        <p>Review titles hidden from home shelves, watchlists, Explore More, and list pages.</p>
+    </div>
 </div>
 
 <div class="settings-group">
@@ -53,7 +56,7 @@
                         <div class="text-muted" style="font-size:0.85rem;word-break:break-word;">{{.MediaType}} · {{.ID}}</div>
                         {{if .ProfileName}}<div class="text-muted" style="font-size:0.8rem;">Profile: {{.ProfileName}}</div>{{end}}
                     </div>
-                    <button class="btn btn-danger btn-sm" style="flex:0 0 auto;" data-user-id="{{.UserID}}" data-media-type="{{.MediaType}}" data-item-id="{{.ID}}" onclick="unhideItem(this.dataset.userId, this.dataset.mediaType, encodeURIComponent(this.dataset.itemId))">Unhide</button>
+                    <button class="btn btn-secondary btn-sm" style="flex:0 0 auto;" data-user-id="{{.UserID}}" data-media-type="{{.MediaType}}" data-item-id="{{.ID}}" onclick="unhideItem(this.dataset.userId, this.dataset.mediaType, encodeURIComponent(this.dataset.itemId))">Unhide</button>
                 </div>
                 {{end}}
             </div>
@@ -118,7 +121,7 @@ async function loadHiddenItems() {
                             <div class="text-muted" style="font-size:0.85rem;">${formatMediaType(item.mediaType)} · ${escapeHtml(item.id)}</div>
                             ${profile}
                         </div>
-                        <button class="btn btn-danger btn-sm" onclick="unhideItem('${jsString(item.userId || select.value)}', '${jsString(item.mediaType)}', '${encodeURIComponent(item.id)}')">Unhide</button>
+                        <button class="btn btn-secondary btn-sm" onclick="unhideItem('${jsString(item.userId || select.value)}', '${jsString(item.mediaType)}', '${encodeURIComponent(item.id)}')">Unhide</button>
                 </div>`;
         }).join('');
     } catch (error) {

@@ -3,9 +3,12 @@
 {{define "title"}}Backup - mediastorm Admin{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>System Backup</h1>
-    <p>Create, download, and restore system backups</p>
+<div class="page-header" data-page-group="Maintenance &amp; records">
+    <div class="page-header-copy">
+        <div class="page-kicker">Maintenance &amp; records</div>
+        <h1>Backup</h1>
+        <p>Create and download recovery points, or restore the server from an existing backup.</p>
+    </div>
 </div>
 
 <div class="settings-group">
@@ -50,7 +53,7 @@
     </div>
 
     <!-- Restore From File Section -->
-    <div class="section open" id="restoreFileSection">
+    <div class="section is-destructive" id="restoreFileSection">
         <div class="section-header" onclick="toggleSection(this)">
             <div class="section-title">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">

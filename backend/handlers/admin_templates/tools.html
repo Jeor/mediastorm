@@ -3,17 +3,20 @@
 {{define "title"}}{{if hasSuffix .CurrentPath "/tasks"}}Automations{{else if hasSuffix .CurrentPath "/integrations"}}Connected Services{{else}}Maintenance{{end}} - {{if .IsAdmin}}mediastorm Admin{{else}}mediastorm account{{end}}{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    {{if hasSuffix .CurrentPath "/tasks"}}
-    <h1>Automations</h1>
-    <p>Schedule recurring syncs{{if .IsAdmin}}, library scans, backups, and background preparation{{end}}.</p>
-    {{else if hasSuffix .CurrentPath "/integrations"}}
-    <h1>Connected Services</h1>
-    <p>Connect external media services and choose which profiles use them.</p>
-    {{else}}
-    <h1>Maintenance</h1>
-    <p>Manage integrations, internal data, diagnostics, and server maintenance.</p>
-    {{end}}
+<div class="page-header" data-page-group="{{if or (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}Configuration &amp; operations{{else}}Maintenance &amp; records{{end}}">
+    <div class="page-header-copy">
+        <div class="page-kicker">{{if or (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}Configuration &amp; operations{{else}}Maintenance &amp; records{{end}}</div>
+        {{if hasSuffix .CurrentPath "/tasks"}}
+        <h1>Automations</h1>
+        <p>Schedule recurring syncs{{if .IsAdmin}}, library scans, backups, and background preparation{{end}}.</p>
+        {{else if hasSuffix .CurrentPath "/integrations"}}
+        <h1>Integrations</h1>
+        <p>Connect external media services and choose which profiles use them.</p>
+        {{else}}
+        <h1>Maintenance</h1>
+        <p>Run administrative actions, inspect internal data, and troubleshoot the server.</p>
+        {{end}}
+    </div>
 </div>
 
 {{if hasSuffix .CurrentPath "/tasks"}}

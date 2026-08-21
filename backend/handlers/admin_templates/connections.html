@@ -3,13 +3,18 @@
 {{define "title"}}Connections - mediastorm Admin{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>Service Connections</h1>
-    <p>Health check for all configured services</p>
-    <button class="btn btn-primary" id="retest-all-btn" onclick="runAllTests()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        Retest All
-    </button>
+<div class="page-header" data-page-group="Configuration &amp; operations">
+    <div class="page-header-copy">
+        <div class="page-kicker">Configuration &amp; operations</div>
+        <h1>Connections</h1>
+        <p>Check configured services, investigate search timing, and review outbound API use.</p>
+    </div>
+    <div class="page-header-actions">
+        <button class="btn btn-primary" id="retest-all-btn" onclick="runAllTests()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Retest all
+        </button>
+    </div>
 </div>
 
 <div class="search-diagnostics">

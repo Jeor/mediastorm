@@ -16,6 +16,7 @@ import (
 	"novastream/config"
 	"novastream/internal/auth"
 	"novastream/models"
+	"novastream/services/plex"
 	"novastream/services/prewarm"
 	"novastream/services/scheduler"
 )
@@ -189,7 +190,23 @@ func validateScheduledTaskConfig(taskType config.ScheduledTaskType, taskConfig m
 			return fmt.Errorf("Custom list sync requires customListId in config")
 		}
 	case config.ScheduledTaskTypePlexHistorySync:
-		return requireProfile("plexAccountId", "Plex history sync requires plexAccountId and profileId in config")
+		if err := requireProfile("plexAccountId", "Plex history sync requires plexAccountId and profileId in config"); err != nil {
+			return err
+		}
+		serverID := strings.TrimSpace(taskConfig["plexServerId"])
+		serverURL := strings.TrimSpace(taskConfig["plexServerUrl"])
+		if (serverID == "") != (serverURL == "") {
+			return errors.New("Plex history sync requires both plexServerId and plexServerUrl when selecting a server")
+		}
+		if serverURL != "" {
+			normalized, err := plex.NormalizeServerURL(serverURL)
+			if err != nil {
+				return err
+			}
+			serverURL = normalized
+		}
+		taskConfig["plexServerId"] = serverID
+		taskConfig["plexServerUrl"] = serverURL
 	case config.ScheduledTaskTypeJellyfinFavoritesSync:
 		return requireProfile("jellyfinAccountId", "Jellyfin favorites sync requires jellyfinAccountId and profileId in config")
 	case config.ScheduledTaskTypeJellyfinHistorySync:

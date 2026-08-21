@@ -3,12 +3,19 @@ package plex
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
+
+type plexRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn plexRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
 
 func TestPlexLibraryItemAcceptsLegacyAndProviderGUIDs(t *testing.T) {
 	var item PlexLibraryItem
@@ -169,5 +176,45 @@ func TestGetServerLibrariesAtUsesSelectedAddress(t *testing.T) {
 	}
 	if len(libraries) != 3 || libraries[0].Title != "Movies" || libraries[1].Title != "Shows" || libraries[2].Title != "Music" {
 		t.Fatalf("libraries=%#v", libraries)
+	}
+}
+
+func TestGetWatchHistoryForServerUsesSelectedServerAndAddress(t *testing.T) {
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = plexRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var body string
+		switch {
+		case req.URL.Host == "plex.tv" && req.URL.Path == "/api/v2/resources":
+			body = `[
+				{"name":"Wrong","clientIdentifier":"server-wrong","owned":true,"provides":"server","presence":true,"accessToken":"wrong-token","connections":[{"protocol":"https","uri":"https://wrong.example"}]},
+				{"name":"Chosen","clientIdentifier":"server-chosen","owned":true,"provides":"server","presence":true,"accessToken":"chosen-token","connections":[{"protocol":"https","uri":"https://automatic.example"}]}
+			]`
+		case req.URL.Host == "selected.example" && req.URL.Path == "/status/sessions/history/all":
+			if got := req.Header.Get("X-Plex-Token"); got != "chosen-token" {
+				t.Fatalf("history token = %q", got)
+			}
+			body = `{"MediaContainer":{"Metadata":[{"ratingKey":"42","title":"Selected Movie","type":"movie"}]}}`
+		case req.URL.Host == "selected.example" && req.URL.Path == "/library/metadata/42":
+			body = `{"MediaContainer":{"Metadata":[{"ratingKey":"42","title":"Selected Movie","type":"movie","Guid":[{"id":"tmdb://123"}]}]}}`
+		default:
+			t.Fatalf("unexpected Plex request: %s", req.URL.String())
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Request:    req,
+		}, nil
+	})
+	defer func() { http.DefaultTransport = originalTransport }()
+
+	client := NewClient("strmr-test")
+	history, err := client.GetWatchHistoryForServer("account-token", "server-chosen", "https://selected.example", 100, 0)
+	if err != nil {
+		t.Fatalf("GetWatchHistoryForServer() error = %v", err)
+	}
+	if len(history) != 1 || history[0].Title != "Selected Movie" || history[0].ExternalIDs["tmdb"] != "123" {
+		t.Fatalf("history = %#v", history)
 	}
 }

@@ -6,10 +6,66 @@ import (
 	"net/http/httptest"
 	"novastream/config"
 	"novastream/models"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 )
+
+func TestPreResolvedHealthUsesSingleProbeForValidationAndTracks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodHead {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		w.Header().Set("Content-Length", "10485760")
+		w.Header().Set("Content-Type", "video/x-matroska")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	counterPath := t.TempDir() + "/ffprobe-calls"
+	ffprobePath := t.TempDir() + "/ffprobe"
+	ffprobe := `#!/bin/sh
+printf x >> "$COUNTER_FILE"
+printf '%s' '{"streams":[{"index":0,"codec_type":"video","codec_name":"hevc"},{"index":1,"codec_type":"audio","codec_name":"ac3","tags":{"language":"eng"}},{"index":2,"codec_type":"subtitle","codec_name":"hdmv_pgs_subtitle","tags":{"language":"eng"}}]}'
+`
+	if err := os.WriteFile(ffprobePath, []byte(ffprobe), 0o755); err != nil {
+		t.Fatalf("write fake ffprobe: %v", err)
+	}
+	t.Setenv("COUNTER_FILE", counterPath)
+
+	hs := NewHealthService(config.NewManager(t.TempDir() + "/settings.json"))
+	hs.SetFFProbePath(ffprobePath)
+	health, err := hs.CheckHealth(context.Background(), models.NZBResult{
+		Title:       "Bilby.2018.2160p.UHD.BluRay.Remux-PmP.mkv",
+		Link:        server.URL + "/video.mkv",
+		ServiceType: models.ServiceTypeDebrid,
+		Attributes: map[string]string{
+			"preresolved": "true",
+			"stream_url":  server.URL + "/video.mkv",
+			"scraper":     "comet",
+		},
+	}, false)
+	if err != nil {
+		t.Fatalf("CheckHealth returned error: %v", err)
+	}
+	if !health.Healthy || !health.Cached {
+		t.Fatalf("expected healthy cached stream, got %#v", health)
+	}
+	if len(health.AudioTracks) != 1 || health.AudioTracks[0].Language != "eng" {
+		t.Fatalf("audio tracks = %#v", health.AudioTracks)
+	}
+	if len(health.SubtitleTracks) != 1 || !health.SubtitleTracks[0].IsBitmap {
+		t.Fatalf("subtitle tracks = %#v", health.SubtitleTracks)
+	}
+	calls, err := os.ReadFile(counterPath)
+	if err != nil {
+		t.Fatalf("read ffprobe counter: %v", err)
+	}
+	if got := len(calls); got != 1 {
+		t.Fatalf("ffprobe calls = %d, want 1", got)
+	}
+}
 
 func TestExtractInfoHashFromMagnet(t *testing.T) {
 	tests := []struct {

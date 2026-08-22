@@ -2957,3 +2957,22 @@ func TestGetTopTenListSourceUsesSourceCache(t *testing.T) {
 		t.Fatalf("unexpected cached items: %#v", items)
 	}
 }
+
+func TestIsDateBasedSeriesClassification(t *testing.T) {
+	tests := map[string]bool{
+		"talk_show":  true,
+		"Talk Show":  true,
+		"news":       true,
+		"game-show":  true,
+		"Soap":       true,
+		"soap_opera": true,
+		"Drama":      false,
+		"series":     false,
+	}
+
+	for classification, want := range tests {
+		if got := isDateBasedSeriesClassification(classification); got != want {
+			t.Errorf("isDateBasedSeriesClassification(%q) = %v, want %v", classification, got, want)
+		}
+	}
+}

@@ -1104,7 +1104,7 @@ func TestShouldRejectByTargetEpisode_NilParsed(t *testing.T) {
 		TargetEpisode: 5,
 	}
 
-	rejected, reason := shouldRejectByTargetEpisode(nil, opts)
+	rejected, reason := shouldRejectByTargetEpisode("", nil, opts)
 	if rejected {
 		t.Errorf("shouldRejectByTargetEpisode(nil) should not reject, got rejected with reason: %s", reason)
 	}

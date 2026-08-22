@@ -23,8 +23,8 @@ type SelectionHints struct {
 	TargetEpisode         int
 	TargetEpisodeCode     string
 	AbsoluteEpisodeNumber int    // For anime: the absolute episode number (e.g., 1153 for One Piece)
-	TargetAirDate         string // For daily shows: the air date in YYYY-MM-DD format
-	IsDaily               bool   // True if this is a daily show (talk shows, news, etc.)
+	TargetAirDate         string // For date-based shows: the air date in YYYY-MM-DD format
+	IsDaily               bool   // True if releases for this show commonly use date-based naming
 }
 
 // EpisodeCode captures a parsed SXXEXX code.
@@ -53,9 +53,9 @@ var (
 	// Episode digit width is 1-4 so zero-padded anime packs parse correctly:
 	// S01E001 → ep 1, S01E010 → ep 10 (not a prefix of S01E01).
 	// Previously \d{1,2} made S01E010 match as S01E01 and S01E001 as S01E00.
-	episodeCodePattern   = regexp.MustCompile(`(?i)s(\d{1,2})\s*e(\d{1,4})`)
-	episodeAltPattern    = regexp.MustCompile(`(?i)ep(?:isode)?\.?\s*(\d{1,4})`) // Matches "Ep. 01", "Episode 01", "Ep01", "Ep. 001"
-	episodeNumberPattern = regexp.MustCompile(`(?i)[-_\s/](\d{1,3})[-_\s\[\.]`) // Matches " - 01 - ", "_01_", "_01[", "_01.", "/01 ", " - 001 - " for season packs
+	episodeCodePattern     = regexp.MustCompile(`(?i)s(\d{1,2})\s*e(\d{1,4})`)
+	episodeAltPattern      = regexp.MustCompile(`(?i)ep(?:isode)?\.?\s*(\d{1,4})`) // Matches "Ep. 01", "Episode 01", "Ep01", "Ep. 001"
+	episodeNumberPattern   = regexp.MustCompile(`(?i)[-_\s/](\d{1,3})[-_\s\[\.]`)  // Matches " - 01 - ", "_01_", "_01[", "_01.", "/01 ", " - 001 - " for season packs
 	seasonIndicatorPattern = regexp.MustCompile(`(?i)season[\s._-]*(\d{1,2})`)     // Matches "Season 02", "Season.02", "season_02"
 
 	// Absolute episode patterns for anime (3-4 digit episode numbers)
@@ -91,7 +91,8 @@ var (
 	// Daily show date patterns
 	// Matches: "2026.01.21", "2026-01-21", "2026 01 21", "2026_01_21",
 	// and non-zero-padded month/day variants used by some indexer titles.
-	dailyDatePattern = regexp.MustCompile(`(?:^|[.\-_\s])(\d{4})[.\-_\s](\d{1,2})[.\-_\s](\d{1,2})(?:[.\-_\s]|$)`)
+	dailyDatePattern      = regexp.MustCompile(`(?:^|[.\-_\s])(\d{4})[.\-_\s](\d{1,2})[.\-_\s](\d{1,2})(?:[.\-_\s]|$)`)
+	humanDailyDatePattern = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(\d{1,2})(?:st|nd|rd|th)?[.\-_\s]*([a-z]{3,9})[.\-_\s]*(\d{4})(?:[^a-z0-9]|$)`)
 )
 
 // SelectBestCandidate applies SXXEXX matching and fuzzy title similarity against a list of candidates.
@@ -606,35 +607,87 @@ func CandidateMatchesAbsoluteEpisode(candidateLabel string, targetAbsoluteEpisod
 	return parsedEpisode == targetAbsoluteEpisode
 }
 
-// ParseDailyDate extracts a date from a filename in YYYY.MM.DD, YYYY-MM-DD, or YYYY MM DD format.
+// ParseDailyDate extracts a date from a filename in numeric year-first or human day-month-year format.
 // Returns the year, month, day and true if found, or 0, 0, 0 and false otherwise.
-// This is used for daily shows (talk shows, news) that use date-based episode naming.
+// This is used for shows whose releases use date-based episode naming.
 func ParseDailyDate(value string) (year, month, day int, ok bool) {
 	if strings.TrimSpace(value) == "" {
 		return 0, 0, 0, false
 	}
 
 	matches := dailyDatePattern.FindStringSubmatch(value)
+	if len(matches) == 4 {
+		year, err := strconv.Atoi(matches[1])
+		if err != nil || year < 1900 || year > 2100 {
+			return 0, 0, 0, false
+		}
+
+		month, err = strconv.Atoi(matches[2])
+		if err != nil || month < 1 || month > 12 {
+			return 0, 0, 0, false
+		}
+
+		day, err = strconv.Atoi(matches[3])
+		if err != nil || day < 1 || day > 31 {
+			return 0, 0, 0, false
+		}
+
+		return year, month, day, true
+	}
+
+	matches = humanDailyDatePattern.FindStringSubmatch(value)
 	if len(matches) != 4 {
 		return 0, 0, 0, false
 	}
 
-	year, err := strconv.Atoi(matches[1])
-	if err != nil || year < 1900 || year > 2100 {
-		return 0, 0, 0, false
-	}
-
-	month, err = strconv.Atoi(matches[2])
-	if err != nil || month < 1 || month > 12 {
-		return 0, 0, 0, false
-	}
-
-	day, err = strconv.Atoi(matches[3])
+	day, err := strconv.Atoi(matches[1])
 	if err != nil || day < 1 || day > 31 {
 		return 0, 0, 0, false
 	}
-
+	month, ok = parseEnglishMonth(matches[2])
+	if !ok {
+		return 0, 0, 0, false
+	}
+	year, err = strconv.Atoi(matches[3])
+	if err != nil || year < 1900 || year > 2100 {
+		return 0, 0, 0, false
+	}
 	return year, month, day, true
+}
+
+func parseEnglishMonth(value string) (int, bool) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if len(value) < 3 {
+		return 0, false
+	}
+	switch value[:3] {
+	case "jan":
+		return 1, true
+	case "feb":
+		return 2, true
+	case "mar":
+		return 3, true
+	case "apr":
+		return 4, true
+	case "may":
+		return 5, true
+	case "jun":
+		return 6, true
+	case "jul":
+		return 7, true
+	case "aug":
+		return 8, true
+	case "sep":
+		return 9, true
+	case "oct":
+		return 10, true
+	case "nov":
+		return 11, true
+	case "dec":
+		return 12, true
+	default:
+		return 0, false
+	}
 }
 
 // DatesMatchWithTolerance checks if two dates (in YYYY-MM-DD format) are within the specified tolerance.

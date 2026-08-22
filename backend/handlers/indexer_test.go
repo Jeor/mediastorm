@@ -337,6 +337,44 @@ func TestIndexerHandler_SearchNonAnimeUsesReleaseAbsoluteEpisode(t *testing.T) {
 	}
 }
 
+func TestIndexerHandler_SearchSoapUsesEpisodeAirDate(t *testing.T) {
+	fake := &fakeIndexerService{results: []models.NZBResult{}}
+	seriesSvc := &fakeSeriesMetadataService{
+		details: &models.SeriesDetails{
+			Title: models.Title{
+				Name:    "Coronation Street",
+				Year:    1960,
+				Genres:  []string{"Soap", "Drama"},
+				IsDaily: true,
+			},
+			Seasons: []models.SeriesSeason{{
+				Number: 67,
+				Episodes: []models.SeriesEpisode{{
+					SeasonNumber:  67,
+					EpisodeNumber: 151,
+					AiredDate:     "2026-08-18",
+				}},
+			}},
+		},
+	}
+	handler := NewIndexerHandler(fake, false)
+	handler.SetMetadataService(seriesSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/indexers/search?q=Coronation+Street+S67E151&mediaType=series&year=1960", nil)
+	rec := httptest.NewRecorder()
+	handler.Search(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
+	}
+	if !fake.lastOpts.IsDaily {
+		t.Fatal("expected soap to enable date-based matching")
+	}
+	if fake.lastOpts.TargetAirDate != "2026-08-18" {
+		t.Fatalf("TargetAirDate = %q, want 2026-08-18", fake.lastOpts.TargetAirDate)
+	}
+}
+
 func TestIndexerHandler_SearchNadesicoUsesPreservedAnimeMetadata(t *testing.T) {
 	fake := &fakeIndexerService{results: []models.NZBResult{}}
 	seriesSvc := &fakeSeriesMetadataService{

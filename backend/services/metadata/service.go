@@ -3867,13 +3867,12 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			}
 		}
 
-		// IsDaily detection depends on genres, so run after parallel block
+		// Date-based release detection depends on genres, so run after parallel block.
 		if !cached.Title.IsDaily && len(cached.Title.Genres) > 0 {
 			for _, genre := range cached.Title.Genres {
-				genreLower := strings.ToLower(genre)
-				if genreLower == "talk" || genreLower == "talk show" || genreLower == "news" {
+				if isDateBasedSeriesClassification(genre) {
 					cached.Title.IsDaily = true
-					log.Printf("[metadata] cached series marked as daily based on genre tvdbId=%d genre=%q", tvdbID, genre)
+					log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
 					cacheUpdated = true
 					break
 				}
@@ -4089,13 +4088,11 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		seriesTitle.LifecycleStatus = extended.Status.Name
 	}
 
-	// Detect daily shows (talk shows, news, game shows) that use date-based episode naming
-	// TVDB types that are typically daily: talk_show, news, game_show
+	// Detect series types that commonly use date-based episode naming.
 	seriesType := strings.ToLower(strings.TrimSpace(extended.Type))
-	switch seriesType {
-	case "talk_show", "news", "game_show":
+	if isDateBasedSeriesClassification(seriesType) {
 		seriesTitle.IsDaily = true
-		log.Printf("[metadata] series marked as daily based on TVDB type tvdbId=%d type=%q", tvdbID, seriesType)
+		log.Printf("[metadata] series marked for date-based episode matching based on TVDB type tvdbId=%d type=%q", tvdbID, seriesType)
 	}
 
 	if img := newTVDBImage(extended.Poster, "poster", 0, 0); img != nil {
@@ -4386,14 +4383,12 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			seriesTitle.Genres = mergeMetadataGenres(seriesTitle.Genres, genres)
 			log.Printf("[metadata] fetched %d genres for series tmdbId=%d", len(genres), tmdbIDForEnrichment)
 
-			// Also check for daily show genres from TMDB if not already detected
-			// "Talk" genre (ID 10767) indicates talk shows which use date-based naming
+			// Also check for genres that commonly use date-based episode naming.
 			if !seriesTitle.IsDaily {
 				for _, genre := range genres {
-					genreLower := strings.ToLower(genre)
-					if genreLower == "talk" || genreLower == "talk show" || genreLower == "news" {
+					if isDateBasedSeriesClassification(genre) {
 						seriesTitle.IsDaily = true
-						log.Printf("[metadata] series marked as daily based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
+						log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
 						break
 					}
 				}
@@ -10631,4 +10626,16 @@ func parseTopTenDate(value string) time.Time {
 		}
 	}
 	return time.Time{}
+}
+
+func isDateBasedSeriesClassification(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.NewReplacer("_", " ", "-", " ").Replace(normalized)
+	normalized = strings.Join(strings.Fields(normalized), " ")
+	switch normalized {
+	case "talk", "talk show", "news", "game show", "soap", "soap opera":
+		return true
+	default:
+		return false
+	}
 }

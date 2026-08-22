@@ -132,6 +132,9 @@ func TestCandidateMatchesDailyDate(t *testing.T) {
 		{"Different format same date", "The-Daily-Show-2026-01-22.mkv", "2026-01-22", 0, true},
 		{"Underscore date same date", "Dateline.NBC.2026_05_16.1080p.WEB.h264-GROUP", "2026-05-16", 0, true},
 		{"Non-padded date same date", "Dateline.NBC.2026.5.16.1080p.WEB.h264-GROUP", "2026-05-16", 0, true},
+		{"Ordinal human date", "Coronation street 18th Aug 2026 1080 (Deep71)[1337X]", "2026-08-18", 0, true},
+		{"Compact human date", "Coronation Street 17Aug2026 1080", "2026-08-17", 0, true},
+		{"Wrong ordinal human date", "Coronation street 17th Aug 2026 1080 (Deep71)[1337X]", "2026-08-18", 0, false},
 
 		// Wrong date (exact match required)
 		{"Wrong date", "The.Daily.Show.2026.01.21.Guest.mkv", "2026-01-22", 0, false},

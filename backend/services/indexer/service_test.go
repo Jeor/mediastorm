@@ -1239,6 +1239,36 @@ func TestBuildSearchQueries_AnimeAbsoluteEpisode(t *testing.T) {
 	}
 }
 
+func TestBuildSearchQueries_DateBasedSoapEpisode(t *testing.T) {
+	opts := SearchOptions{
+		Query:         "Coronation Street S67E151",
+		MediaType:     "series",
+		IsDaily:       true,
+		TargetAirDate: "2026-08-18",
+	}
+
+	queries := buildSearchQueries(opts, debrid.ParseQuery(opts.Query), []string{"Corrie"})
+	want := []string{
+		"Coronation Street 2026.08.18",
+		"Coronation Street 2026 08 18",
+		"Corrie 2026.08.18",
+		"Corrie 2026 08 18",
+		"Coronation Street S67E151",
+	}
+	for _, expected := range want {
+		found := false
+		for _, query := range queries {
+			if query == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected query %q in %v", expected, queries)
+		}
+	}
+}
+
 func TestBuildSearchQueries_UFCEventAddsShortEventQuery(t *testing.T) {
 	opts := SearchOptions{
 		Query:     "UFC 322: Della Maddalena vs Makhachev",

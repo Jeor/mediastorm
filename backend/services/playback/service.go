@@ -172,6 +172,15 @@ func NewService(cfg *config.Manager, nzbSystem *integration.NzbSystem, metadataS
 	return service
 }
 
+// SetDebridFullProber wires the shared media prober into the debrid resolver
+// used by prequeue, including pre-resolved scraper results.
+func (s *Service) SetDebridFullProber(prober debrid.PreResolvedFullProber) {
+	if s == nil || s.debrid == nil {
+		return
+	}
+	s.debrid.SetFullProber(prober)
+}
+
 // ResolveBatch performs a single set of provider API calls and resolves all episodes from memory.
 // Only supported for debrid results.
 func (s *Service) ResolveBatch(ctx context.Context, candidate models.NZBResult, episodes []models.BatchEpisodeTarget) (*models.BatchResolveResponse, error) {

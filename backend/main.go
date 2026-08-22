@@ -760,6 +760,7 @@ func main() {
 	localBaseURL := fmt.Sprintf("http://127.0.0.1:%d", settings.Server.Port)
 	videoHandler.SetLocalBaseURL(localBaseURL)
 	debridHealthService.SetFullProber(videoHandler)
+	playbackService.SetDebridFullProber(videoHandler)
 	// Cast capability cache (passive probe + playback observation). HTTP list/describe
 	// endpoints can be mounted later; the store is required for cast session decisions.
 	castCapsHandler := handlers.NewCastCapabilitiesHandler(settings.Cache.Directory)

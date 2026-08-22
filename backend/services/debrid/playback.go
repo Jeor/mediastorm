@@ -46,6 +46,14 @@ func NewPlaybackService(cfg *config.Manager, healthService *HealthService) *Play
 	}
 }
 
+// SetFullProber wires the shared full media prober into pre-resolved health checks.
+func (s *PlaybackService) SetFullProber(prober PreResolvedFullProber) {
+	if s == nil || s.healthService == nil {
+		return
+	}
+	s.healthService.SetFullProber(prober)
+}
+
 // Resolve checks if a debrid item is cached and returns playback information.
 // For debrid, we add the torrent, select files, and get the download link.
 func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {

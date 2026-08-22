@@ -23,6 +23,8 @@ func TestRealDebridRestrictionForCandidate(t *testing.T) {
 	}{
 		{name: "web dl", provider: realDebrid, title: "Movie.2026.1080p.WEB-DL.H264-GROUP", restricted: true},
 		{name: "web h264 raw title", provider: realDebrid, title: "Movie 2026", rawTitle: "Movie.2026.WEB.H264-GROUP", restricted: true},
+		{name: "web h264 spaced", provider: realDebrid, title: "Movie 2026 1080p WEB H264-GROUP", restricted: true},
+		{name: "web x264 spaced", provider: realDebrid, title: "Movie 2026 1080p WEB x264-GROUP", restricted: true},
 		{name: "remux remains eligible", provider: realDebrid, title: "Movie.2026.2160p.UHD.BluRay.REMUX", restricted: false},
 		{name: "other provider remains eligible", provider: torbox, title: "Movie.2026.1080p.WEB-DL.H264-GROUP", restricted: false},
 	}

@@ -12,7 +12,7 @@ import (
 
 // This is the existing restricted-file ranking preset, now applied only when
 // deciding whether Real-Debrid is eligible to resolve a candidate.
-const realDebridRestrictedReleaseTerm = `/(?:web-dl|webrip|bdrip|hdrip|dvdrip|bluray\.x264|hdtv\.(?:x264|xvid)|web\.(?:x264|h264))/`
+const realDebridRestrictedReleaseTerm = `/(?:web-dl|webrip|bdrip|hdrip|dvdrip|bluray\.x264|hdtv\.(?:x264|xvid)|web[ ._-]+(?:x264|h264))/`
 const realDebridRestrictedTermsFilterAttribute = "realDebridRestrictedTermsFilterEnabled"
 
 var compiledRealDebridRestrictedReleaseTerms = resultfilter.CompileTerms([]string{realDebridRestrictedReleaseTerm})

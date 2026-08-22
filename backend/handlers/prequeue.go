@@ -446,20 +446,21 @@ type prequeueScopeSignature struct {
 
 func configFilterToUserFilter(f config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(f.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(f.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(f.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(f.HDRDVPolicy),
-		RequiredTerms:              append([]string(nil), f.RequiredTerms...),
-		FilterOutTerms:             append([]string(nil), f.FilterOutTerms...),
-		PreferredTerms:             append([]string(nil), f.PreferredTerms...),
-		NonPreferredTerms:          append([]string(nil), f.NonPreferredTerms...),
-		DownloadPreferredTerms:     append([]string(nil), f.DownloadPreferredTerms...),
-		PreferredScraper:           models.StringPtr(f.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(f.ServicePriority)),
-		UnknownTrackPolicy:         string(f.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(f.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(f.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(f.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(f.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(f.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(f.HDRDVPolicy),
+		RequiredTerms:                          append([]string(nil), f.RequiredTerms...),
+		FilterOutTerms:                         append([]string(nil), f.FilterOutTerms...),
+		PreferredTerms:                         append([]string(nil), f.PreferredTerms...),
+		NonPreferredTerms:                      append([]string(nil), f.NonPreferredTerms...),
+		DownloadPreferredTerms:                 append([]string(nil), f.DownloadPreferredTerms...),
+		PreferredScraper:                       models.StringPtr(f.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(f.ServicePriority)),
+		UnknownTrackPolicy:                     string(f.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(f.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(f.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(f.RealDebridRestrictedTermsFilterEnabled),
 	}
 }
 
@@ -516,6 +517,9 @@ func applyClientScopeOverrides(sig *prequeueScopeSignature, clientSettings *mode
 	}
 	if clientSettings.UnknownTrackPolicy != nil {
 		sig.Filtering.UnknownTrackPolicy = *clientSettings.UnknownTrackPolicy
+	}
+	if clientSettings.RealDebridRestrictedTermsFilterEnabled != nil {
+		sig.Filtering.RealDebridRestrictedTermsFilterEnabled = clientSettings.RealDebridRestrictedTermsFilterEnabled
 	}
 	if clientSettings.AnimeLanguageEnabled != nil {
 		sig.AnimeFiltering.AnimeLanguageEnabled = clientSettings.AnimeLanguageEnabled

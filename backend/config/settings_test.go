@@ -16,6 +16,34 @@ func TestPlaybackSettingsNormalizeAllowedTrackLanguages(t *testing.T) {
 	}
 }
 
+func TestRealDebridRestrictedTermsFilterDefaultsOnAndPreservesOff(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"filtering":{}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	mgr := NewManager(settingsPath)
+	settings, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if !settings.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		t.Fatal("expected Real-Debrid restricted-term filter to default on")
+	}
+
+	settings.Filtering.RealDebridRestrictedTermsFilterEnabled = false
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	reloaded, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("reload settings: %v", err)
+	}
+	if reloaded.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		t.Fatal("expected explicit off setting to be preserved")
+	}
+}
+
 func TestPlaybackSettingsNormalizePrerollMediaScope(t *testing.T) {
 	playback := PlaybackSettings{PrerollMode: "default", PrerollMediaScope: " TV "}
 	playback.NormalizePreroll()

@@ -249,6 +249,9 @@ func applyUserFilterOverrides(dst *models.FilterSettings, src models.FilterSetti
 	if src.AdaptiveTargetBufferFactor != nil {
 		dst.AdaptiveTargetBufferFactor = src.AdaptiveTargetBufferFactor
 	}
+	if src.RealDebridRestrictedTermsFilterEnabled != nil {
+		dst.RealDebridRestrictedTermsFilterEnabled = src.RealDebridRestrictedTermsFilterEnabled
+	}
 }
 
 func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFilterSettings) {
@@ -284,6 +287,9 @@ func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFi
 	}
 	if src.UnknownTrackPolicy != nil {
 		dst.UnknownTrackPolicy = *src.UnknownTrackPolicy
+	}
+	if src.RealDebridRestrictedTermsFilterEnabled != nil {
+		dst.RealDebridRestrictedTermsFilterEnabled = src.RealDebridRestrictedTermsFilterEnabled
 	}
 }
 
@@ -324,18 +330,19 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 	bypassForAIO := globalSettings.Display.BypassFilteringForAIOStreamsOnly
 	// Start with global settings (as pointers)
 	filterSettings := models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+		PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 	}
 	splitByService := globalSettings.Filtering.SplitByService
 	var profileDebridFilter *models.FilterSettings
@@ -415,6 +422,9 @@ func (s *SearchService) getEffectiveFilterSettings(userID, clientID string, glob
 			}
 			if clientSettings.NonPreferredTerms != nil {
 				filterSettings.NonPreferredTerms = *clientSettings.NonPreferredTerms
+			}
+			if clientSettings.RealDebridRestrictedTermsFilterEnabled != nil {
+				filterSettings.RealDebridRestrictedTermsFilterEnabled = clientSettings.RealDebridRestrictedTermsFilterEnabled
 			}
 			if clientSettings.BypassFilteringForAIOStreamsOnly != nil {
 				bypassForAIO = *clientSettings.BypassFilteringForAIOStreamsOnly
@@ -659,6 +669,10 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 		}
 		aggregate = FilterResults(aggregate, filterOpts)
 	}
+	annotateRealDebridRestrictedTermsFilter(
+		aggregate,
+		models.BoolVal(filterSettings.RealDebridRestrictedTermsFilterEnabled, settings.Filtering.RealDebridRestrictedTermsFilterEnabled),
+	)
 
 	// Apply MaxResults limit after filtering
 	if opts.MaxResults > 0 && len(aggregate) > opts.MaxResults {

@@ -43,7 +43,7 @@ func TestUserEditableSettingsSchemaEligibility(t *testing.T) {
 	}
 
 	filtering := SettingsSchema["filtering"].(map[string]interface{})["fields"].(map[string]interface{})
-	for _, field := range []string{"adaptivePlaybackEnabled", "adaptiveTargetBufferFactor", "preferredScraper", "servicePriority"} {
+	for _, field := range []string{"adaptivePlaybackEnabled", "adaptiveTargetBufferFactor", "realDebridRestrictedTermsFilterEnabled", "preferredScraper", "servicePriority"} {
 		if filtering[field].(map[string]interface{})["userEditableEligible"] != true {
 			t.Fatalf("filtering.%s should be eligible", field)
 		}
@@ -111,6 +111,7 @@ func TestUserEditableSettingsSchemaIncludesSupportedScopes(t *testing.T) {
 		"display.simpleModeHomeShelves",
 		"filtering.debrid.hdrDvPolicy",
 		"filtering.preferredScraper",
+		"filtering.realDebridRestrictedTermsFilterEnabled",
 	})
 	if got := strings.Join(schema["display.badgeVisibility"].Scopes, ","); got != "profile" {
 		t.Fatalf("badge visibility scopes = %q", got)
@@ -122,6 +123,9 @@ func TestUserEditableSettingsSchemaIncludesSupportedScopes(t *testing.T) {
 	}
 	if got := strings.Join(schema["filtering.preferredScraper"].Scopes, ","); got != "profile" {
 		t.Fatalf("preferred scraper scopes = %q", got)
+	}
+	if got := strings.Join(schema["filtering.realDebridRestrictedTermsFilterEnabled"].Scopes, ","); got != "profile,device" {
+		t.Fatalf("Real-Debrid restriction filter scopes = %q", got)
 	}
 }
 

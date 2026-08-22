@@ -165,20 +165,21 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			MaxResultsPerResolution:       models.IntPtr(g.Playback.MaxResultsPerResolution),
 		},
 		Filtering: models.FilterSettings{
-			MaxSizeMovieGB:             models.FloatPtr(g.Filtering.MaxSizeMovieGB),
-			MaxSizeEpisodeGB:           models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:              models.StringPtr(g.Filtering.MaxResolution),
-			HDRDVPolicy:                models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
-			RequiredTerms:              g.Filtering.RequiredTerms,
-			FilterOutTerms:             g.Filtering.FilterOutTerms,
-			PreferredTerms:             g.Filtering.PreferredTerms,
-			NonPreferredTerms:          g.Filtering.NonPreferredTerms,
-			DownloadPreferredTerms:     g.Filtering.DownloadPreferredTerms,
-			PreferredScraper:           models.StringPtr(g.Filtering.PreferredScraper),
-			ServicePriority:            models.StringPtr(string(g.Filtering.ServicePriority)),
-			UnknownTrackPolicy:         string(g.Filtering.UnknownTrackPolicy),
-			AdaptivePlaybackEnabled:    models.BoolPtr(g.Filtering.AdaptivePlaybackEnabled),
-			AdaptiveTargetBufferFactor: models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor),
+			MaxSizeMovieGB:                         models.FloatPtr(g.Filtering.MaxSizeMovieGB),
+			MaxSizeEpisodeGB:                       models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
+			MaxResolution:                          models.StringPtr(g.Filtering.MaxResolution),
+			HDRDVPolicy:                            models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
+			RequiredTerms:                          g.Filtering.RequiredTerms,
+			FilterOutTerms:                         g.Filtering.FilterOutTerms,
+			PreferredTerms:                         g.Filtering.PreferredTerms,
+			NonPreferredTerms:                      g.Filtering.NonPreferredTerms,
+			DownloadPreferredTerms:                 g.Filtering.DownloadPreferredTerms,
+			PreferredScraper:                       models.StringPtr(g.Filtering.PreferredScraper),
+			ServicePriority:                        models.StringPtr(string(g.Filtering.ServicePriority)),
+			UnknownTrackPolicy:                     string(g.Filtering.UnknownTrackPolicy),
+			AdaptivePlaybackEnabled:                models.BoolPtr(g.Filtering.AdaptivePlaybackEnabled),
+			AdaptiveTargetBufferFactor:             models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor),
+			RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(g.Filtering.RealDebridRestrictedTermsFilterEnabled),
 		},
 		AnimeFiltering: models.AnimeFilteringSettings{
 			AnimeLanguageEnabled:   models.BoolPtr(g.AnimeFiltering.AnimeLanguageEnabled),
@@ -501,6 +502,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Filtering.AdaptiveTargetBufferFactor == nil {
 		eff.Filtering.AdaptiveTargetBufferFactor = models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor)
+	}
+	if eff.Filtering.RealDebridRestrictedTermsFilterEnabled == nil {
+		eff.Filtering.RealDebridRestrictedTermsFilterEnabled = models.BoolPtr(g.Filtering.RealDebridRestrictedTermsFilterEnabled)
 	}
 	if eff.Display.BypassFilteringForAIOStreamsOnly == nil {
 		eff.Display.BypassFilteringForAIOStreamsOnly = models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly)
@@ -897,6 +901,10 @@ func stripFiltering(f *models.FilterSettings, g config.FilterSettings) bool {
 	}
 	if f.AdaptiveTargetBufferFactor != nil && *f.AdaptiveTargetBufferFactor == g.AdaptiveTargetBufferFactor {
 		f.AdaptiveTargetBufferFactor = nil
+		changed = true
+	}
+	if f.RealDebridRestrictedTermsFilterEnabled != nil && *f.RealDebridRestrictedTermsFilterEnabled == g.RealDebridRestrictedTermsFilterEnabled {
+		f.RealDebridRestrictedTermsFilterEnabled = nil
 		changed = true
 	}
 	return changed
@@ -1365,6 +1373,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.UnknownTrackPolicy != nil && *cs.UnknownTrackPolicy == eff.Filtering.UnknownTrackPolicy {
 		cs.UnknownTrackPolicy = nil
+		changed = true
+	}
+	if cs.RealDebridRestrictedTermsFilterEnabled != nil && eff.Filtering.RealDebridRestrictedTermsFilterEnabled != nil && *cs.RealDebridRestrictedTermsFilterEnabled == *eff.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		cs.RealDebridRestrictedTermsFilterEnabled = nil
 		changed = true
 	}
 	if cs.BypassFilteringForAIOStreamsOnly != nil && eff.Display.BypassFilteringForAIOStreamsOnly != nil && *cs.BypassFilteringForAIOStreamsOnly == *eff.Display.BypassFilteringForAIOStreamsOnly {

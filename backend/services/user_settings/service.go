@@ -757,6 +757,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Filtering.UnknownTrackPolicy != "" ||
 		s.Filtering.AdaptivePlaybackEnabled != nil ||
 		s.Filtering.AdaptiveTargetBufferFactor != nil ||
+		s.Filtering.RealDebridRestrictedTermsFilterEnabled != nil ||
 		s.Filtering.SplitByService != nil ||
 		s.Filtering.Debrid != nil ||
 		s.Filtering.Usenet != nil {

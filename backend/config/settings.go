@@ -1243,6 +1243,10 @@ type FilterSettings struct {
 	// AdaptiveTargetBufferFactor is the fraction of measured throughput a file's average
 	// bitrate may consume and still be considered comfortably streamable (0-1, default 0.7).
 	AdaptiveTargetBufferFactor float64 `json:"adaptiveTargetBufferFactor,omitempty"`
+	// RealDebridRestrictedTermsFilterEnabled skips Real-Debrid resolution for
+	// release titles matching the known restricted-file pattern. The candidate
+	// remains eligible for other debrid providers and Usenet.
+	RealDebridRestrictedTermsFilterEnabled bool `json:"realDebridRestrictedTermsFilterEnabled"`
 	// SplitByService enables Debrid/Usenet overrides for ranking/filtering fields.
 	SplitByService bool            `json:"splitByService,omitempty"`
 	Debrid         *FilterSettings `json:"debrid,omitempty"`
@@ -1842,13 +1846,14 @@ func DefaultSettings() Settings {
 			HomeHeroScale:                1.0,
 		},
 		Filtering: FilterSettings{
-			MaxSizeMovieGB:             0,                       // 0 means no limit
-			MaxSizeEpisodeGB:           0,                       // 0 means no limit
-			HDRDVPolicy:                HDRDVPolicyIncludeHDRDV, // "hdr_dv" = allow all content (no HDR/DV filtering)
-			ServicePriority:            StreamingServicePriorityNone,
-			UnknownTrackPolicy:         UnknownTrackPolicyNone,
-			AdaptivePlaybackEnabled:    false, // opt-in
-			AdaptiveTargetBufferFactor: 0.7,
+			MaxSizeMovieGB:                         0,                       // 0 means no limit
+			MaxSizeEpisodeGB:                       0,                       // 0 means no limit
+			HDRDVPolicy:                            HDRDVPolicyIncludeHDRDV, // "hdr_dv" = allow all content (no HDR/DV filtering)
+			ServicePriority:                        StreamingServicePriorityNone,
+			UnknownTrackPolicy:                     UnknownTrackPolicyNone,
+			AdaptivePlaybackEnabled:                false, // opt-in
+			AdaptiveTargetBufferFactor:             0.7,
+			RealDebridRestrictedTermsFilterEnabled: true,
 		},
 		AnimeFiltering: AnimeFilteringSettings{},
 		UI: UISettings{
@@ -2157,6 +2162,9 @@ func (m *Manager) Load() (Settings, error) {
 
 	// Migrate excludeHdr (bool) to hdrDvPolicy (string enum)
 	if filteringRaw, ok := raw["filtering"].(map[string]interface{}); ok {
+		if _, exists := filteringRaw["realDebridRestrictedTermsFilterEnabled"]; !exists {
+			filteringRaw["realDebridRestrictedTermsFilterEnabled"] = true
+		}
 		// Only migrate if hdrDvPolicy is not already set
 		if _, hasPolicy := filteringRaw["hdrDvPolicy"]; !hasPolicy {
 			if excludeHdr, hasExclude := filteringRaw["excludeHdr"]; hasExclude {
@@ -2173,6 +2181,10 @@ func (m *Manager) Load() (Settings, error) {
 				}
 				delete(filteringRaw, "excludeHdr")
 			}
+		}
+	} else {
+		raw["filtering"] = map[string]interface{}{
+			"realDebridRestrictedTermsFilterEnabled": true,
 		}
 	}
 

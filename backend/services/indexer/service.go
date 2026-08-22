@@ -236,20 +236,21 @@ type effectiveRankingBundle struct {
 
 func filterSettingsFromConfig(in config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(in.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(in.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(in.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(in.HDRDVPolicy),
-		RequiredTerms:              append([]string(nil), in.RequiredTerms...),
-		FilterOutTerms:             append([]string(nil), in.FilterOutTerms...),
-		PreferredTerms:             append([]string(nil), in.PreferredTerms...),
-		NonPreferredTerms:          append([]string(nil), in.NonPreferredTerms...),
-		DownloadPreferredTerms:     append([]string(nil), in.DownloadPreferredTerms...),
-		PreferredScraper:           models.StringPtr(in.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(in.ServicePriority)),
-		UnknownTrackPolicy:         string(in.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(in.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(in.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(in.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(in.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(in.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(in.HDRDVPolicy),
+		RequiredTerms:                          append([]string(nil), in.RequiredTerms...),
+		FilterOutTerms:                         append([]string(nil), in.FilterOutTerms...),
+		PreferredTerms:                         append([]string(nil), in.PreferredTerms...),
+		NonPreferredTerms:                      append([]string(nil), in.NonPreferredTerms...),
+		DownloadPreferredTerms:                 append([]string(nil), in.DownloadPreferredTerms...),
+		PreferredScraper:                       models.StringPtr(in.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(in.ServicePriority)),
+		UnknownTrackPolicy:                     string(in.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(in.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(in.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(in.RealDebridRestrictedTermsFilterEnabled),
 	}
 }
 
@@ -296,6 +297,9 @@ func applyUserFilterOverrides(dst *models.FilterSettings, src models.FilterSetti
 	if src.AdaptiveTargetBufferFactor != nil {
 		dst.AdaptiveTargetBufferFactor = src.AdaptiveTargetBufferFactor
 	}
+	if src.RealDebridRestrictedTermsFilterEnabled != nil {
+		dst.RealDebridRestrictedTermsFilterEnabled = src.RealDebridRestrictedTermsFilterEnabled
+	}
 }
 
 func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFilterSettings) {
@@ -332,6 +336,9 @@ func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFi
 	if src.UnknownTrackPolicy != nil {
 		dst.UnknownTrackPolicy = *src.UnknownTrackPolicy
 	}
+	if src.RealDebridRestrictedTermsFilterEnabled != nil {
+		dst.RealDebridRestrictedTermsFilterEnabled = src.RealDebridRestrictedTermsFilterEnabled
+	}
 }
 
 func filterBundleForService(bundle effectiveFilterBundle, serviceType models.ContentServiceType) models.FilterSettings {
@@ -350,20 +357,21 @@ func filterBundleForService(bundle effectiveFilterBundle, serviceType models.Con
 func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSettings config.Settings) (models.FilterSettings, models.AnimeFilteringSettings, effectiveOverrides) {
 	// Start with global settings (as pointers)
 	filterSettings := models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-		DownloadPreferredTerms:     globalSettings.Filtering.DownloadPreferredTerms,
-		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-		UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+		DownloadPreferredTerms:                 globalSettings.Filtering.DownloadPreferredTerms,
+		PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		UnknownTrackPolicy:                     string(globalSettings.Filtering.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 	}
 	overrides := effectiveOverrides{
 		BypassFilteringForAIOStreamsOnly: models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
@@ -462,6 +470,9 @@ func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSett
 			}
 			if clientSettings.UnknownTrackPolicy != nil {
 				filterSettings.UnknownTrackPolicy = *clientSettings.UnknownTrackPolicy
+			}
+			if clientSettings.RealDebridRestrictedTermsFilterEnabled != nil {
+				filterSettings.RealDebridRestrictedTermsFilterEnabled = clientSettings.RealDebridRestrictedTermsFilterEnabled
 			}
 			if clientSettings.BypassFilteringForAIOStreamsOnly != nil {
 				overrides.BypassFilteringForAIOStreamsOnly = clientSettings.BypassFilteringForAIOStreamsOnly

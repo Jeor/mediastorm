@@ -439,6 +439,10 @@ func (s *PlaybackService) resolveSingleProvider(
 		}
 		return nil, fmt.Errorf("provider %q not configured or not enabled", explicitProvider)
 	}
+	if err := realDebridRestrictionForCandidate(settings, *providerConfig, candidate); err != nil {
+		log.Printf("[debrid-playback] %s; title=%q", err, strings.TrimSpace(candidate.Title))
+		return nil, err
+	}
 
 	// Get provider from registry
 	client, ok := GetProvider(strings.ToLower(providerConfig.Provider), providerConfig.APIKey)
@@ -862,17 +866,28 @@ func (s *PlaybackService) ResolveBatch(ctx context.Context, candidate models.NZB
 
 	explicitProvider := strings.TrimSpace(candidate.Attributes["provider"])
 	var providerConfig *config.DebridProviderSettings
+	var restrictedErr error
 	for i := range settings.Streaming.DebridProviders {
 		p := &settings.Streaming.DebridProviders[i]
 		if !p.Enabled || strings.TrimSpace(p.APIKey) == "" {
 			continue
 		}
 		if explicitProvider == "" || strings.EqualFold(p.Provider, explicitProvider) {
+			if err := realDebridRestrictionForCandidate(settings, *p, candidate); err != nil {
+				restrictedErr = err
+				if explicitProvider != "" {
+					return nil, err
+				}
+				continue
+			}
 			providerConfig = p
 			break
 		}
 	}
 	if providerConfig == nil {
+		if restrictedErr != nil {
+			return nil, restrictedErr
+		}
 		return nil, fmt.Errorf("no debrid provider configured or enabled")
 	}
 	client, ok := GetProvider(strings.ToLower(providerConfig.Provider), providerConfig.APIKey)

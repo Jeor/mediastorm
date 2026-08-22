@@ -33,7 +33,7 @@ var userEditableFields = map[string]map[string]struct{}{
 		"maxSizeMovieGb", "maxSizeEpisodeGb", "maxResolution", "hdrDvPolicy", "requiredTerms",
 		"filterOutTerms", "preferredTerms", "nonPreferredTerms", "downloadPreferredTerms",
 		"unknownTrackPolicy", "preferredScraper", "servicePriority", "adaptivePlaybackEnabled",
-		"adaptiveTargetBufferFactor", "splitByService",
+		"adaptiveTargetBufferFactor", "realDebridRestrictedTermsFilterEnabled", "splitByService",
 	),
 	"filtering.debrid": nil,
 	"filtering.usenet": nil,
@@ -69,7 +69,7 @@ var deviceEditableFields = map[string]map[string]struct{}{
 	"filtering": fieldSet(
 		"maxSizeMovieGb", "maxSizeEpisodeGb", "maxResolution", "hdrDvPolicy", "requiredTerms",
 		"filterOutTerms", "preferredTerms", "nonPreferredTerms", "downloadPreferredTerms",
-		"unknownTrackPolicy", "splitByService",
+		"unknownTrackPolicy", "realDebridRestrictedTermsFilterEnabled", "splitByService",
 	),
 	"filtering.debrid": userEditableFields["filtering.debrid"],
 	"filtering.usenet": userEditableFields["filtering.usenet"],

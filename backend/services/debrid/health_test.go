@@ -12,6 +12,63 @@ import (
 	"testing"
 )
 
+type reusableFullProber struct {
+	result *models.VideoFullResult
+	calls  int
+}
+
+func (p *reusableFullProber) ProbeVideoFull(context.Context, string) (*models.VideoFullResult, error) {
+	p.calls++
+	return p.result, nil
+}
+
+func TestPreResolvedPlaybackReturnsReusableFullProbe(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodHead {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		w.Header().Set("Content-Length", "10485760")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	probe := &models.VideoFullResult{
+		VideoCodec: "hevc",
+		AudioStreams: []models.AudioStreamInfo{
+			{Index: 1, Codec: "ac3", Language: "eng"},
+		},
+		SubtitleStreams: []models.SubtitleStreamInfo{
+			{Index: 2, Codec: "hdmv_pgs_subtitle", Language: "eng"},
+		},
+	}
+	prober := &reusableFullProber{result: probe}
+	cfg := config.NewManager(t.TempDir() + "/settings.json")
+	hs := NewHealthService(cfg)
+	hs.SetFFProbePath("/path/that/must/not/run")
+	hs.SetFullProber(prober)
+	resolution, err := NewPlaybackService(cfg, hs).Resolve(context.Background(), models.NZBResult{
+		Title:       "Bilby.2018.2160p.UHD.BluRay.Remux-PmP.mkv",
+		Link:        server.URL + "/video.mkv",
+		ServiceType: models.ServiceTypeDebrid,
+		Attributes: map[string]string{
+			"preresolved": "true",
+			"stream_url":  server.URL + "/video.mkv",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if resolution.Probe == nil {
+		t.Fatalf("expected reusable probe, got %#v", resolution)
+	}
+	if resolution.Probe.VideoCodec != "hevc" || len(resolution.Probe.AudioStreams) != 1 {
+		t.Fatalf("reusable probe metadata = %#v", resolution.Probe)
+	}
+	if prober.calls != 1 {
+		t.Fatalf("ProbeVideoFull calls = %d, want 1", prober.calls)
+	}
+}
+
 func TestPreResolvedHealthUsesSingleProbeForValidationAndTracks(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodHead {

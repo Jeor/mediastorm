@@ -72,6 +72,7 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 		log.Printf("[debrid-playback] using pre-resolved stream URL: %s", safeURLForLog(streamURL))
 
 		// Verify the pre-resolved stream is actually cached (not a placeholder)
+		var mediaProbe *models.VideoFullResult
 		if s.healthService != nil {
 			healthCheck, err := s.healthService.CheckHealth(ctx, candidate, false)
 			if err != nil {
@@ -82,6 +83,7 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 				log.Printf("[debrid-playback] pre-resolved stream not cached: sourceCacheStatus=%q actualStatus=%q actualCached=%t error=%s", cacheHint, healthCheck.Status, healthCheck.Cached, healthCheck.ErrorMessage)
 				return nil, fmt.Errorf("stream not cached: %s", healthCheck.ErrorMessage)
 			}
+			mediaProbe = cloneVideoFullResult(healthCheck.MediaProbe)
 			log.Printf("[debrid-playback] pre-resolved stream verified as cached: sourceCacheStatus=%q actualStatus=%q actualCached=%t", cacheHint, healthCheck.Status, healthCheck.Cached)
 		}
 
@@ -100,6 +102,7 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 			DebridProvider: firstNonEmpty(candidate.Attributes["debridProvider"], candidate.Attributes["provider"]),
 			FileSize:       candidate.SizeBytes,
 			SourceNZBPath:  streamURL,
+			Probe:          mediaProbe,
 		}
 
 		log.Printf("[debrid-playback] TIMING: pre-resolved resolution complete (took: %v): url=%s filename=%s", time.Since(resolveStart), safeURLForLog(streamURL), filename)

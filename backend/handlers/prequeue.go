@@ -683,30 +683,8 @@ type VideoMetadataProber interface {
 	ProbeVideoMetadata(ctx context.Context, path string) (*VideoMetadataResult, error)
 }
 
-// VideoFullResult combines HDR detection and stream metadata in a single result
-type VideoFullResult struct {
-	// HDR detection
-	HasDolbyVision           bool
-	HasHDR10                 bool
-	DolbyVisionProfile       string
-	DolbyVisionConfiguration *models.DolbyVisionConfiguration
-	// Video codec detection
-	VideoCodec   string // e.g., "h264", "hevc", "mpeg4" - used to detect incompatible codecs
-	VideoPixFmt  string // e.g., "yuv420p", "yuv420p10le" - used for browser compatibility
-	VideoProfile string // e.g., "High", "High 10" - used for browser compatibility
-	VideoWidth   int    // Primary video stream width in pixels
-	VideoHeight  int    // Primary video stream height in pixels
-	VideoLevel   int    // H.264 level as reported by ffprobe (for example, 41)
-	AvgFrameRate string // e.g., "24000/1001" from primary video stream
-	// Audio codec detection
-	HasTrueHD          bool // Audio requires transcoding (TrueHD, DTS-HD, etc.)
-	HasCompatibleAudio bool // Audio can be copied without transcoding
-	// Stream metadata
-	AudioStreams    []AudioStreamInfo
-	SubtitleStreams []SubtitleStreamInfo
-	// Duration in seconds (for seeking calculations)
-	Duration float64
-}
+// VideoFullResult combines HDR detection and stream metadata in a single result.
+type VideoFullResult = models.VideoFullResult
 
 // VideoFullProber interface for combined HDR and metadata probing in a single ffprobe call
 type VideoFullProber interface {
@@ -721,6 +699,16 @@ func validatePrequeueVideoProbe(result *VideoFullResult) error {
 		return fmt.Errorf("metadata probe found no playable video track")
 	}
 	return nil
+}
+
+func probeResolvedCandidate(ctx context.Context, prober VideoFullProber, resolution *models.PlaybackResolution) (*VideoFullResult, error) {
+	if resolution != nil && resolution.Probe != nil {
+		return resolution.Probe, nil
+	}
+	if prober == nil || resolution == nil {
+		return nil, nil
+	}
+	return prober.ProbeVideoFull(ctx, resolution.WebDAVPath)
 }
 
 func validatePrequeueEpisodeDuration(mediaType string, episode *models.EpisodeReference, durationSeconds float64) error {
@@ -1987,21 +1975,26 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			continue
 		}
 
-		var probeResult *VideoFullResult
+		probeResult := resolution.Probe
 		var metadataResult *VideoMetadataResult
 		h.updatePrequeueProgress(prequeueID, "validating_candidate", result.Title, i+1, len(allResults))
+		if probeResult != nil {
+			log.Printf("[prequeue] Reusing probe returned by playback resolution for %s", result.Title)
+		}
 
 		// Every resolved prequeue candidate must expose a playable video track.
 		// This probe is also reused below for HDR and track selection, so moving it
 		// into candidate selection does not add work for the successful candidate.
-		if h.fullProber != nil {
+		if probeResult != nil || h.fullProber != nil {
 			var probeErr error
-			probeResult, probeErr = h.fullProber.ProbeVideoFull(ctx, resolution.WebDAVPath)
-			if probeErr != nil {
-				log.Printf("[prequeue] Probe check failed for %s: %v, trying next result", result.Title, probeErr)
-				resolution = nil
-				lastErr = probeErr
-				continue
+			if probeResult == nil {
+				probeResult, probeErr = probeResolvedCandidate(ctx, h.fullProber, resolution)
+				if probeErr != nil {
+					log.Printf("[prequeue] Probe check failed for %s: %v, trying next result", result.Title, probeErr)
+					resolution = nil
+					lastErr = probeErr
+					continue
+				}
 			}
 			if probeErr = validatePrequeueVideoProbe(probeResult); probeErr != nil {
 				log.Printf("[prequeue] Unplayable probe result for %s: %v, trying next result", result.Title, probeErr)

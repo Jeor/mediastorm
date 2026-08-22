@@ -40,6 +40,7 @@ const preResolvedPositiveHealthTTL = 2 * time.Minute
 type HealthService struct {
 	cfg         *config.Manager
 	ffprobePath string
+	fullProber  PreResolvedFullProber
 	// Track cache keyed by info hash
 	trackCache   map[string]*trackCacheEntry
 	trackCacheMu sync.RWMutex
@@ -57,6 +58,11 @@ type HealthService struct {
 	activeTorrentsMu sync.Mutex
 }
 
+// PreResolvedFullProber supplies the same full media probe consumed by prequeue.
+type PreResolvedFullProber interface {
+	ProbeVideoFull(ctx context.Context, path string) (*models.VideoFullResult, error)
+}
+
 // NewHealthService creates a new debrid health check service.
 func NewHealthService(cfg *config.Manager) *HealthService {
 	return &HealthService{
@@ -71,6 +77,11 @@ func NewHealthService(cfg *config.Manager) *HealthService {
 // SetFFProbePath sets the ffprobe path for probing pre-resolved streams.
 func (s *HealthService) SetFFProbePath(path string) {
 	s.ffprobePath = path
+}
+
+// SetFullProber lets pre-resolved health verification produce reusable playback metadata.
+func (s *HealthService) SetFullProber(prober PreResolvedFullProber) {
+	s.fullProber = prober
 }
 
 // MarkTorrentActive registers a torrent as in-use by playback so that
@@ -138,7 +149,22 @@ func cloneDebridHealthCheck(in DebridHealthCheck) DebridHealthCheck {
 	if in.SubtitleTracks != nil {
 		out.SubtitleTracks = append([]SubtitleTrackInfo(nil), in.SubtitleTracks...)
 	}
+	out.MediaProbe = cloneVideoFullResult(in.MediaProbe)
 	return out
+}
+
+func cloneVideoFullResult(in *models.VideoFullResult) *models.VideoFullResult {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	out.AudioStreams = append([]models.AudioStreamInfo(nil), in.AudioStreams...)
+	out.SubtitleStreams = append([]models.SubtitleStreamInfo(nil), in.SubtitleStreams...)
+	if in.DolbyVisionConfiguration != nil {
+		configuration := *in.DolbyVisionConfiguration
+		out.DolbyVisionConfiguration = &configuration
+	}
+	return &out
 }
 
 func (s *HealthService) cachedPreResolvedHealth(key string) (*DebridHealthCheck, bool) {
@@ -197,10 +223,11 @@ type DebridHealthCheck struct {
 	InfoHash     string `json:"infoHash,omitempty"`
 	ErrorMessage string `json:"errorMessage,omitempty"`
 	// Track info (populated when cached)
-	AudioTracks     []AudioTrackInfo    `json:"audioTracks,omitempty"`
-	SubtitleTracks  []SubtitleTrackInfo `json:"subtitleTracks,omitempty"`
-	TrackProbeError string              `json:"trackProbeError,omitempty"`
-	TracksLoading   bool                `json:"tracksLoading,omitempty"`
+	AudioTracks     []AudioTrackInfo        `json:"audioTracks,omitempty"`
+	SubtitleTracks  []SubtitleTrackInfo     `json:"subtitleTracks,omitempty"`
+	TrackProbeError string                  `json:"trackProbeError,omitempty"`
+	TracksLoading   bool                    `json:"tracksLoading,omitempty"`
+	MediaProbe      *models.VideoFullResult `json:"-"`
 }
 
 // AudioTrackInfo contains metadata for an audio track.
@@ -658,11 +685,27 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 			Provider: result.Attributes["tracker"],
 		}
 
-		// Use one full track probe both to reject no-audio placeholder videos and
-		// populate track metadata. This used to run an audio-only ffprobe followed
-		// by another full ffprobe against the same remote stream.
-		if s.ffprobePath != "" && streamURL != "" {
-			tracks, err := s.probeAllTracksWithTimeout(ctx, streamURL, healthCheckTimeout)
+		// Prefer the shared full prober so prequeue can reuse the exact result.
+		// Retain the local track probe as a fallback for callers that do not wire
+		// the video handler into this service.
+		if streamURL != "" && (s.fullProber != nil || s.ffprobePath != "") {
+			var (
+				tracks     *TrackProbeResult
+				mediaProbe *models.VideoFullResult
+				err        error
+			)
+			if s.fullProber != nil {
+				probeCtx, probeCancel := context.WithTimeout(ctx, healthCheckTimeout)
+				mediaProbe, err = s.fullProber.ProbeVideoFull(probeCtx, streamURL)
+				probeCancel()
+				if err == nil && mediaProbe != nil {
+					tracks = trackProbeResultFromMediaProbe(mediaProbe)
+				} else if err == nil {
+					err = fmt.Errorf("full media probe returned no result")
+				}
+			} else {
+				tracks, err = s.probeAllTracksWithTimeout(ctx, streamURL, healthCheckTimeout)
+			}
 			if err != nil {
 				log.Printf("[debrid-health] probe failed for pre-resolved stream %s: %v", result.Title, err)
 				if cached, ok := s.cachedPreResolvedHealth(preResolvedCacheKey); ok {
@@ -690,6 +733,7 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 			}
 			healthResult.AudioTracks = tracks.AudioTracks
 			healthResult.SubtitleTracks = tracks.SubtitleTracks
+			healthResult.MediaProbe = cloneVideoFullResult(mediaProbe)
 			log.Printf("[debrid-health] pre-resolved stream %s verified with %d audio streams", result.Title, len(tracks.AudioTracks))
 		}
 
@@ -743,6 +787,27 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 	}
 
 	return s.checkHealthAcrossProviders(ctx, settings, result, infoHash, torrentURL, verifyUncached)
+}
+
+func trackProbeResultFromMediaProbe(probe *models.VideoFullResult) *TrackProbeResult {
+	result := &TrackProbeResult{
+		AudioTracks:    make([]AudioTrackInfo, 0, len(probe.AudioStreams)),
+		SubtitleTracks: make([]SubtitleTrackInfo, 0, len(probe.SubtitleStreams)),
+	}
+	for _, track := range probe.AudioStreams {
+		result.AudioTracks = append(result.AudioTracks, AudioTrackInfo{
+			Index: track.Index, Language: track.Language, Codec: track.Codec,
+			Profile: track.Profile, Title: track.Title,
+		})
+	}
+	for _, track := range probe.SubtitleStreams {
+		bitmapType, isBitmap := bitmapSubtitleCodecs[strings.ToLower(strings.TrimSpace(track.Codec))]
+		result.SubtitleTracks = append(result.SubtitleTracks, SubtitleTrackInfo{
+			Index: track.Index, Language: track.Language, Codec: track.Codec,
+			Title: track.Title, Forced: track.IsForced, IsBitmap: isBitmap, BitmapType: bitmapType,
+		})
+	}
+	return result
 }
 
 // checkHealthAcrossProviders performs the mutating add/check/remove health probe

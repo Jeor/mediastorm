@@ -5081,7 +5081,7 @@ func resolveStremioLiveStreamResource(ctx context.Context, streamResourceURL, pr
 		return resolvedStremioStream{}, fmt.Errorf("stremio: resolve stream: %w", err)
 	}
 	if stream, ok := playableStremioStream(resp.Streams, selectedIndex); ok {
-		return stream, nil
+		return maybeRouteStremioStreamThroughAddonRelay(ctx, client, streamResourceURL, stream), nil
 	}
 	return resolvedStremioStream{}, fmt.Errorf("stremio: no playable stream for %s", streamResourceURL)
 }

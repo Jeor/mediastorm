@@ -253,6 +253,25 @@ func (s *Service) WithLanguage(language string) *Service {
 	return local
 }
 
+// ResolveSearchTitle resolves a catalog item in the requested language for
+// release-title discovery. Stable external IDs are preferred over the display
+// name so a localized title can always be mapped back to its English name.
+func (s *Service) ResolveSearchTitle(ctx context.Context, mediaType, name string, year int, imdbID, language string) (*models.Title, error) {
+	localized := s.WithLanguage(language)
+	if strings.EqualFold(strings.TrimSpace(mediaType), "movie") {
+		return localized.MovieInfo(ctx, models.MovieDetailsQuery{
+			Name:   strings.TrimSpace(name),
+			Year:   year,
+			IMDBID: strings.TrimSpace(imdbID),
+		})
+	}
+	return localized.SeriesInfo(ctx, models.SeriesDetailsQuery{
+		Name:   strings.TrimSpace(name),
+		Year:   year,
+		IMDBID: strings.TrimSpace(imdbID),
+	})
+}
+
 // SetYTDLPProxyURL updates the proxy URL passed to yt-dlp for YouTube requests.
 func (s *Service) SetYTDLPProxyURL(proxyURL string) {
 	proxyURL = strings.TrimSpace(proxyURL)

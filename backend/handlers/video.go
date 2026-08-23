@@ -5063,7 +5063,7 @@ func resolveStremioLiveStreamResource(ctx context.Context, streamResourceURL, pr
 		return resolvedStremioStream{}, err
 	}
 	if !isStremioStreamResourceURL(parsed) {
-		return resolvedStremioStream{URL: streamResourceURL}, nil
+		return resolvedStremioStream{URL: streamResourceURL, Index: -1}, nil
 	}
 
 	client, err := netproxy.NewHTTPClientWithOptions(netproxy.HTTPClientOptions{
@@ -5203,14 +5203,20 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	// HLS mode: create a segmented HLS session
 	selectedStremioStreamIndex := parseOptionalStremioStreamIndex(r.URL.Query().Get("stremioStreamIndex"))
 	var stremioRequestHeaders map[string]string
+	resolvedStremioIndex := -1
+	var availableStremioIndexes []int
 	if resolved, err := resolveStremioLiveStreamResource(r.Context(), liveURL, target.ProxyURL, selectedStremioStreamIndex); err != nil {
 		log.Printf("[video] failed to resolve stremio live HLS stream %q: %v", requestsecurity.URLForLog(liveURL), err)
 		http.Error(w, "failed to resolve live stream", http.StatusBadGateway)
 		return
-	} else if resolved.URL != liveURL {
-		log.Printf("[video] resolved stremio live HLS stream resource: %s -> %s", requestsecurity.URLForLog(liveURL), requestsecurity.URLForLog(resolved.URL))
-		liveURL = resolved.URL
+	} else {
 		stremioRequestHeaders = resolved.RequestHeaders
+		resolvedStremioIndex = resolved.Index
+		availableStremioIndexes = resolved.AvailableIndexes
+		if resolved.URL != liveURL {
+			log.Printf("[video] resolved stremio live HLS stream resource: %s -> %s", requestsecurity.URLForLog(liveURL), requestsecurity.URLForLog(resolved.URL))
+			liveURL = resolved.URL
+		}
 	}
 	if !h.requireAllowedExternalPath(w, r, liveURL) {
 		return
@@ -5246,6 +5252,10 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		// CC detection runs async — frontend polls /video/hls/{id}/cc-status
 		// Include initial state (always false at creation time since detection is background)
 		"hasClosedCaptions": false,
+	}
+	if resolvedStremioIndex >= 0 {
+		response["stremioStreamIndex"] = resolvedStremioIndex
+		response["stremioStreamIndexes"] = availableStremioIndexes
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {

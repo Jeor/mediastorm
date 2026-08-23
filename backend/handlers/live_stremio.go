@@ -109,8 +109,10 @@ type stremioChannelsCacheEntry struct {
 }
 
 type resolvedStremioStream struct {
-	URL            string
-	RequestHeaders map[string]string
+	URL              string
+	RequestHeaders   map[string]string
+	Index            int
+	AvailableIndexes []int
 }
 
 // normalizeStremioBaseURL strips a trailing slash and an optional
@@ -156,6 +158,7 @@ func firstPlayableStremioStreamURL(streams []stremioStream) (string, bool) {
 }
 
 func playableStremioStream(streams []stremioStream, selectedIndex int) (resolvedStremioStream, bool) {
+	availableIndexes := playableStremioStreamIndexes(streams)
 	for i, stream := range streams {
 		u, headers := normalizeStremioPlayableURL(stream.URL, stream.BehaviorHints.ProxyHeaders.Request)
 		if u == "" || isUnplayableStremioStreamURL(u) {
@@ -165,11 +168,25 @@ func playableStremioStream(streams []stremioStream, selectedIndex int) (resolved
 			continue
 		}
 		return resolvedStremioStream{
-			URL:            u,
-			RequestHeaders: headers,
+			URL:              u,
+			RequestHeaders:   headers,
+			Index:            i,
+			AvailableIndexes: availableIndexes,
 		}, true
 	}
 	return resolvedStremioStream{}, false
+}
+
+func playableStremioStreamIndexes(streams []stremioStream) []int {
+	indexes := make([]int, 0, len(streams))
+	for i, stream := range streams {
+		u, _ := normalizeStremioPlayableURL(stream.URL, stream.BehaviorHints.ProxyHeaders.Request)
+		if u == "" || isUnplayableStremioStreamURL(u) {
+			continue
+		}
+		indexes = append(indexes, i)
+	}
+	return indexes
 }
 
 func playableStremioStreamOptions(streams []stremioStream) []StremioStreamOption {

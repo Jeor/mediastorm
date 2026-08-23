@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -79,7 +80,8 @@ func stremioTestServer(t *testing.T, hits *int32) *httptest.Server {
 		_, _ = w.Write([]byte(`{"streams":[
 			{"name":"M3U8","description":"SONYLIV ENG","url":"http://cdn.test/f1-source-1.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://example.test/","Origin":"https://example.test","Bad\r\nHeader":"ignored"}}}},
 			{"name":"Subscribe","url":"https://stremverse.invalid/subscribe"},
-			{"name":"M3U8","description":"SONYLIV HIN","title":"Backup","url":"http://cdn.test/f1-source-2.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://backup.example.test/"}}}}
+			{"name":"M3U8","description":"SONYLIV HIN","title":"Backup","url":"http://cdn.test/f1-source-2.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://backup.example.test/"}}}},
+			{"name":"Web Stream","externalUrl":"https://addon.test/watch?event=1"}
 		]}`))
 	})
 	mux.HandleFunc("/stream/sport/sf:proxy.json", func(w http.ResponseWriter, r *http.Request) {
@@ -233,6 +235,9 @@ func TestResolveStremioStream(t *testing.T) {
 	if got.RequestHeaders["Referer"] != "https://example.test/" {
 		t.Errorf("resolved headers = %+v, want Referer", got.RequestHeaders)
 	}
+	if got.Index != 0 || !slices.Equal(got.AvailableIndexes, []int{0, 2}) {
+		t.Fatalf("resolved source selection = index %d available %v, want 0 and [0 2]", got.Index, got.AvailableIndexes)
+	}
 	if _, ok := got.RequestHeaders["Bad\r\nHeader"]; ok {
 		t.Errorf("unsafe header was not filtered: %+v", got.RequestHeaders)
 	}
@@ -246,6 +251,9 @@ func TestResolveStremioStream(t *testing.T) {
 	}
 	if got.RequestHeaders["Referer"] != "https://backup.example.test/" {
 		t.Errorf("selected headers = %+v, want backup Referer", got.RequestHeaders)
+	}
+	if got.Index != 2 || !slices.Equal(got.AvailableIndexes, []int{0, 2}) {
+		t.Fatalf("selected source selection = index %d available %v, want 2 and [0 2]", got.Index, got.AvailableIndexes)
 	}
 
 	got, err = h.resolveStremioStream(context.Background(), srv.URL+"/stream/sport/sf:proxy.json", "", -1)

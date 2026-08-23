@@ -98,6 +98,45 @@ func TestGetWithDefaults_SanitizesQuotedLanguages(t *testing.T) {
 	}
 }
 
+func TestApplyKidsProfileDefaultsEnablesSimpleModeWithoutOverridingChoice(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	explicitlyDisabled := models.UserSettings{
+		Display: models.DisplaySettings{SimpleMode: models.BoolPtr(false)},
+	}
+	if err := svc.Update("disabled-kid", explicitlyDisabled); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	changed, err := svc.ApplyKidsProfileDefaults("new-kid", "disabled-kid", "new-kid")
+	if err != nil {
+		t.Fatalf("ApplyKidsProfileDefaults: %v", err)
+	}
+	if changed != 1 {
+		t.Fatalf("changed = %d, want 1", changed)
+	}
+
+	defaulted, err := svc.Get("new-kid")
+	if err != nil {
+		t.Fatalf("Get new-kid: %v", err)
+	}
+	if defaulted == nil || defaulted.Display.SimpleMode == nil || !*defaulted.Display.SimpleMode {
+		t.Fatalf("new kids profile simple mode = %#v, want true", defaulted)
+	}
+
+	disabled, err := svc.Get("disabled-kid")
+	if err != nil {
+		t.Fatalf("Get disabled-kid: %v", err)
+	}
+	if disabled == nil || disabled.Display.SimpleMode == nil || *disabled.Display.SimpleMode {
+		t.Fatalf("explicit kids profile simple mode = %#v, want false", disabled)
+	}
+}
+
 func TestGetWithDefaults_SanitizesDefaultsFallback(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)

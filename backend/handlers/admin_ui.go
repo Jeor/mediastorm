@@ -7198,6 +7198,10 @@ func (h *AdminUIHandler) CreateProfile(w http.ResponseWriter, r *http.Request) {
 		user, err = h.usersService.SetKidsProfile(user.ID, true)
 		if err != nil {
 			log.Printf("[admin] failed to set kids profile for new profile %s: %v", user.ID, err)
+		} else if h.userSettingsService != nil {
+			if _, settingsErr := h.userSettingsService.ApplyKidsProfileDefaults(user.ID); settingsErr != nil {
+				log.Printf("[admin] failed to apply kids profile defaults for %s: %v", user.ID, settingsErr)
+			}
 		}
 	}
 
@@ -7409,6 +7413,11 @@ func (h *AdminUIHandler) SetKidsProfile(w http.ResponseWriter, r *http.Request) 
 		}
 		http.Error(w, err.Error(), status)
 		return
+	}
+	if req.IsKidsProfile && h.userSettingsService != nil {
+		if _, err := h.userSettingsService.ApplyKidsProfileDefaults(profileID); err != nil {
+			log.Printf("[admin] failed to apply kids profile defaults for %s: %v", profileID, err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

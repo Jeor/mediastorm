@@ -31,6 +31,23 @@ func TestDefaultUserSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsDisablesFrameSamplingFeatures(t *testing.T) {
+	settings := DefaultUserSettings()
+
+	options := map[string]*bool{
+		"crop-detect subtitle positioning": settings.Playback.SubtitleUseCropDetectPosition,
+		"credits detection":                settings.Playback.CreditsDetectionEnabled,
+	}
+	for name, option := range options {
+		if option == nil {
+			t.Fatalf("expected %s default to be set", name)
+		}
+		if *option {
+			t.Fatalf("expected %s to default to disabled", name)
+		}
+	}
+}
+
 func TestDefaultUserSettingsEnablesLiveClosedCaptionExtraction(t *testing.T) {
 	settings := DefaultUserSettings()
 

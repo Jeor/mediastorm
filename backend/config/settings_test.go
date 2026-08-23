@@ -172,6 +172,30 @@ func TestDefaultSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsDisablesCropDetectSubtitlePosition(t *testing.T) {
+	settings := DefaultSettings()
+
+	if settings.Playback.SubtitleUseCropDetectPosition {
+		t.Fatal("expected crop-detect subtitle positioning to default to disabled")
+	}
+}
+
+func TestLoadDefaultsMissingCropDetectSubtitlePositionToDisabled(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"playback":{"preferredPlayer":"native"}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Playback.SubtitleUseCropDetectPosition {
+		t.Fatal("expected missing crop-detect subtitle positioning setting to load disabled")
+	}
+}
+
 func TestDefaultSettingsDisablesSimpleMode(t *testing.T) {
 	settings := DefaultSettings()
 

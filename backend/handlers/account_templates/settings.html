@@ -513,7 +513,7 @@ function renderSettings() {
                         </div>
                         <div class="setting-control">
                             <label class="toggle-switch">
-                                <input type="checkbox" id="subtitleUseCropDetectPosition" ${(s.playback.subtitleUseCropDetectPosition ?? true) ? 'checked' : ''} onchange="markChanged()">
+                                <input type="checkbox" id="subtitleUseCropDetectPosition" ${(s.playback.subtitleUseCropDetectPosition ?? false) ? 'checked' : ''} onchange="markChanged()">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>

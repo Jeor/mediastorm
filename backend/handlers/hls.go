@@ -574,9 +574,9 @@ const (
 	// mpegtsDefaultPreloadSeconds is where FFmpeg's MPEG-TS muxer starts its clock when nothing
 	// overrides it: 1.4s, i.e. a first PTS of 126000 at 90kHz. Verified against a produced
 	// segment (`audio start_pts=126000`), not assumed.
-	mpegtsDefaultPreloadSeconds = 1.4
-	matroskaSeekBackoffBytes  int64 = 8 * 1024 * 1024 // request a little earlier to land on cluster boundary
-	matroskaMaxClusterScan    int64 = 32 * 1024 * 1024
+	mpegtsDefaultPreloadSeconds       = 1.4
+	matroskaSeekBackoffBytes    int64 = 8 * 1024 * 1024 // request a little earlier to land on cluster boundary
+	matroskaMaxClusterScan      int64 = 32 * 1024 * 1024
 
 	// Maximum number of input error recovery attempts before giving up
 	// This prevents infinite restart loops for persistently broken streams
@@ -2412,6 +2412,10 @@ func (m *HLSManager) CreateLiveSession(ctx context.Context, liveURL, provider, b
 			log.Printf("[hls] live session %s transcoding failed: %v", sessionID, err)
 			session.mu.Lock()
 			session.Completed = true
+			if session.SegmentsCreated == 0 && session.FatalError == "" {
+				session.FatalError = "Live stream failed before playback started"
+				session.FatalErrorTime = time.Now()
+			}
 			session.mu.Unlock()
 		}
 	}()
@@ -5247,6 +5251,11 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		if _, statErr := os.Stat(playlistPath); statErr == nil {
 			break
 		} else if os.IsNotExist(statErr) {
+			if livePlaylistStartupFailed(session) {
+				log.Printf("[hls] live playlist failed before becoming ready for session %s", sessionID)
+				http.Error(w, "live stream failed", http.StatusBadGateway)
+				return
+			}
 			if time.Now().After(deadline) {
 				log.Printf("[hls] playlist still not ready for session %s after 60s", sessionID)
 				http.Error(w, "playlist not ready", http.StatusGatewayTimeout)
@@ -5276,6 +5285,11 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		}
 		if playlistHasMediaSegment(content) {
 			break
+		}
+		if livePlaylistStartupFailed(session) {
+			log.Printf("[hls] live playlist completed without media segments for session %s", sessionID)
+			http.Error(w, "live stream failed", http.StatusBadGateway)
+			return
 		}
 		if time.Now().After(deadline) {
 			log.Printf("[hls] playlist has no media segments for session %s after 60s", sessionID)
@@ -5424,6 +5438,15 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		videoRange = "PQ"
 	}
 	log.Printf("[hls] served playlist for session %s, VIDEO-RANGE=%s, auth token=%v", sessionID, videoRange, authToken != "")
+}
+
+func livePlaylistStartupFailed(session *HLSSession) bool {
+	if session == nil {
+		return false
+	}
+	session.mu.RLock()
+	defer session.mu.RUnlock()
+	return session.IsLive && session.Completed
 }
 
 func playlistHasMediaSegment(content []byte) bool {

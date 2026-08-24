@@ -1349,8 +1349,11 @@ func TestBuildSearchQueries_DateBasedSoapEpisode(t *testing.T) {
 	want := []string{
 		"Coronation Street 2026.08.18",
 		"Coronation Street 2026 08 18",
+		"Coronation Street 18th Aug 2026",
+		"Coronation Street 18 Aug 2026",
 		"Corrie 2026.08.18",
 		"Corrie 2026 08 18",
+		"Corrie 18th Aug 2026",
 		"Coronation Street S67E151",
 	}
 	for _, expected := range want {
@@ -1363,6 +1366,19 @@ func TestBuildSearchQueries_DateBasedSoapEpisode(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("expected query %q in %v", expected, queries)
+		}
+	}
+}
+
+func TestOrdinalDay(t *testing.T) {
+	tests := map[int]string{
+		1: "1st", 2: "2nd", 3: "3rd", 4: "4th",
+		11: "11th", 12: "12th", 13: "13th",
+		21: "21st", 22: "22nd", 23: "23rd", 31: "31st",
+	}
+	for day, expected := range tests {
+		if got := ordinalDay(day); got != expected {
+			t.Errorf("ordinalDay(%d) = %q, want %q", day, got, expected)
 		}
 	}
 }

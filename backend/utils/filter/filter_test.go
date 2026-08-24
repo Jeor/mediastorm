@@ -1832,6 +1832,8 @@ func TestTargetEpisodeFiltering_DateBasedSoapUsesExactAirDate(t *testing.T) {
 	results := []models.NZBResult{
 		{Title: "Coronation street 18th Aug 2026 1080 (Deep71)[1337X]"},
 		{Title: "Coronation street 17th Aug 2026 1080 (Deep71)[1337X]"},
+		{Title: "Coronation.Street.S67E151.2026.05.18.1080p.WEB-DL"},
+		{Title: "Coronation.Street.S67E151.2026.08.18.1080p.WEB-DL"},
 	}
 
 	filtered := Results(results, Options{
@@ -1844,8 +1846,8 @@ func TestTargetEpisodeFiltering_DateBasedSoapUsesExactAirDate(t *testing.T) {
 		TargetAirDate:  "2026-08-18",
 	})
 
-	if len(filtered) != 1 || filtered[0].Title != results[0].Title {
-		t.Fatalf("expected only exact-date release to pass, got %#v", filtered)
+	if len(filtered) != 2 || filtered[0].Title != results[0].Title || filtered[1].Title != results[3].Title {
+		t.Fatalf("expected only exact-date releases to pass, got %#v", filtered)
 	}
 }
 

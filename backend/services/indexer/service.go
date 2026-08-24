@@ -2802,6 +2802,12 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 				addQuery(fmt.Sprintf("%s %s.%s.%s", title, year, month, day))
 				// Format: "Title 2026 01 21" (space-separated)
 				addQuery(fmt.Sprintf("%s %s %s %s", title, year, month, day))
+				// Human date formats are used by some indexers and cannot always be
+				// discovered through a numeric-date query.
+				if airDate, err := time.Parse("2006-01-02", opts.TargetAirDate); err == nil {
+					addQuery(fmt.Sprintf("%s %s %s %d", title, ordinalDay(airDate.Day()), airDate.Format("Jan"), airDate.Year()))
+					addQuery(fmt.Sprintf("%s %d %s %d", title, airDate.Day(), airDate.Format("Jan"), airDate.Year()))
+				}
 			}
 
 			addDateQueries(parsed.Title)
@@ -2837,6 +2843,21 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 	}
 
 	return queries
+}
+
+func ordinalDay(day int) string {
+	suffix := "th"
+	if day%100 < 11 || day%100 > 13 {
+		switch day % 10 {
+		case 1:
+			suffix = "st"
+		case 2:
+			suffix = "nd"
+		case 3:
+			suffix = "rd"
+		}
+	}
+	return fmt.Sprintf("%d%s", day, suffix)
 }
 
 func sportsEventSearchQuery(title string) string {

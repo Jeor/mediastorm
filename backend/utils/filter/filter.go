@@ -338,9 +338,22 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			continue
 		}
 
-		// NOTE: Daily show date filtering is handled below alongside S##E## matching.
-		// Some "daily" shows (like SNL) use standard S##E## naming, not dates.
-		// We accept results with EITHER matching date OR matching S##E##.
+		// A daily release may use either a date or S##E##, but an explicit date is
+		// authoritative. Never let a matching episode code rescue a release that
+		// names a different broadcast date.
+		hasDailyDate := false
+		if opts.IsDaily && opts.TargetAirDate != "" {
+			if year, month, day, hasExplicitDate := mediaresolve.ParseDailyDate(result.Title); hasExplicitDate {
+				candidateDate := fmt.Sprintf("%04d-%02d-%02d", year, month, day)
+				if !mediaresolve.CandidateMatchesDailyDate(result.Title, opts.TargetAirDate, 0) {
+					reason := fmt.Sprintf("explicit air date %s does not match target %s", candidateDate, opts.TargetAirDate)
+					log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+					reject(result, reason)
+					continue
+				}
+				hasDailyDate = true
+			}
+		}
 
 		// Get the parsed result from the batch
 		parsed := parsedMap[result.Title]
@@ -449,9 +462,6 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			reject(result, reason)
 			continue
 		}
-
-		// For daily shows, date-based results are valid even without S##E## pattern
-		hasDailyDate := opts.IsDaily && opts.TargetAirDate != "" && mediaresolve.CandidateMatchesDailyDate(result.Title, opts.TargetAirDate, 0)
 
 		formulaOneEventYear, formulaOneEventNumbers, hasFormulaOneEventInfo := parseFormulaOneEvents(result.Title)
 		hasFormulaOneEvent := !opts.IsMovie && hasFormulaOneEventInfo && formulaOneEventYear == opts.TargetSeason && intSliceContains(formulaOneEventNumbers, opts.TargetEpisode)

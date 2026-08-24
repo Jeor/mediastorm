@@ -26,6 +26,13 @@ type Manager interface {
 
 	// HasPool returns true if a pool is currently available
 	HasPool() bool
+
+	// AvailableConnections returns the number of connection slots currently free
+	// across all providers (the configured per-provider budget minus connections
+	// in use right now). It returns 0 when no live pool is available. Callers use
+	// this to size their own parallelism fairly so several concurrent requests
+	// can each take a fraction of the remaining pool without one saturating it.
+	AvailableConnections() int
 }
 
 // manager implements the Manager interface
@@ -198,6 +205,29 @@ func (m *manager) HasPool() bool {
 	defer m.mu.RUnlock()
 
 	return m.pool != nil
+}
+
+// AvailableConnections reports how many connection slots are currently free
+// across all providers (configured budget minus in-use). It reads the live
+// pool's metrics snapshot; with no live pool it returns 0 so callers fall back
+// to their conservative floor. The snapshot is taken once per call and is only
+// an instantaneous view — callers should treat it as a hint, not a lease.
+func (m *manager) AvailableConnections() int {
+	m.mu.RLock()
+	pool := m.pool
+	m.mu.RUnlock()
+	if pool == nil {
+		return 0
+	}
+
+	snap := pool.GetMetricsSnapshot()
+	var free int
+	for _, p := range snap.ProviderMetrics {
+		if n := int(p.MaxConnections - p.AcquiredConnections); n > 0 {
+			free += n
+		}
+	}
+	return free
 }
 
 // buildPoolLocked builds the pool synchronously under the write lock using the

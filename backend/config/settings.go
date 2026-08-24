@@ -401,6 +401,16 @@ type ImportSettings struct {
 	RarEnableMemoryPreload         bool `json:"rarEnableMemoryPreload"`
 	RarMaxMemoryGB                 int  `json:"rarMaxMemoryGB"`
 	VerifyPar2Completeness         bool `json:"verifyPar2Completeness"` // Reject structurally-incomplete releases via the PAR2 recovery-set manifest before RAR indexing
+	// UsenetMaxConcurrentFileParsers is the hard cap on how many NZB file
+	// parsers may fetch yEnc headers in parallel for a single title. It bounds
+	// the number of NNTP header round-trips a single resolve can issue, even
+	// when the pool has many free connections.
+	UsenetMaxConcurrentFileParsers int `json:"usenetMaxConcurrentFileParsers"`
+	// UsenetParserShareDivisor spreads the resolve's header fetches across a
+	// fraction of the pool's currently-free connections (1/N) so that several
+	// concurrent requests can each parallelize without one starving them. 0 or 1
+	// disables the sharing heuristic and uses the hard cap directly.
+	UsenetParserShareDivisor int `json:"usenetParserShareDivisor"`
 }
 
 // SABnzbdSettings defines SABnzbd fallback configuration
@@ -1834,7 +1844,7 @@ func DefaultSettings() Settings {
 		WebDAV:    WebDAVSettings{Enabled: true, Prefix: "/webdav", Username: "novastream", Password: ""},
 		Database:  DatabaseSettings{Path: "cache/queue.db"},
 		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5},
-		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8},
+		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8, UsenetMaxConcurrentFileParsers: 16, UsenetParserShareDivisor: 4},
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
@@ -2001,6 +2011,8 @@ func (m *Manager) GetConfig() (*AltMountConfig, error) {
 			QueueProcessingIntervalSeconds: settings.Import.QueueProcessingIntervalSeconds,
 			RarMaxWorkers:                  settings.Import.RarMaxWorkers,
 			RarMaxCacheSizeMB:              settings.Import.RarMaxCacheSizeMB,
+			UsenetMaxConcurrentFileParsers: settings.Import.UsenetMaxConcurrentFileParsers,
+			UsenetParserShareDivisor:       settings.Import.UsenetParserShareDivisor,
 		},
 		SABnzbd: SABnzbdConfig{
 			Enabled:        settings.SABnzbd.Enabled,
@@ -2462,6 +2474,12 @@ func (m *Manager) Load() (Settings, error) {
 	}
 	if s.Import.RarMaxMemoryGB == 0 {
 		s.Import.RarMaxMemoryGB = 8
+	}
+	if s.Import.UsenetMaxConcurrentFileParsers == 0 {
+		s.Import.UsenetMaxConcurrentFileParsers = 16
+	}
+	if s.Import.UsenetParserShareDivisor == 0 {
+		s.Import.UsenetParserShareDivisor = 4
 	}
 
 	// Backfill SABnzbd settings

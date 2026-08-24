@@ -1,8 +1,11 @@
 package importer
 
 import (
+	"context"
 	"encoding/base64"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/javi11/rarlist"
 	"github.com/stretchr/testify/require"
@@ -17,6 +20,43 @@ func seg(id string, size int64) *metapb.SegmentData {
 func TestArchivePasswordUsesNZBMetadata(t *testing.T) {
 	files := []ParsedFile{{Filename: "movie.part1.rar"}, {Filename: "movie.part2.rar", Password: " archive-secret "}}
 	require.Equal(t, "archive-secret", archivePassword(files))
+}
+
+// TestAnalyzeRarCancelledBeforeIndexingAbortsPromptly guards the OPP-6
+// regression: a candidate cancelled after the winner was adopted must abort its
+// RAR indexing with the context error (so the race classifies it "superseded")
+// instead of indexing every volume to completion in the background. The reads
+// check ctx per call, so an already-cancelled analysis must return promptly
+// without touching the NNTP pool.
+func TestAnalyzeRarCancelledBeforeIndexingAbortsPromptly(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	files := []ParsedFile{
+		{Filename: "Movie.part01.rar", IsRarArchive: true, Size: 1_000_000,
+			Segments: []*metapb.SegmentData{seg("m1", 500_000), seg("m2", 500_000)}},
+		{Filename: "Movie.part02.rar", IsRarArchive: true, Size: 1_000_000,
+			Segments: []*metapb.SegmentData{seg("m3", 500_000), seg("m4", 500_000)}},
+	}
+
+	pool := &trackPool{}
+	rh := NewRarProcessor(&trackManager{pool: pool, available: 0}, 4, 8)
+
+	start := time.Now()
+	_, err := rh.AnalyzeRarContentFromNzbProgressive(ctx, files, func(rarContent) bool { return true })
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context cancellation, got %v", err)
+	}
+	// The abort must not spend time on network fetches: reads fail at the ctx
+	// check, so the whole call should return in milliseconds.
+	if elapsed > time.Second {
+		t.Fatalf("cancelled RAR analysis took %v, want prompt abort", elapsed)
+	}
+	if pool.inFlight != 0 {
+		t.Fatalf("cancelled RAR analysis touched the NNTP pool (inFlight=%d)", pool.inFlight)
+	}
 }
 
 func TestEncryptedRarMetadataStoresDerivedCredentials(t *testing.T) {

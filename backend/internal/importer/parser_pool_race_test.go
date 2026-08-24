@@ -78,8 +78,9 @@ func (m *fakePoolManager) GetPool() (nntppool.UsenetConnectionPool, error) { ret
 func (m *fakePoolManager) SetProviders([]nntppool.UsenetProviderConfig) error {
 	return nil
 }
-func (m *fakePoolManager) ClearPool() error { return nil }
-func (m *fakePoolManager) HasPool() bool    { return m.pool != nil }
+func (m *fakePoolManager) ClearPool() error          { return nil }
+func (m *fakePoolManager) HasPool() bool             { return m.pool != nil }
+func (m *fakePoolManager) AvailableConnections() int { return 0 }
 
 func TestFetchYencHeadersNilReaderNoPanic(t *testing.T) {
 	pool := &fakeUsenetPool{returnNilOk: true}

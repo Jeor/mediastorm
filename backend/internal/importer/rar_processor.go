@@ -214,6 +214,11 @@ func (rh *rarProcessor) analyzeRarWithStreamingProgressive(ctx context.Context, 
 	// First, discover all RAR volumes
 	volPaths, err := rarlist.DiscoverVolumesFS(ufs, mainRarFile)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			// A cancelled candidate must report the cancellation, not a
+			// discovery error, so the race maps it to "superseded by winner".
+			return nil, ctxErr
+		}
 		return nil, NewNonRetryableError("failed to discover RAR volumes", err)
 	}
 
@@ -221,9 +226,27 @@ func (rh *rarProcessor) analyzeRarWithStreamingProgressive(ctx context.Context, 
 		"main_file", mainRarFile,
 		"volumes", len(volPaths))
 
-	// Index volumes to build file catalog
+	// Index volumes to build file catalog. IndexVolumesParallel itself has no
+	// context awareness (external rarlist), but every read it performs goes
+	// through UsenetFile.Read, which checks the candidate's ctx per call and
+	// rarlist stops scheduling new work on the first error — so a cancelled
+	// candidate aborts within one in-flight volume read (a ~256KB analysis
+	// chunk) instead of indexing every volume to completion after the winner
+	// was adopted. Errors from a cancelled index are re-normalized to the bare
+	// context error so the race classifies the loser as superseded.
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
 	volumes, err := rarlist.IndexVolumesParallel(ufs, volPaths, rh.maxWorkers)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			rh.log.Debug("RAR volume indexing aborted by context cancellation",
+				"main_file", mainRarFile,
+				"error", err)
+			return nil, ctxErr
+		}
 		return nil, NewNonRetryableError("failed to index RAR volumes", err)
 	}
 
@@ -249,6 +272,16 @@ func (rh *rarProcessor) analyzeRarWithStreamingProgressive(ctx context.Context, 
 	rarContents := make([]rarContent, 0, len(aggregatedFiles))
 
 	for i, af := range aggregatedFiles {
+		// A candidate cancelled after the winner was adopted must stop here:
+		// the remaining metadata work is local, but it still pins the worker
+		// and would let a superseded loser look like a successful resolve.
+		if err := ctx.Err(); err != nil {
+			rh.log.Debug("Progressive RAR analysis aborted by context cancellation",
+				"main_file", mainRarFile,
+				"files_converted", len(rarContents))
+			return nil, err
+		}
+
 		// Convert this file to rarContent
 		fileContents, err := rh.convertAggregatedFilesToRarContent([]rarlist.AggregatedFile{af}, sortFiles)
 		if err != nil {
@@ -302,6 +335,17 @@ func (rh *rarProcessor) analyzePasswordProtectedRar(
 	callback FileDiscoveryCallback,
 ) ([]rarContent, error) {
 	rh.log.Info("Analyzing password-protected RAR archive", "main_file", mainRarFile, "total_parts", len(rarFiles))
+
+	// A cancelled candidate must not spend its remaining lifetime decrypting
+	// headers: the archive analysis is the last uncancellable-looking stage
+	// before adoption, and rardecode reads also go through the ctx-aware
+	// UsenetFileSystem reads.
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	opts := []rardecode.Option{
 		rardecode.FileSystem(ufs),
 		rardecode.SkipCheck,
@@ -327,6 +371,9 @@ func (rh *rarProcessor) analyzePasswordProtectedRar(
 		return nil, NewNonRetryableError("convert password-protected RAR contents", err)
 	}
 	for _, content := range contents {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if callback != nil && !callback(content) {
 			break
 		}

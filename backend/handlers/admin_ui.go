@@ -274,7 +274,14 @@ var SettingsSchema = map[string]interface{}{
 			"maxDownloadWorkers": map[string]interface{}{"type": "number", "label": "Max Download Workers", "description": "Maximum concurrent download workers", "hidden": true},
 			"maxCacheSizeMB":     map[string]interface{}{"type": "number", "label": "Max Cache Size (MB)", "description": "Maximum cache size in megabytes", "hidden": true},
 			"serviceMode":        map[string]interface{}{"type": "select", "label": "Service Mode", "options": []string{"usenet", "debrid", "hybrid"}, "description": "Streaming service mode"},
-			"searchMode":         map[string]interface{}{"type": "select", "label": "Search Mode", "hidden": true},
+			"resolveFirstReadySource": map[string]interface{}{
+				"type":        "boolean",
+				"label":       "Resolve First-Ready Search Source",
+				"description": "Start resolving candidates as soon as either Usenet or debrid search finishes. This can reduce startup time, but completion order takes priority over combined cross-source ranking.",
+				"globalOnly":  true,
+				"order":       1,
+			},
+			"searchMode": map[string]interface{}{"type": "select", "label": "Search Mode", "hidden": true},
 			"usenetResolutionTimeoutSec": map[string]interface{}{
 				"type":        "number",
 				"label":       "Usenet Resolution Timeout (seconds)",

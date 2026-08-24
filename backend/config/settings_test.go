@@ -172,6 +172,13 @@ func TestDefaultSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsWaitsForCombinedSearchRanking(t *testing.T) {
+	settings := DefaultSettings()
+	if settings.Streaming.ResolveFirstReadySource {
+		t.Fatal("ResolveFirstReadySource must default off so prequeue preserves combined cross-source ranking")
+	}
+}
+
 func TestDefaultSettingsDisablesCropDetectSubtitlePosition(t *testing.T) {
 	settings := DefaultSettings()
 

@@ -166,6 +166,45 @@ func TestResolveProbeMissingRejectsPromptly(t *testing.T) {
 	}
 }
 
+func TestProcessNZBWithPreflightCancelsRunningImporter(t *testing.T) {
+	processCtx, cancelProcess := context.WithCancel(context.Background())
+	defer cancelProcess()
+	probe := &preflightProbe{
+		rejected: make(chan struct{}, 1),
+		done:     make(chan struct{}),
+		cancel:   func() {},
+	}
+
+	started := make(chan struct{})
+	importerCancelled := make(chan struct{})
+	result := make(chan error, 1)
+	go func() {
+		_, err := processNZBWithPreflight(processCtx, cancelProcess, probe, func() (string, error) {
+			close(started)
+			<-processCtx.Done()
+			close(importerCancelled)
+			return "", processCtx.Err()
+		})
+		result <- err
+	}()
+
+	<-started
+	probe.rejected <- struct{}{}
+	select {
+	case err := <-result:
+		if !errors.Is(err, ErrUsenetProbeRejected) {
+			t.Fatalf("err = %v, want ErrUsenetProbeRejected", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("probe rejection did not promptly return from the running importer")
+	}
+	select {
+	case <-importerCancelled:
+	case <-time.After(time.Second):
+		t.Fatal("probe rejection did not cancel the running importer context")
+	}
+}
+
 // TestResolveProbeVerdictWaitsOutFastResolveError pins the grace-window
 // semantics: when the full resolve fails BEFORE the probe verdict lands, Resolve
 // holds the failure up to preflightVerdictGrace so a definitive rejection is

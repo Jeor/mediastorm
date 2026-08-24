@@ -322,13 +322,18 @@ func (s *Service) Resolve(ctx context.Context, candidate models.NZBResult) (*mod
 		defer probe.cancel()
 	}
 
-	storagePath, err := service.ProcessNZBImmediatelyWithSource(processCtx, fileName, nzbBytes, importer.ResolvedNZBSource{
-		DownloadURL: downloadURL,
-		Title:       candidate.Title,
-		Indexer:     candidate.Indexer,
-		FileSize:    estimateNZBFileSize(nzbBytes),
+	storagePath, err := processNZBWithPreflight(processCtx, cancelResolve, probe, func() (string, error) {
+		return service.ProcessNZBImmediatelyWithSource(processCtx, fileName, nzbBytes, importer.ResolvedNZBSource{
+			DownloadURL: downloadURL,
+			Title:       candidate.Title,
+			Indexer:     candidate.Indexer,
+			FileSize:    estimateNZBFileSize(nzbBytes),
+		})
 	})
 	if err != nil {
+		if errors.Is(err, ErrUsenetProbeRejected) {
+			return nil, err
+		}
 		// The resolve failed; if the probe delivered (or is about to deliver) a
 		// definitive rejection, surface that instead — it is the cheap, decisive
 		// verdict (a dead release whose resolve happened to fail fast otherwise
@@ -372,6 +377,49 @@ func (s *Service) Resolve(ctx context.Context, candidate models.NZBResult) (*mod
 
 	sourceNZBPath := strings.TrimSpace(fileName)
 	return s.buildInternalPlaybackResolution(cfg, candidate, finalPath, sourceNZBPath, estimateNZBFileSize(nzbBytes), "healthy")
+}
+
+type nzbProcessOutcome struct {
+	storagePath string
+	err         error
+}
+
+// processNZBWithPreflight lets a definitive missing-article verdict interrupt
+// the full importer while it is still running. The previous implementation did
+// not inspect the verdict until the synchronous importer returned, which made
+// the advertised early rejection ineffective for the slow/dead releases it was
+// intended to accelerate.
+func processNZBWithPreflight(processCtx context.Context, cancelProcess context.CancelFunc, probe *preflightProbe, process func() (string, error)) (string, error) {
+	if probe == nil {
+		return process()
+	}
+
+	done := make(chan nzbProcessOutcome, 1)
+	go func() {
+		storagePath, err := process()
+		done <- nzbProcessOutcome{storagePath: storagePath, err: err}
+	}()
+
+	select {
+	case outcome := <-done:
+		return outcome.storagePath, outcome.err
+	case <-probe.rejected:
+		// A completed successful import is stronger evidence than the sampled
+		// probe. Prefer it if both outcomes became ready together; otherwise stop
+		// the in-flight importer immediately and reject the candidate.
+		select {
+		case outcome := <-done:
+			if outcome.err == nil {
+				return outcome.storagePath, nil
+			}
+		default:
+		}
+		cancelProcess()
+		return "", ErrUsenetProbeRejected
+	case <-processCtx.Done():
+		cancelProcess()
+		return "", processCtx.Err()
+	}
 }
 
 // PrepareTorrentCandidates enriches torrent-file-only debrid results with their

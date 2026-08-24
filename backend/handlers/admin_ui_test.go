@@ -2661,6 +2661,24 @@ func TestTransmuxSchemaIsVisibleUnderServerSettings(t *testing.T) {
 	}
 }
 
+func TestSettingsSchemaFirstReadySourceIsGlobalOnly(t *testing.T) {
+	section, ok := handlers.SettingsSchema["streaming"].(map[string]interface{})
+	if !ok {
+		t.Fatal("streaming settings schema is missing")
+	}
+	fields, ok := section["fields"].(map[string]interface{})
+	if !ok {
+		t.Fatal("streaming settings fields are missing")
+	}
+	field, ok := fields["resolveFirstReadySource"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolveFirstReadySource setting is missing")
+	}
+	if field["type"] != "boolean" || field["globalOnly"] != true {
+		t.Fatalf("resolveFirstReadySource schema = %#v, want global-only boolean", field)
+	}
+}
+
 func TestNavigationVisibilitySchemaIncludesWatchlist(t *testing.T) {
 	section, ok := handlers.SettingsSchema["display"].(map[string]interface{})
 	if !ok {

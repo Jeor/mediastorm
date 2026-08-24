@@ -349,7 +349,8 @@ type StreamingSettings struct {
 	MaxDownloadWorkers         int                      `json:"maxDownloadWorkers"`
 	MaxCacheSizeMB             int                      `json:"maxCacheSizeMB"`
 	ServiceMode                StreamingServiceMode     `json:"serviceMode"`
-	SearchMode                 SearchMode               `json:"searchMode"` // Fast (early return) vs Accurate (wait for all results)
+	ResolveFirstReadySource    bool                     `json:"resolveFirstReadySource"` // Resolve candidates from the first completed search source before all sources finish
+	SearchMode                 SearchMode               `json:"searchMode"`              // Fast (early return) vs Accurate (wait for all results)
 	DebridProviders            []DebridProviderSettings `json:"debridProviders,omitempty"`
 	UsenetResolutionTimeoutSec int                      `json:"usenetResolutionTimeoutSec"` // Timeout for usenet content resolution in seconds (0 = no limit)
 	UsenetPreflightProbeSec    int                      `json:"usenetPreflightProbeSec"`    // Per-candidate pre-download availability probe budget in seconds (default: 5, 0 = default)
@@ -1843,7 +1844,7 @@ func DefaultSettings() Settings {
 		Cache:     CacheSettings{Directory: "cache", MetadataTTLHours: 24},
 		WebDAV:    WebDAVSettings{Enabled: true, Prefix: "/webdav", Username: "novastream", Password: ""},
 		Database:  DatabaseSettings{Path: "cache/queue.db"},
-		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5},
+		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, ResolveFirstReadySource: false, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5},
 		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8, UsenetMaxConcurrentFileParsers: 16, UsenetParserShareDivisor: 4},
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,

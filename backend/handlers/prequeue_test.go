@@ -21,6 +21,7 @@ import (
 	"novastream/config"
 	"novastream/models"
 	"novastream/services/badstreams"
+	"novastream/services/indexer"
 	"novastream/services/playback"
 )
 
@@ -240,6 +241,31 @@ func TestRacePrequeueResolutionsAdoptsFastSecondCandidate(t *testing.T) {
 	}
 	if elapsed >= time.Second {
 		t.Fatalf("race took %v; the slow candidate was not cancelled concurrently (serial sum would be >3s)", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsReportsExhaustionContext(t *testing.T) {
+	topRankedErr := errors.New("restricted release")
+	src := newSliceCandidateSource([]models.NZBResult{
+		{Title: "first"},
+		{Title: "second"},
+	})
+	process := func(_ context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if i == 0 {
+			return nil, nil, topRankedErr
+		}
+		return nil, nil, errors.New("not cached")
+	}
+
+	_, _, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0)
+	if err == nil {
+		t.Fatal("race returned nil error for exhausted candidates")
+	}
+	if !errors.Is(err, topRankedErr) {
+		t.Fatalf("error %q does not wrap the top-ranked failure", err)
+	}
+	if !strings.Contains(err.Error(), "all 2 candidates failed to resolve") {
+		t.Fatalf("error = %q, want candidate exhaustion context", err)
 	}
 }
 
@@ -804,6 +830,135 @@ func TestResolveCandidatesStreamsUsenetBeforeDebrid(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 		// nothing else was ever resolved — usenet won before debrid existed
 	}
+}
+
+func TestStreamCandidateSourceSnapshotIncludesDeliveredCandidate(t *testing.T) {
+	src := newStreamCandidateSource()
+	want := models.NZBResult{Title: "cached-winner", ServiceType: models.ServiceTypeUsenet}
+	fed := make(chan bool, 1)
+	go func() { fed <- src.Feed(want) }()
+
+	_, got, ok := src.Next(context.Background())
+	if !ok || got.Title != want.Title {
+		t.Fatalf("Next() = (%q, %t), want delivered candidate", got.Title, ok)
+	}
+	if !<-fed {
+		t.Fatal("Feed unexpectedly failed")
+	}
+	snapshot := src.Snapshot()
+	if len(snapshot) != 1 || snapshot[0].Title != want.Title {
+		t.Fatalf("Snapshot() = %#v, want the delivered winning candidate", snapshot)
+	}
+	src.Stop()
+}
+
+func TestPrequeueSearchFeederReservesCapacityForSlowerSource(t *testing.T) {
+	src := newStreamCandidateSource()
+	state := newPrequeueFeedState()
+	usenetCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	debridCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go (&PrequeueHandler{store: playback.NewPrequeueStore(time.Minute)}).prequeueSearchFeeder(ctx, src, usenetCh, debridCh, state, prequeueFeederConfig{
+		maxCandidates: 4,
+	})
+
+	debridCh <- splitSearchResult("debrid", models.ServiceTypeDebrid, 4)
+	close(debridCh)
+
+	// The fast debrid source may consume only its two reserved slots while the
+	// usenet source is still pending.
+	for i := 0; i < 2; i++ {
+		_, candidate, ok := nextStreamCandidate(t, src)
+		if !ok || candidate.ServiceType != models.ServiceTypeDebrid {
+			t.Fatalf("candidate %d = (%q, %t), want debrid", i, candidate.ServiceType, ok)
+		}
+	}
+	pending := make(chan models.NZBResult, 1)
+	go func() {
+		_, candidate, ok := src.Next(ctx)
+		if ok {
+			pending <- candidate
+		}
+	}()
+	select {
+	case candidate := <-pending:
+		t.Fatalf("fast source exceeded its reservation with candidate %q", candidate.Title)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	usenetCh <- splitSearchResult("usenet", models.ServiceTypeUsenet, 4)
+	close(usenetCh)
+	select {
+	case candidate := <-pending:
+		if candidate.ServiceType != models.ServiceTypeUsenet {
+			t.Fatalf("third candidate service = %q, want usenet", candidate.ServiceType)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("slower usenet source was not admitted")
+	}
+	_, fourth, ok := nextStreamCandidate(t, src)
+	if !ok || fourth.ServiceType != models.ServiceTypeUsenet {
+		t.Fatalf("fourth candidate = (%q, %t), want usenet", fourth.ServiceType, ok)
+	}
+	if _, _, ok := nextStreamCandidate(t, src); ok {
+		t.Fatal("stream exceeded the four-candidate cap")
+	}
+	<-state.done
+
+	snapshot := src.Snapshot()
+	if len(snapshot) != 4 {
+		t.Fatalf("snapshot candidate count = %d, want 4", len(snapshot))
+	}
+}
+
+func TestPrequeueSearchFeederReleasesUnusedReservation(t *testing.T) {
+	src := newStreamCandidateSource()
+	state := newPrequeueFeedState()
+	usenetCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	debridCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go (&PrequeueHandler{store: playback.NewPrequeueStore(time.Minute)}).prequeueSearchFeeder(ctx, src, usenetCh, debridCh, state, prequeueFeederConfig{
+		maxCandidates: 4,
+	})
+	debridCh <- splitSearchResult("debrid", models.ServiceTypeDebrid, 4)
+	close(debridCh)
+	usenetCh <- indexer.ScoredSplitSearchResult{Source: "usenet", Disabled: true}
+	close(usenetCh)
+
+	for i := 0; i < 4; i++ {
+		_, candidate, ok := nextStreamCandidate(t, src)
+		if !ok || candidate.ServiceType != models.ServiceTypeDebrid {
+			t.Fatalf("candidate %d = (%q, %t), want debrid", i, candidate.ServiceType, ok)
+		}
+	}
+	if _, _, ok := nextStreamCandidate(t, src); ok {
+		t.Fatal("stream exceeded the four-candidate cap")
+	}
+	<-state.done
+}
+
+func splitSearchResult(source string, serviceType models.ContentServiceType, count int) indexer.ScoredSplitSearchResult {
+	result := indexer.ScoredSplitSearchResult{Source: source}
+	for i := 0; i < count; i++ {
+		result.Scored = append(result.Scored, models.ScoredNZBResult{
+			NZBResult: models.NZBResult{
+				Title:       fmt.Sprintf("%s-%d", source, i),
+				ServiceType: serviceType,
+			},
+		})
+	}
+	return result
+}
+
+func nextStreamCandidate(t *testing.T, src *streamCandidateSource) (int, models.NZBResult, bool) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	return src.Next(ctx)
 }
 
 // TestStreamCandidateSourceStopUnblocksBlockedFeed guards the worker's winner

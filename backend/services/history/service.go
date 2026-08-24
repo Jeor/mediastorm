@@ -3823,7 +3823,7 @@ func (s *Service) ImportWatchHistory(userID string, updates []models.WatchHistor
 				update.MediaType, update.Name, update.WatchedAt.Format(time.RFC3339), update.SeriesID)
 		}
 
-		if update.Watched != nil && *update.Watched && s.hasHighInProgressPlaybackLocked(userID, update) {
+		if update.Watched != nil && *update.Watched && s.hasConflictingInProgressPlaybackLocked(userID, update) {
 			log.Printf("[history] import: SKIP (preserve local in-progress) %s %q watchedAt=%s seriesID=%s",
 				update.MediaType, update.Name, update.WatchedAt.Format(time.RFC3339), update.SeriesID)
 			if crossProviderRekeyed || dedupedEquivalent {
@@ -6675,7 +6675,7 @@ func preferContinueWatchingEntry(candidate, existing models.SeriesWatchState) bo
 	return candidate.PercentWatched > existing.PercentWatched
 }
 
-func (s *Service) hasHighInProgressPlaybackLocked(userID string, update models.WatchHistoryUpdate) bool {
+func (s *Service) hasConflictingInProgressPlaybackLocked(userID string, update models.WatchHistoryUpdate) bool {
 	perUser, ok := s.playbackProgress[userID]
 	if !ok {
 		return false
@@ -6685,6 +6685,22 @@ func (s *Service) hasHighInProgressPlaybackLocked(userID string, update models.W
 		if !isMatchingPlaybackForWatchUpdate(progress, update) {
 			continue
 		}
+		if progress.PercentWatched >= continueWatchingCompletionThreshold {
+			continue
+		}
+
+		// If local playback continued or was paused after an imported completion
+		// timestamp, the newer incomplete heartbeat is stronger evidence about
+		// this device's current state. Preserve it instead of clearing progress.
+		// The provider-side writer may be another client and cannot be inferred
+		// from the imported history record alone.
+		if strings.EqualFold(update.MediaType, "episode") &&
+			!update.WatchedAt.IsZero() && progress.UpdatedAt.After(update.WatchedAt) {
+			return true
+		}
+
+		// Preserve the existing threshold-conflict behavior for providers that
+		// consider an 80%-complete stop watched while local history requires 90%.
 		if progress.PercentWatched >= traktStopWatchThreshold && progress.PercentWatched < continueWatchingCompletionThreshold {
 			return true
 		}

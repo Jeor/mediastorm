@@ -81,9 +81,10 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	now := time.Now()
 	if update.IsPaused {
 		if sess.state == stateWatching {
-			if _, err := t.client.ScrobblePause(account.ClientID, account.AccessToken, req); err != nil {
+			if resp, err := t.client.ScrobblePause(account.ClientID, account.AccessToken, req); err != nil {
 				log.Printf("[simkl] pause failed for %s: %v", key, err)
 			} else {
+				logScrobbleSuccess("pause", userID, key, req, resp)
 				sess.state = statePaused
 				sess.lastAPICall = now
 			}
@@ -93,17 +94,19 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 
 	switch sess.state {
 	case stateIdle, statePaused:
-		if _, err := t.client.ScrobbleStart(account.ClientID, account.AccessToken, req); err != nil {
+		if resp, err := t.client.ScrobbleStart(account.ClientID, account.AccessToken, req); err != nil {
 			log.Printf("[simkl] start failed for %s: %v", key, err)
 		} else {
+			logScrobbleSuccess("start", userID, key, req, resp)
 			sess.state = stateWatching
 			sess.lastAPICall = now
 		}
 	case stateWatching:
 		if now.Sub(sess.lastAPICall) >= t.refreshInterval {
-			if _, err := t.client.ScrobbleStart(account.ClientID, account.AccessToken, req); err != nil {
+			if resp, err := t.client.ScrobbleStart(account.ClientID, account.AccessToken, req); err != nil {
 				log.Printf("[simkl] refresh failed for %s: %v", key, err)
 			} else {
+				logScrobbleSuccess("refresh", userID, key, req, resp)
 				sess.lastAPICall = now
 			}
 		}
@@ -130,11 +133,27 @@ func (t *ScrobbleStateTracker) StopSession(userID string, update models.Playback
 	}
 
 	req := BuildScrobbleRequest(update, percentWatched)
-	if _, err := t.client.ScrobbleStop(account.ClientID, account.AccessToken, req); err != nil {
+	resp, err := t.client.ScrobbleStop(account.ClientID, account.AccessToken, req)
+	if err != nil {
 		log.Printf("[simkl] stop failed for %s: %v", key, err)
 		return
 	}
+	logScrobbleSuccess("stop", userID, key, req, resp)
 	t.scrobbler.noteRecentStop(userID, update)
+}
+
+func logScrobbleSuccess(event, userID, key string, req ScrobbleRequest, resp *ScrobbleResponse) {
+	responseAction := ""
+	responseProgress := float64(0)
+	responseID := int64(0)
+	if resp != nil {
+		responseAction = resp.Action
+		responseProgress = resp.Progress
+		responseID = resp.ID
+	}
+
+	log.Printf("[simkl-audit] event=%s user=%s key=%s requestProgress=%.2f responseAction=%q responseProgress=%.2f responseID=%d",
+		event, userID, key, req.Progress, responseAction, responseProgress, responseID)
 }
 
 // ClearSession removes a local realtime scrobble session without sending

@@ -6118,6 +6118,138 @@ func TestImportWatchHistory_HighProgressMovieStaysInProgress(t *testing.T) {
 	}
 }
 
+func TestImportWatchHistory_NewerPausedEpisodeStaysInProgress(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	userID := "simkl-conflicting-import-regression"
+	seriesID := "tmdb:tv:37854"
+	itemID := seriesID + ":s23e19"
+	importedWatchedAt := time.Date(2026, 8, 24, 17, 19, 31, 0, time.UTC)
+	pausedAt := importedWatchedAt.Add(18 * time.Minute)
+
+	if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+		MediaType:      "episode",
+		ItemID:         itemID,
+		Position:       419.46,
+		Duration:       1415.829,
+		PercentWatched: 29.63,
+		Timestamp:      pausedAt,
+		IsPaused:       true,
+		SeriesID:       seriesID,
+		SeriesName:     "One Piece",
+		EpisodeName:    "Save the Children! The Elbaph Warriors Rise Up",
+		SeasonNumber:   23,
+		EpisodeNumber:  19,
+		ExternalIDs: map[string]string{
+			"imdb":            "tt0388629",
+			"tmdb":            "37854",
+			"tvdb":            "81797",
+			"simkl":           "38636",
+			"absoluteEpisode": "1174",
+		},
+	}); err != nil {
+		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+	}
+
+	watched := true
+	imported, err := svc.ImportWatchHistory(userID, []models.WatchHistoryUpdate{{
+		MediaType:     "episode",
+		ItemID:        itemID,
+		Name:          "Save the Children! The Elbaph Warriors Rise Up",
+		Watched:       &watched,
+		WatchedAt:     importedWatchedAt,
+		SeriesID:      seriesID,
+		SeriesName:    "One Piece",
+		SeasonNumber:  23,
+		EpisodeNumber: 19,
+		ExternalIDs: map[string]string{
+			"imdb":            "tt0388629",
+			"tmdb":            "37854",
+			"tvdb":            "81797",
+			"simkl":           "38636",
+			"absoluteEpisode": "1174",
+		},
+	}})
+	if err != nil {
+		t.Fatalf("ImportWatchHistory() error = %v", err)
+	}
+	if imported != 0 {
+		t.Fatalf("expected conflicting older Simkl import to be skipped, got imported=%d", imported)
+	}
+
+	progress, err := svc.ListPlaybackProgress(userID)
+	if err != nil {
+		t.Fatalf("ListPlaybackProgress() error = %v", err)
+	}
+	if len(progress) != 1 || !progress[0].IsPaused || progress[0].PercentWatched < 29.62 || progress[0].PercentWatched > 29.64 {
+		t.Fatalf("expected paused playback progress to remain, got %+v", progress)
+	}
+
+	items, err := svc.ListWatchHistory(userID)
+	if err != nil {
+		t.Fatalf("ListWatchHistory() error = %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("expected no watched history entry, got %+v", items)
+	}
+}
+
+func TestImportWatchHistory_NewerExternalCompletionOverridesPausedEpisode(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	userID := "newer-external-completion"
+	seriesID := "tmdb:tv:37854"
+	itemID := seriesID + ":s23e19"
+	pausedAt := time.Date(2026, 8, 24, 17, 37, 0, 0, time.UTC)
+	if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+		MediaType:      "episode",
+		ItemID:         itemID,
+		PercentWatched: 29.63,
+		Timestamp:      pausedAt,
+		IsPaused:       true,
+		SeriesID:       seriesID,
+		SeasonNumber:   23,
+		EpisodeNumber:  19,
+		ExternalIDs:    map[string]string{"tmdb": "37854", "tvdb": "81797"},
+	}); err != nil {
+		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+	}
+
+	watched := true
+	imported, err := svc.ImportWatchHistory(userID, []models.WatchHistoryUpdate{{
+		MediaType:     "episode",
+		ItemID:        itemID,
+		Watched:       &watched,
+		WatchedAt:     pausedAt.Add(time.Hour),
+		SeriesID:      seriesID,
+		SeasonNumber:  23,
+		EpisodeNumber: 19,
+		ExternalIDs:   map[string]string{"tmdb": "37854", "tvdb": "81797"},
+	}})
+	if err != nil {
+		t.Fatalf("ImportWatchHistory() error = %v", err)
+	}
+	if imported != 1 {
+		t.Fatalf("expected newer external completion to import, got imported=%d", imported)
+	}
+
+	progress, err := svc.ListPlaybackProgress(userID)
+	if err != nil {
+		t.Fatalf("ListPlaybackProgress() error = %v", err)
+	}
+	if len(progress) != 0 {
+		t.Fatalf("expected newer completion to clear progress, got %+v", progress)
+	}
+}
+
 // TestImportWatchHistory_CrossProviderDedupSkipPreservesItem verifies that when
 // cross-provider dedup fires but the local item is newer (SKIP path), the item
 // is still saved under the new canonical key and not lost from history.

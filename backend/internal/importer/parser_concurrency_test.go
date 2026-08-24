@@ -126,12 +126,16 @@ func TestFileParserLimitComputesFairShareBoundedByCap(t *testing.T) {
 		available int
 		want      int
 	}{
-		{"share 1/4 of free connections", 16, 4, 20, 5},
-		{"share floored to minimum on tiny pool", 16, 4, 2, 4},
-		{"share floored to minimum when pool saturated", 16, 4, 0, 4},
-		{"share binds below the hard cap", 6, 4, 20, 5},
-		{"hard cap clamps a larger share", 6, 2, 20, 6},
-		{"cap below floor is raised to the floor", 3, 2, 20, 4},
+		// The share budgets 1/N of the free connections for IN-FLIGHT header
+		// fetches; each file parser can run first+last fetches in parallel, so
+		// the budget is divided by parallelYEncFetchesPerParser.
+		{"share 1/4 of free connections", 16, 4, 20, 3}, // 5 fetches -> 3 parsers
+		{"share floored to minimum on tiny pool", 16, 4, 2, 2},
+		{"share floored to minimum when pool saturated", 16, 4, 0, 2},
+		{"share binds below the hard cap", 6, 4, 40, 5},                // 10 fetches -> 5 parsers
+		{"hard cap clamps a larger share", 6, 2, 40, 6},                // 20 fetches -> 10 parsers, capped
+		{"large pool share allows parallel fetch gain", 16, 4, 80, 10}, // 20 fetches -> 10
+		{"cap below floor is raised to the floor", 1, 2, 40, 2},
 		{"sharing disabled uses hard cap (divisor 1)", 16, 1, 1000, 16},
 		{"sharing disabled uses hard cap (divisor 0)", 16, 0, 1000, 16},
 	}
@@ -246,8 +250,10 @@ func TestParseFileConcurrencyScalesAcrossFiles(t *testing.T) {
 	}
 	p := NewParser(&trackManager{pool: pool, available: 32})
 	p.SetConcurrency(16, 4)
-	if got := p.fileParserLimit(); got != 8 {
-		t.Fatalf("expected parser limit 8 (32 free / 4), got %d", got)
+	// 32 free connections / 4 = an 8-fetch budget; with first+last fetched in
+	// parallel per file that allows 4 concurrent file parsers.
+	if got := p.fileParserLimit(); got != 4 {
+		t.Fatalf("expected parser limit 4 (32 free / 4 divisor -> 4 in-flight pairs), got %d", got)
 	}
 
 	// Build a 20-file NZB; each file carries two segments so per-file parallel
@@ -271,9 +277,9 @@ func TestParseFileConcurrencyScalesAcrossFiles(t *testing.T) {
 	if len(parsed.Files) != 20 {
 		t.Fatalf("parsed %d files, want 20", len(parsed.Files))
 	}
-	// 8 concurrent file parsers x 2 parallel header fetches each must drive far
-	// more than the historical width-4 fetch concurrency.
-	if pool.maxInFlight < 8 {
-		t.Fatalf("max concurrent header fetches = %d, want >= 8 (wider file-parser bound)", pool.maxInFlight)
+	// 4 concurrent file parsers x 2 parallel header fetches each must drive far
+	// more than a single fetch at a time.
+	if pool.maxInFlight < 6 {
+		t.Fatalf("max concurrent header fetches = %d, want >= 6 (parallel first/last across parsers)", pool.maxInFlight)
 	}
 }

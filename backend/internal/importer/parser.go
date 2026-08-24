@@ -25,11 +25,18 @@ import (
 	"novastream/internal/pool"
 )
 
-// minConcurrentNZBFileParsers is the floor for yEnc header-fetch concurrency: a
-// resolve always runs at least this many file parsers in parallel, matching the
-// historical fixed width, so we never regress below it. The pool backpressures
-// the actual connection usage, so exceeding the floor is always safe.
-const minConcurrentNZBFileParsers = 4
+// minConcurrentNZBFileParsers is the floor for yEnc header-fetch concurrency in
+// file parsers: a resolve always runs at least this many file parsers in
+// parallel. Combined with parallelYEncFetchesPerParser, that floors the number
+// of in-flight header fetches at the historical fixed width (4 file parsers x 1
+// fetch), so we never regress below it. The pool backpressures the actual
+// connection usage, so exceeding the floor is always safe.
+const minConcurrentNZBFileParsers = 2
+
+// parallelYEncFetchesPerParser is the worst-case number of concurrent yEnc
+// header fetches a single file parser may issue: parseFileWithContext fetches
+// the first and the final segment headers concurrently.
+const parallelYEncFetchesPerParser = 2
 
 // defaultMaxConcurrentNZBFileParsers is the hard cap on per-title yEnc header
 // file-parser concurrency when settings don't override it. It bounds how many
@@ -345,21 +352,26 @@ func (p *Parser) ParseFileWithContext(ctx context.Context, r io.Reader, nzbPath 
 
 // fileParserLimit computes how many file parsers may run concurrently for a
 // single title. It takes the configured hard cap, then — when the pool-sharing
-// heuristic is enabled — narrows it to 1/N of the pool's currently-free
-// connections so several concurrent resolves each parallelize without one
-// saturating the pool. It always returns at least minConcurrentNZBFileParsers,
-// even if the configured cap is lower, so a resolve never regresses below the
-// historical fixed width.
+// heuristic is enabled — narrows it so that the resulting in-flight yEnc header
+// fetches never exceed 1/N of the pool's currently-free connections (each file
+// parser can run first+last fetches in parallel, so the fetch budget is divided
+// by parallelYEncFetchesPerParser). Several concurrent resolves can therefore
+// each parallelize without one saturating the pool, and a constrained pool keeps
+// the same in-flight fetch footprint as the historical fixed width. It always
+// returns at least minConcurrentNZBFileParsers, even if the configured cap is
+// lower, so a resolve never regresses below the historical fixed width.
 func (p *Parser) fileParserLimit() int {
 	limit := p.maxConcurrentFileParsers
 	if limit <= 0 {
 		limit = defaultMaxConcurrentNZBFileParsers
 	}
 	if p.parserShareDivisor > 1 && p.poolManager != nil {
-		// Share 1/N of the connections that are free right now. A 0 result (pool
-		// saturated or absent) leaves the floor to apply below rather than using
-		// the full cap against a busy pool.
-		if share := p.poolManager.AvailableConnections() / p.parserShareDivisor; share < limit {
+		// Share 1/N of the connections that are free right now, expressed as an
+		// in-flight header fetch budget, then convert back to file parsers. A 0
+		// budget (pool saturated or absent) leaves the floor to apply below
+		// rather than using the full cap against a busy pool.
+		fetchBudget := p.poolManager.AvailableConnections() / p.parserShareDivisor
+		if share := (fetchBudget + parallelYEncFetchesPerParser - 1) / parallelYEncFetchesPerParser; share < limit {
 			limit = share
 		}
 	}

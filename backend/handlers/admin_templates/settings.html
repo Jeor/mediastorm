@@ -1281,6 +1281,7 @@
         'display.includeUnreleasedMoviesInSearch',
         'display.includeUnreleasedShowsInSearch',
         'display.bypassFilteringForAioStreamsOnly',
+        'display.showStreamSourceInfo',
         'display.showParsedBadges',
         'display.enableHeroArtPanning',
         'display.enableHeroArtRotation',
@@ -2858,7 +2859,7 @@
             label: 'Display',
             description: 'Badge Icon Style, navigation tabs, M.O.M. Mode, TV home/details layout, unreleased visibility, filtering bypass, episode privacy, appearance',
             detailSection: 'Display',
-            detailFields: ['Badge Icon Style', 'Navigation Tabs', 'Include Unreleased Movies in Lists', 'Include Unreleased Shows in Lists', 'Include Unreleased Movies in Search', 'Include Unreleased Shows in Search', 'Bypass Filtering for AIOStreams Only', 'Enable Application Animations', 'Enable Hero Art Panning', 'Enable Hero Art Rotation', 'Hide Continue Watching Hero Details', 'Move Details Ratings Up', 'Hide Details Poster', 'Hide TV Drawer Rail', 'M.O.M. Mode™', 'M.O.M. Mode™ Home Shelves', 'Keep TV Home Cards Visible', 'Blur Unwatched Episode Thumbnails', 'Blur Unwatched Episode Overview', 'appearance', 'Show Parsed Metadata Badges', 'Badge Visibility'],
+            detailFields: ['Badge Icon Style', 'Navigation Tabs', 'Include Unreleased Movies in Lists', 'Include Unreleased Shows in Lists', 'Include Unreleased Movies in Search', 'Include Unreleased Shows in Search', 'Bypass Filtering for AIOStreams Only', 'Show Stream Source Information', 'Enable Application Animations', 'Enable Hero Art Panning', 'Enable Hero Art Rotation', 'Hide Continue Watching Hero Details', 'Move Details Ratings Up', 'Hide Details Poster', 'Hide TV Drawer Rail', 'M.O.M. Mode™', 'M.O.M. Mode™ Home Shelves', 'Keep TV Home Cards Visible', 'Blur Unwatched Episode Thumbnails', 'Blur Unwatched Episode Overview', 'appearance', 'Show Parsed Metadata Badges', 'Badge Visibility'],
             userPaths: [
                 'display.watchStateIconStyle',
                 'display.navigationTabVisibility',
@@ -2867,6 +2868,7 @@
                 'display.includeUnreleasedMoviesInSearch',
                 'display.includeUnreleasedShowsInSearch',
                 'display.bypassFilteringForAioStreamsOnly',
+                'display.showStreamSourceInfo',
                 'display.enableAnimations',
                 'display.enableHeroArtPanning',
                 'display.enableHeroArtRotation',
@@ -2893,6 +2895,7 @@
                 'includeUnreleasedMoviesInSearch',
                 'includeUnreleasedShowsInSearch',
                 'bypassFilteringForAioStreamsOnly',
+                'showStreamSourceInfo',
                 'enableAnimations',
                 'enableHeroArtPanning',
                 'enableHeroArtRotation',
@@ -3784,7 +3787,7 @@
 
     // Map filtering field paths to client settings keys
     const clientFilterFields = ['maxSizeMovieGb', 'maxSizeEpisodeGb', 'maxResolution', 'hdrDvPolicy', 'requiredTerms', 'filterOutTerms', 'preferredTerms', 'nonPreferredTerms', 'downloadPreferredTerms', 'unknownTrackPolicy', 'splitByService'];
-    const clientDisplayFields = ['bypassFilteringForAioStreamsOnly', 'navigationTabVisibility', 'includeUnreleasedMoviesInLists', 'includeUnreleasedShowsInLists', 'includeUnreleasedMoviesInSearch', 'includeUnreleasedShowsInSearch', 'enableAnimations', 'enableHeroArtPanning', 'enableHeroArtRotation', 'showSeriesBackdropForMissingEpisodeArt', 'hideContinueWatchingHeroMetadata', 'moveDetailsRatingsToMetadata', 'hideDetailsPoster', 'hideTvDrawerRail', 'simpleMode', 'disableTvHomeCardDimming', 'blurUnwatchedEpisodeThumbnails', 'blurUnwatchedEpisodeThumbnailsIncludeCurrent', 'blurUnwatchedEpisodeOverviews', 'blurUnwatchedEpisodeOverviewsIncludeCurrent', 'appearance.fontScale', 'appearance.accentColor', 'appearance.textColor', 'appearance.secondaryTextColor', 'appearance.backgroundColor', 'appearance.modalBackgroundColor', 'appearance.buttonStyle', 'appearance.buttonRadius', 'appearance.highContrast', 'appearance.reduceOverlays'];
+    const clientDisplayFields = ['bypassFilteringForAioStreamsOnly', 'showStreamSourceInfo', 'navigationTabVisibility', 'includeUnreleasedMoviesInLists', 'includeUnreleasedShowsInLists', 'includeUnreleasedMoviesInSearch', 'includeUnreleasedShowsInSearch', 'enableAnimations', 'enableHeroArtPanning', 'enableHeroArtRotation', 'showSeriesBackdropForMissingEpisodeArt', 'hideContinueWatchingHeroMetadata', 'moveDetailsRatingsToMetadata', 'hideDetailsPoster', 'hideTvDrawerRail', 'simpleMode', 'disableTvHomeCardDimming', 'blurUnwatchedEpisodeThumbnails', 'blurUnwatchedEpisodeThumbnailsIncludeCurrent', 'blurUnwatchedEpisodeOverviews', 'blurUnwatchedEpisodeOverviewsIncludeCurrent', 'appearance.fontScale', 'appearance.accentColor', 'appearance.textColor', 'appearance.secondaryTextColor', 'appearance.backgroundColor', 'appearance.modalBackgroundColor', 'appearance.buttonStyle', 'appearance.buttonRadius', 'appearance.highContrast', 'appearance.reduceOverlays'];
     const clientPlaybackFields = [
         'preferredPlayer',
         'preferredAudioLanguage',

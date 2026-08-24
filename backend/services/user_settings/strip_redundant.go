@@ -194,6 +194,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(g.Display.IncludeUnreleasedMoviesInSearch),
 			IncludeUnreleasedShowsInSearch:         models.BoolPtr(g.Display.IncludeUnreleasedShowsInSearch),
 			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                   models.BoolPtr(g.Display.ShowStreamSourceInfo),
 			DisableMobileTopCarousel:               models.BoolPtr(g.Display.DisableMobileTopCarousel),
 			HideContinueWatchingHeroMetadata:       models.BoolPtr(g.Display.HideContinueWatchingHeroMetadata),
 			MoveDetailsRatingsToMetadata:           models.BoolPtr(g.Display.MoveDetailsRatingsToMetadata),
@@ -508,6 +509,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Display.BypassFilteringForAIOStreamsOnly == nil {
 		eff.Display.BypassFilteringForAIOStreamsOnly = models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly)
+	}
+	if eff.Display.ShowStreamSourceInfo == nil {
+		eff.Display.ShowStreamSourceInfo = models.BoolPtr(g.Display.ShowStreamSourceInfo)
 	}
 	if eff.Display.DisableMobileTopCarousel == nil {
 		eff.Display.DisableMobileTopCarousel = models.BoolPtr(g.Display.DisableMobileTopCarousel)
@@ -998,6 +1002,10 @@ func stripDisplay(d *models.DisplaySettings, g config.DisplaySettings) bool {
 		d.BypassFilteringForAIOStreamsOnly = nil
 		changed = true
 	}
+	if d.ShowStreamSourceInfo != nil && *d.ShowStreamSourceInfo == g.ShowStreamSourceInfo {
+		d.ShowStreamSourceInfo = nil
+		changed = true
+	}
 	if d.DisableMobileTopCarousel != nil && *d.DisableMobileTopCarousel == g.DisableMobileTopCarousel {
 		d.DisableMobileTopCarousel = nil
 		changed = true
@@ -1381,6 +1389,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.BypassFilteringForAIOStreamsOnly != nil && eff.Display.BypassFilteringForAIOStreamsOnly != nil && *cs.BypassFilteringForAIOStreamsOnly == *eff.Display.BypassFilteringForAIOStreamsOnly {
 		cs.BypassFilteringForAIOStreamsOnly = nil
+		changed = true
+	}
+	if cs.ShowStreamSourceInfo != nil && eff.Display.ShowStreamSourceInfo != nil && *cs.ShowStreamSourceInfo == *eff.Display.ShowStreamSourceInfo {
+		cs.ShowStreamSourceInfo = nil
 		changed = true
 	}
 	if cs.IncludeUnreleasedMoviesInLists != nil && eff.Display.IncludeUnreleasedMoviesInLists != nil && *cs.IncludeUnreleasedMoviesInLists == *eff.Display.IncludeUnreleasedMoviesInLists {

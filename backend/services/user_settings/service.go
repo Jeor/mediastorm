@@ -383,6 +383,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Display.BypassFilteringForAIOStreamsOnly == nil {
 			settings.Display.BypassFilteringForAIOStreamsOnly = defaults.Display.BypassFilteringForAIOStreamsOnly
 		}
+		if settings.Display.ShowStreamSourceInfo == nil {
+			settings.Display.ShowStreamSourceInfo = defaults.Display.ShowStreamSourceInfo
+		}
 		if settings.Display.DisableMobileTopCarousel == nil {
 			settings.Display.DisableMobileTopCarousel = defaults.Display.DisableMobileTopCarousel
 		}
@@ -838,6 +841,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Display.IncludeUnreleasedMoviesInSearch != nil ||
 		s.Display.IncludeUnreleasedShowsInSearch != nil ||
 		s.Display.BypassFilteringForAIOStreamsOnly != nil ||
+		s.Display.ShowStreamSourceInfo != nil ||
 		s.Display.DisableMobileTopCarousel != nil ||
 		s.Display.HideContinueWatchingHeroMetadata != nil ||
 		s.Display.MoveDetailsRatingsToMetadata != nil ||

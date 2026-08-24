@@ -1302,6 +1302,8 @@ type DisplaySettings struct {
 	BypassFilteringForAIOStreamsOnly bool `json:"bypassFilteringForAioStreamsOnly"`
 	// ShowParsedBadges shows parsed metadata badges instead of raw titles in manual selection.
 	ShowParsedBadges bool `json:"showParsedBadges,omitempty"`
+	// ShowStreamSourceInfo displays stream service and debrid provider information in selection and playback UI.
+	ShowStreamSourceInfo bool `json:"showStreamSourceInfo"`
 	// CleanPosters hides text overlays and gradient backgrounds on poster cards.
 	CleanPosters bool `json:"cleanPosters,omitempty"`
 	// DisableMobileTopCarousel hides the top hero carousel on mobile home.
@@ -1871,6 +1873,7 @@ func DefaultSettings() Settings {
 			IncludeUnreleasedShowsInSearch:         true,
 			CleanPosters:                           true,
 			AlwaysShowProfileSelector:              true,
+			ShowStreamSourceInfo:                   true,
 			EnableAnimations:                       true,
 			EnableHeroArtPanning:                   true,
 			EnableHeroArtRotation:                  true,
@@ -2232,6 +2235,9 @@ func (m *Manager) Load() (Settings, error) {
 		if _, exists := displayMap["enableHeroArtRotation"]; !exists {
 			displayMap["enableHeroArtRotation"] = true
 		}
+		if _, exists := displayMap["showStreamSourceInfo"]; !exists {
+			displayMap["showStreamSourceInfo"] = true
+		}
 	} else {
 		raw["display"] = map[string]interface{}{
 			"alwaysShowProfileSelector":       true,
@@ -2242,6 +2248,7 @@ func (m *Manager) Load() (Settings, error) {
 			"enableAnimations":                true,
 			"enableHeroArtPanning":            true,
 			"enableHeroArtRotation":           true,
+			"showStreamSourceInfo":            true,
 		}
 	}
 

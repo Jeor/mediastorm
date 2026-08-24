@@ -66,6 +66,13 @@ func TestDefaultUserSettingsEnablesApplicationAnimations(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsShowsStreamSourceInfo(t *testing.T) {
+	settings := DefaultUserSettings()
+	if settings.Display.ShowStreamSourceInfo == nil || !*settings.Display.ShowStreamSourceInfo {
+		t.Fatal("stream source information should be shown by default")
+	}
+}
+
 func TestDefaultUserSettingsKeepsTVDisplayOptionsDisabled(t *testing.T) {
 	settings := DefaultUserSettings()
 

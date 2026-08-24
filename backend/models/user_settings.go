@@ -123,6 +123,8 @@ type DisplaySettings struct {
 	IncludeUnreleasedShowsInSearch *bool `json:"includeUnreleasedShowsInSearch,omitempty"`
 	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only enabled scraper.
 	BypassFilteringForAIOStreamsOnly *bool `json:"bypassFilteringForAioStreamsOnly,omitempty"`
+	// ShowStreamSourceInfo displays stream service and debrid provider information in selection and playback UI.
+	ShowStreamSourceInfo *bool `json:"showStreamSourceInfo,omitempty"`
 	// DisableMobileTopCarousel hides the top hero carousel on mobile home.
 	DisableMobileTopCarousel *bool `json:"disableMobileTopCarousel,omitempty"`
 	// HideContinueWatchingHeroMetadata hides year and overview text from the TV home hero for Continue Watching.
@@ -1085,6 +1087,7 @@ func DefaultUserSettings() UserSettings {
 			IncludeUnreleasedMoviesInSearch:           BoolPtr(true),
 			IncludeUnreleasedShowsInSearch:            BoolPtr(true),
 			DisableMobileTopCarousel:                  BoolPtr(false),
+			ShowStreamSourceInfo:                      BoolPtr(true),
 			HideContinueWatchingHeroMetadata:          BoolPtr(false),
 			MoveDetailsRatingsToMetadata:              BoolPtr(false),
 			HideDetailsPoster:                         BoolPtr(false),

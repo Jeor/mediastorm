@@ -204,6 +204,34 @@ func TestDefaultSettingsDisablesSimpleMode(t *testing.T) {
 	}
 }
 
+func TestStreamSourceInfoDefaultsOnAndPreservesOff(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"display":{}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	mgr := NewManager(settingsPath)
+	settings, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if !settings.Display.ShowStreamSourceInfo {
+		t.Fatal("expected stream source information to default on")
+	}
+
+	settings.Display.ShowStreamSourceInfo = false
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	reloaded, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("reload settings: %v", err)
+	}
+	if reloaded.Display.ShowStreamSourceInfo {
+		t.Fatal("expected explicit stream source information off setting to be preserved")
+	}
+}
+
 func TestDefaultSettingsIncludesSimpleModeHomeShelves(t *testing.T) {
 	settings := DefaultSettings()
 	want := DefaultSimpleModeHomeShelfIDs()

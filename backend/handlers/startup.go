@@ -1523,6 +1523,7 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
 			IncludeUnreleasedShowsInSearch:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
 			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                   models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
 			DisableMobileTopCarousel:               models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
 			HideContinueWatchingHeroMetadata:       models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
 			MoveDetailsRatingsToMetadata:           models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),

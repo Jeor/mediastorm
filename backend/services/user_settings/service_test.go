@@ -289,6 +289,7 @@ func TestIsSettingsEmptyRecognizesSolePointerOverrides(t *testing.T) {
 		"blur current thumbnail":  {Display: models.DisplaySettings{BlurUnwatchedEpisodeThumbnailsIncludeCurrent: models.BoolPtr(false)}},
 		"blur overviews":          {Display: models.DisplaySettings{BlurUnwatchedEpisodeOverviews: models.BoolPtr(false)}},
 		"blur current overview":   {Display: models.DisplaySettings{BlurUnwatchedEpisodeOverviewsIncludeCurrent: models.BoolPtr(false)}},
+		"show stream source info": {Display: models.DisplaySettings{ShowStreamSourceInfo: models.BoolPtr(false)}},
 		"newest release first":    {Ranking: &models.UserRankingSettings{NewestReleaseFirst: models.BoolPtr(false)}},
 		"live manifest":           {LiveTV: models.LiveTVSettings{ManifestURL: models.StringPtr("")}},
 		"live proxy":              {LiveTV: models.LiveTVSettings{ProxyURL: models.StringPtr("")}},
@@ -510,6 +511,38 @@ func TestGetWithDefaults_TVDisplayOptionsInheritAndOverride(t *testing.T) {
 	}
 	if got.Display.DisableTVHomeCardDimming == nil || !*got.Display.DisableTVHomeCardDimming {
 		t.Fatal("expected TV home card dimming option to inherit global true")
+	}
+}
+
+func TestGetWithDefaults_StreamSourceInfoInheritsAndOverrides(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	defaults := models.UserSettings{Display: models.DisplaySettings{
+		ShowStreamSourceInfo: models.BoolPtr(true),
+	}}
+	got, err := svc.GetWithDefaults("user1", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults: %v", err)
+	}
+	if got.Display.ShowStreamSourceInfo == nil || !*got.Display.ShowStreamSourceInfo {
+		t.Fatal("expected stream source information to inherit global true")
+	}
+
+	if err := svc.Update("user1", models.UserSettings{Display: models.DisplaySettings{
+		ShowStreamSourceInfo: models.BoolPtr(false),
+	}}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	got, err = svc.GetWithDefaults("user1", defaults)
+	if err != nil {
+		t.Fatalf("GetWithDefaults after override: %v", err)
+	}
+	if got.Display.ShowStreamSourceInfo == nil || *got.Display.ShowStreamSourceInfo {
+		t.Fatal("expected profile stream source information override to preserve false")
 	}
 }
 

@@ -29,6 +29,7 @@ type ClientFilterSettings struct {
 
 	// Display overrides
 	BypassFilteringForAIOStreamsOnly             *bool               `json:"bypassFilteringForAioStreamsOnly,omitempty"`
+	ShowStreamSourceInfo                         *bool               `json:"showStreamSourceInfo,omitempty"`
 	IncludeUnreleasedMoviesInLists               *bool               `json:"includeUnreleasedMoviesInLists,omitempty"`
 	IncludeUnreleasedShowsInLists                *bool               `json:"includeUnreleasedShowsInLists,omitempty"`
 	IncludeUnreleasedMoviesInSearch              *bool               `json:"includeUnreleasedMoviesInSearch,omitempty"`
@@ -125,6 +126,7 @@ func (c *ClientFilterSettings) IsEmpty() bool {
 		c.AnimeLanguageEnabled == nil &&
 		c.AnimePreferredLanguage == nil &&
 		c.BypassFilteringForAIOStreamsOnly == nil &&
+		c.ShowStreamSourceInfo == nil &&
 		c.IncludeUnreleasedMoviesInLists == nil &&
 		c.IncludeUnreleasedShowsInLists == nil &&
 		c.IncludeUnreleasedMoviesInSearch == nil &&

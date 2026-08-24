@@ -913,6 +913,45 @@ func TestPrequeueSearchFeederReservesCapacityForSlowerSource(t *testing.T) {
 	}
 }
 
+func TestPrequeueSearchFeederInterruptsBlockedHandoffForNewSource(t *testing.T) {
+	src := newStreamCandidateSource()
+	state := newPrequeueFeedState()
+	usenetCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	debridCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go (&PrequeueHandler{store: playback.NewPrequeueStore(time.Minute)}).prequeueSearchFeeder(ctx, src, usenetCh, debridCh, state, prequeueFeederConfig{
+		maxCandidates: 4,
+	})
+	debridCh <- splitSearchResult("debrid", models.ServiceTypeDebrid, 4)
+	close(debridCh)
+
+	// Do not consume the stream yet: the first debrid handoff should block.
+	waitForStreamSnapshot(t, src, func(snapshot []models.NZBResult) bool {
+		return len(snapshot) == 1 && snapshot[0].ServiceType == models.ServiceTypeDebrid
+	})
+
+	// A newly completed Usenet source must interrupt and roll back that blocked
+	// debrid handoff rather than waiting for a debrid worker slot to free.
+	usenetCh <- splitSearchResult("usenet", models.ServiceTypeUsenet, 1)
+	close(usenetCh)
+	waitForStreamSnapshot(t, src, func(snapshot []models.NZBResult) bool {
+		return len(snapshot) == 1 && snapshot[0].ServiceType == models.ServiceTypeUsenet
+	})
+	_, candidate, ok := nextStreamCandidate(t, src)
+	if !ok || candidate.ServiceType != models.ServiceTypeUsenet {
+		t.Fatalf("first delivered candidate = (%q, %t), want newly ready usenet", candidate.ServiceType, ok)
+	}
+
+	cancel()
+	src.Stop()
+	select {
+	case <-state.done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("feeder did not stop after cancellation")
+	}
+}
+
 func TestPrequeueSearchFeederReleasesUnusedReservation(t *testing.T) {
 	src := newStreamCandidateSource()
 	state := newPrequeueFeedState()
@@ -959,6 +998,18 @@ func nextStreamCandidate(t *testing.T, src *streamCandidateSource) (int, models.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	return src.Next(ctx)
+}
+
+func waitForStreamSnapshot(t *testing.T, src *streamCandidateSource, ready func([]models.NZBResult) bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if ready(src.Snapshot()) {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("stream snapshot did not reach expected state; final=%#v", src.Snapshot())
 }
 
 // TestStreamCandidateSourceStopUnblocksBlockedFeed guards the worker's winner

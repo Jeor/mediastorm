@@ -2523,10 +2523,29 @@ func newStreamCandidateSource() *streamCandidateSource {
 // (no more candidates will arrive). The mutex is never held across the channel
 // send, so Stop/Close can always acquire it and unblock an in-flight Feed.
 func (s *streamCandidateSource) Feed(cand models.NZBResult) bool {
-	s.mu.Lock()
-	if s.stopped {
-		s.mu.Unlock()
+	it, ok := s.reserve(cand)
+	if !ok {
 		return false
+	}
+
+	select {
+	case s.ch <- it:
+		return true
+	case <-s.done:
+		s.rollback(it)
+		return false
+	}
+}
+
+// reserve commits a candidate to the source before it is published. The
+// feeder may roll the tail reservation back when a newly completed search
+// source interrupts a blocked handoff, allowing that source to be considered
+// immediately without polluting migration snapshots.
+func (s *streamCandidateSource) reserve(cand models.NZBResult) (streamedCandidate, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped {
+		return streamedCandidate{}, false
 	}
 	idx := s.total
 	// Commit before publishing. Once Next receives the candidate, a cached
@@ -2534,22 +2553,16 @@ func (s *streamCandidateSource) Feed(cand models.NZBResult) bool {
 	// winning candidate must already be present in that snapshot.
 	s.total++
 	s.acc = append(s.acc, cand)
-	s.mu.Unlock()
+	return streamedCandidate{idx: idx, cand: cand}, true
+}
 
-	select {
-	case s.ch <- streamedCandidate{idx: idx, cand: cand}:
-		return true
-	case <-s.done:
-		// This candidate was reserved but never published. Feed is single-writer,
-		// so it is still the tail entry and can be rolled back without disturbing
-		// any delivered candidate or its migration snapshot.
-		s.mu.Lock()
-		if s.total == idx+1 && len(s.acc) == idx+1 {
-			s.total = idx
-			s.acc = s.acc[:idx]
-		}
-		s.mu.Unlock()
-		return false
+func (s *streamCandidateSource) rollback(it streamedCandidate) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Feed is single-writer, so an unpublished reservation is the tail entry.
+	if s.total == it.idx+1 && len(s.acc) == it.idx+1 {
+		s.total = it.idx
+		s.acc = s.acc[:it.idx]
 	}
 }
 
@@ -3307,87 +3320,173 @@ type prequeueFeederConfig struct {
 	workerStart   time.Time
 }
 
-// prequeueSearchFeeder consumes the split search sources as each completes,
-// applies the prequeue's bad-stream marking, annotates episodes, runs the
-// deferred debrid torrent preflight on the debrid batch, and publishes
-// candidates into the streaming source in completion order. It never blocks
-// resolution: usenet candidates are fed (and raced) while debrid is still
-// searching, and the debrid preflight only delays debrid candidates, not
-// in-flight usenet resolution. The stream is closed once every source settles;
-// on context cancellation (worker teardown or a winning candidate) the feeder
-// returns without closing it — the worker's Stop unblocks a blocked Feed.
-func (h *PrequeueHandler) prequeueSearchFeeder(ctx context.Context, src *streamCandidateSource, usenetCh, debridCh <-chan indexer.ScoredSplitSearchResult, state *prequeueFeedState, cfg prequeueFeederConfig) {
-	defer close(state.done)
+type prequeuePreparedSource struct {
+	source     string
+	candidates []models.NZBResult
+}
 
-	usenetDone, debridDone := false, false
-	fed := 0
-	var deferred [][]models.NZBResult
-	for !usenetDone || !debridDone {
+// prequeueSearchFeeder consumes and prepares the split sources concurrently,
+// then publishes their candidates through one event loop. A blocked candidate
+// handoff remains interruptible by a newly prepared source, so the first batch
+// cannot delay a later source behind slow resolution attempts. Once both are
+// ready, candidates are interleaved while retaining each source's local rank.
+func (h *PrequeueHandler) prequeueSearchFeeder(ctx context.Context, src *streamCandidateSource, usenetCh, debridCh <-chan indexer.ScoredSplitSearchResult, state *prequeueFeedState, cfg prequeueFeederConfig) {
+	var prepareWG sync.WaitGroup
+	defer func() {
+		prepareWG.Wait()
+		close(state.done)
+	}()
+
+	preparedCh := make(chan prequeuePreparedSource, 2)
+	prepare := func(ch <-chan indexer.ScoredSplitSearchResult) {
 		select {
 		case <-ctx.Done():
 			return
-		case res, ok := <-usenetCh:
+		case res, ok := <-ch:
 			if !ok {
-				usenetDone = true
-				continue
-			}
-			remaining, done := h.feedSourceResults(ctx, src, state, cfg, res, &fed)
-			if len(remaining) > 0 {
-				deferred = append(deferred, remaining)
-			}
-			if done {
+				select {
+				case preparedCh <- prequeuePreparedSource{}:
+				case <-ctx.Done():
+				}
 				return
 			}
-		case res, ok := <-debridCh:
-			if !ok {
-				debridDone = true
-				continue
+			batch := h.prepareSourceResults(ctx, state, cfg, res)
+			select {
+			case preparedCh <- prequeuePreparedSource{source: res.Source, candidates: batch}:
+			case <-ctx.Done():
 			}
-			remaining, done := h.feedSourceResults(ctx, src, state, cfg, res, &fed)
-			if len(remaining) > 0 {
-				deferred = append(deferred, remaining)
-			}
-			if done {
-				return
+		}
+	}
+	prepareWG.Add(2)
+	go func() {
+		defer prepareWG.Done()
+		prepare(usenetCh)
+	}()
+	go func() {
+		defer prepareWG.Done()
+		prepare(debridCh)
+	}()
+
+	queues := make(map[string][]models.NZBResult, 2)
+	fedBySource := make(map[string]int, 2)
+	order := make([]string, 0, 2)
+	nextSource := 0
+	settled := 0
+	fed := 0
+	sourceLimit := cfg.maxCandidates
+	if cfg.maxCandidates > 1 {
+		sourceLimit = (cfg.maxCandidates + 1) / 2
+	}
+
+	addPrepared := func(prepared prequeuePreparedSource) {
+		settled++
+		if prepared.source == "" || len(prepared.candidates) == 0 {
+			return
+		}
+		if _, exists := queues[prepared.source]; !exists {
+			order = append(order, prepared.source)
+		}
+		queues[prepared.source] = append(queues[prepared.source], prepared.candidates...)
+		// A source that completed while another candidate was blocked gets the
+		// next handoff. Subsequent picks rotate across both ready sources.
+		for i, source := range order {
+			if source == prepared.source {
+				nextSource = i
+				break
 			}
 		}
 	}
 
-	// The initial pass reserves half of the finite candidate budget for each
-	// split source. Once both have settled, release any unused reservation and
-	// fill the remaining slots from the deferred tails in source-completion
-	// order. This preserves first-ready latency while preventing a large early
-	// batch from excluding the other source entirely. A disabled, empty, or
-	// failed source therefore does not reduce the final candidate count.
-	for _, batch := range deferred {
-		for _, cand := range batch {
-			if cfg.maxCandidates > 0 && fed >= cfg.maxCandidates {
-				break
+	pickCandidate := func() (string, models.NZBResult, bool) {
+		if cfg.maxCandidates > 0 && fed >= cfg.maxCandidates {
+			return "", models.NZBResult{}, false
+		}
+		scan := func(enforceReservation bool) (string, models.NZBResult, bool) {
+			for offset := 0; offset < len(order); offset++ {
+				i := (nextSource + offset) % len(order)
+				source := order[i]
+				if len(queues[source]) == 0 {
+					continue
+				}
+				if enforceReservation && sourceLimit > 0 && fedBySource[source] >= sourceLimit {
+					continue
+				}
+				nextSource = (i + 1) % len(order)
+				return source, queues[source][0], true
 			}
-			if !src.Feed(cand) {
+			return "", models.NZBResult{}, false
+		}
+
+		// Until both sources settle, retain half the budget for the source still
+		// in flight. Once settled, consume both reserved shares before releasing
+		// genuinely unused capacity to a source with remaining candidates.
+		if cfg.maxCandidates > 1 {
+			if source, candidate, ok := scan(true); ok {
+				return source, candidate, true
+			}
+			if settled < 2 {
+				return "", models.NZBResult{}, false
+			}
+		}
+		return scan(false)
+	}
+
+	for {
+		source, candidate, hasCandidate := pickCandidate()
+		if !hasCandidate {
+			if settled == 2 || (cfg.maxCandidates > 0 && fed >= cfg.maxCandidates) {
+				src.Close()
 				return
 			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-src.done:
+				return
+			case prepared := <-preparedCh:
+				addPrepared(prepared)
+			}
+			continue
+		}
+
+		it, ok := src.reserve(candidate)
+		if !ok {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			src.rollback(it)
+			return
+		case <-src.done:
+			src.rollback(it)
+			return
+		case prepared := <-preparedCh:
+			// Do not make a completed source wait for the current source's next
+			// worker slot. Roll back this unpublished tail and reprioritize.
+			src.rollback(it)
+			if prepared.source != "" && len(prepared.candidates) > 0 {
+				log.Printf("[prequeue] %s source ready with %d candidate(s); interrupting blocked %s handoff", prepared.source, len(prepared.candidates), source)
+			}
+			addPrepared(prepared)
+		case src.ch <- it:
+			queues[source] = queues[source][1:]
 			fed++
+			fedBySource[source]++
 			state.mu.Lock()
 			state.fedCount = fed
 			state.mu.Unlock()
 		}
 	}
-	// Every enabled source has settled; the race may conclude as exhausted once
-	// the hand-fed candidates are processed.
-	src.Close()
 }
 
-// feedSourceResults processes one completed search source batch: bad-stream
+// prepareSourceResults processes one completed search source batch: bad-stream
 // marking, candidate decision logging, the deferred debrid preflight, then
-// feeding each surviving candidate into the stream. For a finite candidate cap,
-// the initial pass feeds at most half the total budget from one source and
-// returns the remaining candidates for a second pass after both sources settle.
-// It returns done=true when the source has stopped accepting candidates (the
-// race adopted a winner), in which case the feeder should stop.
-func (h *PrequeueHandler) feedSourceResults(ctx context.Context, src *streamCandidateSource, state *prequeueFeedState, cfg prequeueFeederConfig, res indexer.ScoredSplitSearchResult, fed *int) (remaining []models.NZBResult, done bool) {
+// returning the locally ranked surviving candidates. Source preparation occurs
+// concurrently, so a slow debrid torrent preflight cannot delay ready Usenet
+// candidates.
+func (h *PrequeueHandler) prepareSourceResults(ctx context.Context, state *prequeueFeedState, cfg prequeueFeederConfig, res indexer.ScoredSplitSearchResult) []models.NZBResult {
 	if res.Disabled {
-		return nil, false // source not in the active service mode; nothing to count or feed
+		return nil // source not in the active service mode; nothing to count or feed
 	}
 	state.mu.Lock()
 	state.enabledSources++
@@ -3397,7 +3496,7 @@ func (h *PrequeueHandler) feedSourceResults(ctx context.Context, src *streamCand
 	state.mu.Unlock()
 	if res.Err != nil {
 		log.Printf("[prequeue] %s search failed (streaming): %v", res.Source, res.Err)
-		return nil, false
+		return nil
 	}
 	h.updatePrequeueStageDetail(cfg.prequeueID, "ranking", "")
 
@@ -3442,36 +3541,7 @@ func (h *PrequeueHandler) feedSourceResults(ctx context.Context, src *streamCand
 	for i := range batch {
 		annotateResultEpisode(&batch[i], cfg.targetEpisode)
 	}
-
-	// SearchWithScoringSplit has exactly two source lanes. Reserve half the
-	// finite budget for the lane still in flight; the feeder releases unused
-	// capacity after both lanes settle. With an odd cap, the first-ready source
-	// receives the extra slot.
-	sourceLimit := len(batch)
-	if cfg.maxCandidates > 1 {
-		sourceLimit = (cfg.maxCandidates + 1) / 2
-		if sourceLimit > len(batch) {
-			sourceLimit = len(batch)
-		}
-	}
-
-	for i, cand := range batch {
-		if cfg.maxCandidates > 0 && *fed >= cfg.maxCandidates {
-			return batch[i:], false
-		}
-		if i >= sourceLimit {
-			log.Printf("[prequeue] reserving candidate capacity for other source; deferring %d lower-ranked %s candidate(s)", len(batch)-i, res.Source)
-			return batch[i:], false
-		}
-		if !src.Feed(cand) {
-			return nil, true // race concluded (winner adopted); stop feeding
-		}
-		*fed++
-		state.mu.Lock()
-		state.fedCount = *fed
-		state.mu.Unlock()
-	}
-	return nil, false
+	return batch
 }
 
 func (h *PrequeueHandler) waitForPlaybackQueue(ctx context.Context, prequeueID string, queueID int64, title string) (*models.PlaybackResolution, error) {

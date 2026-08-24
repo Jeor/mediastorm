@@ -2188,6 +2188,10 @@ func (h *VideoHandler) providerOrCachedDuration(ctx context.Context, cleanPath s
 }
 
 func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath string) (*ffprobeOutput, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	// Check if this is already an external URL (e.g., from AIOStreams pre-resolved streams)
 	// If so, probe it directly without going through the provider
 	if strings.HasPrefix(cleanPath, "http://") || strings.HasPrefix(cleanPath, "https://") {
@@ -2210,6 +2214,9 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 			videoTracef("[video] ffprobe using direct URL for seekable access: %s", cleanPath)
 			meta, err := h.runFFProbe(ctx, directURL, nil)
 			if err != nil {
+				if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return nil, err
+				}
 				// Log but don't fail - fall through to WebDAV or piped approach
 				log.Printf("[video] ffprobe with direct URL failed, trying alternatives: %v", err)
 			} else {
@@ -2218,6 +2225,8 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 			}
 		} else if err != nil && errors.Is(err, streaming.ErrStaleTorrent) {
 			return nil, fmt.Errorf("%w", streaming.ErrStaleTorrent)
+		} else if err != nil && (ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+			return nil, err
 		} else if err != nil && !errors.Is(err, streaming.ErrNotFound) {
 			log.Printf("[video] GetDirectURL failed for %q: %v", cleanPath, err)
 		}
@@ -2228,12 +2237,18 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 		videoTracef("[video] ffprobe using WebDAV URL for seekable access: %s", cleanPath)
 		meta, err := h.runFFProbe(ctx, webdavURL, nil)
 		if err != nil {
+			if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
 			// Log but don't fail - fall through to piped approach
 			log.Printf("[video] ffprobe with WebDAV URL failed, falling back to piped probe: %v", err)
 		} else {
 			h.enrichBluRayStreamLanguages(ctx, cleanPath, meta)
 			return meta, nil
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	// Fall back to a ranged sample. Progressive MP4s often store moov after

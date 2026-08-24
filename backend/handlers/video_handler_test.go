@@ -1178,6 +1178,32 @@ type testStreamProvider struct {
 	hadDeadline bool
 }
 
+type canceledDirectURLProvider struct {
+	streamCalls atomic.Int32
+}
+
+func (p *canceledDirectURLProvider) GetDirectURL(context.Context, string) (string, error) {
+	return "", context.Canceled
+}
+
+func (p *canceledDirectURLProvider) Stream(context.Context, streaming.Request) (*streaming.Response, error) {
+	p.streamCalls.Add(1)
+	return nil, errors.New("piped fallback should not run")
+}
+
+func TestRunFFProbeFromProviderDoesNotFallbackAfterCancellation(t *testing.T) {
+	provider := &canceledDirectURLProvider{}
+	handler := &VideoHandler{streamer: provider}
+
+	_, err := handler.runFFProbeFromProvider(context.Background(), "/movie.mkv")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("runFFProbeFromProvider() error = %v, want context.Canceled", err)
+	}
+	if calls := provider.streamCalls.Load(); calls != 0 {
+		t.Fatalf("piped fallback calls = %d, want 0 after cancellation", calls)
+	}
+}
+
 func (p *testStreamProvider) Stream(ctx context.Context, req streaming.Request) (*streaming.Response, error) {
 	_, p.hadDeadline = ctx.Deadline()
 	if p.err != nil {

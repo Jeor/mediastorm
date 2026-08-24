@@ -5,21 +5,22 @@ package models
 // and explicit values (including zero/false).
 type ClientFilterSettings struct {
 	// Filtering overrides
-	MaxSizeMovieGB         *float64              `json:"maxSizeMovieGb,omitempty"`
-	MaxSizeEpisodeGB       *float64              `json:"maxSizeEpisodeGb,omitempty"`
-	MaxResolution          *string               `json:"maxResolution,omitempty"`
-	HDRDVPolicy            *HDRDVPolicy          `json:"hdrDvPolicy,omitempty"`
-	RequiredTerms          *[]string             `json:"requiredTerms,omitempty"`
-	FilterOutTerms         *[]string             `json:"filterOutTerms,omitempty"`
-	PreferredTerms         *[]string             `json:"preferredTerms,omitempty"`
-	NonPreferredTerms      *[]string             `json:"nonPreferredTerms,omitempty"`
-	DownloadPreferredTerms *[]string             `json:"downloadPreferredTerms,omitempty"`
-	UnknownTrackPolicy     *string               `json:"unknownTrackPolicy,omitempty"`
-	SplitByService         *bool                 `json:"splitByService,omitempty"`
-	Debrid                 *ClientFilterSettings `json:"debrid,omitempty"`
-	Usenet                 *ClientFilterSettings `json:"usenet,omitempty"`
-	AnimeLanguageEnabled   *bool                 `json:"animeLanguageEnabled,omitempty"`
-	AnimePreferredLanguage *string               `json:"animePreferredLanguage,omitempty"`
+	MaxSizeMovieGB                         *float64              `json:"maxSizeMovieGb,omitempty"`
+	MaxSizeEpisodeGB                       *float64              `json:"maxSizeEpisodeGb,omitempty"`
+	MaxResolution                          *string               `json:"maxResolution,omitempty"`
+	HDRDVPolicy                            *HDRDVPolicy          `json:"hdrDvPolicy,omitempty"`
+	RequiredTerms                          *[]string             `json:"requiredTerms,omitempty"`
+	FilterOutTerms                         *[]string             `json:"filterOutTerms,omitempty"`
+	PreferredTerms                         *[]string             `json:"preferredTerms,omitempty"`
+	NonPreferredTerms                      *[]string             `json:"nonPreferredTerms,omitempty"`
+	DownloadPreferredTerms                 *[]string             `json:"downloadPreferredTerms,omitempty"`
+	UnknownTrackPolicy                     *string               `json:"unknownTrackPolicy,omitempty"`
+	RealDebridRestrictedTermsFilterEnabled *bool                 `json:"realDebridRestrictedTermsFilterEnabled,omitempty"`
+	SplitByService                         *bool                 `json:"splitByService,omitempty"`
+	Debrid                                 *ClientFilterSettings `json:"debrid,omitempty"`
+	Usenet                                 *ClientFilterSettings `json:"usenet,omitempty"`
+	AnimeLanguageEnabled                   *bool                 `json:"animeLanguageEnabled,omitempty"`
+	AnimePreferredLanguage                 *string               `json:"animePreferredLanguage,omitempty"`
 
 	// Network settings for URL switching based on WiFi
 	HomeWifiSSID     *string `json:"homeWifiSSID,omitempty"`
@@ -28,6 +29,7 @@ type ClientFilterSettings struct {
 
 	// Display overrides
 	BypassFilteringForAIOStreamsOnly             *bool               `json:"bypassFilteringForAioStreamsOnly,omitempty"`
+	ShowStreamSourceInfo                         *bool               `json:"showStreamSourceInfo,omitempty"`
 	IncludeUnreleasedMoviesInLists               *bool               `json:"includeUnreleasedMoviesInLists,omitempty"`
 	IncludeUnreleasedShowsInLists                *bool               `json:"includeUnreleasedShowsInLists,omitempty"`
 	IncludeUnreleasedMoviesInSearch              *bool               `json:"includeUnreleasedMoviesInSearch,omitempty"`
@@ -117,12 +119,14 @@ func (c *ClientFilterSettings) IsEmpty() bool {
 		c.NonPreferredTerms == nil &&
 		c.DownloadPreferredTerms == nil &&
 		c.UnknownTrackPolicy == nil &&
+		c.RealDebridRestrictedTermsFilterEnabled == nil &&
 		c.SplitByService == nil &&
 		c.Debrid == nil &&
 		c.Usenet == nil &&
 		c.AnimeLanguageEnabled == nil &&
 		c.AnimePreferredLanguage == nil &&
 		c.BypassFilteringForAIOStreamsOnly == nil &&
+		c.ShowStreamSourceInfo == nil &&
 		c.IncludeUnreleasedMoviesInLists == nil &&
 		c.IncludeUnreleasedShowsInLists == nil &&
 		c.IncludeUnreleasedMoviesInSearch == nil &&

@@ -894,6 +894,23 @@ func (c *Client) GetOwnedServers(authToken string) ([]PlexResource, error) {
 	return servers, nil
 }
 
+// GetOwnedVisibleServers returns owned Plex Media Servers even when Plex Cloud
+// reports them offline. A selected LAN, VPN, or reverse-proxy URL may still be
+// reachable from mediastorm in that state.
+func (c *Client) GetOwnedVisibleServers(authToken string) ([]PlexResource, error) {
+	resources, err := c.GetResources(authToken)
+	if err != nil {
+		return nil, err
+	}
+	servers := []PlexResource{}
+	for _, resource := range resources {
+		if resource.Owned && strings.Contains(resource.Provides, "server") {
+			servers = append(servers, resource)
+		}
+	}
+	return servers, nil
+}
+
 // GetAccessibleServers returns online Plex Media Servers visible to the token,
 // including shared servers. Library access is still enforced by Plex itself.
 func (c *Client) GetAccessibleServers(authToken string) ([]PlexResource, error) {
@@ -1168,30 +1185,9 @@ func (c *Client) serverJSON(ctx context.Context, server PlexResource, endpoint s
 // GetServerWatchHistory fetches watch history from a specific Plex server
 // If accountID > 0, filters history to only that Plex user account
 func (c *Client) GetServerWatchHistory(server PlexResource, limit int, accountID int) ([]WatchHistoryItem, error) {
-	// Find the best connection to use (prefer direct over relay)
-	var serverURL string
-	for _, conn := range server.Connections {
-		if !conn.Relay && conn.Protocol == "https" {
-			serverURL = conn.URI
-			break
-		}
-	}
-	// Fallback to any available connection
-	if serverURL == "" {
-		for _, conn := range server.Connections {
-			if !conn.Relay {
-				serverURL = conn.URI
-				break
-			}
-		}
-	}
-	// Last resort: use relay
-	if serverURL == "" && len(server.Connections) > 0 {
-		serverURL = server.Connections[0].URI
-	}
-
-	if serverURL == "" {
-		return nil, fmt.Errorf("no available connection for server %s", server.Name)
+	serverURL, err := PreferredConnection(server)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build history URL with pagination and optional account filter
@@ -1249,27 +1245,9 @@ func (c *Client) GetServerWatchHistory(server PlexResource, limit int, accountID
 
 // GetServerItemDetails fetches detailed metadata including GUIDs from a Plex server
 func (c *Client) GetServerItemDetails(server PlexResource, ratingKey string) (*WatchHistoryItem, error) {
-	// Find connection URL
-	var serverURL string
-	for _, conn := range server.Connections {
-		if !conn.Relay && conn.Protocol == "https" {
-			serverURL = conn.URI
-			break
-		}
-	}
-	if serverURL == "" {
-		for _, conn := range server.Connections {
-			if !conn.Relay {
-				serverURL = conn.URI
-				break
-			}
-		}
-	}
-	if serverURL == "" && len(server.Connections) > 0 {
-		serverURL = server.Connections[0].URI
-	}
-	if serverURL == "" {
-		return nil, fmt.Errorf("no available connection for server %s", server.Name)
+	serverURL, err := PreferredConnection(server)
+	if err != nil {
+		return nil, err
 	}
 
 	detailsURL := fmt.Sprintf("%s/library/metadata/%s?X-Plex-Token=%s", serverURL, ratingKey, server.AccessToken)
@@ -1360,6 +1338,33 @@ type ProgressCallback func(stage string, current, total int)
 // If accountID > 0, filters history to only that Plex user account
 func (c *Client) GetAllWatchHistory(authToken string, limit int, accountID int) ([]WatchHistoryItem, error) {
 	return c.GetAllWatchHistoryWithProgress(authToken, limit, accountID, nil)
+}
+
+// GetWatchHistoryForServer fetches history from one explicitly selected Plex
+// server and connection. Scheduled tasks use this so accounts with multiple
+// servers do not import history from an unintended server or address.
+func (c *Client) GetWatchHistoryForServer(authToken, serverID, serverURL string, limit int, accountID int) ([]WatchHistoryItem, error) {
+	servers, err := c.GetOwnedVisibleServers(authToken)
+	if err != nil {
+		return nil, err
+	}
+	serverID = strings.TrimSpace(serverID)
+	for _, server := range servers {
+		if server.ClientIdentifier != serverID {
+			continue
+		}
+		server, err = WithConnection(server, serverURL)
+		if err != nil {
+			return nil, err
+		}
+		history, err := c.GetServerWatchHistory(server, limit, accountID)
+		if err != nil {
+			return nil, err
+		}
+		c.fetchDetailsParallel(server, history, nil)
+		return history, nil
+	}
+	return nil, fmt.Errorf("selected Plex server is unavailable")
 }
 
 // GetAllWatchHistoryWithProgress fetches watch history with progress reporting

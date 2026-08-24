@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"novastream/internal/requestsecurity"
 )
 
 // Stremio Live TV source support.
@@ -109,8 +111,10 @@ type stremioChannelsCacheEntry struct {
 }
 
 type resolvedStremioStream struct {
-	URL            string
-	RequestHeaders map[string]string
+	URL              string
+	RequestHeaders   map[string]string
+	Index            int
+	AvailableIndexes []int
 }
 
 // normalizeStremioBaseURL strips a trailing slash and an optional
@@ -156,6 +160,7 @@ func firstPlayableStremioStreamURL(streams []stremioStream) (string, bool) {
 }
 
 func playableStremioStream(streams []stremioStream, selectedIndex int) (resolvedStremioStream, bool) {
+	availableIndexes := playableStremioStreamIndexes(streams)
 	for i, stream := range streams {
 		u, headers := normalizeStremioPlayableURL(stream.URL, stream.BehaviorHints.ProxyHeaders.Request)
 		if u == "" || isUnplayableStremioStreamURL(u) {
@@ -165,11 +170,83 @@ func playableStremioStream(streams []stremioStream, selectedIndex int) (resolved
 			continue
 		}
 		return resolvedStremioStream{
-			URL:            u,
-			RequestHeaders: headers,
+			URL:              u,
+			RequestHeaders:   headers,
+			Index:            i,
+			AvailableIndexes: availableIndexes,
 		}, true
 	}
 	return resolvedStremioStream{}, false
+}
+
+func playableStremioStreamIndexes(streams []stremioStream) []int {
+	indexes := make([]int, 0, len(streams))
+	for i, stream := range streams {
+		u, _ := normalizeStremioPlayableURL(stream.URL, stream.BehaviorHints.ProxyHeaders.Request)
+		if u == "" || isUnplayableStremioStreamURL(u) {
+			continue
+		}
+		indexes = append(indexes, i)
+	}
+	return indexes
+}
+
+// maybeRouteStremioStreamThroughAddonRelay detects the optional HLS relay used
+// by some live-sports addons. Their signed upstream URLs can be bound to the
+// addon's network/session context and return 404 when FFmpeg fetches them
+// directly, even with behaviorHints.proxyHeaders. Keeping the request on the
+// addon's origin preserves that context while MediaStorm still owns playback.
+func maybeRouteStremioStreamThroughAddonRelay(ctx context.Context, client *http.Client, streamResourceURL string, stream resolvedStremioStream) resolvedStremioStream {
+	if client == nil || len(stream.RequestHeaders) == 0 || !strings.Contains(strings.ToLower(stream.URL), ".m3u8") {
+		return stream
+	}
+
+	resourceURL, err := url.Parse(streamResourceURL)
+	if err != nil || resourceURL == nil || resourceURL.Host == "" {
+		return stream
+	}
+	streamPathIndex := strings.Index(resourceURL.Path, "/stream/")
+	if streamPathIndex < 0 {
+		return stream
+	}
+
+	relayURL := *resourceURL
+	relayURL.Path = strings.TrimSuffix(resourceURL.Path[:streamPathIndex], "/") + "/api/hls/playlist.m3u8"
+	relayURL.RawPath = ""
+	relayURL.Fragment = ""
+	query := url.Values{}
+	query.Set("url", stream.URL)
+	if referer := requestHeaderValue(stream.RequestHeaders, "Referer"); referer != "" {
+		query.Set("referer", referer)
+	}
+	if origin := requestHeaderValue(stream.RequestHeaders, "Origin"); origin != "" {
+		query.Set("embedOrigin", origin)
+	}
+	relayURL.RawQuery = query.Encode()
+
+	probeCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodGet, relayURL.String(), nil)
+	if err != nil {
+		return stream
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return stream
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return stream
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil || !strings.Contains(string(body), "#EXTM3U") {
+		return stream
+	}
+
+	log.Printf("[live][stremio] using addon HLS relay for stream host %s", requestsecurity.URLForLog(stream.URL))
+	stream.URL = relayURL.String()
+	stream.RequestHeaders = nil
+	return stream
 }
 
 func playableStremioStreamOptions(streams []stremioStream) []StremioStreamOption {
@@ -296,12 +373,16 @@ func ffmpegHeadersArg(headers map[string]string) string {
 }
 
 func hasRequestHeader(headers map[string]string, name string) bool {
+	return requestHeaderValue(headers, name) != ""
+}
+
+func requestHeaderValue(headers map[string]string, name string) string {
 	for key, value := range headers {
 		if strings.EqualFold(strings.TrimSpace(key), name) && strings.TrimSpace(value) != "" {
-			return true
+			return strings.TrimSpace(value)
 		}
 	}
-	return false
+	return ""
 }
 
 func parseOptionalStremioStreamIndex(raw string) int {
@@ -438,7 +519,7 @@ func (h *LiveHandler) resolveStremioStream(ctx context.Context, streamResourceUR
 		return resolvedStremioStream{}, fmt.Errorf("stremio: resolve stream: %w", err)
 	}
 	if stream, ok := playableStremioStream(resp.Streams, selectedIndex); ok {
-		return stream, nil
+		return maybeRouteStremioStreamThroughAddonRelay(ctx, client, streamResourceURL, stream), nil
 	}
 	return resolvedStremioStream{}, fmt.Errorf("stremio: no playable stream for %s", streamResourceURL)
 }

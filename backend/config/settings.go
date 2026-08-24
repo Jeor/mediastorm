@@ -1244,6 +1244,10 @@ type FilterSettings struct {
 	// AdaptiveTargetBufferFactor is the fraction of measured throughput a file's average
 	// bitrate may consume and still be considered comfortably streamable (0-1, default 0.7).
 	AdaptiveTargetBufferFactor float64 `json:"adaptiveTargetBufferFactor,omitempty"`
+	// RealDebridRestrictedTermsFilterEnabled skips Real-Debrid resolution for
+	// release titles matching the known restricted-file pattern. The candidate
+	// remains eligible for other debrid providers and Usenet.
+	RealDebridRestrictedTermsFilterEnabled bool `json:"realDebridRestrictedTermsFilterEnabled"`
 	// SplitByService enables Debrid/Usenet overrides for ranking/filtering fields.
 	SplitByService bool            `json:"splitByService,omitempty"`
 	Debrid         *FilterSettings `json:"debrid,omitempty"`
@@ -1299,6 +1303,8 @@ type DisplaySettings struct {
 	BypassFilteringForAIOStreamsOnly bool `json:"bypassFilteringForAioStreamsOnly"`
 	// ShowParsedBadges shows parsed metadata badges instead of raw titles in manual selection.
 	ShowParsedBadges bool `json:"showParsedBadges,omitempty"`
+	// ShowStreamSourceInfo displays stream service and debrid provider information in selection and playback UI.
+	ShowStreamSourceInfo bool `json:"showStreamSourceInfo"`
 	// CleanPosters hides text overlays and gradient backgrounds on poster cards.
 	CleanPosters bool `json:"cleanPosters,omitempty"`
 	// DisableMobileTopCarousel hides the top hero carousel on mobile home.
@@ -1832,7 +1838,7 @@ func DefaultSettings() Settings {
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
-		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: true, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
+		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: false, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
 		Live:      LiveSettings{Mode: "m3u", PlaylistURL: "", MaxStreams: 0, PlaylistCacheTTLHours: 24},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
@@ -1843,13 +1849,14 @@ func DefaultSettings() Settings {
 			HomeHeroScale:                1.0,
 		},
 		Filtering: FilterSettings{
-			MaxSizeMovieGB:             0,                       // 0 means no limit
-			MaxSizeEpisodeGB:           0,                       // 0 means no limit
-			HDRDVPolicy:                HDRDVPolicyIncludeHDRDV, // "hdr_dv" = allow all content (no HDR/DV filtering)
-			ServicePriority:            StreamingServicePriorityNone,
-			UnknownTrackPolicy:         UnknownTrackPolicyNone,
-			AdaptivePlaybackEnabled:    false, // opt-in
-			AdaptiveTargetBufferFactor: 0.7,
+			MaxSizeMovieGB:                         0,                       // 0 means no limit
+			MaxSizeEpisodeGB:                       0,                       // 0 means no limit
+			HDRDVPolicy:                            HDRDVPolicyIncludeHDRDV, // "hdr_dv" = allow all content (no HDR/DV filtering)
+			ServicePriority:                        StreamingServicePriorityNone,
+			UnknownTrackPolicy:                     UnknownTrackPolicyNone,
+			AdaptivePlaybackEnabled:                false, // opt-in
+			AdaptiveTargetBufferFactor:             0.7,
+			RealDebridRestrictedTermsFilterEnabled: true,
 		},
 		AnimeFiltering: AnimeFilteringSettings{},
 		UI: UISettings{
@@ -1867,6 +1874,7 @@ func DefaultSettings() Settings {
 			IncludeUnreleasedShowsInSearch:         true,
 			CleanPosters:                           true,
 			AlwaysShowProfileSelector:              true,
+			ShowStreamSourceInfo:                   true,
 			EnableAnimations:                       true,
 			EnableHeroArtPanning:                   true,
 			EnableHeroArtRotation:                  true,
@@ -2158,6 +2166,9 @@ func (m *Manager) Load() (Settings, error) {
 
 	// Migrate excludeHdr (bool) to hdrDvPolicy (string enum)
 	if filteringRaw, ok := raw["filtering"].(map[string]interface{}); ok {
+		if _, exists := filteringRaw["realDebridRestrictedTermsFilterEnabled"]; !exists {
+			filteringRaw["realDebridRestrictedTermsFilterEnabled"] = true
+		}
 		// Only migrate if hdrDvPolicy is not already set
 		if _, hasPolicy := filteringRaw["hdrDvPolicy"]; !hasPolicy {
 			if excludeHdr, hasExclude := filteringRaw["excludeHdr"]; hasExclude {
@@ -2174,6 +2185,10 @@ func (m *Manager) Load() (Settings, error) {
 				}
 				delete(filteringRaw, "excludeHdr")
 			}
+		}
+	} else {
+		raw["filtering"] = map[string]interface{}{
+			"realDebridRestrictedTermsFilterEnabled": true,
 		}
 	}
 
@@ -2221,6 +2236,9 @@ func (m *Manager) Load() (Settings, error) {
 		if _, exists := displayMap["enableHeroArtRotation"]; !exists {
 			displayMap["enableHeroArtRotation"] = true
 		}
+		if _, exists := displayMap["showStreamSourceInfo"]; !exists {
+			displayMap["showStreamSourceInfo"] = true
+		}
 	} else {
 		raw["display"] = map[string]interface{}{
 			"alwaysShowProfileSelector":       true,
@@ -2231,6 +2249,7 @@ func (m *Manager) Load() (Settings, error) {
 			"enableAnimations":                true,
 			"enableHeroArtPanning":            true,
 			"enableHeroArtRotation":           true,
+			"showStreamSourceInfo":            true,
 		}
 	}
 
@@ -2303,7 +2322,7 @@ func (m *Manager) Load() (Settings, error) {
 			playbackRaw["subtitleBackgroundOpacity"] = 0.6
 		}
 		if _, exists := playbackRaw["subtitleUseCropDetectPosition"]; !exists {
-			playbackRaw["subtitleUseCropDetectPosition"] = true
+			playbackRaw["subtitleUseCropDetectPosition"] = false
 		}
 		thumbnailsRaw, _ := playbackRaw["thumbnails"].(map[string]interface{})
 		if thumbnailsRaw == nil {

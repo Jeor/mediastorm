@@ -4462,8 +4462,16 @@ func (s *Service) executePlexHistorySync(task config.ScheduledTask) (SyncResult,
 		return SyncResult{}, errors.New("plex account not authenticated")
 	}
 
-	// Fetch all watch history from Plex
-	historyItems, err := s.plexClient.GetAllWatchHistory(plexAccount.AuthToken, 5000, plexUserID)
+	// New tasks pin history sync to one server connection. Keep the all-server
+	// behavior for existing tasks that predate these config fields.
+	serverID := strings.TrimSpace(task.Config["plexServerId"])
+	serverURL := strings.TrimSpace(task.Config["plexServerUrl"])
+	var historyItems []plex.WatchHistoryItem
+	if serverID != "" && serverURL != "" {
+		historyItems, err = s.plexClient.GetWatchHistoryForServer(plexAccount.AuthToken, serverID, serverURL, 5000, plexUserID)
+	} else {
+		historyItems, err = s.plexClient.GetAllWatchHistory(plexAccount.AuthToken, 5000, plexUserID)
+	}
 	if err != nil {
 		return SyncResult{}, fmt.Errorf("fetch plex history: %w", err)
 	}

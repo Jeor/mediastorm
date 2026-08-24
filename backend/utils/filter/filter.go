@@ -39,6 +39,7 @@ var (
 	formulaOneXPattern      = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(?:f1|formula[.\s_-]*1)[^a-z0-9]+((?:19|20)\d{2})x(\d{1,3})(?:[^a-z0-9]|$)`)
 	yearRangePattern        = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])((?:19|20)\d{2})\s*[-–]\s*((?:19|20)\d{2})(?:[^a-z0-9]|$)`)
 	episodeCodeTokenPattern = regexp.MustCompile(`(?i)^(?:s\d{1,4}e\d{1,5}|\d{1,4}x\d{1,5})$`)
+	explicitEpisodePattern  = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(?:s\d{1,4}e\d{1,5}|\d{1,4}x\d{1,5})(?:[^a-z0-9]|$)`)
 	seasonOnlyTokenPattern  = regexp.MustCompile(`(?i)^s\d{1,4}$`)
 	absoluteSuffixPattern   = regexp.MustCompile(`^\d{1,5}$`)
 	releaseBoundaryTokens   = map[string]struct{}{
@@ -148,6 +149,7 @@ type Options struct {
 	TargetSeason          int    // Target season number (e.g., 22 for S22E68)
 	TargetEpisode         int    // Target episode number within season (e.g., 68 for S22E68)
 	TargetAbsoluteEpisode int    // Target absolute episode number for anime (e.g., 1153 for One Piece)
+	IsAnime               bool   // True when metadata identifies the series as anime
 	IsDaily               bool   // True for daily shows (talk shows, news) - filter by date
 	TargetAirDate         string // For daily shows: air date in YYYY-MM-DD format
 }
@@ -474,7 +476,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// This rejects season packs and episodes that obviously can't contain the target episode
 		// Skip this check for daily shows with matching dates - they use date-based matching instead
 		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
-			if rejected, reason := shouldRejectByTargetEpisode(parsed, opts); rejected {
+			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, opts); rejected {
 				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
 				reject(result, reason)
 				continue
@@ -1484,7 +1486,7 @@ func estimatePackEpisodeCount(seasons []int, totalSeriesEpisodes int) int {
 
 // shouldRejectByTargetEpisode checks if a result should be rejected based on target episode info.
 // Returns (shouldReject, reason) where reason explains why the result was rejected.
-func shouldRejectByTargetEpisode(parsed *parsett.ParsedTitle, opts Options) (bool, string) {
+func shouldRejectByTargetEpisode(rawTitle string, parsed *parsett.ParsedTitle, opts Options) (bool, string) {
 	if parsed == nil {
 		return false, ""
 	}
@@ -1514,12 +1516,13 @@ func shouldRejectByTargetEpisode(parsed *parsett.ParsedTitle, opts Options) (boo
 	hasSeason := len(parsed.Seasons) > 0
 
 	if hasEpisodes {
-		// Detect anime absolute format: either no season (fansub style) or S01E#### with high episode
+		// Detect anime absolute format only for titles identified as anime. Long-running
+		// non-anime series can also have high seasonal and absolute episode numbers.
 		isAnimeAbsoluteFormat := false
-		if !hasSeason {
+		if opts.IsAnime && !hasSeason {
 			// Fansub style: "[SubsPlease] Anime - 1153 (1080p)" - no season, just episode
 			isAnimeAbsoluteFormat = true
-		} else if len(parsed.Seasons) == 1 && (parsed.Seasons[0] == 1 || opts.TargetAbsoluteEpisode > 0) {
+		} else if opts.IsAnime && len(parsed.Seasons) == 1 && (parsed.Seasons[0] == 1 || opts.TargetAbsoluteEpisode > 0) {
 			// SxxE#### style - check if episode number suggests absolute (> typical season length).
 			// Some indexers normalize long-running anime absolute releases as S01E1161,
 			// while others use the current TVDB season as S23E1161. Only treat these
@@ -1574,10 +1577,13 @@ func shouldRejectByTargetEpisode(parsed *parsett.ParsedTitle, opts Options) (boo
 				return true, fmt.Sprintf("episode is from season(s) %v but target is S%02d", parsed.Seasons, opts.TargetSeason)
 			}
 			// Also reject if the result has a specific episode that doesn't match the target.
-			// Skip when parsett has double-parsed the season number as an episode
+			// Skip only when parsett has double-parsed a season-only title as an episode
 			// (e.g. "[SubsPlease] One Piece - Season 22 [1080p]" → Seasons=[22], Episodes=[22]).
+			// An explicit S67E067 title also has equal season/episode values and must still
+			// be checked against the requested episode.
 			if opts.TargetEpisode > 0 {
-				episodeIsSeason := len(parsed.Episodes) == 1 && len(parsed.Seasons) == 1 && parsed.Episodes[0] == parsed.Seasons[0]
+				episodeIsSeason := len(parsed.Episodes) == 1 && len(parsed.Seasons) == 1 &&
+					parsed.Episodes[0] == parsed.Seasons[0] && !explicitEpisodePattern.MatchString(rawTitle)
 				if !episodeIsSeason && !episodeMatchesTarget(parsed.Episodes, opts.TargetEpisode) {
 					return true, fmt.Sprintf("episode %v does not match target S%02dE%02d", parsed.Episodes, opts.TargetSeason, opts.TargetEpisode)
 				}

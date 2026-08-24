@@ -118,6 +118,10 @@ func IsBlockedContentError(err error) bool {
 	if err == nil {
 		return false
 	}
+	var restrictedTermErr *RestrictedTermError
+	if errors.As(err, &restrictedTermErr) {
+		return true
+	}
 	var providerErr *ProviderError
 	if errors.As(err, &providerErr) {
 		if providerErr.StatusCode == 451 || providerErr.Code == 35 {

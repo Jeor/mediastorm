@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"novastream/config"
+	"novastream/internal/mediaresolve"
 	metapb "novastream/internal/nzb/metadata/proto"
 	"novastream/models"
 )
@@ -183,6 +184,51 @@ func TestResolvedFileConflictsWithTargetEpisode(t *testing.T) {
 	}
 	if resolvedFileConflictsWithTargetEpisode("/release/Show.S01E01.mkv", candidate) {
 		t.Fatal("did not expect S01E01 to conflict with requested S01E01")
+	}
+}
+
+func TestResolvedFileConflictsWithTargetEpisodeAcceptsAnimeAbsoluteNumber(t *testing.T) {
+	candidate := models.NZBResult{Attributes: map[string]string{
+		"targetSeason":          "23",
+		"targetEpisode":         "19",
+		"absoluteEpisodeNumber": "1174",
+	}}
+
+	matchingPaths := []string{
+		"/One.Piece.EP1174.1080p.mkv",
+		"/One.Piece.S01E1174.1080p.mkv",
+		"/One.Piece.S23E1174.1080p.mkv",
+		"/[SubsPlease] One Piece - 1174 (1080p).mkv",
+	}
+	for _, filePath := range matchingPaths {
+		if resolvedFileConflictsWithTargetEpisode(filePath, candidate) {
+			t.Errorf("did not expect absolute episode path %q to conflict with requested S23E19/1174", filePath)
+		}
+	}
+	if !resolvedFileConflictsWithTargetEpisode("/One.Piece.EP1173.1080p.mkv", candidate) {
+		t.Fatal("expected absolute episode 1173 to conflict with requested 1174")
+	}
+}
+
+func TestFindBestMediaFileRejectsUnrelatedExplicitEpisode(t *testing.T) {
+	service := &Service{metadataSvc: validationMetadataService{files: map[string][]string{
+		"/": {
+			"Ace.ventura.pet.detective.1994.mp4",
+			"Some.Show.S01E01.mkv",
+		},
+	}}}
+
+	_, err := service.findBestMediaFile("/", mediaresolve.SelectionHints{
+		ReleaseTitle:          "One Piece EP1174",
+		TargetSeason:          23,
+		TargetEpisode:         19,
+		AbsoluteEpisodeNumber: 1174,
+	})
+	if err == nil {
+		t.Fatal("expected unrelated directory media to be rejected for an explicit episode target")
+	}
+	if !strings.Contains(err.Error(), "no matching episode file") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

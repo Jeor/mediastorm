@@ -123,6 +123,8 @@ type DisplaySettings struct {
 	IncludeUnreleasedShowsInSearch *bool `json:"includeUnreleasedShowsInSearch,omitempty"`
 	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only enabled scraper.
 	BypassFilteringForAIOStreamsOnly *bool `json:"bypassFilteringForAioStreamsOnly,omitempty"`
+	// ShowStreamSourceInfo displays stream service and debrid provider information in selection and playback UI.
+	ShowStreamSourceInfo *bool `json:"showStreamSourceInfo,omitempty"`
 	// DisableMobileTopCarousel hides the top hero carousel on mobile home.
 	DisableMobileTopCarousel *bool `json:"disableMobileTopCarousel,omitempty"`
 	// HideContinueWatchingHeroMetadata hides year and overview text from the TV home hero for Continue Watching.
@@ -995,23 +997,24 @@ const (
 // FilterSettings controls content filtering preferences.
 // Pointer types with omitempty allow distinguishing between "not set" (nil) and "set to zero/false".
 type FilterSettings struct {
-	MaxSizeMovieGB             *float64        `json:"maxSizeMovieGb,omitempty"`
-	MaxSizeEpisodeGB           *float64        `json:"maxSizeEpisodeGb,omitempty"`
-	MaxResolution              *string         `json:"maxResolution,omitempty"` // Maximum resolution (e.g., "720p", "1080p", "2160p", empty = no limit)
-	HDRDVPolicy                HDRDVPolicy     `json:"hdrDvPolicy,omitempty"`   // HDR/DV inclusion policy: "none" (no exclusion), "hdr" (include HDR + DV 7/8), "hdr_dv" (include all HDR/DV)
-	RequiredTerms              []string        `json:"requiredTerms"`           // Terms where at least one must match for a result to be kept. Non-nil empty slice explicitly clears the inherited value.
-	FilterOutTerms             []string        `json:"filterOutTerms"`          // Terms to filter out from results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
-	PreferredTerms             []string        `json:"preferredTerms"`          // Terms to prioritize in results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
-	NonPreferredTerms          []string        `json:"nonPreferredTerms"`       // Terms to derank in results (case-insensitive match in title, ranked lower but not removed). Non-nil empty slice explicitly clears the inherited value.
-	DownloadPreferredTerms     []string        `json:"downloadPreferredTerms"`  // Terms to strongly prioritize only for download/prequeue selection. Non-nil empty slice explicitly clears the inherited value.
-	PreferredScraper           *string         `json:"preferredScraper,omitempty"`
-	ServicePriority            *string         `json:"servicePriority,omitempty"`
-	UnknownTrackPolicy         string          `json:"unknownTrackPolicy,omitempty"`
-	AdaptivePlaybackEnabled    *bool           `json:"adaptivePlaybackEnabled,omitempty"`
-	AdaptiveTargetBufferFactor *float64        `json:"adaptiveTargetBufferFactor,omitempty"`
-	SplitByService             *bool           `json:"splitByService,omitempty"`
-	Debrid                     *FilterSettings `json:"debrid,omitempty"`
-	Usenet                     *FilterSettings `json:"usenet,omitempty"`
+	MaxSizeMovieGB                         *float64        `json:"maxSizeMovieGb,omitempty"`
+	MaxSizeEpisodeGB                       *float64        `json:"maxSizeEpisodeGb,omitempty"`
+	MaxResolution                          *string         `json:"maxResolution,omitempty"` // Maximum resolution (e.g., "720p", "1080p", "2160p", empty = no limit)
+	HDRDVPolicy                            HDRDVPolicy     `json:"hdrDvPolicy,omitempty"`   // HDR/DV inclusion policy: "none" (no exclusion), "hdr" (include HDR + DV 7/8), "hdr_dv" (include all HDR/DV)
+	RequiredTerms                          []string        `json:"requiredTerms"`           // Terms where at least one must match for a result to be kept. Non-nil empty slice explicitly clears the inherited value.
+	FilterOutTerms                         []string        `json:"filterOutTerms"`          // Terms to filter out from results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
+	PreferredTerms                         []string        `json:"preferredTerms"`          // Terms to prioritize in results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
+	NonPreferredTerms                      []string        `json:"nonPreferredTerms"`       // Terms to derank in results (case-insensitive match in title, ranked lower but not removed). Non-nil empty slice explicitly clears the inherited value.
+	DownloadPreferredTerms                 []string        `json:"downloadPreferredTerms"`  // Terms to strongly prioritize only for download/prequeue selection. Non-nil empty slice explicitly clears the inherited value.
+	PreferredScraper                       *string         `json:"preferredScraper,omitempty"`
+	ServicePriority                        *string         `json:"servicePriority,omitempty"`
+	UnknownTrackPolicy                     string          `json:"unknownTrackPolicy,omitempty"`
+	AdaptivePlaybackEnabled                *bool           `json:"adaptivePlaybackEnabled,omitempty"`
+	AdaptiveTargetBufferFactor             *float64        `json:"adaptiveTargetBufferFactor,omitempty"`
+	RealDebridRestrictedTermsFilterEnabled *bool           `json:"realDebridRestrictedTermsFilterEnabled,omitempty"`
+	SplitByService                         *bool           `json:"splitByService,omitempty"`
+	Debrid                                 *FilterSettings `json:"debrid,omitempty"`
+	Usenet                                 *FilterSettings `json:"usenet,omitempty"`
 }
 
 // AnimeFilteringSettings controls anime-specific language preferences (per-user overrides).
@@ -1029,7 +1032,7 @@ func DefaultUserSettings() UserSettings {
 			PauseWhenAppInactive:          BoolPtr(false),
 			UseLoadingScreen:              BoolPtr(false),
 			SubtitleSize:                  1.0,
-			SubtitleUseCropDetectPosition: BoolPtr(true),
+			SubtitleUseCropDetectPosition: BoolPtr(false),
 			SubtitleColor:                 "#FFFFFF",
 			SubtitleOpacity:               FloatPtr(1.0),
 			SubtitleBold:                  BoolPtr(false),
@@ -1050,7 +1053,7 @@ func DefaultUserSettings() UserSettings {
 			CreditsAutoSkip:               BoolPtr(false),
 			StreamMigrationEnabled:        BoolPtr(true),
 			IgnoreDVCompatibilityCheck:    BoolPtr(false),
-			CreditsDetectionEnabled:       BoolPtr(true),
+			CreditsDetectionEnabled:       BoolPtr(false),
 			MatchFrameRate:                BoolPtr(false),
 			LiveClosedCaptionExtraction:   BoolPtr(true),
 		},
@@ -1084,6 +1087,7 @@ func DefaultUserSettings() UserSettings {
 			IncludeUnreleasedMoviesInSearch:           BoolPtr(true),
 			IncludeUnreleasedShowsInSearch:            BoolPtr(true),
 			DisableMobileTopCarousel:                  BoolPtr(false),
+			ShowStreamSourceInfo:                      BoolPtr(true),
 			HideContinueWatchingHeroMetadata:          BoolPtr(false),
 			MoveDetailsRatingsToMetadata:              BoolPtr(false),
 			HideDetailsPoster:                         BoolPtr(false),

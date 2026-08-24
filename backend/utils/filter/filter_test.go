@@ -1789,6 +1789,66 @@ func TestTargetEpisodeFiltering(t *testing.T) {
 	}
 }
 
+func TestTargetEpisodeFiltering_NonAnimeIgnoresAbsoluteNumber(t *testing.T) {
+	results := []models.NZBResult{
+		{Title: "Coronation.Street.S64E154.1080p.WEB-DL"},
+		{Title: "Coronation.Street.S64E153.1080p.WEB-DL"},
+	}
+
+	filtered := Results(results, Options{
+		ExpectedTitle:         "Coronation Street",
+		TargetSeason:          64,
+		TargetEpisode:         154,
+		TargetAbsoluteEpisode: 11084,
+		IsAnime:               false,
+	})
+
+	if len(filtered) != 1 || filtered[0].Title != results[0].Title {
+		t.Fatalf("expected only seasonal episode S64E154 to pass, got %#v", filtered)
+	}
+}
+
+func TestTargetEpisodeFiltering_ExplicitEpisodeEqualToSeasonStillValidated(t *testing.T) {
+	results := []models.NZBResult{
+		{Title: "Coronation Street S67E151 17Aug2026 1080"},
+		{Title: "Coronation Street S67E067-Apr 9 2026-1080p mp4 subs-"},
+	}
+
+	filtered := Results(results, Options{
+		ExpectedTitle:         "Coronation Street",
+		ExpectedYear:          1960,
+		EpisodeAirYear:        2026,
+		TargetSeason:          67,
+		TargetEpisode:         151,
+		TargetAbsoluteEpisode: 11081,
+	})
+
+	if len(filtered) != 1 || filtered[0].Title != results[0].Title {
+		t.Fatalf("expected only S67E151 to pass, got %#v", filtered)
+	}
+}
+
+func TestTargetEpisodeFiltering_DateBasedSoapUsesExactAirDate(t *testing.T) {
+	results := []models.NZBResult{
+		{Title: "Coronation street 18th Aug 2026 1080 (Deep71)[1337X]"},
+		{Title: "Coronation street 17th Aug 2026 1080 (Deep71)[1337X]"},
+	}
+
+	filtered := Results(results, Options{
+		ExpectedTitle:  "Coronation Street",
+		ExpectedYear:   1960,
+		EpisodeAirYear: 2026,
+		TargetSeason:   67,
+		TargetEpisode:  151,
+		IsDaily:        true,
+		TargetAirDate:  "2026-08-18",
+	})
+
+	if len(filtered) != 1 || filtered[0].Title != results[0].Title {
+		t.Fatalf("expected only exact-date release to pass, got %#v", filtered)
+	}
+}
+
 func TestFormulaOneRoundFiltering(t *testing.T) {
 	results := []models.NZBResult{
 		{Title: "04.F1.2026.R01.Australian.Grand.Prix.Qualifying.F1TV.UHD.2160p.Multi.mkv"},

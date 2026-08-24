@@ -489,6 +489,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialise user settings: %v", err)
 	}
+	var kidsProfileIDs []string
+	for _, user := range userService.ListAll() {
+		if user.IsKidsProfile {
+			kidsProfileIDs = append(kidsProfileIDs, user.ID)
+		}
+	}
+	if len(kidsProfileIDs) > 0 {
+		if changed, err := userSettingsService.ApplyKidsProfileDefaults(kidsProfileIDs...); err != nil {
+			log.Printf("failed to apply kids profile defaults: %v", err)
+		} else if changed > 0 {
+			log.Printf("enabled M.O.M. Mode by default for %d kids profile(s)", changed)
+		}
+	}
 	userSettingsHandler := handlers.NewUserSettingsHandler(userSettingsService, userService, cfgManager)
 
 	// Initialize content preferences service for per-content language preferences
@@ -764,6 +777,8 @@ func main() {
 	videoHandler.SetPrequeueStore(prequeueHandler.GetStore())
 	localBaseURL := fmt.Sprintf("http://127.0.0.1:%d", settings.Server.Port)
 	videoHandler.SetLocalBaseURL(localBaseURL)
+	debridHealthService.SetFullProber(videoHandler)
+	playbackService.SetDebridFullProber(videoHandler)
 	// Cast capability cache (passive probe + playback observation). HTTP list/describe
 	// endpoints can be mounted later; the store is required for cast session decisions.
 	castCapsHandler := handlers.NewCastCapabilitiesHandler(settings.Cache.Directory)

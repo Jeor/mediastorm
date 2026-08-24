@@ -416,6 +416,12 @@ var SettingsSchema = map[string]interface{}{
 				"step":        0.05,
 				"order":       11,
 			},
+			"realDebridRestrictedTermsFilterEnabled": map[string]interface{}{
+				"type":        "boolean",
+				"label":       "Skip Real-Debrid Restricted Releases",
+				"description": "Skip Real-Debrid resolution for release names matching its commonly restricted WEB/encode patterns. Matching results remain available to all other providers.",
+				"order":       12,
+			},
 			"requiredTerms":          map[string]interface{}{"type": "tags", "label": "Required Terms", "description": "At least one of these terms must match for a result to be kept."},
 			"filterOutTerms":         map[string]interface{}{"type": "tags", "label": "Filter Out Terms", "description": "Terms that exclude matching results."},
 			"preferredTerms":         map[string]interface{}{"type": "weighted-tags", "label": "Preferred Terms", "description": "Terms to prioritize in results. Higher weights have a stronger influence on ranking."},
@@ -890,6 +896,7 @@ var SettingsSchema = map[string]interface{}{
 			"includeUnreleasedShowsInSearch":   map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Search", "description": "Show shows with no aired episodes in metadata search results.", "order": 8},
 			"bypassFilteringForAioStreamsOnly": map[string]interface{}{"type": "boolean", "label": "Bypass Filtering for AIOStreams Only", "description": "Skip mediastorm filtering/ranking when AIOStreams is the only enabled scraper in debrid-only mode (use AIOStreams' own ranking). Does not apply in hybrid mode with usenet.", "order": 9},
 			"showParsedBadges":                 map[string]interface{}{"type": "boolean", "label": "Show Parsed Metadata Badges", "description": "Show parsed quality badges (resolution, codec, HDR, audio) instead of raw release titles in manual source selection", "order": 10},
+			"showStreamSourceInfo":             map[string]interface{}{"type": "boolean", "label": "Show Stream Source Information", "description": "Show source service and debrid provider information on details, manual selection, and player information surfaces.", "order": 10.1},
 			"enableAnimations":                 map[string]interface{}{"type": "boolean", "label": "Enable Application Animations", "description": "Animate application scrolling, transitions, and interface motion. Hero art panning remains controlled separately.", "order": 17},
 			"enableHeroArtPanning":             map[string]interface{}{"type": "boolean", "label": "Enable Hero Art Panning", "description": "Animate hero artwork with a slow pan and zoom effect on TV platforms.", "order": 18},
 			"enableHeroArtRotation":            map[string]interface{}{"type": "boolean", "label": "Enable Hero Art Rotation", "description": "Cycle through alternate hero artwork on TV platforms.", "order": 19},
@@ -3733,19 +3740,20 @@ func (h *AdminUIHandler) GetUserSettings(w http.ResponseWriter, r *http.Request)
 			HomeHeroScale:                   models.FloatPtr(globalSettings.HomeShelves.HomeHeroScale),
 		},
 		Filtering: models.FilterSettings{
-			MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-			MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-			HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-			RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-			FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-			PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-			NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-			PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-			ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-			UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
-			AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-			AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+			MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+			MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+			MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+			HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+			RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+			FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+			PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+			NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+			PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+			ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+			UnknownTrackPolicy:                     string(globalSettings.Filtering.UnknownTrackPolicy),
+			AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+			AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+			RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 		},
 		LiveTV: models.LiveTVSettings{
 			HiddenChannels:     []string{},
@@ -3762,6 +3770,7 @@ func (h *AdminUIHandler) GetUserSettings(w http.ResponseWriter, r *http.Request)
 			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
 			IncludeUnreleasedShowsInSearch:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
 			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                   models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
 			DisableMobileTopCarousel:               models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
 			HideContinueWatchingHeroMetadata:       models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
 			MoveDetailsRatingsToMetadata:           models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),
@@ -3881,19 +3890,20 @@ func (h *AdminUIHandler) PropagateSettings(w http.ResponseWriter, r *http.Reques
 
 	// Build the filtering settings from global
 	globalFilterSettings := models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-		UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+		PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		UnknownTrackPolicy:                     string(globalSettings.Filtering.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 	}
 
 	var propagatedProfiles, propagatedClients int
@@ -7190,6 +7200,10 @@ func (h *AdminUIHandler) CreateProfile(w http.ResponseWriter, r *http.Request) {
 		user, err = h.usersService.SetKidsProfile(user.ID, true)
 		if err != nil {
 			log.Printf("[admin] failed to set kids profile for new profile %s: %v", user.ID, err)
+		} else if h.userSettingsService != nil {
+			if _, settingsErr := h.userSettingsService.ApplyKidsProfileDefaults(user.ID); settingsErr != nil {
+				log.Printf("[admin] failed to apply kids profile defaults for %s: %v", user.ID, settingsErr)
+			}
 		}
 	}
 
@@ -7401,6 +7415,11 @@ func (h *AdminUIHandler) SetKidsProfile(w http.ResponseWriter, r *http.Request) 
 		}
 		http.Error(w, err.Error(), status)
 		return
+	}
+	if req.IsKidsProfile && h.userSettingsService != nil {
+		if _, err := h.userSettingsService.ApplyKidsProfileDefaults(profileID); err != nil {
+			log.Printf("[admin] failed to apply kids profile defaults for %s: %v", profileID, err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

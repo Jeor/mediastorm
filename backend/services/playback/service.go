@@ -200,6 +200,15 @@ func (s *Service) SetUsenetHealthChecker(checker usenetHealthChecker) {
 	s.usenetHealth = checker
 }
 
+// SetDebridFullProber wires the shared media prober into the debrid resolver
+// used by prequeue, including pre-resolved scraper results.
+func (s *Service) SetDebridFullProber(prober debrid.PreResolvedFullProber) {
+	if s == nil || s.debrid == nil {
+		return
+	}
+	s.debrid.SetFullProber(prober)
+}
+
 // ResolveBatch performs a single set of provider API calls and resolves all episodes from memory.
 // Only supported for debrid results.
 func (s *Service) ResolveBatch(ctx context.Context, candidate models.NZBResult, episodes []models.BatchEpisodeTarget) (*models.BatchResolveResponse, error) {
@@ -530,10 +539,16 @@ func resolvedFileConflictsWithTargetEpisode(filePath string, candidate models.NZ
 	if hints.TargetSeason <= 0 || hints.TargetEpisode <= 0 {
 		return false
 	}
-	return !mediaresolve.CandidateMatchesEpisode(filePath, mediaresolve.EpisodeCode{
+	if mediaresolve.CandidateMatchesEpisode(filePath, mediaresolve.EpisodeCode{
 		Season:  hints.TargetSeason,
 		Episode: hints.TargetEpisode,
-	})
+	}) {
+		return false
+	}
+	if hints.AbsoluteEpisodeNumber > 0 && mediaresolve.CandidateMatchesAbsoluteEpisode(filePath, hints.AbsoluteEpisodeNumber) {
+		return false
+	}
+	return true
 }
 
 // QueueStatus inspects the importer queue for the given ID and returns the current playback resolution state.
@@ -2171,6 +2186,11 @@ func buildSelectionHintsFromCandidate(candidate models.NZBResult, directory stri
 		if episode, _ := strconv.Atoi(strings.TrimSpace(candidate.Attributes["targetEpisode"])); episode > 0 {
 			hints.TargetEpisode = episode
 		}
+		if absoluteEpisode, _ := strconv.Atoi(strings.TrimSpace(candidate.Attributes["absoluteEpisodeNumber"])); absoluteEpisode > 0 {
+			hints.AbsoluteEpisodeNumber = absoluteEpisode
+		} else if absoluteEpisode, _ := strconv.Atoi(strings.TrimSpace(candidate.Attributes["targetAbsoluteEpisode"])); absoluteEpisode > 0 {
+			hints.AbsoluteEpisodeNumber = absoluteEpisode
+		}
 		// Build episode code if we have season/episode but no code
 		if hints.TargetEpisodeCode == "" && hints.TargetSeason > 0 && hints.TargetEpisode > 0 {
 			hints.TargetEpisodeCode = fmt.Sprintf("S%02dE%02d", hints.TargetSeason, hints.TargetEpisode)
@@ -2274,7 +2294,12 @@ func (s *Service) findBestMediaFile(dirPath string, hints mediaresolve.Selection
 		return "", fmt.Errorf("no playable media files found")
 	}
 
-	if len(candidates) == 1 {
+	hasExplicitEpisodeTarget := (hints.TargetSeason > 0 && hints.TargetEpisode > 0) ||
+		strings.TrimSpace(hints.TargetEpisodeCode) != "" ||
+		hints.AbsoluteEpisodeNumber > 0 ||
+		(hints.IsDaily && strings.TrimSpace(hints.TargetAirDate) != "")
+
+	if len(candidates) == 1 && !hasExplicitEpisodeTarget {
 		log.Printf("[playback] only playable file found; selecting %q", candidates[0].path)
 		return candidates[0].path, nil
 	}
@@ -2291,6 +2316,12 @@ func (s *Service) findBestMediaFile(dirPath string, hints mediaresolve.Selection
 		}
 		log.Printf("[playback] selected media candidate %q (%s)", candidates[selectedIdx].path, reason)
 		return candidates[selectedIdx].path, nil
+	}
+	if hasExplicitEpisodeTarget {
+		if strings.TrimSpace(reason) == "" {
+			reason = "no file matches the requested episode"
+		}
+		return "", fmt.Errorf("directory contains no matching episode file: %s", reason)
 	}
 
 	if bestIdx != -1 {

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -79,13 +80,29 @@ func stremioTestServer(t *testing.T, hits *int32) *httptest.Server {
 		_, _ = w.Write([]byte(`{"streams":[
 			{"name":"M3U8","description":"SONYLIV ENG","url":"http://cdn.test/f1-source-1.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://example.test/","Origin":"https://example.test","Bad\r\nHeader":"ignored"}}}},
 			{"name":"Subscribe","url":"https://stremverse.invalid/subscribe"},
-			{"name":"M3U8","description":"SONYLIV HIN","title":"Backup","url":"http://cdn.test/f1-source-2.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://backup.example.test/"}}}}
+			{"name":"M3U8","description":"SONYLIV HIN","title":"Backup","url":"http://cdn.test/f1-source-2.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://backup.example.test/"}}}},
+			{"name":"Web Stream","externalUrl":"https://addon.test/watch?event=1"}
 		]}`))
 	})
 	mux.HandleFunc("/stream/sport/sf:proxy.json", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"streams":[
 			{"name":"M3U8","description":"Proxy Wrapped","url":"http://10.0.6.130:8888/proxy/hls/manifest.m3u8?d=https%3A%2F%2Fcdn.test%2Fwrapped.m3u8&h_User-Agent=StremioUA&h_Referer=https%3A%2F%2Fsonyliv.test%2F&h_Origin=https%3A%2F%2Fsonyliv.test&api_password=flow","behaviorHints":{"proxyHeaders":{"request":{"User-Agent":"BehaviorUA","x-playback-session-id":"abc123"}}}}
 		]}`))
+	})
+	mux.HandleFunc("/stream/sport/sf:relay.json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"streams":[
+			{"name":"M3U8","url":"https://session-bound.test/live.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://embed.test/","Origin":"https://embed.test"}}}}
+		]}`))
+	})
+	mux.HandleFunc("/api/hls/playlist.m3u8", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("url") != "https://session-bound.test/live.m3u8" ||
+			r.URL.Query().Get("referer") != "https://embed.test/" ||
+			r.URL.Query().Get("embedOrigin") != "https://embed.test" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+		_, _ = w.Write([]byte("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000\nvariant.m3u8\n"))
 	})
 	mux.HandleFunc("/stream/sport/ev:nostream.json", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"streams":[]}`))
@@ -233,6 +250,9 @@ func TestResolveStremioStream(t *testing.T) {
 	if got.RequestHeaders["Referer"] != "https://example.test/" {
 		t.Errorf("resolved headers = %+v, want Referer", got.RequestHeaders)
 	}
+	if got.Index != 0 || !slices.Equal(got.AvailableIndexes, []int{0, 2}) {
+		t.Fatalf("resolved source selection = index %d available %v, want 0 and [0 2]", got.Index, got.AvailableIndexes)
+	}
 	if _, ok := got.RequestHeaders["Bad\r\nHeader"]; ok {
 		t.Errorf("unsafe header was not filtered: %+v", got.RequestHeaders)
 	}
@@ -246,6 +266,9 @@ func TestResolveStremioStream(t *testing.T) {
 	}
 	if got.RequestHeaders["Referer"] != "https://backup.example.test/" {
 		t.Errorf("selected headers = %+v, want backup Referer", got.RequestHeaders)
+	}
+	if got.Index != 2 || !slices.Equal(got.AvailableIndexes, []int{0, 2}) {
+		t.Fatalf("selected source selection = index %d available %v, want 2 and [0 2]", got.Index, got.AvailableIndexes)
 	}
 
 	got, err = h.resolveStremioStream(context.Background(), srv.URL+"/stream/sport/sf:proxy.json", "", -1)
@@ -266,6 +289,21 @@ func TestResolveStremioStream(t *testing.T) {
 	}
 	if got.RequestHeaders["x-playback-session-id"] != "abc123" {
 		t.Errorf("proxy-wrapped headers = %+v, want behavior session header", got.RequestHeaders)
+	}
+
+	got, err = h.resolveStremioStream(context.Background(), srv.URL+"/stream/sport/sf:relay.json", "", -1)
+	if err != nil {
+		t.Fatalf("resolveStremioStream addon relay error: %v", err)
+	}
+	relayURL, err := url.Parse(got.URL)
+	if err != nil {
+		t.Fatalf("parse addon relay URL: %v", err)
+	}
+	if relayURL.Path != "/api/hls/playlist.m3u8" || relayURL.Query().Get("url") != "https://session-bound.test/live.m3u8" {
+		t.Fatalf("addon relay URL = %q", got.URL)
+	}
+	if len(got.RequestHeaders) != 0 {
+		t.Fatalf("addon relay headers = %+v, want relay to own upstream headers", got.RequestHeaders)
 	}
 
 	if _, err := h.resolveStremioStream(context.Background(), srv.URL+"/stream/sport/ev:nostream.json", "", -1); err == nil {

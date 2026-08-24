@@ -2,9 +2,11 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -121,6 +123,42 @@ func (s stubDebridSearchService) Search(context.Context, debrid.SearchOptions) (
 type countingDebridSearchService struct {
 	calls   atomic.Int32
 	results []models.NZBResult
+}
+
+type queryRecordingDebridSearchService struct {
+	mu                 sync.Mutex
+	queries            []string
+	localizedHasResult bool
+}
+
+func (s *queryRecordingDebridSearchService) Search(_ context.Context, opts debrid.SearchOptions) ([]models.NZBResult, error) {
+	s.mu.Lock()
+	s.queries = append(s.queries, opts.Query)
+	s.mu.Unlock()
+	if s.localizedHasResult || strings.Contains(opts.Query, "The Mire") {
+		return []models.NZBResult{{Title: "The.Mire.S01E01.1080p.WEB-DL", ServiceType: models.ServiceTypeDebrid}}, nil
+	}
+	return nil, nil
+}
+
+type localizedSearchMetadata struct{}
+
+func (localizedSearchMetadata) Search(_ context.Context, _ string, _ string) ([]models.SearchResult, error) {
+	return []models.SearchResult{{Title: models.Title{
+		Name:            "Rojst",
+		OriginalName:    "The Mire",
+		MediaType:       "series",
+		TVDBID:          348545,
+		IMDBID:          "tt8855592",
+		AlternateTitles: []string{"The Mire"},
+	}}}, nil
+}
+
+func (localizedSearchMetadata) ResolveSearchTitle(_ context.Context, _, _ string, _ int, _, language string) (*models.Title, error) {
+	if language != "eng" {
+		return nil, fmt.Errorf("unexpected language %q", language)
+	}
+	return &models.Title{Name: "The Mire", OriginalName: "The Mire", MediaType: "series", TVDBID: 348545, IMDBID: "tt8855592"}, nil
 }
 
 func (s *countingDebridSearchService) Search(context.Context, debrid.SearchOptions) ([]models.NZBResult, error) {
@@ -540,6 +578,66 @@ func TestSearchBypassesRankingForAIOStreamsOnlyDebridMode(t *testing.T) {
 	}
 	if got := results[0].Title; got != "Movie.720p.WEB-DL" {
 		t.Fatalf("expected AIOStreams order to bypass ranking, got first title %q", got)
+	}
+}
+
+func TestSearchUsesEnglishTitleOnlyAfterLocalizedSearchIsEmpty(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "settings.json")
+	mgr := config.NewManager(cfgPath)
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	settings.Metadata.Language = []string{"pol", "eng"}
+	settings.Metadata.PrimaryLanguage = "pol"
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	debridSvc := &queryRecordingDebridSearchService{}
+	svc := NewService(mgr, localizedSearchMetadata{}, debridSvc)
+	results, err := svc.Search(t.Context(), SearchOptions{
+		Query:     "Rojst S01E01",
+		MediaType: "series",
+		Year:      2018,
+		IMDBID:    "tt8855592",
+	})
+	if err != nil {
+		t.Fatalf("search returned error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("results = %d, want 1", len(results))
+	}
+	if got, want := debridSvc.queries, []string{"Rojst S01E01", "The Mire S01E01"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("queries = %v, want %v", got, want)
+	}
+}
+
+func TestSearchDoesNotUseEnglishFallbackWhenLocalizedSearchSucceeds(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "settings.json")
+	mgr := config.NewManager(cfgPath)
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	settings.Metadata.Language = []string{"pol", "eng"}
+	settings.Metadata.PrimaryLanguage = "pol"
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	debridSvc := &queryRecordingDebridSearchService{localizedHasResult: true}
+	svc := NewService(mgr, localizedSearchMetadata{}, debridSvc)
+	results, err := svc.Search(t.Context(), SearchOptions{
+		Query:     "Rojst S01E01",
+		MediaType: "series",
+		Year:      2018,
+		IMDBID:    "tt8855592",
+	})
+	if err != nil {
+		t.Fatalf("search returned error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("results = %d, want 1", len(results))
+	}
+	if got, want := debridSvc.queries, []string{"Rojst S01E01"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("queries = %v, want %v", got, want)
 	}
 }
 
@@ -1439,6 +1537,36 @@ func TestBuildSearchQueries_AnimeAbsoluteEpisode(t *testing.T) {
 		}
 		if !found {
 			t.Fatalf("expected query %q in %v", expected, queries)
+		}
+	}
+}
+
+func TestBuildSearchQueries_DateBasedSoapEpisode(t *testing.T) {
+	opts := SearchOptions{
+		Query:         "Coronation Street S67E151",
+		MediaType:     "series",
+		IsDaily:       true,
+		TargetAirDate: "2026-08-18",
+	}
+
+	queries := buildSearchQueries(opts, debrid.ParseQuery(opts.Query), []string{"Corrie"})
+	want := []string{
+		"Coronation Street 2026.08.18",
+		"Coronation Street 2026 08 18",
+		"Corrie 2026.08.18",
+		"Corrie 2026 08 18",
+		"Coronation Street S67E151",
+	}
+	for _, expected := range want {
+		found := false
+		for _, query := range queries {
+			if query == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected query %q in %v", expected, queries)
 		}
 	}
 }

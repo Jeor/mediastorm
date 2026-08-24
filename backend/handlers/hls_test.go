@@ -644,6 +644,43 @@ func TestHLSManager_ServePlaylist_WaitsForFirstSegment(t *testing.T) {
 	}
 }
 
+func TestHLSManager_ServePlaylist_FailsPromptlyWhenLiveTranscodeStopsBeforePlaylist(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewHLSManager(tmpDir, "", "", nil)
+	defer manager.Shutdown()
+
+	sessionID := "failed-live-playlist-session"
+	outputDir := filepath.Join(tmpDir, sessionID)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	session := &HLSSession{
+		ID:         sessionID,
+		OutputDir:  outputDir,
+		CreatedAt:  time.Now(),
+		LastAccess: time.Now(),
+		IsLive:     true,
+		Completed:  true,
+		FatalError: "Live stream failed before playback started",
+	}
+	manager.mu.Lock()
+	manager.sessions[sessionID] = session
+	manager.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/video/hls/%s/stream.m3u8", sessionID), nil)
+	rr := httptest.NewRecorder()
+	started := time.Now()
+	manager.ServePlaylist(rr, req, sessionID)
+
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("expected status %d, got %d (body: %s)", http.StatusBadGateway, rr.Code, rr.Body.String())
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("failed live playlist response took %s, want less than 1s", elapsed)
+	}
+}
+
 func TestHLSManager_ServeSegment_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager := NewHLSManager(tmpDir, "", "", nil)

@@ -93,6 +93,7 @@ func TestServiceSanitizesAllowedTrackLanguages(t *testing.T) {
 
 func TestTVDisplayOptionsMakeClientSettingsNonEmpty(t *testing.T) {
 	for name, settings := range map[string]models.ClientFilterSettings{
+		"showStreamSourceInfo":                   {ShowStreamSourceInfo: models.BoolPtr(false)},
 		"hideContinueWatchingHeroMetadata":       {HideContinueWatchingHeroMetadata: models.BoolPtr(false)},
 		"moveDetailsRatingsToMetadata":           {MoveDetailsRatingsToMetadata: models.BoolPtr(false)},
 		"hideDetailsPoster":                      {HideDetailsPoster: models.BoolPtr(false)},

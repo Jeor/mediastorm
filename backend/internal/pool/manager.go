@@ -30,56 +30,104 @@ type Manager interface {
 
 // manager implements the Manager interface
 type manager struct {
-	mu        sync.RWMutex
-	pool      nntppool.UsenetConnectionPool
-	providers []nntppool.UsenetProviderConfig // last configured set, rebuilt lazily after ClearPool
+	mu         sync.RWMutex
+	pool       nntppool.UsenetConnectionPool
+	generation uint64
+	newPool    func(nntppool.Config) (nntppool.UsenetConnectionPool, error)
+	// providers is the last configured set, retained so a cleared pool can be
+	// rebuilt lazily by GetPool — the latency cold-flush clears the pool and
+	// resolution must be able to reconstitute it without a settings save.
+	providers []nntppool.UsenetProviderConfig
+	// rebuildDone signals completion of the in-flight async build launched by
+	// SetProviders, so concurrent GetPool callers wait for it instead of
+	// starting a second build. Nil when no build is in flight.
+	rebuildDone chan struct{}
 }
 
 // NewManager creates a new pool manager
 func NewManager() Manager {
-	return &manager{}
+	return &manager{newPool: newConnectionPool}
 }
 
-// GetPool returns the current connection pool, recreating it from the last
-// configured providers if it was cleared. Rebuilding under the write lock is
-// safe: it only happens after a clear, and callers block briefly only then.
+func newConnectionPool(config nntppool.Config) (nntppool.UsenetConnectionPool, error) {
+	return nntppool.NewConnectionPool(config)
+}
+
+// GetPool returns the current connection pool, rebuilding it from the retained
+// provider config if it was cleared (the latency cold-flush clears the pool and
+// a settings save is not required to reconstitute it). If an async build from
+// SetProviders is in flight, GetPool waits for it; otherwise it rebuilds
+// synchronously — callers asking for the pool need it now.
 func (m *manager) GetPool() (nntppool.UsenetConnectionPool, error) {
-	m.mu.RLock()
-	pool := m.pool
-	hasProviders := len(m.providers) > 0
-	m.mu.RUnlock()
+	for {
+		m.mu.RLock()
+		pool := m.pool
+		hasProviders := len(m.providers) > 0
+		m.mu.RUnlock()
 
-	if pool != nil {
-		return pool, nil
-	}
-	if !hasProviders {
-		return nil, fmt.Errorf("NNTP connection pool not available - no providers configured")
-	}
+		if pool != nil {
+			return pool, nil
+		}
+		if !hasProviders {
+			return nil, fmt.Errorf("NNTP connection pool not available - no providers configured")
+		}
 
-	// No live pool but providers are configured: rebuild it (double-checked).
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.pool != nil {
-		return m.pool, nil
+		m.mu.Lock()
+		if m.pool != nil {
+			m.mu.Unlock()
+			return m.pool, nil
+		}
+		if m.rebuildDone == nil {
+			// No async build in flight: rebuild synchronously (double-checked
+			// under the write lock). Bump the generation so an async build
+			// racing this caller (e.g. from a concurrent SetProviders) discards
+			// itself instead of replacing this pool.
+			m.generation++
+			err := m.buildPoolLocked()
+			pool := m.pool
+			m.mu.Unlock()
+			if err != nil {
+				return nil, err
+			}
+			return pool, nil
+		}
+		done := m.rebuildDone
+		m.mu.Unlock()
+
+		<-done
+		// The waited build may have installed the pool, failed, or been
+		// superseded (ClearPool). Clear the stale handle — but only if it is
+		// still ours — and loop to re-check and possibly rebuild.
+		m.mu.Lock()
+		if m.rebuildDone == done {
+			m.rebuildDone = nil
+		}
+		m.mu.Unlock()
 	}
-	if err := m.buildPoolLocked(); err != nil {
-		return nil, err
-	}
-	return m.pool, nil
 }
 
 // SetProviders creates/recreates the pool with new providers
 func (m *manager) SetProviders(providers []nntppool.UsenetProviderConfig) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.generation++
+	generation := m.generation
+	oldPool := m.pool
+	m.pool = nil
+	// Retain the provider config so a cleared pool can be rebuilt lazily by
+	// GetPool (cold-flush path). Copy because the caller retains ownership.
+	providerSnapshot := append([]nntppool.UsenetProviderConfig(nil), providers...)
+	m.providers = providerSnapshot
+	// Publish the completion signal before launching so GetPool callers either
+	// see the live pool or wait on this build.
+	rebuildDone := make(chan struct{})
+	m.rebuildDone = rebuildDone
+	m.mu.Unlock()
 
-	m.providers = append([]nntppool.UsenetProviderConfig(nil), providers...)
-
-	// Shut down existing pool if present
-	if m.pool != nil {
+	// Pool shutdown can itself wait on upstream background work, so do not make
+	// settings saves wait for it.
+	if oldPool != nil {
 		slog.Info("Shutting down existing NNTP connection pool")
-		m.pool.Quit()
-		m.pool = nil
+		go oldPool.Quit()
 	}
 
 	// Return early if no providers (clear pool scenario)
@@ -88,19 +136,57 @@ func (m *manager) SetProviders(providers []nntppool.UsenetProviderConfig) error 
 		return nil
 	}
 
-	return m.buildPoolLocked()
+	// nntppool verifies providers synchronously with a hardcoded 60-second
+	// timeout. Build in the background so startup and settings saves return
+	// immediately.
+	go func() {
+		defer close(rebuildDone)
+		m.buildPool(generation, providerSnapshot)
+	}()
+	return nil
+}
+
+func (m *manager) buildPool(generation uint64, providers []nntppool.UsenetProviderConfig) {
+	slog.Info("Creating NNTP connection pool in background", "provider_count", len(providers))
+	pool, err := m.newPool(nntppool.Config{
+		Providers:      providers,
+		Logger:         slog.Default(),
+		DelayType:      nntppool.DelayTypeFixed,
+		RetryDelay:     10 * time.Millisecond,
+		MinConnections: 2, // Keep 2 warm connections per provider for faster STAT commands
+	})
+	if err != nil {
+		slog.Error("Failed to create NNTP connection pool", "error", err)
+		return
+	}
+
+	m.mu.Lock()
+	if generation != m.generation {
+		m.mu.Unlock()
+		slog.Info("Discarding superseded NNTP connection pool")
+		pool.Quit()
+		return
+	}
+	m.pool = pool
+	m.mu.Unlock()
+	slog.Info("NNTP connection pool created successfully")
 }
 
 // ClearPool shuts down and drops the live pool. Provider configuration is kept
 // so the next GetPool recreates fresh connections — a cold pool, not a dead one.
 func (m *manager) ClearPool() error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.generation++
+	oldPool := m.pool
+	m.pool = nil
+	// An in-flight async build is now superseded (generation bump); drop its
+	// wait handle so the next GetPool rebuilds instead of waiting on it.
+	m.rebuildDone = nil
+	m.mu.Unlock()
 
-	if m.pool != nil {
-		slog.Info("Clearing NNTP connection pool (providers retained for lazy rebuild)")
-		m.pool.Quit()
-		m.pool = nil
+	if oldPool != nil {
+		slog.Info("Clearing NNTP connection pool")
+		go oldPool.Quit()
 	}
 
 	return nil
@@ -114,14 +200,15 @@ func (m *manager) HasPool() bool {
 	return m.pool != nil
 }
 
-// buildPoolLocked creates the pool from the retained provider config. Caller
-// must hold m.mu (write).
+// buildPoolLocked builds the pool synchronously under the write lock using the
+// retained provider config (the lazy-rebuild path from GetPool). SetProviders
+// uses the async buildPool instead.
 func (m *manager) buildPoolLocked() error {
 	// Create new pool with providers
 	// Keep MinConnections > 0 to maintain warm connections for faster health checks
 	// MaxConnections is set per-provider from user config (UsenetSettings.Connections)
 	slog.Info("Creating NNTP connection pool", "provider_count", len(m.providers))
-	pool, err := nntppool.NewConnectionPool(nntppool.Config{
+	pool, err := m.newPool(nntppool.Config{
 		Providers:      m.providers,
 		Logger:         slog.Default(),
 		DelayType:      nntppool.DelayTypeFixed,

@@ -16,6 +16,34 @@ func TestPlaybackSettingsNormalizeAllowedTrackLanguages(t *testing.T) {
 	}
 }
 
+func TestRealDebridRestrictedTermsFilterDefaultsOnAndPreservesOff(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"filtering":{}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	mgr := NewManager(settingsPath)
+	settings, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if !settings.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		t.Fatal("expected Real-Debrid restricted-term filter to default on")
+	}
+
+	settings.Filtering.RealDebridRestrictedTermsFilterEnabled = false
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	reloaded, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("reload settings: %v", err)
+	}
+	if reloaded.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		t.Fatal("expected explicit off setting to be preserved")
+	}
+}
+
 func TestPlaybackSettingsNormalizePrerollMediaScope(t *testing.T) {
 	playback := PlaybackSettings{PrerollMode: "default", PrerollMediaScope: " TV "}
 	playback.NormalizePreroll()
@@ -144,11 +172,63 @@ func TestDefaultSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsDisablesCropDetectSubtitlePosition(t *testing.T) {
+	settings := DefaultSettings()
+
+	if settings.Playback.SubtitleUseCropDetectPosition {
+		t.Fatal("expected crop-detect subtitle positioning to default to disabled")
+	}
+}
+
+func TestLoadDefaultsMissingCropDetectSubtitlePositionToDisabled(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"playback":{"preferredPlayer":"native"}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Playback.SubtitleUseCropDetectPosition {
+		t.Fatal("expected missing crop-detect subtitle positioning setting to load disabled")
+	}
+}
+
 func TestDefaultSettingsDisablesSimpleMode(t *testing.T) {
 	settings := DefaultSettings()
 
 	if settings.Display.SimpleMode {
 		t.Fatal("expected simple mode to default to disabled")
+	}
+}
+
+func TestStreamSourceInfoDefaultsOnAndPreservesOff(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"display":{}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	mgr := NewManager(settingsPath)
+	settings, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if !settings.Display.ShowStreamSourceInfo {
+		t.Fatal("expected stream source information to default on")
+	}
+
+	settings.Display.ShowStreamSourceInfo = false
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	reloaded, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("reload settings: %v", err)
+	}
+	if reloaded.Display.ShowStreamSourceInfo {
+		t.Fatal("expected explicit stream source information off setting to be preserved")
 	}
 }
 

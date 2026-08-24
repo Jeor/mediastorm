@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -348,6 +349,26 @@ func TestCreateTask_PlexHistorySyncValidation(t *testing.T) {
 		rec := postCreateTask(t, h, body)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("selected server requires ID and URL pair", func(t *testing.T) {
+		body := map[string]interface{}{
+			"type":    string(config.ScheduledTaskTypePlexHistorySync),
+			"name":    "Plex history sync",
+			"enabled": true,
+			"config": map[string]string{
+				"plexAccountId": "acct-1",
+				"profileId":     "prof-1",
+				"plexServerId":  "server-1",
+			},
+		}
+		rec := postCreateTask(t, h, body)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), "requires both plexServerId and plexServerUrl") {
+			t.Fatalf("unexpected response: %s", rec.Body.String())
 		}
 	})
 }

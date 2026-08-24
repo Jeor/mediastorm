@@ -40,6 +40,7 @@ const preResolvedPositiveHealthTTL = 2 * time.Minute
 type HealthService struct {
 	cfg         *config.Manager
 	ffprobePath string
+	fullProber  PreResolvedFullProber
 	// Track cache keyed by info hash
 	trackCache   map[string]*trackCacheEntry
 	trackCacheMu sync.RWMutex
@@ -57,6 +58,11 @@ type HealthService struct {
 	activeTorrentsMu sync.Mutex
 }
 
+// PreResolvedFullProber supplies the same full media probe consumed by prequeue.
+type PreResolvedFullProber interface {
+	ProbeVideoFull(ctx context.Context, path string) (*models.VideoFullResult, error)
+}
+
 // NewHealthService creates a new debrid health check service.
 func NewHealthService(cfg *config.Manager) *HealthService {
 	return &HealthService{
@@ -71,6 +77,11 @@ func NewHealthService(cfg *config.Manager) *HealthService {
 // SetFFProbePath sets the ffprobe path for probing pre-resolved streams.
 func (s *HealthService) SetFFProbePath(path string) {
 	s.ffprobePath = path
+}
+
+// SetFullProber lets pre-resolved health verification produce reusable playback metadata.
+func (s *HealthService) SetFullProber(prober PreResolvedFullProber) {
+	s.fullProber = prober
 }
 
 // MarkTorrentActive registers a torrent as in-use by playback so that
@@ -138,7 +149,22 @@ func cloneDebridHealthCheck(in DebridHealthCheck) DebridHealthCheck {
 	if in.SubtitleTracks != nil {
 		out.SubtitleTracks = append([]SubtitleTrackInfo(nil), in.SubtitleTracks...)
 	}
+	out.MediaProbe = cloneVideoFullResult(in.MediaProbe)
 	return out
+}
+
+func cloneVideoFullResult(in *models.VideoFullResult) *models.VideoFullResult {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	out.AudioStreams = append([]models.AudioStreamInfo(nil), in.AudioStreams...)
+	out.SubtitleStreams = append([]models.SubtitleStreamInfo(nil), in.SubtitleStreams...)
+	if in.DolbyVisionConfiguration != nil {
+		configuration := *in.DolbyVisionConfiguration
+		out.DolbyVisionConfiguration = &configuration
+	}
+	return &out
 }
 
 func (s *HealthService) cachedPreResolvedHealth(key string) (*DebridHealthCheck, bool) {
@@ -197,10 +223,11 @@ type DebridHealthCheck struct {
 	InfoHash     string `json:"infoHash,omitempty"`
 	ErrorMessage string `json:"errorMessage,omitempty"`
 	// Track info (populated when cached)
-	AudioTracks     []AudioTrackInfo    `json:"audioTracks,omitempty"`
-	SubtitleTracks  []SubtitleTrackInfo `json:"subtitleTracks,omitempty"`
-	TrackProbeError string              `json:"trackProbeError,omitempty"`
-	TracksLoading   bool                `json:"tracksLoading,omitempty"`
+	AudioTracks     []AudioTrackInfo        `json:"audioTracks,omitempty"`
+	SubtitleTracks  []SubtitleTrackInfo     `json:"subtitleTracks,omitempty"`
+	TrackProbeError string                  `json:"trackProbeError,omitempty"`
+	TracksLoading   bool                    `json:"tracksLoading,omitempty"`
+	MediaProbe      *models.VideoFullResult `json:"-"`
 }
 
 // AudioTrackInfo contains metadata for an audio track.
@@ -651,9 +678,34 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 			}
 		}
 
-		// If we have ffprobe, verify the stream has audio (placeholder videos have 0 audio streams)
-		if s.ffprobePath != "" && streamURL != "" {
-			audioCount, err := s.probeAudioStreamCount(ctx, streamURL, healthCheckTimeout)
+		healthResult := &DebridHealthCheck{
+			Healthy:  true,
+			Status:   "cached",
+			Cached:   true,
+			Provider: result.Attributes["tracker"],
+		}
+
+		// Prefer the shared full prober so prequeue can reuse the exact result.
+		// Retain the local track probe as a fallback for callers that do not wire
+		// the video handler into this service.
+		if streamURL != "" && (s.fullProber != nil || s.ffprobePath != "") {
+			var (
+				tracks     *TrackProbeResult
+				mediaProbe *models.VideoFullResult
+				err        error
+			)
+			if s.fullProber != nil {
+				probeCtx, probeCancel := context.WithTimeout(ctx, healthCheckTimeout)
+				mediaProbe, err = s.fullProber.ProbeVideoFull(probeCtx, streamURL)
+				probeCancel()
+				if err == nil && mediaProbe != nil {
+					tracks = trackProbeResultFromMediaProbe(mediaProbe)
+				} else if err == nil {
+					err = fmt.Errorf("full media probe returned no result")
+				}
+			} else {
+				tracks, err = s.probeAllTracksWithTimeout(ctx, streamURL, healthCheckTimeout)
+			}
 			if err != nil {
 				log.Printf("[debrid-health] probe failed for pre-resolved stream %s: %v", result.Title, err)
 				if cached, ok := s.cachedPreResolvedHealth(preResolvedCacheKey); ok {
@@ -661,7 +713,6 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 					log.Printf("[debrid-health] using recent positive pre-resolved health cache for %s after probe failure", result.Title)
 					return cached, nil
 				}
-				// On probe failure, treat as potentially uncached
 				return &DebridHealthCheck{
 					Healthy:      false,
 					Status:       "not_cached",
@@ -670,8 +721,7 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 					ErrorMessage: fmt.Sprintf("probe failed: %v", err),
 				}, nil
 			}
-
-			if audioCount == 0 {
+			if len(tracks.AudioTracks) == 0 {
 				log.Printf("[debrid-health] pre-resolved stream %s has 0 audio streams - treating as uncached placeholder", result.Title)
 				return &DebridHealthCheck{
 					Healthy:      false,
@@ -681,28 +731,10 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 					ErrorMessage: "stream appears to be a placeholder (no audio streams)",
 				}, nil
 			}
-
-			log.Printf("[debrid-health] pre-resolved stream %s verified with %d audio streams", result.Title, audioCount)
-		}
-
-		// Probe for track info
-		healthResult := &DebridHealthCheck{
-			Healthy:  true,
-			Status:   "cached",
-			Cached:   true,
-			Provider: result.Attributes["tracker"],
-		}
-
-		// Probe tracks in background with timeout (don't block if it fails)
-		if s.ffprobePath != "" && streamURL != "" {
-			tracks, err := s.probeAllTracks(ctx, streamURL)
-			if err != nil {
-				log.Printf("[debrid-health] track probe failed for %s: %v", result.Title, err)
-				healthResult.TrackProbeError = err.Error()
-			} else {
-				healthResult.AudioTracks = tracks.AudioTracks
-				healthResult.SubtitleTracks = tracks.SubtitleTracks
-			}
+			healthResult.AudioTracks = tracks.AudioTracks
+			healthResult.SubtitleTracks = tracks.SubtitleTracks
+			healthResult.MediaProbe = cloneVideoFullResult(mediaProbe)
+			log.Printf("[debrid-health] pre-resolved stream %s verified with %d audio streams", result.Title, len(tracks.AudioTracks))
 		}
 
 		s.rememberPreResolvedHealth(preResolvedCacheKey, healthResult)
@@ -755,6 +787,27 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 	}
 
 	return s.checkHealthAcrossProviders(ctx, settings, result, infoHash, torrentURL, verifyUncached)
+}
+
+func trackProbeResultFromMediaProbe(probe *models.VideoFullResult) *TrackProbeResult {
+	result := &TrackProbeResult{
+		AudioTracks:    make([]AudioTrackInfo, 0, len(probe.AudioStreams)),
+		SubtitleTracks: make([]SubtitleTrackInfo, 0, len(probe.SubtitleStreams)),
+	}
+	for _, track := range probe.AudioStreams {
+		result.AudioTracks = append(result.AudioTracks, AudioTrackInfo{
+			Index: track.Index, Language: track.Language, Codec: track.Codec,
+			Profile: track.Profile, Title: track.Title,
+		})
+	}
+	for _, track := range probe.SubtitleStreams {
+		bitmapType, isBitmap := bitmapSubtitleCodecs[strings.ToLower(strings.TrimSpace(track.Codec))]
+		result.SubtitleTracks = append(result.SubtitleTracks, SubtitleTrackInfo{
+			Index: track.Index, Language: track.Language, Codec: track.Codec,
+			Title: track.Title, Forced: track.IsForced, IsBitmap: isBitmap, BitmapType: bitmapType,
+		})
+	}
+	return result
 }
 
 // checkHealthAcrossProviders performs the mutating add/check/remove health probe
@@ -1571,51 +1624,6 @@ func (s *HealthService) extractTorrentFilename(resp *http.Response, torrentURL s
 	return "download.torrent"
 }
 
-// probeAudioStreamCount uses ffprobe to count audio streams in a URL.
-// Returns 0 if no audio streams are found (indicating a placeholder video).
-func (s *HealthService) probeAudioStreamCount(ctx context.Context, streamURL string, timeout time.Duration) (int, error) {
-	if s.ffprobePath == "" {
-		return -1, fmt.Errorf("ffprobe not configured")
-	}
-
-	// Use a short timeout - we just need to read the header
-	probeCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	args := []string{
-		"-v", "quiet",
-		"-print_format", "json",
-		"-show_streams",
-		"-select_streams", "a", // Only audio streams
-		"-analyzeduration", "5000000", // 5 seconds
-		"-probesize", "5000000", // 5MB
-		streamURL,
-	}
-
-	cmd := exec.CommandContext(probeCtx, s.ffprobePath, args...)
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return 0, fmt.Errorf("ffprobe failed: %w (stderr: %s)", err, stderr.String())
-	}
-
-	// Parse the JSON output
-	var result struct {
-		Streams []struct {
-			CodecType string `json:"codec_type"`
-		} `json:"streams"`
-	}
-
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return 0, fmt.Errorf("parse ffprobe output: %w", err)
-	}
-
-	return len(result.Streams), nil
-}
-
 // bitmapSubtitleCodecs maps codec names to their display type
 var bitmapSubtitleCodecs = map[string]string{
 	"hdmv_pgs_subtitle": "PGS",
@@ -1633,11 +1641,15 @@ type TrackProbeResult struct {
 // probeAllTracks probes a URL for audio and subtitle track information.
 // Unlike the HLS probe, this function includes bitmap subtitles with isBitmap flag.
 func (s *HealthService) probeAllTracks(ctx context.Context, streamURL string) (*TrackProbeResult, error) {
+	return s.probeAllTracksWithTimeout(ctx, streamURL, 20*time.Second)
+}
+
+func (s *HealthService) probeAllTracksWithTimeout(ctx context.Context, streamURL string, timeout time.Duration) (*TrackProbeResult, error) {
 	if s.ffprobePath == "" {
 		return nil, fmt.Errorf("ffprobe not configured")
 	}
 
-	probeCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	probeCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	args := []string{

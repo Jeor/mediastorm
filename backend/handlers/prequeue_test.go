@@ -94,11 +94,13 @@ func (m *adoptMigrationPrewarmMock) UpdateFromPrequeue(prequeueID string) {
 func (m *adoptMigrationPrewarmMock) InvalidatePrequeue(prequeueID string) {}
 
 type adoptMigrationFullProber struct {
-	path string
+	path  string
+	calls int
 }
 
 func (m *adoptMigrationFullProber) ProbeVideoFull(_ context.Context, path string) (*VideoFullResult, error) {
 	m.path = path
+	m.calls++
 	return &VideoFullResult{
 		VideoCodec:         "h264",
 		HasDolbyVision:     true,
@@ -115,6 +117,29 @@ func (m *adoptMigrationFullProber) ProbeVideoFull(_ context.Context, path string
 			{Index: 3, Codec: "hdmv_pgs_subtitle", Language: "eng", Title: "English PGS"},
 		},
 	}, nil
+}
+
+func TestProbeResolvedCandidateReusesPlaybackProbe(t *testing.T) {
+	prober := &adoptMigrationFullProber{}
+	want := &models.VideoFullResult{
+		VideoCodec: "hevc",
+		AudioStreams: []models.AudioStreamInfo{
+			{Index: 1, Codec: "ac3", Language: "eng"},
+		},
+	}
+	got, err := probeResolvedCandidate(context.Background(), prober, &models.PlaybackResolution{
+		WebDAVPath: "https://example.invalid/video.mkv",
+		Probe:      want,
+	})
+	if err != nil {
+		t.Fatalf("probeResolvedCandidate returned error: %v", err)
+	}
+	if got != want {
+		t.Fatalf("probe result = %#v, want reused result %#v", got, want)
+	}
+	if prober.calls != 0 {
+		t.Fatalf("ProbeVideoFull calls = %d, want 0", prober.calls)
+	}
 }
 
 func TestValidatePrequeueVideoProbe(t *testing.T) {

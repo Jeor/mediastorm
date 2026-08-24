@@ -913,7 +913,7 @@ func TestListPlaybackProgressOverlaysActiveMovieProgress(t *testing.T) {
 	}
 }
 
-func TestUpdatePlaybackProgressNotifiesWatchStateChangedHook(t *testing.T) {
+func TestUpdatePlaybackProgressNotifiesWatchStateChangedHookOnlyForMeaningfulChanges(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
 	if err != nil {
@@ -938,6 +938,48 @@ func TestUpdatePlaybackProgressNotifiesWatchStateChangedHook(t *testing.T) {
 
 	if len(changedUsers) != 1 || changedUsers[0] != "secondary-profile" {
 		t.Fatalf("expected hook to be called for secondary-profile, got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:12345",
+		Position:  90,
+		Duration:  300,
+		MovieName: "Test Movie",
+		Year:      2024,
+	}); err != nil {
+		t.Fatalf("second UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 1 {
+		t.Fatalf("position-only heartbeat notified hook; got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:67890",
+		Position:  30,
+		Duration:  300,
+		MovieName: "Another Movie",
+		Year:      2025,
+	}); err != nil {
+		t.Fatalf("new-item UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 2 || changedUsers[1] != "secondary-profile" {
+		t.Fatalf("expected new item to notify hook; got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:12345",
+		Position:  275,
+		Duration:  300,
+		MovieName: "Test Movie",
+		Year:      2024,
+	}); err != nil {
+		t.Fatalf("threshold UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 3 || changedUsers[2] != "secondary-profile" {
+		t.Fatalf("expected watched threshold to notify hook once; got %#v", changedUsers)
 	}
 }
 
@@ -4207,6 +4249,35 @@ func TestContinueWatchingNormalizesLegacyAbsoluteNextEpisode(t *testing.T) {
 	}
 	if items[0].LastWatched.SeasonNumber != 23 || items[0].LastWatched.EpisodeNumber != 7 {
 		t.Fatalf("LastWatched = S%02dE%02d, want S23E07", items[0].LastWatched.SeasonNumber, items[0].LastWatched.EpisodeNumber)
+	}
+}
+
+func TestFindNextUnwatchedEpisodeCanonicalizesAbsoluteHistoryRows(t *testing.T) {
+	svc := &Service{}
+	details := &models.SeriesDetails{
+		Title: models.Title{ID: "tmdb:tv:37854", Name: "One Piece", TMDBID: 37854},
+		Seasons: []models.SeriesSeason{{
+			Number: 23,
+			Episodes: []models.SeriesEpisode{
+				{ID: "ep-1173", Name: "A Nightmarish Game", SeasonNumber: 23, EpisodeNumber: 18, AbsoluteEpisodeNumber: 1173, AiredDate: "2020-08-16"},
+				{ID: "ep-1174", Name: "The Next Adventure", SeasonNumber: 23, EpisodeNumber: 19, AbsoluteEpisodeNumber: 1174, AiredDate: "2020-08-23"},
+			},
+		}},
+	}
+	watchedAt := time.Date(2026, 8, 11, 22, 21, 29, 0, time.UTC)
+	seasonal := models.WatchHistoryItem{
+		MediaType: "episode", SeriesName: "One Piece", Name: "A Nightmarish Game",
+		SeasonNumber: 23, EpisodeNumber: 18, Watched: true, WatchedAt: watchedAt,
+	}
+	absolute := seasonal
+	absolute.EpisodeNumber = 1173
+
+	next := svc.findNextUnwatchedEpisode(details, absolute, []models.WatchHistoryItem{seasonal, absolute})
+	if next == nil {
+		t.Fatal("expected an on-deck episode after an absolute-numbered latest history row")
+	}
+	if next.SeasonNumber != 23 || next.EpisodeNumber != 19 || next.AbsoluteEpisodeNumber != 1174 {
+		t.Fatalf("next episode = %+v, want S23E19 (absolute 1174)", next)
 	}
 }
 

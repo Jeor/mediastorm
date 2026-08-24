@@ -148,6 +148,46 @@ func (s *Service) Get(userID string) (*models.UserSettings, error) {
 	return nil, nil
 }
 
+// ApplyKidsProfileDefaults enables profile-scoped defaults for kids profiles
+// without replacing an explicit user choice. In particular, a stored false
+// SimpleMode value means M.O.M. Mode was deliberately disabled and is kept.
+func (s *Service) ApplyKidsProfileDefaults(userIDs ...string) (int, error) {
+	cleaned := make([]string, 0, len(userIDs))
+	seen := make(map[string]struct{}, len(userIDs))
+	for _, userID := range userIDs {
+		userID = strings.TrimSpace(userID)
+		if userID == "" {
+			return 0, ErrUserIDRequired
+		}
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+		cleaned = append(cleaned, userID)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	changed := 0
+	for _, userID := range cleaned {
+		settings := s.settings[userID]
+		if settings.Display.SimpleMode != nil {
+			continue
+		}
+		settings.Display.SimpleMode = models.BoolPtr(true)
+		s.settings[userID] = settings
+		changed++
+	}
+	if changed == 0 {
+		return 0, nil
+	}
+	if err := s.saveLocked(); err != nil {
+		return 0, err
+	}
+	return changed, nil
+}
+
 // HasOverrides returns true if the user has custom settings stored.
 func (s *Service) HasOverrides(userID string) bool {
 	userID = strings.TrimSpace(userID)
@@ -342,6 +382,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		}
 		if settings.Display.BypassFilteringForAIOStreamsOnly == nil {
 			settings.Display.BypassFilteringForAIOStreamsOnly = defaults.Display.BypassFilteringForAIOStreamsOnly
+		}
+		if settings.Display.ShowStreamSourceInfo == nil {
+			settings.Display.ShowStreamSourceInfo = defaults.Display.ShowStreamSourceInfo
 		}
 		if settings.Display.DisableMobileTopCarousel == nil {
 			settings.Display.DisableMobileTopCarousel = defaults.Display.DisableMobileTopCarousel
@@ -757,6 +800,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Filtering.UnknownTrackPolicy != "" ||
 		s.Filtering.AdaptivePlaybackEnabled != nil ||
 		s.Filtering.AdaptiveTargetBufferFactor != nil ||
+		s.Filtering.RealDebridRestrictedTermsFilterEnabled != nil ||
 		s.Filtering.SplitByService != nil ||
 		s.Filtering.Debrid != nil ||
 		s.Filtering.Usenet != nil {
@@ -797,6 +841,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.Display.IncludeUnreleasedMoviesInSearch != nil ||
 		s.Display.IncludeUnreleasedShowsInSearch != nil ||
 		s.Display.BypassFilteringForAIOStreamsOnly != nil ||
+		s.Display.ShowStreamSourceInfo != nil ||
 		s.Display.DisableMobileTopCarousel != nil ||
 		s.Display.HideContinueWatchingHeroMetadata != nil ||
 		s.Display.MoveDetailsRatingsToMetadata != nil ||

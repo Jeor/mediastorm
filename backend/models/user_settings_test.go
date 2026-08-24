@@ -31,6 +31,23 @@ func TestDefaultUserSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsDisablesFrameSamplingFeatures(t *testing.T) {
+	settings := DefaultUserSettings()
+
+	options := map[string]*bool{
+		"crop-detect subtitle positioning": settings.Playback.SubtitleUseCropDetectPosition,
+		"credits detection":                settings.Playback.CreditsDetectionEnabled,
+	}
+	for name, option := range options {
+		if option == nil {
+			t.Fatalf("expected %s default to be set", name)
+		}
+		if *option {
+			t.Fatalf("expected %s to default to disabled", name)
+		}
+	}
+}
+
 func TestDefaultUserSettingsEnablesLiveClosedCaptionExtraction(t *testing.T) {
 	settings := DefaultUserSettings()
 
@@ -46,6 +63,13 @@ func TestDefaultUserSettingsEnablesApplicationAnimations(t *testing.T) {
 	settings := DefaultUserSettings()
 	if settings.Display.EnableAnimations == nil || !*settings.Display.EnableAnimations {
 		t.Fatal("application animations should be enabled by default")
+	}
+}
+
+func TestDefaultUserSettingsShowsStreamSourceInfo(t *testing.T) {
+	settings := DefaultUserSettings()
+	if settings.Display.ShowStreamSourceInfo == nil || !*settings.Display.ShowStreamSourceInfo {
+		t.Fatal("stream source information should be shown by default")
 	}
 }
 

@@ -106,21 +106,24 @@ func (r *decryptReader) Read(p []byte) (int, error) {
 			return 0, io.EOF
 		}
 
-		encrypted := make([]byte, readSize)
-		n, err := io.ReadFull(r.source, encrypted)
+		// The plaintext buffer has been fully consumed, so reuse it for the next
+		// encrypted block batch and decrypt in place. Reset the buffered state
+		// before reading: if the source ends early, the EOF decision must use this
+		// read's result rather than the previous batch's stale buffer length.
+		r.bufferPos = 0
+		r.bufferLen = 0
+		n, err := io.ReadFull(r.source, r.buffer[:readSize])
 		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 			return total, err
 		}
 		n -= n % stdaes.BlockSize
 		if n > 0 {
-			r.decrypter.CryptBlocks(encrypted[:n], encrypted[:n])
+			r.decrypter.CryptBlocks(r.buffer[:n], r.buffer[:n])
 			plainLen := n
 			if r.offset+int64(plainLen) > effectiveSize {
 				plainLen = int(effectiveSize - r.offset)
 			}
-			copy(r.buffer, encrypted[:plainLen])
 			r.bufferLen = plainLen
-			r.bufferPos = 0
 		}
 		if (err == io.EOF || err == io.ErrUnexpectedEOF) && r.bufferLen == 0 {
 			if total > 0 {

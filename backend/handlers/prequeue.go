@@ -457,20 +457,21 @@ type prequeueScopeSignature struct {
 
 func configFilterToUserFilter(f config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(f.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(f.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(f.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(f.HDRDVPolicy),
-		RequiredTerms:              append([]string(nil), f.RequiredTerms...),
-		FilterOutTerms:             append([]string(nil), f.FilterOutTerms...),
-		PreferredTerms:             append([]string(nil), f.PreferredTerms...),
-		NonPreferredTerms:          append([]string(nil), f.NonPreferredTerms...),
-		DownloadPreferredTerms:     append([]string(nil), f.DownloadPreferredTerms...),
-		PreferredScraper:           models.StringPtr(f.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(f.ServicePriority)),
-		UnknownTrackPolicy:         string(f.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(f.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(f.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(f.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(f.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(f.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(f.HDRDVPolicy),
+		RequiredTerms:                          append([]string(nil), f.RequiredTerms...),
+		FilterOutTerms:                         append([]string(nil), f.FilterOutTerms...),
+		PreferredTerms:                         append([]string(nil), f.PreferredTerms...),
+		NonPreferredTerms:                      append([]string(nil), f.NonPreferredTerms...),
+		DownloadPreferredTerms:                 append([]string(nil), f.DownloadPreferredTerms...),
+		PreferredScraper:                       models.StringPtr(f.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(f.ServicePriority)),
+		UnknownTrackPolicy:                     string(f.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(f.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(f.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(f.RealDebridRestrictedTermsFilterEnabled),
 	}
 }
 
@@ -527,6 +528,9 @@ func applyClientScopeOverrides(sig *prequeueScopeSignature, clientSettings *mode
 	}
 	if clientSettings.UnknownTrackPolicy != nil {
 		sig.Filtering.UnknownTrackPolicy = *clientSettings.UnknownTrackPolicy
+	}
+	if clientSettings.RealDebridRestrictedTermsFilterEnabled != nil {
+		sig.Filtering.RealDebridRestrictedTermsFilterEnabled = clientSettings.RealDebridRestrictedTermsFilterEnabled
 	}
 	if clientSettings.AnimeLanguageEnabled != nil {
 		sig.AnimeFiltering.AnimeLanguageEnabled = clientSettings.AnimeLanguageEnabled
@@ -690,30 +694,8 @@ type VideoMetadataProber interface {
 	ProbeVideoMetadata(ctx context.Context, path string) (*VideoMetadataResult, error)
 }
 
-// VideoFullResult combines HDR detection and stream metadata in a single result
-type VideoFullResult struct {
-	// HDR detection
-	HasDolbyVision           bool
-	HasHDR10                 bool
-	DolbyVisionProfile       string
-	DolbyVisionConfiguration *models.DolbyVisionConfiguration
-	// Video codec detection
-	VideoCodec   string // e.g., "h264", "hevc", "mpeg4" - used to detect incompatible codecs
-	VideoPixFmt  string // e.g., "yuv420p", "yuv420p10le" - used for browser compatibility
-	VideoProfile string // e.g., "High", "High 10" - used for browser compatibility
-	VideoWidth   int    // Primary video stream width in pixels
-	VideoHeight  int    // Primary video stream height in pixels
-	VideoLevel   int    // H.264 level as reported by ffprobe (for example, 41)
-	AvgFrameRate string // e.g., "24000/1001" from primary video stream
-	// Audio codec detection
-	HasTrueHD          bool // Audio requires transcoding (TrueHD, DTS-HD, etc.)
-	HasCompatibleAudio bool // Audio can be copied without transcoding
-	// Stream metadata
-	AudioStreams    []AudioStreamInfo
-	SubtitleStreams []SubtitleStreamInfo
-	// Duration in seconds (for seeking calculations)
-	Duration float64
-}
+// VideoFullResult combines HDR detection and stream metadata in a single result.
+type VideoFullResult = models.VideoFullResult
 
 // VideoFullProber interface for combined HDR and metadata probing in a single ffprobe call
 type VideoFullProber interface {
@@ -728,6 +710,16 @@ func validatePrequeueVideoProbe(result *VideoFullResult) error {
 		return fmt.Errorf("metadata probe found no playable video track")
 	}
 	return nil
+}
+
+func probeResolvedCandidate(ctx context.Context, prober VideoFullProber, resolution *models.PlaybackResolution) (*VideoFullResult, error) {
+	if resolution != nil && resolution.Probe != nil {
+		return resolution.Probe, nil
+	}
+	if prober == nil || resolution == nil {
+		return nil, nil
+	}
+	return prober.ProbeVideoFull(ctx, resolution.WebDAVPath)
 }
 
 func validatePrequeueEpisodeDuration(mediaType string, episode *models.EpisodeReference, durationSeconds float64) error {
@@ -2858,16 +2850,25 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 		// Every resolved prequeue candidate must expose a playable video track.
 		// This probe is also reused below for HDR and track selection, so moving it
 		// into candidate selection does not add work for the winning candidate.
-		if h.fullProber != nil {
+		// Playback resolution may already carry a probe (pre-resolved scraper
+		// results); reuse it instead of probing the same remote URL again.
+		probeResult = resolution.Probe
+		if probeResult != nil {
+			log.Printf("[prequeue] Reusing probe returned by playback resolution for %s", result.Title)
+		}
+
+		if probeResult != nil || h.fullProber != nil {
 			var probeErr error
-			probeResult, probeErr = h.fullProber.ProbeVideoFull(raceCtx, resolution.WebDAVPath)
-			if probeErr != nil {
-				if raceCtx.Err() != nil && (errors.Is(probeErr, context.Canceled) || errors.Is(probeErr, context.DeadlineExceeded)) {
-					log.Printf("[prequeue] Result [%d] (%s) %s superseded by winner, aborting probe: %v", i, result.ServiceType, result.Title, probeErr)
+			if probeResult == nil {
+				probeResult, probeErr = probeResolvedCandidate(raceCtx, h.fullProber, resolution)
+				if probeErr != nil {
+					if raceCtx.Err() != nil && (errors.Is(probeErr, context.Canceled) || errors.Is(probeErr, context.DeadlineExceeded)) {
+						log.Printf("[prequeue] Result [%d] (%s) %s superseded by winner, aborting probe: %v", i, result.ServiceType, result.Title, probeErr)
+						return nil, nil, probeErr
+					}
+					log.Printf("[prequeue] Probe check failed for %s: %v, trying next result", result.Title, probeErr)
 					return nil, nil, probeErr
 				}
-				log.Printf("[prequeue] Probe check failed for %s: %v, trying next result", result.Title, probeErr)
-				return nil, nil, probeErr
 			}
 			if probeErr = validatePrequeueVideoProbe(probeResult); probeErr != nil {
 				log.Printf("[prequeue] Unplayable probe result for %s: %v, trying next result", result.Title, probeErr)

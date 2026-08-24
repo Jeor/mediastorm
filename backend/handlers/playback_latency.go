@@ -173,12 +173,13 @@ func (t *PlaybackLatencyTracker) NotePrequeueReady(prequeueID string) {
 	}
 	p.readyAt = time.Now()
 	requestedAt := p.requestedAt
+	readyAt := p.readyAt
 	titleName := p.titleName
 	t.mu.Unlock()
 
 	if !requestedAt.IsZero() {
 		log.Printf("[latency] PREQUEUE_LATENCY prequeue=%dms title=%q prequeueId=%s",
-			p.readyAt.Sub(requestedAt).Milliseconds(), titleName, prequeueID)
+			readyAt.Sub(requestedAt).Milliseconds(), titleName, prequeueID)
 	}
 }
 
@@ -387,6 +388,7 @@ func (t *PlaybackLatencyTracker) NotePrequeueFailedSample(prequeueID, reason str
 	delete(t.pending, prequeueID)
 	candidates := sortedCandidateAttempts(p.candidates)
 	failedAt := time.Now()
+	requestedAt := p.requestedAt
 	t.mu.Unlock()
 
 	trimmed := strings.TrimSpace(reason)
@@ -402,13 +404,13 @@ func (t *PlaybackLatencyTracker) NotePrequeueFailedSample(prequeueID, reason str
 		TitleName:         p.titleName,
 		MediaType:         p.mediaType,
 		ReleaseName:       p.releaseName,
-		ClientRequestedAt: p.requestedAt,
+		ClientRequestedAt: requestedAt,
 		PrequeueReadyAt:   failedAt,
 		Candidates:        candidates,
 		Notes:             []string{"prequeue failed: " + trimmed},
 	})
 	log.Printf("[latency] PREQUEUE_FAILURE prequeueMs=%dms reason=%q candidates=%d prequeueId=%s",
-		time.Since(p.requestedAt).Milliseconds(), trimmed, len(candidates), prequeueID)
+		time.Since(requestedAt).Milliseconds(), trimmed, len(candidates), prequeueID)
 }
 
 func sortedCandidateAttempts(m map[int]PlaybackCandidateAttempt) []PlaybackCandidateAttempt {
@@ -617,6 +619,20 @@ func (t *PlaybackLatencyTracker) Snapshot(limit int) PlaybackLatencySnapshot {
 // Admin surface: JSON endpoint + cache flush (cold-test support) + mini page.
 // ---------------------------------------------------------------------------
 
+// LatencyWindowResponse is the JSON body of the latency-window endpoint
+// (ServePlaybackLatencyJSON). Field names mirror what the page's JS reads.
+type LatencyWindowResponse struct {
+	Samples  []PlaybackLatencySample `json:"samples"`
+	Total    int                     `json:"total"`
+	Complete int                     `json:"complete"`
+	Stats    LatencyStats            `json:"stats"`
+}
+
+// LatencyClearResponse is the JSON body of the clear-samples endpoint.
+type LatencyClearResponse struct {
+	Cleared bool `json:"cleared"`
+}
+
 // PlaybackLatencyAdmin exposes the latency window to the admin surface. The
 // tracker is populated passively by the playback path; this type only serves
 // the samples (page + JSON) and the sample-window clear.
@@ -640,7 +656,7 @@ func (a *PlaybackLatencyAdmin) ServePlaybackLatencyJSON(w http.ResponseWriter, r
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(a.tracker.Snapshot(limit))
+	json.NewEncoder(w).Encode(LatencyWindowResponse(a.tracker.Snapshot(limit)))
 }
 
 // ServeLatencyPage renders a small self-contained admin page for watching the
@@ -656,7 +672,7 @@ func (a *PlaybackLatencyAdmin) ClearLatencySamples(w http.ResponseWriter, r *htt
 		a.tracker.ClearSamples()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"cleared": true})
+	json.NewEncoder(w).Encode(LatencyClearResponse{Cleared: true})
 }
 
 const latencyPageHTML = `<!DOCTYPE html>

@@ -1991,6 +1991,10 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
 	filterSettings := filterBundle.Default
 
+	// Mirror SearchWithScoring: skip filter/rank for the debrid source when
+	// AIOStreams is the only enabled scraper and the bypass setting is on.
+	bypassAIOStreamsRanking := shouldBypassAIOStreamsRanking(settings, filterOverrides, includeUsenet)
+
 	// Inject anime language filter-out terms early (before search/filter calls),
 	// mirroring Search/SearchWithScoring.
 	if opts.IsAnime && models.BoolVal(animeSettings.AnimeLanguageEnabled, false) {
@@ -2010,7 +2014,10 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 		}
 	}
 
-	alternateTitles := s.resolveAlternateTitles(ctx, opts, s.getEffectiveMetadataLanguage(opts.UserID, settings), settings.Streaming.MaxAlternateTitleSearches)
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
 	if len(alternateTitles) > 0 {
 		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
 	}
@@ -2021,8 +2028,10 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 	rankingCriteria := rankingBundle.Default
 
 	// Check the shared raw cache once so a warm search never re-fetches or waits
-	// on a slow scraper (same key searchRawResults would use).
-	cacheKey := s.searchCacheKey("raw", opts, settings, alternateTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
+	// on a slow scraper (same key searchRawResults would use). The key includes
+	// the English fallback titles so both pipelines compute the identical key.
+	cacheTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+	cacheKey := s.searchCacheKey("raw", opts, settings, cacheTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
 	if cached, ok := s.getCachedSearchResults(cacheKey, searchStart); ok {
 		log.Printf("[indexer] raw search cache hit for query=%q mediaType=%q user=%q client=%q results=%d", opts.Query, opts.MediaType, opts.UserID, opts.ClientID, len(cached))
 		// A cache hit carries only the merged aggregate, so partition it by the
@@ -2033,12 +2042,18 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 			// A cache hit stores raw results only, so each partitioned source must
 			// be filtered/scored/ranked exactly like a freshly-fetched source
 			// before it is emitted — otherwise the caller sees zero passed
-			// candidates on a warm cache.
-			filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet)
-			if out.source == "debrid" {
-				filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid)
+			// candidates on a warm cache. In AIOStreams bypass mode the debrid
+			// partition skips filter/rank, matching splitSearchDebrid.
+			if bypassAIOStreamsRanking && out.source == "debrid" {
+				out.scored = bypassScoredResults(out.raw, rankingBundle.NewestReleaseFirst)
+				out.filtered = 0
+			} else {
+				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet)
+				if out.source == "debrid" {
+					filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid)
+				}
+				out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, out.raw, filterOpts, filterBundle, animeSettings, filterOverrides, rankingBundle)
 			}
-			out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, out.raw, filterOpts, filterBundle, animeSettings, filterOverrides, rankingBundle)
 			s.emitSplitSourceBatch(usenetOut, debridOut, settings, opts, out)
 		}
 		close(usenetOut)
@@ -2054,7 +2069,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 	// Launch usenet source
 	if includeUsenet {
 		go func() {
-			out := s.splitSearchUsenet(ctx, settings, sourceOpts, parsedQuery, alternateTitles, searchQueries, filterBundle, animeSettings, filterOverrides, rankingBundle)
+			out := s.splitSearchUsenet(ctx, settings, sourceOpts, parsedQuery, alternateTitles, searchQueries, englishFallbackTitles, filterBundle, animeSettings, filterOverrides, rankingBundle)
 			resultsCh <- out
 		}()
 	} else {
@@ -2064,7 +2079,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 	// Launch debrid source
 	if includeDebrid {
 		go func() {
-			out := s.splitSearchDebrid(ctx, settings, sourceOpts, opts, alternateTitles, filterBundle, animeSettings, filterOverrides, rankingBundle)
+			out := s.splitSearchDebrid(ctx, settings, sourceOpts, parsedQuery, alternateTitles, englishFallbackTitles, filterBundle, animeSettings, filterOverrides, rankingBundle, bypassAIOStreamsRanking)
 			resultsCh <- out
 		}()
 	} else {
@@ -2088,9 +2103,13 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 			select {
 			case <-ctx.Done():
 				// The caller stopped consuming (e.g. a winner was adopted before
-				// the slow source finished). Leave the channels open — there is no
-				// reader — and let the in-flight source goroutines finish or abort
-				// on this context; the cache is deliberately not written.
+				// the slow source finished). Close both channels so the documented
+				// contract ("each channel is closed exactly once") holds — receivers
+				// tolerate the close and the sole consumer aborts on this context.
+				// Let the in-flight source goroutines finish or abort on this
+				// context; the cache is deliberately not written.
+				close(usenetOut)
+				close(debridOut)
 				return
 			case out := <-resultsCh:
 				pending--
@@ -2177,12 +2196,20 @@ func partitionResultsBySource(raw []models.NZBResult) []searchSplitOutcome {
 }
 
 // splitSearchUsenet fetches and scores the usenet source for the split search.
-func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Settings, opts SearchOptions, parsedQuery debrid.ParsedQuery, alternateTitles, searchQueries []string, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle) searchSplitOutcome {
+func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Settings, opts SearchOptions, parsedQuery debrid.ParsedQuery, alternateTitles, searchQueries, englishFallbackTitles []string, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle) searchSplitOutcome {
 	usenetStart := time.Now()
 	log.Printf("[indexer] TIMING: split usenet search starting (query=%q)", opts.Query)
 	out := searchSplitOutcome{source: "usenet"}
 
 	raw, err := s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
+	// Mirror searchRawResults: only when the localized query set returns nothing,
+	// retry with the English fallback queries so results aren't silently lost
+	// for localized installs.
+	if err == nil && len(raw) == 0 && len(englishFallbackTitles) > 0 {
+		fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+		log.Printf("[indexer/usenet] localized split search returned no results; trying English fallback queries: %v", fallbackQueries)
+		raw, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, fallbackQueries)
+	}
 	if err != nil {
 		out.err = err
 		return out
@@ -2204,7 +2231,7 @@ func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Setting
 }
 
 // splitSearchDebrid fetches and scores the debrid source for the split search.
-func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Settings, opts SearchOptions, rawOpts SearchOptions, alternateTitles []string, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle) searchSplitOutcome {
+func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Settings, opts SearchOptions, parsedQuery debrid.ParsedQuery, alternateTitles, englishFallbackTitles []string, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle, bypassAIOStreamsRanking bool) searchSplitOutcome {
 	debridStart := time.Now()
 	log.Printf("[indexer] TIMING: split debrid search starting (query=%q)", opts.Query)
 	out := searchSplitOutcome{source: "debrid"}
@@ -2215,7 +2242,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 	debOpts := debrid.SearchOptions{
 		Query:                 opts.Query,
 		Categories:            append([]string{}, opts.Categories...),
-		MaxResults:            rawOpts.MaxResults,
+		MaxResults:            0, // ranking is final-order; a source cap would truncate before filter/rank (non-split path uses 0)
 		IMDBID:                opts.IMDBID,
 		MediaType:             opts.MediaType,
 		Year:                  opts.Year,
@@ -2233,6 +2260,18 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		SkipFilter:            true,
 	}
 	raw, err := s.debrid.Search(ctx, debOpts)
+	// Mirror searchRawResults: only when the localized search returns nothing,
+	// retry with the English fallback query so results aren't silently lost
+	// for localized installs.
+	if err == nil && len(raw) == 0 && len(englishFallbackTitles) > 0 {
+		fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+		if len(fallbackQueries) > 0 {
+			debOpts.Query = fallbackQueries[0]
+			debOpts.AlternateTitles = append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+			log.Printf("[indexer/debrid] localized split search returned no results; trying English fallback query %q", debOpts.Query)
+			raw, err = s.debrid.Search(ctx, debOpts)
+		}
+	}
 	if err != nil {
 		out.err = err
 		return out
@@ -2248,7 +2287,16 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 	}
 	out.raw = raw
 	out.incomplete = incomplete
-	out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid), filterBundle, animeSettings, filterOverrides, rankingBundle)
+	if bypassAIOStreamsRanking {
+		// Mirror SearchWithScoring's short-circuit: AIOStreams is the only
+		// enabled scraper and the bypass setting is on, so skip filter/rank and
+		// pass every raw candidate through flagged as ranking-bypassed.
+		log.Printf("[indexer] Bypassing mediastorm filtering/ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
+		out.scored = bypassScoredResults(raw, rankingBundle.NewestReleaseFirst)
+		out.filtered = 0
+	} else {
+		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid), filterBundle, animeSettings, filterOverrides, rankingBundle)
+	}
 	log.Printf("[indexer] TIMING: split debrid search complete (took: %v, raw=%d, passed=%d)", time.Since(debridStart), len(raw), len(out.scored))
 	return out
 }
@@ -2322,6 +2370,23 @@ func (s *Service) scoreSourceCandidates(opts SearchOptions, settings config.Sett
 		}
 	}
 	return passed, filteredCount
+}
+
+// bypassScoredResults wraps raw candidates as ranking-bypassed passed results,
+// mirroring SearchWithScoring's AIOStreams short-circuit: no filtering and no
+// mediastorm ranking (NewestReleaseFirst sorting still applies).
+func bypassScoredResults(raw []models.NZBResult, newestFirst bool) []models.ScoredNZBResult {
+	scored := make([]models.ScoredNZBResult, len(raw))
+	for i, r := range raw {
+		scored[i] = models.ScoredNZBResult{
+			NZBResult:    markRankingBypassed(r),
+			FilterStatus: "passed",
+		}
+	}
+	if newestFirst {
+		sortScoredResultsNewestReleaseFirst(scored)
+	}
+	return scored
 }
 
 // SearchTest runs search with full scoring breakdown and filter details for the admin search tester.

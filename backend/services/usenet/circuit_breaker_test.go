@@ -293,14 +293,14 @@ func TestNNTPCircuitBreakerBackoffAndHalfOpenProbe(t *testing.T) {
 
 	key := "slow.example"
 
-	if allowed, probe, _ := b.allow(key); !allowed || probe {
+	if allowed, probe, _, _ := b.allow(key); !allowed || probe {
 		t.Fatalf("first allow = (%t, %t), want (true, false)", allowed, probe)
 	}
 
 	b.recordFailure(key)
 	for i := 0; i < 3; i++ {
 		now = now.Add(9 * time.Second) // +9, +18, +27s — inside the 30s cooldown
-		if allowed, _, _ := b.allow(key); allowed {
+		if allowed, _, _, _ := b.allow(key); allowed {
 			t.Fatalf("allow at +%ds must be denied inside the cooldown", (i+1)*9)
 		}
 	}
@@ -309,35 +309,94 @@ func TestNNTPCircuitBreakerBackoffAndHalfOpenProbe(t *testing.T) {
 	// outage and must not extend the cooldown.
 	b.recordFailure(key)
 	b.recordFailure(key)
-	if allowed, _, _ := b.allow(key); allowed {
+	if allowed, _, _, _ := b.allow(key); allowed {
 		t.Fatal("allow must still be denied inside the unchanged cooldown (no extension by in-flight failures)")
 	}
 
 	now = now.Add(5 * time.Second) // +32s: cooldown expired
-	allowed, probe, _ := b.allow(key)
+	allowed, probe, _, _ := b.allow(key)
 	if !allowed || !probe {
 		t.Fatalf("first post-cooldown allow = (%t, %t), want (true, true) half-open probe", allowed, probe)
 	}
 	// A concurrent caller must be held back while the probe is in flight.
-	if allowed, probe, _ := b.allow(key); allowed {
+	if allowed, probe, _, _ := b.allow(key); allowed {
 		t.Fatalf("second allow while a probe is in flight = (%t, %t), want denied", allowed, probe)
 	}
 
 	// Failed probe → exponential re-open (30s → 60s).
 	b.recordFailure(key)
 	now = now.Add(31 * time.Second)
-	if allowed, _, _ := b.allow(key); allowed {
+	if allowed, _, _, _ := b.allow(key); allowed {
 		t.Fatal("allow after a failed probe must be denied for the doubled cooldown")
 	}
 
 	// Successful probe closes the circuit entirely.
 	now = now.Add(40 * time.Second)
-	allowed, probe, _ = b.allow(key)
+	allowed, probe, _, epoch := b.allow(key)
 	if !allowed || !probe {
 		t.Fatalf("post-cooldown allow = (%t, %t), want (true, true) recovery probe", allowed, probe)
 	}
-	b.recordSuccess(key)
-	allowed, probe, _ = b.allow(key)
+	b.recordSuccess(key, epoch)
+	allowed, probe, _, _ = b.allow(key)
+	if !allowed || probe {
+		t.Fatalf("allow after a closed circuit = (%t, %t), want (true, false)", allowed, probe)
+	}
+}
+
+// TestStaleSuccessDoesNotCloseNewlyOpenedCircuit pins the failure-epoch rule:
+// two health checks against the same provider run concurrently — one pass is
+// admitted while the circuit is closed, then a different pass fails and opens
+// the circuit, then the first pass succeeds. That success belongs to an epoch
+// BEFORE the failure, so it must NOT delete the circuit state: the cooldown
+// has not elapsed and the accumulated backoff must survive.
+func TestStaleSuccessDoesNotCloseNewlyOpenedCircuit(t *testing.T) {
+	b := newNNTPCircuitBreaker()
+	b.baseBackoff = 30 * time.Second
+	b.maxBackoff = 5 * time.Minute
+	now := time.Unix(1_700_000_000, 0)
+	b.now = func() time.Time { return now }
+
+	key := "slow.example"
+
+	// Pass A is admitted while the circuit is closed → epoch 0.
+	allowed, probe, _, epochA := b.allow(key)
+	if !allowed || probe || epochA != 0 {
+		t.Fatalf("allow = (%t, %t, epoch %d), want (true, false, epoch 0)", allowed, probe, epochA)
+	}
+
+	// A concurrent pass B fails: the circuit opens on a NEW epoch.
+	b.recordFailure(key)
+
+	// Pass A succeeds under the stale epoch: must NOT close the circuit and
+	// must NOT wipe the state (the probe lock and backoff survive).
+	b.recordSuccess(key, epochA)
+	if allowed, _, _, _ := b.allow(key); allowed {
+		t.Fatal("allow inside the cooldown must be denied: a stale success must not close the circuit")
+	}
+
+	// The stale success must not have reset the backoff either: after the
+	// cooldown, the single half-open probe still fails (provider still down)
+	// and doubles the cooldown — that requires failures == 2, i.e. the
+	// original failure survived.
+	now = now.Add(31 * time.Second) // cooldown expired
+	allowed, probe, _, _ = b.allow(key)
+	if !allowed || !probe {
+		t.Fatalf("first post-cooldown allow = (%t, %t), want (true, true) half-open probe", allowed, probe)
+	}
+	b.recordFailure(key) // failed probe → 60s backoff
+	now = now.Add(31 * time.Second)
+	if allowed, _, _, _ := b.allow(key); allowed {
+		t.Fatal("allow after a failed probe must be denied for the doubled cooldown (backoff must survive a stale success)")
+	}
+
+	// A genuine success under the matching epoch still closes the circuit.
+	now = now.Add(40 * time.Second)
+	allowed, probe, _, epochC := b.allow(key)
+	if !allowed || !probe {
+		t.Fatalf("post-cooldown allow = (%t, %t), want (true, true) recovery probe", allowed, probe)
+	}
+	b.recordSuccess(key, epochC)
+	allowed, probe, _, _ = b.allow(key)
 	if !allowed || probe {
 		t.Fatalf("allow after a closed circuit = (%t, %t), want (true, false)", allowed, probe)
 	}

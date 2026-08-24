@@ -679,7 +679,7 @@ func (s *Service) checkSegmentsWithDialer(ctx context.Context, segments []string
 		}
 
 		key := nntpProviderKey(provider)
-		allowed, probe, retryIn := s.breaker.allow(key)
+		allowed, probe, retryIn, epoch := s.breaker.allow(key)
 		if !allowed {
 			skippedAny = true
 			if retryIn > 0 && (minRetry == 0 || retryIn < minRetry) {
@@ -706,7 +706,7 @@ func (s *Service) checkSegmentsWithDialer(ctx context.Context, segments []string
 			log.Printf("[usenet] provider %q failed (%v); falling over to the next provider", nntpProviderLabel(provider), err)
 			continue
 		}
-		s.breaker.recordSuccess(key)
+		s.breaker.recordSuccess(key, epoch)
 		checkedAny = true
 		remaining = missing
 		if len(remaining) == 0 {

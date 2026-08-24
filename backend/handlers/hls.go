@@ -231,7 +231,7 @@ func (p *throttlingProxy) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	// Log upstream response status for debugging
 	if resp.StatusCode >= 400 {
-		log.Printf("[hls] session %s: proxy upstream returned %d %s for target: %s (requestPath=%q fromClient=%q)", p.session.ID, resp.StatusCode, resp.Status, logWebDAVURL(encodedURL), req.URL.Path, r.URL.Path)
+		log.Printf("[hls] session %s: proxy upstream returned %d %s for target: %s (requestPath=%q fromClient=%q)", p.session.ID, resp.StatusCode, resp.Status, requestsecurity.URLForLog(encodedURL), req.URL.Path, r.URL.Path)
 	}
 
 	// Copy response headers
@@ -6009,7 +6009,7 @@ func (m *HLSManager) ServeSegment(w http.ResponseWriter, r *http.Request, sessio
 		serviceType := session.ServiceType
 		serviceProvider := session.ServiceProvider
 		session.mu.Unlock()
-		if emitLatency && m.latencyTracker != nil && !sentAt.IsZero() {
+		if emitLatency && prequeueID != "" && m.latencyTracker != nil && !sentAt.IsZero() {
 			requestedAt, prequeueReadyAt := m.latencyTracker.PrequeueTimes(prequeueID)
 			m.latencyTracker.Record(PlaybackLatencySample{
 				PrequeueID:          prequeueID,

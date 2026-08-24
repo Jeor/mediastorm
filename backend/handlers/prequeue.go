@@ -1894,7 +1894,13 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// split-search work, and join the feeder so its settled outcome is readable.
 	cancelFeed()
 	candidates.Stop()
-	<-feedState.done
+	// Join the feeder with a ctx escape: if a blocking call inside the feeder
+	// ever ignores feedCtx, the worker must not hang with the entry stuck
+	// resolving. ctx is already done on every cancellation path by this point.
+	select {
+	case <-feedState.done:
+	case <-ctx.Done():
+	}
 
 	if choice.resolution == nil {
 		if errors.Is(resolveErr, context.Canceled) || errors.Is(resolveErr, context.DeadlineExceeded) {
@@ -2633,6 +2639,7 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 
 	var fallback *candidateResolution
 	var firstErr error
+	firstErrIdx := -1
 	handed := 0
 	reported := 0
 	streamExhausted := false
@@ -2677,11 +2684,13 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 			delete(activeSet, r.idx)
 			publishWindow()
 			if r.accepted != nil {
-				// Adopt the winner immediately; losing workers abort on the
-				// cancelled context and finish in the background, and the
-				// dispenser stops feeding (the feeder's Stop cue is publisher-
-				// side, in the prequeue worker).
+				// Adopt the winner; losing workers abort on the cancelled
+				// context, and the dispenser stops feeding (the feeder's Stop cue
+				// is publisher-side, in the prequeue worker). Join in-flight
+				// workers, as the exhaustion path does, so a loser's late stage
+				// update can't overwrite the adopted state after we return.
 				cancelRace()
+				wg.Wait()
 				return r.accepted, false, nil
 			}
 			if r.deprioritized != nil {
@@ -2690,8 +2699,9 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 				}
 				continue
 			}
-			if r.err != nil && firstErr == nil {
+			if r.err != nil && (firstErrIdx < 0 || r.idx < firstErrIdx) {
 				firstErr = r.err
+				firstErrIdx = r.idx
 			}
 		}
 
@@ -2705,10 +2715,16 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	}
 
 	// Nothing validated. Fall back to the deprioritized unknown-track result if
-	// one exists, otherwise surface the first failure observed, or a sentinel
-	// when the stream carried no candidates at all.
+	// one exists, otherwise surface the lowest-indexed failure observed, or a
+	// sentinel when the stream carried no candidates at all.
 	cancelRace()
 	wg.Wait()
+	// A cancellation can land exactly as the exhaustion break fires, after the
+	// last result was observed but before the select could surface ctx — never
+	// misreport the cancellation as no-results or a failure.
+	if ctx.Err() != nil {
+		return nil, false, ctx.Err()
+	}
 	if fallback != nil {
 		return fallback, true, nil
 	}

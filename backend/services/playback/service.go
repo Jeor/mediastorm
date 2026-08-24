@@ -479,7 +479,11 @@ func (s *Service) probeUsenetAvailability(ctx context.Context, cfg config.Settin
 		}
 		return false
 	}
-	if result == nil || result.Healthy {
+	if result == nil {
+		log.Printf("[playback] availability probe inconclusive downloadURLHash=%q title=%q: probe returned nil result — proceeding with full resolve", shortSHA256String(downloadURL), strings.TrimSpace(candidate.Title))
+		return false
+	}
+	if result.Healthy {
 		log.Printf("[playback] availability probe healthy title=%q checked=%d total=%d sampled=%t probeMs=%d — proceeding with full resolve",
 			strings.TrimSpace(candidate.Title), result.CheckedSegments, result.TotalSegments, result.Sampled, time.Since(start).Milliseconds())
 		return false

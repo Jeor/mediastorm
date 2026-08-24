@@ -1913,8 +1913,8 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// resolving serially. Deprioritized unknown-track results are kept as a
 	// fallback and used only when nothing validates.
 	resolveStart := time.Now()
-	log.Printf("[prequeue] TIMING: starting resolution phase (first-ready-source=%t, candidates=%d, elapsed: %v)",
-		resolveFirstReadySource, candidates.Total(), time.Since(workerStart))
+	log.Printf("[prequeue] TIMING: starting resolution phase (first-ready-source=%t, candidates=%d, width=%d, elapsed: %v)",
+		resolveFirstReadySource, candidates.Total(), prequeueResolutionRaceWidth, time.Since(workerStart))
 
 	choice, resolveErr := h.resolveCandidates(ctx, prequeueID, candidates, prequeueResolutionOptions{
 		mediaType:                 mediaType,
@@ -2366,10 +2366,11 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 }
 
 // prequeueResolutionRaceWidth bounds how many prequeue candidates are resolved
-// concurrently during the resolution phase. Resolving the top ranked
-// candidates in parallel bounds the phase to the fastest healthy candidate
-// instead of the serial sum of every dead or slow candidate.
-const prequeueResolutionRaceWidth = 4
+// concurrently during the resolution phase. The source-aware scheduler keeps
+// one slot available for the peer service while it may still produce work, so
+// up to seven candidates from a first-ready source run until both sources are
+// represented; all eight slots can then be used concurrently.
+const prequeueResolutionRaceWidth = 8
 
 // prequeueResolutionSettleWindow is the bounded grace period the resolution
 // race gives a better-ranked candidate that is still mid-download when the
@@ -2642,41 +2643,26 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 
 	type raceReport struct {
 		idx           int
+		serviceType   models.ContentServiceType
 		accepted      *candidateResolution
 		deprioritized *candidateResolution
 		err           error
 	}
 	results := make(chan raceReport, 512)
-	// dispatch carries candidate indices as workers pick them up, so the owner
-	// can track the in-flight window for progress reporting.
-	dispatch := make(chan int, 512)
 
-	// work flows candidates from the source into the worker pool. The dispenser
-	// goroutine pumps src.Next in the background so a streaming source can keep
-	// publishing while workers process, and closes feedsDone once the source is
-	// exhausted or the race is concluded. handedCh reports each candidate that a
-	// worker actually received, so the owner can tell "stream drained AND every
-	// handed candidate has reported" (exhaustion) apart from work that is still
-	// mid-flight.
-	work := make(chan streamedCandidate)
-	handedCh := make(chan int)
-	feedsDone := make(chan struct{})
+	// Keep consuming the streaming source even when every runnable slot is busy.
+	// This lets a later-ready service reach the scheduler instead of sitting
+	// behind an already queued candidate from the first service.
+	incoming := make(chan streamedCandidate)
 	go func() {
-		defer close(feedsDone)
+		defer close(incoming)
 		for {
 			idx, cand, ok := src.Next(raceCtx)
 			if !ok {
-				close(work)
 				return
 			}
 			select {
-			case work <- streamedCandidate{idx: idx, cand: cand}:
-			case <-raceCtx.Done():
-				close(work)
-				return
-			}
-			select {
-			case handedCh <- idx:
+			case incoming <- streamedCandidate{idx: idx, cand: cand}:
 			case <-raceCtx.Done():
 				return
 			}
@@ -2684,30 +2670,14 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	}()
 
 	var wg sync.WaitGroup
-	for w := 0; w < width; w++ {
+	startCandidate := func(it streamedCandidate) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for {
-				select {
-				case <-raceCtx.Done():
-					return
-				case it, ok := <-work:
-					if !ok {
-						return
-					}
-					select {
-					case dispatch <- it.idx:
-					case <-raceCtx.Done():
-						return
-					}
-					accepted, deprioritized, perr := process(raceCtx, it.idx, it.cand)
-					select {
-					case results <- raceReport{idx: it.idx, accepted: accepted, deprioritized: deprioritized, err: perr}:
-					case <-raceCtx.Done():
-						return
-					}
-				}
+			accepted, deprioritized, perr := process(raceCtx, it.idx, it.cand)
+			select {
+			case results <- raceReport{idx: it.idx, serviceType: it.cand.ServiceType, accepted: accepted, deprioritized: deprioritized, err: perr}:
+			case <-raceCtx.Done():
 			}
 		}()
 	}
@@ -2718,7 +2688,9 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	handed := 0
 	reported := 0
 	streamExhausted := false
+	pending := make([]streamedCandidate, 0, width)
 	activeSet := map[int]struct{}{}
+	activeByService := map[models.ContentServiceType]int{}
 
 	// Settle state: when the first validated candidate has a better-ranked
 	// candidate still in flight, the race enters a bounded settle window
@@ -2746,8 +2718,51 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 		}
 		report(min, max)
 	}
+	startReadyCandidates := func() {
+		for len(activeSet) < width && len(pending) > 0 {
+			pick := -1
+			for i, it := range pending {
+				serviceType := it.cand.ServiceType
+				peerType := models.ServiceTypeUnknown
+				switch serviceType {
+				case models.ServiceTypeUsenet:
+					peerType = models.ServiceTypeDebrid
+				case models.ServiceTypeDebrid:
+					peerType = models.ServiceTypeUsenet
+				}
+				peerQueued := false
+				if peerType != models.ServiceTypeUnknown {
+					for _, queued := range pending {
+						if queued.cand.ServiceType == peerType {
+							peerQueued = true
+							break
+						}
+					}
+				}
+				reservePeerSlot := width > 1 && peerType != models.ServiceTypeUnknown &&
+					(!streamExhausted || activeByService[peerType] > 0 || peerQueued)
+				if reservePeerSlot && activeByService[serviceType] >= width-1 {
+					continue
+				}
+				pick = i
+				break
+			}
+			if pick < 0 {
+				return
+			}
+
+			it := pending[pick]
+			pending = append(pending[:pick], pending[pick+1:]...)
+			handed++
+			activeSet[it.idx] = struct{}{}
+			activeByService[it.cand.ServiceType]++
+			publishWindow()
+			startCandidate(it)
+		}
+	}
 
 	for {
+		startReadyCandidates()
 		select {
 		case <-ctx.Done():
 			cancelRace()
@@ -2764,22 +2779,20 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 				return nil, false, ctx.Err()
 			}
 			return settledBest, false, nil
-		case <-feedsDone:
+		case it, ok := <-incoming:
+			if ok {
+				pending = append(pending, it)
+				continue
+			}
 			streamExhausted = true
 			// A closed channel is permanently ready. Disable this select arm after
 			// observing closure so the owner blocks on actual worker reports instead
 			// of spinning at 100% CPU while slow candidates finish.
-			feedsDone = nil
-		case <-handedCh:
-			handed++
-		case i := <-dispatch:
-			if _, ok := activeSet[i]; !ok {
-				activeSet[i] = struct{}{}
-				publishWindow()
-			}
+			incoming = nil
 		case r := <-results:
 			reported++
 			delete(activeSet, r.idx)
+			activeByService[r.serviceType]--
 			publishWindow()
 			if r.accepted != nil {
 				if settledBest != nil {
@@ -2827,7 +2840,7 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 		// coming: the race is exhausted. "Handed" counts candidates a worker
 		// actually received (not just dispatched), so a still-mid-flight worker
 		// can never be cut off by the exhaustion check.
-		if streamExhausted && handed == reported {
+		if streamExhausted && len(pending) == 0 && handed == reported {
 			break
 		}
 	}
@@ -2882,7 +2895,7 @@ func prequeueCandidateAttempt(index int, result models.NZBResult, outcome string
 	}
 }
 
-// resolveCandidates races the candidate source (bounded worker pool) and
+// resolveCandidates races the candidate source (bounded source-aware scheduler) and
 // returns the winning resolution together with the candidate and probe data the
 // rest of the worker needs. The best-ranked fully validated candidate wins,
 // honoring the bounded settle window when a better-ranked candidate is still in

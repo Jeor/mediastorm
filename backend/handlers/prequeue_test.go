@@ -244,6 +244,78 @@ func TestRacePrequeueResolutionsAdoptsFastSecondCandidate(t *testing.T) {
 	}
 }
 
+func TestRacePrequeueResolutionsReservesSlotForLaterSource(t *testing.T) {
+	src := newStreamCandidateSource()
+	raceCtx, cancelRace := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancelRace()
+		src.Stop()
+	})
+	started := make(chan models.ContentServiceType, 16)
+	process := func(ctx context.Context, i int, candidate models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		started <- candidate.ServiceType
+		if candidate.ServiceType == models.ServiceTypeDebrid {
+			return &candidateResolution{
+				index:      i,
+				result:     candidate,
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/debrid.mkv"},
+			}, nil, nil
+		}
+		<-ctx.Done()
+		return nil, nil, ctx.Err()
+	}
+
+	type raceOutcome struct {
+		winner *candidateResolution
+		err    error
+	}
+	done := make(chan raceOutcome, 1)
+	go func() {
+		winner, _, err := racePrequeueResolutions(raceCtx, src, 8, process, nil, 0)
+		done <- raceOutcome{winner: winner, err: err}
+	}()
+
+	// The first-ready service has more work than the entire race width. It may
+	// occupy seven slots, but the eighth remains available for a later source.
+	for i := 0; i < 8; i++ {
+		if !src.Feed(models.NZBResult{Title: fmt.Sprintf("usenet-%d", i), ServiceType: models.ServiceTypeUsenet}) {
+			t.Fatalf("stream rejected usenet candidate %d", i)
+		}
+	}
+	for i := 0; i < 7; i++ {
+		select {
+		case serviceType := <-started:
+			if serviceType != models.ServiceTypeUsenet {
+				t.Fatalf("started service = %q, want usenet", serviceType)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("only %d of 7 reserved-width usenet candidates started", i)
+		}
+	}
+	select {
+	case serviceType := <-started:
+		t.Fatalf("unexpected eighth candidate started before peer source: %q", serviceType)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	if !src.Feed(models.NZBResult{Title: "debrid-ready", ServiceType: models.ServiceTypeDebrid}) {
+		t.Fatal("stream rejected later debrid candidate")
+	}
+	select {
+	case outcome := <-done:
+		src.Stop()
+		if outcome.err != nil {
+			t.Fatalf("race returned error: %v", outcome.err)
+		}
+		if outcome.winner == nil || outcome.winner.result.ServiceType != models.ServiceTypeDebrid {
+			t.Fatalf("winner = %+v, want later debrid source", outcome.winner)
+		}
+	case <-time.After(time.Second):
+		src.Stop()
+		t.Fatal("later debrid source did not receive the reserved resolution slot")
+	}
+}
+
 func TestRacePrequeueResolutionsReportsExhaustionContext(t *testing.T) {
 	topRankedErr := errors.New("restricted release")
 	src := newSliceCandidateSource([]models.NZBResult{

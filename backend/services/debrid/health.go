@@ -1433,6 +1433,10 @@ func selectMediaFiles(files []File, hints mediaresolve.SelectionHints) *mediaFil
 			// Skip non-media files - don't add them to orderedIDs
 			continue
 		}
+		if mediaresolve.IsNonContentCandidate(file.Path) {
+			log.Printf("[debrid-playback] excluding non-content media file: %q", file.Path)
+			continue
+		}
 
 		// Only add media files to the ordered list
 		orderedIDs = append(orderedIDs, id)

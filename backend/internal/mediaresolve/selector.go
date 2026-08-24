@@ -342,23 +342,32 @@ func ComputeSimilarityScore(candidateName string, releaseTokens []string, releas
 		}
 	}
 
-	// Heavy penalty for non-content files - these are never the actual episode/movie
-	lower := strings.ToLower(normalized)
-	if strings.Contains(lower, "sample") || strings.Contains(lower, "extras") ||
-		strings.Contains(lower, "trailer") || strings.Contains(lower, "featurette") ||
-		strings.Contains(lower, "bonus") || strings.Contains(lower, "promo") {
+	// Non-content files are never the actual episode/movie.
+	if IsNonContentCandidate(candidateName) {
 		score = 0
-	}
-	// Also check full path for non-content directories
-	lowerPath := strings.ToLower(candidateName)
-	for _, dir := range []string{"/trailers/", "/extras/", "/bonus/", "/featurettes/", "/promos/", "/behind the scenes/"} {
-		if strings.Contains(lowerPath, dir) {
-			score = 0
-			break
-		}
 	}
 
 	return score
+}
+
+// IsNonContentCandidate reports whether a playable-looking file is actually
+// release metadata or promotional content rather than the requested title.
+// Checking tokens avoids substring matches such as "Sampleton" while catching
+// common scene-release layouts like /Sample/show.s01e01.sample.mkv.
+func IsNonContentCandidate(candidateName string) bool {
+	parts := strings.FieldsFunc(strings.ToLower(candidateName), func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	})
+
+	for _, part := range parts {
+		switch part {
+		case "sample", "samples", "extra", "extras", "trailer", "trailers",
+			"featurette", "featurettes", "bonus", "promo", "promos":
+			return true
+		}
+	}
+
+	return strings.Contains(strings.ToLower(candidateName), "behind the scenes")
 }
 
 // TokenizeParts splits release components into lowercase alphanumeric tokens.

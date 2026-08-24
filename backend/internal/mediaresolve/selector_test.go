@@ -301,6 +301,7 @@ func TestParseAbsoluteEpisodeNumber(t *testing.T) {
 		// S01ENNNN format (anime using absolute episode in S01E format)
 		// This is common for long-running anime where releases use S01E1153 instead of S22E68
 		{"S01E with 4-digit episode", "One Piece S01E1153 The Episode Title [1080p].mkv", 1153, true},
+		{"Current season with 4-digit absolute episode", "One Piece S23E1174 1080p.mkv", 1174, true},
 		{"S01E with 3-digit episode", "Anime S01E123 [1080p].mkv", 123, true},
 		{"s01e lowercase", "anime s01e1000 [720p].mkv", 1000, true},
 		{"S01E at end of filename", "One.Piece.S01E1153.REPACK.1080p.mkv", 1153, true},

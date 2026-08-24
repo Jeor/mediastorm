@@ -79,9 +79,10 @@ var (
 	// Matches: "#1153", "# 042"
 	absoluteEpisodeHashPattern = regexp.MustCompile(`#\s*(\d{2,4})(?:\s|$|[\[\(])`)
 
-	// S01ENNNN format - common for anime using absolute episode in S01E format
-	// Matches: "S01E1153", "s01e0042" (where episode number is actually absolute)
-	s01AbsoluteEpisodePattern = regexp.MustCompile(`(?i)s01e(\d{3,4})(?:\s|$|[\.\-\[\(])`)
+	// SxxENNNN format - some long-running anime releases put the absolute episode
+	// in the episode field while retaining either S01 or the current season.
+	// Matches: "S01E1153", "S23E1174", "s01e0042".
+	seasonAbsoluteEpisodePattern = regexp.MustCompile(`(?i)s\d{1,2}e(\d{3,4})(?:\s|$|[\.\-\[\(])`)
 
 	// Negative patterns to avoid false positives
 	resolutionPattern = regexp.MustCompile(`(?i)(\d{3,4})p`)               // 1080p, 720p, 480p
@@ -581,9 +582,8 @@ func ParseAbsoluteEpisodeNumber(value string) (int, bool) {
 		}
 	}
 
-	// Try S01ENNNN pattern (anime using absolute episode in S01E format)
-	// This is common for long-running anime where releases use S01E1153 instead of S22E68
-	if matches := s01AbsoluteEpisodePattern.FindStringSubmatch(value); len(matches) >= 2 {
+	// Try SxxENNNN pattern (anime using the absolute number in the episode field).
+	if matches := seasonAbsoluteEpisodePattern.FindStringSubmatch(value); len(matches) >= 2 {
 		if episode, err := strconv.Atoi(matches[1]); err == nil && episode > 0 && !excludeNums[episode] {
 			return episode, true
 		}

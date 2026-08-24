@@ -364,7 +364,10 @@ func (s *segment) Close() error {
 	return errors.Join(e1, e2)
 }
 
-func (s *segment) Writer() io.Writer {
+func (s *segment) Writer() *bufpipe.PipeWriter {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
 	return s.writer
 }
 

@@ -500,7 +500,14 @@ func (b *usenetReader) downloadManager(
 			s := seg
 			segmentID := s.Id
 			pool.Go(func(c context.Context) error {
-				w := s.writer
+				// Keep one synchronized writer snapshot for the entire fetch. A reader
+				// can close the segment while an NNTP request is between retry attempts;
+				// re-reading s.writer after Close clears it would pass a typed nil writer
+				// into nntppool and panic instead of returning the closed-pipe error.
+				w := s.Writer()
+				if w == nil {
+					return nil
+				}
 				startedAt := time.Now()
 				active := atomic.AddInt64(&activeDownloads, 1)
 				b.log.DebugContext(ctx, "usenet.segment.download_starting",
@@ -511,7 +518,7 @@ func (b *usenetReader) downloadManager(
 				)
 				defer atomic.AddInt64(&activeDownloads, -1)
 
-				bytesFetched, err := b.fetchSegmentBody(ctx, cp, segmentID, s)
+				bytesFetched, err := b.fetchSegmentBody(ctx, cp, segmentID, w, s.groups)
 				duration := time.Since(startedAt)
 				if bytesFetched > 0 {
 					atomic.AddInt64(&downloadedBytes, bytesFetched)
@@ -597,14 +604,20 @@ func (b *usenetReader) downloadManager(
 	}
 }
 
-func (b *usenetReader) fetchSegmentBody(ctx context.Context, cp nntppool.UsenetConnectionPool, segmentID string, s *segment) (int64, error) {
+func (b *usenetReader) fetchSegmentBody(
+	ctx context.Context,
+	cp nntppool.UsenetConnectionPool,
+	segmentID string,
+	w io.Writer,
+	groups []string,
+) (int64, error) {
 	var lastErr error
 	for attempt := 1; attempt <= segmentFetchAttempts; attempt++ {
 		if ctx.Err() != nil {
 			return 0, ctx.Err()
 		}
 
-		bytesFetched, err := cp.Body(ctx, segmentID, s.Writer(), s.groups)
+		bytesFetched, err := cp.Body(ctx, segmentID, w, groups)
 		if err == nil {
 			if attempt > 1 {
 				b.log.InfoContext(ctx, "usenet.segment.fetch_retry_success",

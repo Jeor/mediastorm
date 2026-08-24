@@ -430,7 +430,7 @@ type PlaybackSettings struct {
 	RewindOnResumeFromPause       *int      `json:"rewindOnResumeFromPause,omitempty"`             // Seconds to rewind when unpausing (default 0)
 	RewindOnPlaybackStart         *int      `json:"rewindOnPlaybackStart,omitempty"`               // Seconds to rewind when resuming from saved progress (default 0)
 	DisablePrequeue               *bool     `json:"disablePrequeue,omitempty"`                     // Disable automatic stream pre-loading
-	PrerollMode                   string    `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, default, or custom override
+	PrerollMode                   string    `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, artwork, default, or custom override
 	PrerollAssetID                string    `json:"prerollAssetId,omitempty"`                      // Content hash used when prerollMode is custom
 	PrerollMediaScope             string    `json:"prerollMediaScope,omitempty"`                   // Empty inherits; all, movies, or tv
 	PrerollSkipIfPrequeueReady    *bool     `json:"prerollSkipIfPrequeueReady,omitempty"`          // Skip pre-roll when a prepared stream is already ready

@@ -58,6 +58,17 @@ func TestPlaybackSettingsNormalizePrerollMediaScope(t *testing.T) {
 	}
 }
 
+func TestPlaybackSettingsNormalizePrerollArtworkMode(t *testing.T) {
+	playback := PlaybackSettings{PrerollMode: " ARTWORK ", PrerollAssetID: "unused-video"}
+	playback.NormalizePreroll()
+	if playback.PrerollMode != "artwork" {
+		t.Fatalf("PrerollMode = %q, want artwork", playback.PrerollMode)
+	}
+	if playback.PrerollAssetID != "" {
+		t.Fatalf("PrerollAssetID = %q, want empty for artwork mode", playback.PrerollAssetID)
+	}
+}
+
 func TestEnsureDefaultHomeShelvesBackfillsSharedShelfLimits(t *testing.T) {
 	shelves, changed := EnsureDefaultHomeShelves([]ShelfConfig{
 		{ID: "popular-on-server", Name: "Popular"},

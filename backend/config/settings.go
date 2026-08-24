@@ -456,7 +456,7 @@ type PlaybackSettings struct {
 	RewindOnResumeFromPause       int                       `json:"rewindOnResumeFromPause"`             // Seconds to rewind when unpausing (default 0)
 	RewindOnPlaybackStart         int                       `json:"rewindOnPlaybackStart"`               // Seconds to rewind when resuming from saved progress (default 0)
 	DisablePrequeue               bool                      `json:"disablePrequeue"`                     // Disable automatic prequeue on page load (streams only resolve when Play is pressed)
-	PrerollMode                   string                    `json:"prerollMode,omitempty"`               // disabled, default, or custom
+	PrerollMode                   string                    `json:"prerollMode,omitempty"`               // disabled, artwork, default, or custom
 	PrerollAssetID                string                    `json:"prerollAssetId,omitempty"`            // Content hash used when prerollMode is custom
 	PrerollMediaScope             string                    `json:"prerollMediaScope,omitempty"`         // all, movies, or tv
 	PrerollSkipIfPrequeueReady    bool                      `json:"prerollSkipIfPrequeueReady"`          // Skip pre-roll when a prepared stream is already ready
@@ -502,7 +502,7 @@ func (p *PlaybackSettings) NormalizeAllowedTrackLanguages() {
 func (p *PlaybackSettings) NormalizePreroll() {
 	p.PrerollMode = strings.ToLower(strings.TrimSpace(p.PrerollMode))
 	switch p.PrerollMode {
-	case "default":
+	case "artwork", "default":
 		p.PrerollAssetID = ""
 	case "custom":
 		p.PrerollAssetID = strings.ToLower(strings.TrimSpace(p.PrerollAssetID))

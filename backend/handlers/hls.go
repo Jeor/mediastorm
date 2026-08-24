@@ -1394,42 +1394,6 @@ func (m *HLSManager) SetSessionPrequeue(sessionID, prequeueID, serviceType, serv
 	session.mu.Unlock()
 }
 
-// ClearPlaybackCaches resets everything HLSManager-side that would make a
-// repeat transcode warm: the probe cache, hardware-accel detection, and all
-// live sessions (killing FFmpeg). Returns the number of sessions torn down.
-func (m *HLSManager) ClearPlaybackCaches() (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-
-	m.probeCacheMu.Lock()
-	nProbe := len(m.probeCache)
-	m.probeCache = make(map[string]*cachedProbeEntry)
-	m.probeCacheMu.Unlock()
-
-	m.hwAccelMu.Lock()
-	m.hwAccel = HWAccelCaps{}
-	m.hwAccelPref = ""
-	m.hwAccelReady = false
-	m.hwAccelRetryAfter = time.Time{}
-	m.hwAccelMu.Unlock()
-
-	m.mu.RLock()
-	sessions := make([]string, 0, len(m.sessions))
-	for id := range m.sessions {
-		sessions = append(sessions, id)
-	}
-	m.mu.RUnlock()
-	nSessions := len(sessions)
-
-	log.Printf("[hls] ClearPlaybackCaches: probeCache=%d hwaccelReset sessions=%d killed", nProbe, nSessions)
-	for _, id := range sessions {
-		// CleanupSession is heavy (kills FFmpeg, removes dirs); run outside the manager lock.
-		m.CleanupSession(id)
-	}
-	return nSessions, nil
-}
-
 // UpdateSharePlaybackProgress records live dashboard-only progress for
 // share-link HLS sessions without persisting anything to watch history.
 func (m *HLSManager) UpdateSharePlaybackProgress(sessionID, profileID, profileName string, update models.PlaybackProgressUpdate) int {

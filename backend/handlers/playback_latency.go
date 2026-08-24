@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/httptest"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"novastream/services/playback"
 )
 
 // PlaybackLatencySample is one click→first-frame measurement of the VOD
@@ -620,63 +617,15 @@ func (t *PlaybackLatencyTracker) Snapshot(limit int) PlaybackLatencySnapshot {
 // Admin surface: JSON endpoint + cache flush (cold-test support) + mini page.
 // ---------------------------------------------------------------------------
 
-type playbackLatencyFlusher interface {
-	ClearPlaybackCaches() (int, error) // HLSManager
-}
-
-// latencyHLSSegmentDriver lets the in-process benchmark serve real HLS media
-// segments so t3/t4 and the complete sample are recorded without a browser or
-// auth tokens. Implemented by HLSManager.
-type latencyHLSSegmentDriver interface {
-	ServeSegment(w http.ResponseWriter, r *http.Request, sessionID, segmentName string)
-}
-
-type latencyPrequeueFlusher interface{ DeleteAll() }
-type latencyIndexerFlusher interface{ ClearSearchCache() }
-type latencyPrewarmFlusher interface{ ClearAll() }
-type latencyPoolFlusher interface{ ClearPool() error }
-type latencyImporterFlusher interface{ ClearResolvedNZBs() }
-
-// PlaybackLatencyAdmin exposes the latency window and the cold-test cache
-// flush. All dependencies are optional (nil-safe) so tests and reduced setups
-// can register what they have.
+// PlaybackLatencyAdmin exposes the latency window to the admin surface. The
+// tracker is populated passively by the playback path; this type only serves
+// the samples (page + JSON) and the sample-window clear.
 type PlaybackLatencyAdmin struct {
-	tracker        *PlaybackLatencyTracker
-	prequeueStore  latencyPrequeueFlusher
-	indexerSvc     latencyIndexerFlusher
-	prewarmSvc     latencyPrewarmFlusher
-	poolManager    latencyPoolFlusher
-	importerSvc    latencyImporterFlusher
-	hlsManager     playbackLatencyFlusher
-	hlsDriver      latencyHLSSegmentDriver
-	benchStore     *playback.PrequeueStore
-	prequeueHandle *PrequeueHandler
+	tracker *PlaybackLatencyTracker
 }
 
 func NewPlaybackLatencyAdmin(tracker *PlaybackLatencyTracker) *PlaybackLatencyAdmin {
 	return &PlaybackLatencyAdmin{tracker: tracker}
-}
-
-// --- setters (wired from main.go) ---
-
-func (a *PlaybackLatencyAdmin) SetPrequeueStore(s latencyPrequeueFlusher)   { a.prequeueStore = s }
-func (a *PlaybackLatencyAdmin) SetIndexerService(s latencyIndexerFlusher)   { a.indexerSvc = s }
-func (a *PlaybackLatencyAdmin) SetPrewarmService(s latencyPrewarmFlusher)   { a.prewarmSvc = s }
-func (a *PlaybackLatencyAdmin) SetPoolManager(s latencyPoolFlusher)         { a.poolManager = s }
-func (a *PlaybackLatencyAdmin) SetImporterService(s latencyImporterFlusher) { a.importerSvc = s }
-func (a *PlaybackLatencyAdmin) SetHLSManager(m playbackLatencyFlusher)      { a.hlsManager = m }
-
-// SetHLSSegmentDriver supplies the segment-serving path for the in-process
-// benchmark (the same HLSManager instance as SetHLSManager).
-func (a *PlaybackLatencyAdmin) SetHLSSegmentDriver(d latencyHLSSegmentDriver) { a.hlsDriver = d }
-
-// SetPrequeueHandler gives the benchmark the real prequeue worker + store so
-// it can run cold iterations in-process.
-func (a *PlaybackLatencyAdmin) SetPrequeueHandler(h *PrequeueHandler) {
-	a.prequeueHandle = h
-	if h != nil {
-		a.benchStore = h.GetStore()
-	}
 }
 
 // ServePlaybackLatencyJSON renders the latest samples + aggregate stats.
@@ -695,158 +644,10 @@ func (a *PlaybackLatencyAdmin) ServePlaybackLatencyJSON(w http.ResponseWriter, r
 }
 
 // ServeLatencyPage renders a small self-contained admin page for watching the
-// click→first-frame numbers and triggering cold-cache flushes.
+// click→first-frame numbers.
 func (a *PlaybackLatencyAdmin) ServeLatencyPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, latencyPageHTML)
-}
-
-// ServeLatencySessionToken returns the admin session token so the page can
-// prefill latency_bench.sh commands. The cookie itself is HttpOnly (unreadable
-// from JS); this endpoint is master-only like the rest of the latency admin
-// surface. The same token value doubles as the Bearer token for the protected
-// playback/HLS routes the harness drives.
-func (a *PlaybackLatencyAdmin) ServeLatencySessionToken(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	c, err := r.Cookie(adminSessionCookieName)
-	if err != nil || c.Value == "" {
-		http.Error(w, "no admin session cookie", http.StatusUnauthorized)
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]string{"token": c.Value})
-}
-
-// ---------------------------------------------------------------------------
-// In-process cold-cache benchmark (backend-side; no auth tokens involved).
-// ---------------------------------------------------------------------------
-
-type playbackBenchRequest struct {
-	TitleID    string `json:"titleId"`
-	TitleName  string `json:"titleName"`
-	UserID     string `json:"userId"`
-	MediaType  string `json:"mediaType,omitempty"`
-	Year       int    `json:"year,omitempty"`
-	ImdbID     string `json:"imdbId,omitempty"`
-	ClientID   string `json:"clientId,omitempty"`
-	Iterations int    `json:"iterations,omitempty"`
-	Scope      string `json:"scope,omitempty"`
-}
-
-// RunPlaybackBench triggers a backend-side cold-cache benchmark: N iterations
-// of flush → prequeue worker → first HLS segment, each recorded into the
-// passive tracker exactly like a real playthrough (same worker, same
-// ServeSegment path). It runs in the background; the response only
-// acknowledges the start and the new samples appear in the latency table.
-// Because the measured phases are server wall-clock, the numbers stay
-// representative — only the "client" is in-process, so no session/token
-// plumbing is involved.
-func (a *PlaybackLatencyAdmin) RunPlaybackBench(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	var req playbackBenchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if strings.TrimSpace(req.TitleID) == "" || strings.TrimSpace(req.TitleName) == "" || strings.TrimSpace(req.UserID) == "" {
-		http.Error(w, "titleId, titleName and userId are required", http.StatusBadRequest)
-		return
-	}
-	if req.Iterations <= 0 {
-		req.Iterations = 10
-	}
-	if req.Iterations > 50 {
-		req.Iterations = 50
-	}
-	if req.MediaType == "" {
-		req.MediaType = "movie"
-	}
-	switch req.Scope {
-	case "":
-		req.Scope = "resolve"
-	case "all", "resolve", "stream":
-	default:
-		http.Error(w, "invalid scope; use all, resolve or stream", http.StatusBadRequest)
-		return
-	}
-
-	runID := fmt.Sprintf("bench-%d", time.Now().UnixNano())
-	go a.runBench(runID, req)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"started": true, "runId": runID, "iterations": req.Iterations, "scope": req.Scope,
-	})
-}
-
-func (a *PlaybackLatencyAdmin) runBench(runID string, req playbackBenchRequest) {
-	if a.prequeueHandle == nil || a.benchStore == nil {
-		log.Printf("[latency] bench %s: prequeue handler/store not wired; aborting", runID)
-		return
-	}
-	log.Printf("[latency] bench %s start title=%q scope=%s iterations=%d", runID, req.TitleName, req.Scope, req.Iterations)
-
-	for i := 1; i <= req.Iterations; i++ {
-		iterStart := time.Now()
-		if _, _, err := a.flushScope(req.Scope); err != nil {
-			log.Printf("[latency] bench %s iter %d: flush: %v", runID, i, err)
-			continue
-		}
-		entry, ok := a.benchStore.Create(req.TitleID, req.TitleName, req.UserID, req.MediaType, req.Year, nil, "details")
-		if !ok || entry == nil {
-			log.Printf("[latency] bench %s iter %d: failed to create prequeue entry", runID, i)
-			continue
-		}
-		prequeueID := entry.ID
-		if a.tracker != nil {
-			a.tracker.NotePrequeueRequested(prequeueID, req.TitleID, req.UserID, req.TitleName, req.MediaType)
-			a.tracker.NotePrequeueMetadata(prequeueID, req.ImdbID, req.Year)
-		}
-		// Runs synchronously through the real worker (search→resolve→probe→HLS).
-		a.prequeueHandle.runPrequeueWorker(prequeueID, req.TitleID, req.TitleName, req.ImdbID,
-			req.MediaType, req.Year, req.UserID, req.ClientID, nil, 0, false)
-
-		sessionID := ""
-		if cur, ok := a.benchStore.Get(prequeueID); ok && cur != nil {
-			sessionID = cur.HLSSessionID
-		}
-		served := false
-		if sessionID != "" && a.hlsDriver != nil {
-			served = a.serveFirstSegment(sessionID)
-		}
-		// If no media segment was served (non-HLS stream, or generation failed)
-		// there is no full sample yet: synthesize a prequeue-only row so the
-		// iteration still surfaces with its prequeueMs. No-op when a full sample
-		// already consumed the pending state.
-		if a.tracker != nil {
-			if _, readyAt := a.tracker.PrequeueTimes(prequeueID); !readyAt.IsZero() {
-				a.tracker.NotePrequeueOnlySample(prequeueID)
-			}
-		}
-		log.Printf("[latency] bench %s iter %d done hls=%t served=%t elapsed=%v", runID, i, sessionID != "", served, time.Since(iterStart))
-	}
-	log.Printf("[latency] bench %s complete", runID)
-}
-
-// serveFirstSegment requests the first media segment through the real
-// ServeSegment path, which blocks until the transcode produces it (so t3/t4 and
-// the complete sample are recorded when it succeeds, and no false 404 sample is
-// created). Handles both TS and fMP4 sessions.
-func (a *PlaybackLatencyAdmin) serveFirstSegment(sessionID string) bool {
-	for _, name := range []string{"segment0.ts", "segment0.m4s"} {
-		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/video/hls/"+sessionID+"/"+name, nil)
-		a.hlsDriver.ServeSegment(rec, req, sessionID, name)
-		if rec.Code == http.StatusOK {
-			return true
-		}
-	}
-	return false
 }
 
 // ClearLatencySamples drops the sample window.
@@ -856,101 +657,6 @@ func (a *PlaybackLatencyAdmin) ClearLatencySamples(w http.ResponseWriter, r *htt
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"cleared": true})
-}
-
-// FlushPlaybackCaches resets playback-related state so a repeat play is cold.
-// The default scope ("all") clears everything: prequeue entries, HLS probe
-// cache, hwaccel detection, live sessions (killing FFmpeg), the search cache,
-// warm entries, the resolved-NZB cache and the NNTP pool (which lazily
-// rebuilds). Narrower scopes keep the expensive orthogonal phases warm so a
-// specific phase's latency can be isolated:
-//
-//	scope=all      — everything (default).
-//	scope=resolve  — resolution cold, search warm: clears prequeue entries,
-//	                 resolved-NZB cache, prewarm and the pool, but keeps the
-//	                 indexer search cache (isolates resolve+parse, skips the
-//	                 multi-minute search).
-//	scope=stream   — transcode cold, everything else warm: clears the HLS probe
-//	                 cache, hwaccel detection and live sessions only (isolates
-//	                 ffmpeg input probing / first-segment warmup).
-//
-// The NNTP pool is only ever dropped (cold connections), never permanently
-// disabled: it lazily rebuilds from the last configured providers.
-func (a *PlaybackLatencyAdmin) FlushPlaybackCaches(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
-	if scope == "" {
-		scope = "all"
-	}
-	label, cleared, err := a.flushScope(scope)
-	if err != nil {
-		http.Error(w, "invalid scope; use all, resolve or stream", http.StatusBadRequest)
-		return
-	}
-	log.Printf("[latency] playback cache flush complete scope=%s: %s", scope, strings.Join(cleared, ", "))
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"scope": label, "cleared": cleared})
-}
-
-// flushScope clears the playback caches for one scope ("all" | "resolve" |
-// "stream") and returns a human label + the list of what was cleared. Shared by
-// the HTTP flush endpoint and the in-process benchmark.
-func (a *PlaybackLatencyAdmin) flushScope(scope string) (string, []string, error) {
-	cleared := []string{}
-	switch scope {
-	case "all", "resolve":
-		if a.prequeueStore != nil {
-			a.prequeueStore.DeleteAll()
-			cleared = append(cleared, "prequeue entries")
-		}
-		if a.prewarmSvc != nil {
-			a.prewarmSvc.ClearAll()
-			cleared = append(cleared, "prewarm entries")
-		}
-		if a.importerSvc != nil {
-			a.importerSvc.ClearResolvedNZBs()
-			cleared = append(cleared, "resolved-NZB cache")
-		}
-		if a.poolManager != nil {
-			if err := a.poolManager.ClearPool(); err != nil {
-				log.Printf("[latency] flush: NNTP pool clear failed: %v", err)
-			} else {
-				cleared = append(cleared, "NNTP connection pool (lazy rebuild)")
-			}
-		}
-		if scope == "all" && a.indexerSvc != nil {
-			a.indexerSvc.ClearSearchCache()
-			cleared = append(cleared, "indexer search cache")
-		}
-	case "stream":
-		// only the transcode side below
-	default:
-		return "", nil, fmt.Errorf("invalid scope %q", scope)
-	}
-
-	// The transcode/stream side is always flushed (both "all" and "stream").
-	if scope == "all" || scope == "stream" {
-		if a.hlsManager != nil {
-			if n, err := a.hlsManager.ClearPlaybackCaches(); err != nil {
-				log.Printf("[latency] flush: HLS cache clear failed: %v", err)
-			} else {
-				cleared = append(cleared, fmt.Sprintf("HLS probe cache + %d session(s) killed", n))
-			}
-		}
-	}
-
-	switch scope {
-	case "all":
-		return "all (full cold)", cleared, nil
-	case "resolve":
-		return "resolve (search cached)", cleared, nil
-	case "stream":
-		return "stream (resolution cached)", cleared, nil
-	}
-	return "", cleared, fmt.Errorf("invalid scope %q", scope)
 }
 
 const latencyPageHTML = `<!DOCTYPE html>
@@ -974,18 +680,12 @@ const latencyPageHTML = `<!DOCTYPE html>
   button.danger { background: #5f2e2e; }
   .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
   .note { color: #8aa0b4; max-width: 1000px; line-height: 1.5; }
-  button.mini { background: transparent; border: 1px solid #2e3c4d; border-radius: 5px;
-    padding: 1px 9px; font-size: 13px; }
-  button.mini:hover { background: #27445f; }
   .cands { margin-top: 3px; font-size: 11px; line-height: 1.6; color: #8aa0b4; }
   .cand { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 4px;
     background: #1d2733; border: 1px solid #2e3c4d; }
   .cand.probe_rejected, .cand.articles_unavailable { color: #ff9d9d; border-color: #5f2e2e; }
   .cand.adopted { color: #6fdc8c; border-color: #1f4d33; }
   .cand.superseded { color: #8aa0b4; }
-  .toast { position: fixed; bottom: 24px; right: 24px; background: #1f7a45; color: #fff;
-    padding: 10px 16px; border-radius: 8px; opacity: 0; transition: opacity .25s; }
-  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -994,24 +694,15 @@ const latencyPageHTML = `<!DOCTYPE html>
   Measures the server-side path: t0 = prequeue request (click), t1 = prequeue ready,
   t2 = HLS session created, t3 = first segment on disk, t4 = first segment response.
   Native (non-HLS) clients stop at t1 (see PREQUEUE_LATENCY in server logs).
-  Click <b>Flush playback caches</b> before each test run to force a cold path,
-  then re-play the same title in the app as many times as you like.
 </div>
 <div class="row">
-  <button onclick="flushCaches('all')">🧊 Flush playback caches (cold test)</button>
   <button class="danger" onclick="clearSamples()">Clear samples</button>
 </div>
-<div class="row">
-  <button onclick="flushCaches('resolve')" title="Resolution cold, multi-minute search kept warm; isolates resolve+parse">Flush resolution only</button>
-  <button onclick="flushCaches('stream')" title="Transcode cold; keeps search + resolution warm; isolates ffmpeg/first-segment">Flush stream only</button>
-  <span class="note">Tip: scope=resolve skips the ~90s search so a repeat play measures resolve+parse+transcode.</span>
-</div>
 <div class="chips" id="chips"></div>
-<div class="toast" id="toast"></div>
 <table>
   <thead><tr>
     <th class="l">#</th><th class="l">Time</th><th class="l">Title</th><th class="l">Service</th>
-    <th>Total ms</th><th>Prequeue ms</th><th>HLS create ms</th><th>FFmpeg warmup ms</th><th>Serve wait ms</th><th>Complete</th><th class="l">Bench</th>
+    <th>Total ms</th><th>Prequeue ms</th><th>HLS create ms</th><th>FFmpeg warmup ms</th><th>Serve wait ms</th><th>Complete</th>
   </tr></thead>
   <tbody id="rows"></tbody>
 </table>
@@ -1042,7 +733,6 @@ async function refresh() {
     document.getElementById("chips").innerHTML = chipData.map(function (c) {
       return '<div class="chip">' + c[0] + ": <b>" + c[1] + "</b></div>";
     }).join("");
-    benchSamples = snap.samples || [];   // for the per-row ⚡ bench buttons
     var rows = snap.samples.map(function (x) {
       var note = (x.notes || []).join("; ");
       var title = x.titleName || "–";
@@ -1063,150 +753,18 @@ async function refresh() {
         '<td class="' + cls(x.ffmpegWarmupMs) + '">' + fmtMs(x.ffmpegWarmupMs) + '</td>' +
         '<td class="' + cls(x.serveWaitMs) + '">' + fmtMs(x.serveWaitMs) + '</td>' +
         '<td>' + (x.complete ? "✅" : "–") + '</td>' +
-        '<td class="l">' +
-          '<button class="mini" data-bench="' + x.id + '" title="Copy latency_bench.sh command prefilled for this release">⚡</button>' +
-          ' <button class="mini" data-bench-run="' + x.id + '" title="Run 10× resolve bench on the server (no terminal/auth)">▶</button>' +
-        '</td>' +
       '</tr>';
     }).join("");
     document.getElementById("rows").innerHTML = rows;
   } catch (e) {
-    document.getElementById("rows").innerHTML = '<tr><td colspan="11" class="muted">' + e + '</td></tr>';
+    document.getElementById("rows").innerHTML = '<tr><td colspan="10" class="muted">' + e + '</td></tr>';
   }
 }
 function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
-async function flushCaches(scope) {
-  var q = scope ? "?scope=" + scope : "";
-  try {
-    const r = await api("/admin/api/latency/flush" + q, { method: "POST" });
-    alert("Flushed [" + r.scope + "]: " + r.cleared.join(", "));
-  } catch (e) { alert("flush failed: " + e); }
-}
 async function clearSamples() {
   try { await api("/admin/api/latency/clear", { method: "POST" }); refresh(); }
   catch (e) { alert("clear failed: " + e); }
 }
-
-// ---- per-row benchmark command --------------------------------------------
-// The ⚡ button on each sample row copies a fully-prefilled latency_bench.sh
-// invocation for that measured release: BASE_URL from this page, the session
-// token (which doubles as the Bearer for the protected playback/HLS routes),
-// and the sample's USER_ID / TITLE_ID / TITLE_NAME. The release is pinned via
-// -f so the benchmark summary only scores the exact release the operator
-// already validated in the app.
-var benchSamples = [];   // latest snapshot for row-button lookup
-function findBenchSample(id) {
-  for (var i = 0; i < benchSamples.length; i++) {
-    if (benchSamples[i].id === id) return benchSamples[i];
-  }
-  return null;
-}
-function showToast(msg, color) {
-  var el = document.getElementById("toast");
-  el.textContent = msg;
-  el.style.background = color || "#1f7a45";
-  el.classList.add("show");
-  setTimeout(function () { el.classList.remove("show"); }, 6000);
-}
-var __latencyBenchToken = null;
-// The admin session cookie is HttpOnly, so JS cannot read it directly; the
-// token comes from the master-only /admin/api/latency/session-token endpoint
-// (fetched lazily, cached for the page lifetime).
-async function getSessionToken() {
-  if (__latencyBenchToken !== null) return __latencyBenchToken;
-  try {
-    var res = await fetch("/admin/api/latency/session-token");
-    if (!res.ok) throw new Error(String(res.status));
-    __latencyBenchToken = ((await res.json()).token) || "";
-  } catch (e) {
-    __latencyBenchToken = "";
-  }
-  return __latencyBenchToken;
-}
-function shq(v) { return "'" + String(v || "").replace(/'/g, "'\\''") + "'"; }
-
-async function buildBenchCmdFor(s) {
-  var token = await getSessionToken();
-  var ext = [];
-  if (s.year) ext.push("YEAR=" + shq(String(s.year)));
-  if (s.imdbId) ext.push("IMDB_ID=" + shq(s.imdbId));
-  var parts = [
-    "BASE_URL=" + shq(window.location.origin),
-    "TOKEN=" + shq(token),
-    "ADMIN_COOKIE=" + shq("mediastorm_admin_session=" + token),
-    "USER_ID=" + shq(s.userId),
-    "TITLE_ID=" + shq(s.titleId),
-    "TITLE_NAME=" + shq(s.titleName),
-  ].concat(ext);
-  var cmd = parts.join(" \\\n    ") +
-    " \\\n    ./backend/scripts/latency_bench.sh -n 10 -s resolve";
-  if (s.releaseName) {
-    cmd += " -f " + shq(s.releaseName);   // score only this exact release
-  }
-  return cmd;
-}
-
-async function copyBenchRow(id) {
-  var s = findBenchSample(id);
-  if (!s) return;
-  var token = await getSessionToken();
-  if (!token) {
-    showToast("⚠ No admin session token (length 0) — log in to /admin and reload this page, then re-copy.", "#8a5f1f");
-    return;
-  }
-  var cmd = await buildBenchCmdFor(s);
-  try {
-    await navigator.clipboard.writeText(cmd);
-  } catch (e) {
-    var ta = document.createElement("textarea");
-    ta.value = cmd; document.body.appendChild(ta); ta.select();
-    document.execCommand("copy"); document.body.removeChild(ta);
-  }
-  var toast = document.getElementById("toast");
-  showToast("Copied bench command (token length " + token.length + ") — " + (s.titleName || "?") +
-    (s.releaseName ? "  " + s.releaseName : "") +
-    "  (includes your session token — treat like a secret)", "#1f7a45");
-}
-
-// Run the benchmark entirely on the server: no tokens, no terminal. The samples
-// land in this table as each iteration completes.
-async function runBenchRow(id) {
-  var s = findBenchSample(id);
-  if (!s) return;
-  if (!s.userId || !s.titleId || !s.titleName) {
-    showToast("⚠ Sample lacks userId/titleId/titleName to benchmark.", "#8a5f1f");
-    return;
-  }
-  try {
-    var res = await fetch("/admin/api/latency/bench", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        titleId: s.titleId, titleName: s.titleName, userId: s.userId,
-        mediaType: s.mediaType || "movie", year: s.year || 0, imdbId: s.imdbId || "",
-        iterations: 10, scope: "resolve",
-      }),
-    });
-    var payload = await res.json().catch(function () { return {}; });
-    if (!res.ok) {
-      showToast("⚠ Bench start failed (HTTP " + res.status + ") — " + JSON.stringify(payload), "#8a5f1f");
-      return;
-    }
-    showToast("▶ Bench started: " + (s.titleName || "?") + " · " + payload.iterations + "× flush " + payload.scope +
-      " — watch the table fill in.");
-  } catch (e) {
-    showToast("⚠ Bench start failed: " + e, "#8a5f1f");
-  }
-}
-
-// Event delegation keeps the table rows free of inline handlers.
-document.getElementById("rows").addEventListener("click", function (ev) {
-  var t = ev.target;
-  var copyBtn = t.closest ? t.closest("[data-bench]") : null;
-  var runBtn = t.closest ? t.closest("[data-bench-run]") : null;
-  if (runBtn) runBenchRow(runBtn.getAttribute("data-bench-run"));
-  else if (copyBtn) copyBenchRow(copyBtn.getAttribute("data-bench"));
-});
 setInterval(refresh, 2500);
 refresh();
 </script>

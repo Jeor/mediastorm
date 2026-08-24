@@ -60,7 +60,7 @@ func TestRunBoundedFileParsersCancelsSiblingsOnTerminalFailure(t *testing.T) {
 	started := make(chan struct{})
 	var startedOnce sync.Once
 
-	_, err := runBoundedFileParsers(context.Background(), maxConcurrentNZBFileParsers+8, func(ctx context.Context, i int) (*ParsedFile, error) {
+	_, err := runBoundedFileParsers(context.Background(), minConcurrentNZBFileParsers+8, minConcurrentNZBFileParsers+8, func(ctx context.Context, i int) (*ParsedFile, error) {
 		if i == 0 {
 			select {
 			case <-started:

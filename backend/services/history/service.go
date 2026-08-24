@@ -2119,10 +2119,19 @@ func (s *Service) findNextUnwatchedEpisode(
 		return nil
 	}
 
+	// History can legitimately contain both season-relative and absolute-numbered
+	// rows for the same episode (for example One Piece S23E18 and S23E1173).
+	// Keep the source rows intact, but canonicalize their numbering for the
+	// derived on-deck calculation so an absolute-numbered latest row can still be
+	// located in season metadata.
+	numbering := newEpisodeNumberingIndex(seriesDetails)
+	lastWatchedSeason, lastWatchedEpisode := numbering.canonical(lastWatched.SeasonNumber, lastWatched.EpisodeNumber)
+
 	// Build set of watched episodes for O(1) lookup
 	watchedSet := make(map[string]bool)
 	for _, ep := range watchedEpisodes {
-		key := episodeKey(ep.SeasonNumber, ep.EpisodeNumber)
+		season, episode := numbering.canonical(ep.SeasonNumber, ep.EpisodeNumber)
+		key := episodeKey(season, episode)
 		watchedSet[key] = true
 	}
 
@@ -2160,7 +2169,7 @@ func (s *Service) findNextUnwatchedEpisode(
 	foundLast := false
 	var firstUnreleased *models.EpisodeReference
 	for _, ep := range allEpisodes {
-		if ep.season == lastWatched.SeasonNumber && ep.episode == lastWatched.EpisodeNumber {
+		if ep.season == lastWatchedSeason && ep.episode == lastWatchedEpisode {
 			foundLast = true
 			continue
 		}

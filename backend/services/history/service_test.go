@@ -4252,6 +4252,35 @@ func TestContinueWatchingNormalizesLegacyAbsoluteNextEpisode(t *testing.T) {
 	}
 }
 
+func TestFindNextUnwatchedEpisodeCanonicalizesAbsoluteHistoryRows(t *testing.T) {
+	svc := &Service{}
+	details := &models.SeriesDetails{
+		Title: models.Title{ID: "tmdb:tv:37854", Name: "One Piece", TMDBID: 37854},
+		Seasons: []models.SeriesSeason{{
+			Number: 23,
+			Episodes: []models.SeriesEpisode{
+				{ID: "ep-1173", Name: "A Nightmarish Game", SeasonNumber: 23, EpisodeNumber: 18, AbsoluteEpisodeNumber: 1173, AiredDate: "2020-08-16"},
+				{ID: "ep-1174", Name: "The Next Adventure", SeasonNumber: 23, EpisodeNumber: 19, AbsoluteEpisodeNumber: 1174, AiredDate: "2020-08-23"},
+			},
+		}},
+	}
+	watchedAt := time.Date(2026, 8, 11, 22, 21, 29, 0, time.UTC)
+	seasonal := models.WatchHistoryItem{
+		MediaType: "episode", SeriesName: "One Piece", Name: "A Nightmarish Game",
+		SeasonNumber: 23, EpisodeNumber: 18, Watched: true, WatchedAt: watchedAt,
+	}
+	absolute := seasonal
+	absolute.EpisodeNumber = 1173
+
+	next := svc.findNextUnwatchedEpisode(details, absolute, []models.WatchHistoryItem{seasonal, absolute})
+	if next == nil {
+		t.Fatal("expected an on-deck episode after an absolute-numbered latest history row")
+	}
+	if next.SeasonNumber != 23 || next.EpisodeNumber != 19 || next.AbsoluteEpisodeNumber != 1174 {
+		t.Fatalf("next episode = %+v, want S23E19 (absolute 1174)", next)
+	}
+}
+
 func TestContinueWatching_AbsoluteNumberedInProgressTreatedAsWatched(t *testing.T) {
 	// Regression for One Piece: an episode finished and recorded in watch history
 	// under its season-relative number (S23E08) still has a stale playback-progress

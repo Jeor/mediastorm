@@ -27,6 +27,32 @@ func TestScrobEventToUpdateEpisode(t *testing.T) {
 	}
 }
 
+func TestScrobEventToLocalUpdateCanonicalizesHybridAbsoluteEpisode(t *testing.T) {
+	when := time.Date(2026, 8, 11, 16, 38, 31, 0, time.UTC)
+	svc := &Service{metadataService: &fakeSchedulerMetadataService{details: &models.SeriesDetails{
+		Title: models.Title{TMDBID: 37854, TVDBID: 81797},
+		Seasons: []models.SeriesSeason{{Number: 23, Episodes: []models.SeriesEpisode{{
+			ID: "tmdb:episode:7550164", TMDBID: 7550164, TVDBID: 11908333,
+			Name:         "A Nightmarish Game - The Dark Plot of the Knights of God",
+			SeasonNumber: 23, EpisodeNumber: 18, AbsoluteEpisodeNumber: 1173,
+		}}}},
+	}}}
+	watched := true
+	update := svc.scrobEventToLocalUpdate(scrob.HistoryEvent{Completed: true, WatchedAt: &when, Media: scrob.Media{
+		TMDBID: 7550164, Type: "episode", Title: "A Nightmarish Game - The Dark Plot of the Knights of God",
+		SeasonNumber: 23, EpisodeNumber: 1173, ShowTitle: "One Piece", ShowTMDBID: 37854, ShowTVDBID: 81797,
+	}}, &watched)
+	if update == nil {
+		t.Fatal("expected update")
+	}
+	if update.ItemID != "tmdb:tv:37854:s23e18" || update.SeasonNumber != 23 || update.EpisodeNumber != 18 {
+		t.Fatalf("update=%+v", update)
+	}
+	if update.ExternalIDs["absoluteEpisode"] != "1173" || update.ExternalIDs["episodeTmdb"] != "7550164" || update.ExternalIDs["episodeTvdb"] != "11908333" {
+		t.Fatalf("ids=%v", update.ExternalIDs)
+	}
+}
+
 func TestLocalItemToScrobEpisodeUsesShowAndEpisodeIDs(t *testing.T) {
 	when := time.Date(2026, 8, 1, 2, 3, 4, 0, time.UTC)
 	event, key, ok := localItemToScrob(models.WatchHistoryItem{

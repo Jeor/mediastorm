@@ -36,6 +36,11 @@ type ImportConfig struct {
 	RarEnableMemoryPreload         bool
 	RarMaxMemoryGB                 int
 	VerifyPar2Completeness         bool
+	// UsenetMaxConcurrentFileParsers bounds parallel yEnc header fetches per
+	// title. UsenetParserShareDivisor spreads them across 1/N of the pool's free
+	// connections; 0 or 1 disables the sharing heuristic.
+	UsenetMaxConcurrentFileParsers int
+	UsenetParserShareDivisor       int
 }
 
 // SABnzbdConfig represents SABnzbd fallback configuration
@@ -87,6 +92,8 @@ func (ca *ConfigAdapter) GetConfig() *AltMountConfig {
 				RarMaxCacheSizeMB:              128,
 				RarEnableMemoryPreload:         false,
 				RarMaxMemoryGB:                 8,
+				UsenetMaxConcurrentFileParsers: 16,
+				UsenetParserShareDivisor:       4,
 			},
 		}
 	}
@@ -132,6 +139,8 @@ func (ca *ConfigAdapter) GetConfig() *AltMountConfig {
 			RarEnableMemoryPreload:         settings.Import.RarEnableMemoryPreload,
 			RarMaxMemoryGB:                 settings.Import.RarMaxMemoryGB,
 			VerifyPar2Completeness:         settings.Import.VerifyPar2Completeness,
+			UsenetMaxConcurrentFileParsers: settings.Import.UsenetMaxConcurrentFileParsers,
+			UsenetParserShareDivisor:       settings.Import.UsenetParserShareDivisor,
 		},
 		SABnzbd: SABnzbdConfig{
 			Enabled:        settings.SABnzbd.Enabled,

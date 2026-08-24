@@ -361,6 +361,11 @@ func main() {
 	indexerHandler.SetBadStreamsService(badStreamsService)
 
 	playbackService := playback.NewService(cfgManager, nzbSystem, nzbSystem.MetadataReader())
+	// Wire the preflight availability probe: usenet candidates are
+	// segment-sampled concurrently with the full resolve, so dead releases are
+	// cancelled and rejected cheaply (fail-open — only a definitive
+	// missing-segments verdict rejects).
+	playbackService.SetUsenetHealthChecker(usenetService)
 	playbackHandler := handlers.NewPlaybackHandler(playbackService)
 	playbackHandler.SetBadStreamsService(badStreamsService)
 	// Prequeue handler will be created later after historyService is available
@@ -907,6 +912,14 @@ func main() {
 		}()
 	}
 
+	// Click→first-frame latency instrumentation. Passive: records prequeue + HLS
+	// phase timestamps into a rolling window, exposes /admin/latency (a passive
+	// click→first-frame observer).
+	latencyTracker := handlers.NewPlaybackLatencyTracker(400)
+	latencyAdmin := handlers.NewPlaybackLatencyAdmin(latencyTracker)
+	prequeueHandler.SetPlaybackLatencyTracker(latencyTracker)
+	videoHandler.GetHLSManager().SetPlaybackLatencyTracker(latencyTracker)
+
 	api.Register(
 		r,
 		settingsHandler,
@@ -946,6 +959,7 @@ func main() {
 		shareHandler,
 		watchRoomsHandler,
 		settings.Server.HomepageAPIKey,
+		latencyAdmin,
 	)
 
 	// Register Trakt accounts API routes
@@ -1011,6 +1025,12 @@ func main() {
 
 	// Login/logout routes (no auth required)
 	r.HandleFunc("/admin/login", adminUIHandler.LoginPage).Methods(http.MethodGet)
+	r.HandleFunc("/admin/latency", adminUIHandler.RequireAuth(latencyAdmin.ServeLatencyPage)).Methods(http.MethodGet, http.MethodOptions)
+	// The latency API is an admin-only JSON endpoint on the cookie-authenticated
+	// /admin/api/* namespace (same as the other browser admin APIs) so the
+	// latency page can call it from the browser without extra plumbing.
+	r.HandleFunc("/admin/api/latency", adminUIHandler.RequireMasterAuth(latencyAdmin.ServePlaybackLatencyJSON)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/admin/api/latency/clear", adminUIHandler.RequireMasterAuth(latencyAdmin.ClearLatencySamples)).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/admin/login", api.RateLimitHandlerFunc(adminLoginLimiter, adminUIHandler.LoginSubmit)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/logout", adminUIHandler.Logout).Methods(http.MethodGet, http.MethodPost)
 

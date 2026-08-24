@@ -226,7 +226,7 @@ func TestRacePrequeueResolutionsAdoptsFastSecondCandidate(t *testing.T) {
 	src := newSliceCandidateSource([]models.NZBResult{
 		{Title: "slow-dead"}, {Title: "fast-good"},
 	})
-	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil)
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 0)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -248,6 +248,168 @@ func winnerIndex(w *candidateResolution) int {
 		return -1
 	}
 	return w.index
+}
+
+func TestRacePrequeueResolutionsSettlePrefersBetterRankedArrivingLate(t *testing.T) {
+	// A worse-ranked candidate validates first; the better-ranked candidate is
+	// still mid-download and validates shortly after. The settle window must
+	// keep the better-ranked candidate alive and prefer it, instead of
+	// finalizing the first validator instantly.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(300 * time.Millisecond):
+			}
+			return &candidateResolution{
+				index:      0,
+				result:     models.NZBResult{Title: "better-slow"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/better.mkv"},
+			}, nil, nil
+		case 1:
+			// Both candidates start resolving together; the worse-ranked one
+			// merely validates a little sooner (the realistic "lost by a few ms"
+			// shape) — the 50ms preamble also ensures the main loop has observed
+			// candidate 0's dispatch before this result lands.
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(50 * time.Millisecond):
+			}
+			return &candidateResolution{
+				index:      1,
+				result:     models.NZBResult{Title: "worse-fast"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"},
+			}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-slow"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 1000*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("better-ranked candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0 (better-ranked late arrival must win the settle)", winnerIndex(winner))
+	}
+	// The race must have actually waited for the better-ranked candidate (so it
+	// did not finalize the fast winner on arrival) but settled well inside the
+	// 1s window.
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("race returned in %v, want it to wait for the better-ranked candidate", elapsed)
+	}
+	if elapsed >= 900*time.Millisecond {
+		t.Fatalf("race took %v, want the settle to close once the better-ranked candidate lands", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsSettleTimesOutKeepingFastWinner(t *testing.T) {
+	// The better-ranked candidate never validates within the window (it is
+	// dead/slow): the first validator must be finalized after the settle
+	// timeout, cancelling the stuck candidate instead of waiting for it.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+				return nil, nil, fmt.Errorf("articles unavailable")
+			}
+		case 1:
+			// Same preamble as the prefer test: validate a short moment after
+			// candidate 0 is dispatched so the settle window is reliably entered.
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(50 * time.Millisecond):
+			}
+			return &candidateResolution{
+				index:      1,
+				result:     models.NZBResult{Title: "worse-fast"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"},
+			}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-dead"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 400*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("fast candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %v, want 1 (fast candidate after settle timeout)", winnerIndex(winner))
+	}
+	// The settle must have bounded the wait: the dead candidate was cancelled
+	// at the window close, well under its 5s stall.
+	if elapsed < 250*time.Millisecond {
+		t.Fatalf("race returned in %v, want it to respect the settle window", elapsed)
+	}
+	if elapsed >= 2*time.Second {
+		t.Fatalf("race took %v, want the dead better-ranked candidate cancelled at the settle timeout", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsSettleSkippedWhenWinnerBestRanked(t *testing.T) {
+	// The first validator is already the best-ranked candidate in flight: no
+	// settle window is entered and the race returns immediately with zero added
+	// latency (the fast path must not pay for a worse-ranked candidate that is
+	// still resolving).
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			return &candidateResolution{
+				index:      0,
+				result:     models.NZBResult{Title: "best-fast"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/best.mkv"},
+			}, nil, nil
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+				return nil, nil, fmt.Errorf("articles unavailable")
+			}
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "best-fast"}, {Title: "worse-slow"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 1000*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("winner adopted as fallback")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0", winnerIndex(winner))
+	}
+	if elapsed >= 300*time.Millisecond {
+		t.Fatalf("fast path took %v, want immediate adoption with no settle window", elapsed)
+	}
 }
 
 func TestRacePrequeueResolutionsReportsInFlightWindow(t *testing.T) {
@@ -296,7 +458,7 @@ func TestRacePrequeueResolutionsReportsInFlightWindow(t *testing.T) {
 	src := newSliceCandidateSource([]models.NZBResult{
 		{Title: "slow-dead"}, {Title: "fast-good"}, {Title: "c3"}, {Title: "c4"},
 	})
-	winner, _, err := racePrequeueResolutions(context.Background(), src, 2, process, report)
+	winner, _, err := racePrequeueResolutions(context.Background(), src, 2, process, report, 0)
 	if err != nil {
 		t.Fatalf("race returned error: %v", err)
 	}
@@ -346,7 +508,7 @@ func TestRacePrequeueResolutionsFallsBackToDeprioritizedWhenNothingValidates(t *
 	src := newSliceCandidateSource([]models.NZBResult{
 		{Title: "deprioritized"}, {Title: "c1"}, {Title: "c2"},
 	})
-	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil)
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0)
 	if err != nil {
 		t.Fatalf("race returned error: %v", err)
 	}
@@ -381,7 +543,7 @@ func TestRacePrequeueResolutionsPrefersAcceptedOverEarlierDeprioritized(t *testi
 	src := newSliceCandidateSource([]models.NZBResult{
 		{Title: "deprioritized"}, {Title: "accepted"}, {Title: "c2"},
 	})
-	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil)
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0)
 	if err != nil {
 		t.Fatalf("race returned error: %v", err)
 	}
@@ -399,7 +561,7 @@ func TestRacePrequeueResolutionsAllFailSurfacesFirstError(t *testing.T) {
 	}
 
 	src := newSliceCandidateSource([]models.NZBResult{{Title: "c0"}, {Title: "c1"}})
-	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil)
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0)
 	if winner != nil || usedFallback || err == nil {
 		t.Fatalf("all-fail race returned winner=%v usedFallback=%v err=%v, want all failures surfaced", winner != nil, usedFallback, err)
 	}
@@ -414,7 +576,7 @@ func TestRacePrequeueResolutionsCancelledContext(t *testing.T) {
 	}
 
 	src := newSliceCandidateSource([]models.NZBResult{{Title: "c0"}, {Title: "c1"}})
-	winner, usedFallback, err := racePrequeueResolutions(ctx, src, 2, process, nil)
+	winner, usedFallback, err := racePrequeueResolutions(ctx, src, 2, process, nil, 0)
 	if winner != nil || usedFallback {
 		t.Fatalf("cancelled race returned winner=%v usedFallback=%v", winner != nil, usedFallback)
 	}

@@ -2338,6 +2338,25 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 // instead of the serial sum of every dead or slow candidate.
 const prequeueResolutionRaceWidth = 4
 
+// prequeueResolutionSettleWindow is the bounded grace period the resolution
+// race gives a better-ranked candidate that is still mid-download when the
+// first candidate validates: instead of cancelling the losers the instant one
+// candidate wins (which can discard a better-ranked release that lost the race
+// by milliseconds), the race keeps them alive for up to this long and prefers
+// the best-ranked candidate that validates within the window. The fast path is
+// unaffected — when no better-ranked candidate is in flight at validation time
+// the winner is adopted immediately with zero added latency.
+//
+// The cost is a wait of at most this long whenever a better-ranked candidate is
+// mid-flight at validation time — including a dead/slow top-ranked release
+// racing a healthy lower one, the exact scenario the race exists to bypass — so
+// the default is deliberately small (250ms: imperceptible next to download
+// times, well inside the "dead top candidate must not stall playback" bound)
+// while still capturing genuine near-ties (a better-ranked candidate finishing
+// a few ms after the winner). 0 disables it; raise it only if you accept the
+// added cold-start latency it costs in the dead-top case.
+const prequeueResolutionSettleWindow = 250 * time.Millisecond
+
 // prequeueCandidateProcessor resolves and validates one prequeue candidate.
 // accepted is the fully validated candidate (playable + policy-ok);
 // deprioritized is a candidate that passed resolution/probing but was
@@ -2546,18 +2565,23 @@ func (s *streamCandidateSource) Snapshot() []models.NZBResult {
 }
 
 // racePrequeueResolutions resolves candidates concurrently (bounded to width in
-// flight at once) and returns the first fully validated candidate — the
+// flight at once) and returns the best-ranked fully validated candidate — the
 // prequeue analog of the debrid multiprovider's checkFastestMode. Candidates are
 // pulled from src in feed order, so a streaming source lets the race begin on
 // the first-ready search source's candidates while later sources are still
 // feeding. The lowest-indexed deprioritized unknown-track candidate is kept as a
-// fallback and returned only when nothing validates. On a winner, losing workers
-// are cancelled and released immediately; on exhaustion every handed candidate
-// has already reported, so the caller may safely observe shared candidate state
-// afterwards. report (optional) receives the 0-based in-flight candidate window
-// whenever it changes, so callers can publish honest "racing candidates X–Y"
-// progress.
-func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, width int, process prequeueCandidateProcessor, report func(inFlightMin, inFlightMax int)) (winner *candidateResolution, usedFallback bool, err error) {
+// fallback and returned only when nothing validates. The first validation is
+// adopted immediately unless a better-ranked candidate is still in flight and
+// settle > 0, in which case the race enters a bounded settle window: in-flight
+// candidates are kept alive (not cancelled) until the window closes or the
+// stream drains, and the best-ranked candidate that validates within it wins —
+// so a better-ranked release that lost the finish by milliseconds still beats a
+// faster but worse-ranked one. On a winner (settled or not), losing workers are
+// cancelled and released; on exhaustion every handed candidate has already
+// reported, so the caller may safely observe shared candidate state afterwards.
+// report (optional) receives the 0-based in-flight candidate window whenever it
+// changes, so callers can publish honest "racing candidates X–Y" progress.
+func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, width int, process prequeueCandidateProcessor, report func(inFlightMin, inFlightMax int), settle time.Duration) (winner *candidateResolution, usedFallback bool, err error) {
 	if width <= 0 {
 		width = 1
 	}
@@ -2644,6 +2668,14 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	reported := 0
 	streamExhausted := false
 	activeSet := map[int]struct{}{}
+
+	// Settle state: when the first validated candidate has a better-ranked
+	// candidate still in flight, the race enters a bounded settle window
+	// (settleTimer armed) instead of cancelling the losers, and keeps the
+	// best-ranked candidate that validates within it. The window closes on the
+	// timer, on caller cancellation, or when the stream drains.
+	var settledBest *candidateResolution
+	var settleTimer <-chan time.Time // nil = not settling
 	publishWindow := func() {
 		if report == nil {
 			return
@@ -2670,6 +2702,17 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 			cancelRace()
 			wg.Wait() // release workers touching shared candidate state
 			return nil, false, ctx.Err()
+		case <-settleTimer:
+			// Settle window closed: finalize the best-ranked candidate that
+			// validated within it, discarding everything else. settledBest is
+			// always non-nil here — the timer is only armed when a validation
+			// with a better-ranked candidate in flight set it.
+			cancelRace()
+			wg.Wait()
+			if ctx.Err() != nil {
+				return nil, false, ctx.Err()
+			}
+			return settledBest, false, nil
 		case <-feedsDone:
 			streamExhausted = true
 		case <-handedCh:
@@ -2684,25 +2727,45 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 			delete(activeSet, r.idx)
 			publishWindow()
 			if r.accepted != nil {
-				// Adopt the winner; losing workers abort on the cancelled
-				// context, and the dispenser stops feeding (the feeder's Stop cue
-				// is publisher-side, in the prequeue worker). Join in-flight
-				// workers, as the exhaustion path does, so a loser's late stage
-				// update can't overwrite the adopted state after we return.
-				cancelRace()
-				wg.Wait()
-				return r.accepted, false, nil
-			}
-			if r.deprioritized != nil {
+				if settledBest != nil {
+					// Settling: keep whichever validated candidate ranks best (the
+					// first validation is the incumbent that opened the window).
+					if r.idx < settledBest.index {
+						log.Printf("[prequeue] settle: better-ranked candidate %d validated while settling; preferring it over %d", r.idx, settledBest.index)
+						settledBest = r.accepted
+					}
+				} else if better := lowestInFlightBetterRanked(activeSet, r.idx); settle > 0 && better >= 0 {
+					// A better-ranked candidate is still mid-download (e.g. it
+					// lost the finish by milliseconds): enter the settle window
+					// instead of cancelling it, so it can still win within
+					// prequeueResolutionSettleWindow.
+					settledBest = r.accepted
+					settleTimer = time.After(settle)
+					log.Printf("[prequeue] candidate %d validated while better-ranked candidate %d still in flight; settling up to %s", r.idx, better, settle)
+				} else {
+					// Fast path: the winner is the best-ranked candidate in
+					// flight (or settle is disabled) — adopt it immediately with
+					// zero added latency. Losing workers abort on the cancelled
+					// context, and the dispenser stops feeding (the feeder's Stop
+					// cue is publisher-side, in the prequeue worker). Join
+					// in-flight workers, as the exhaustion path does, so a loser's
+					// late stage update can't overwrite the adopted state after
+					// we return.
+					cancelRace()
+					wg.Wait()
+					return r.accepted, false, nil
+				}
+			} else if r.deprioritized != nil {
 				if fallback == nil || r.deprioritized.index < fallback.index {
 					fallback = r.deprioritized
 				}
-				continue
-			}
-			if r.err != nil && (firstErrIdx < 0 || r.idx < firstErrIdx) {
+			} else if r.err != nil && (firstErrIdx < 0 || r.idx < firstErrIdx) {
 				firstErr = r.err
 				firstErrIdx = r.idx
 			}
+			// Fall through to the exhaustion check below even when a
+			// settle-accepted result just landed, so a drained stream finalizes
+			// the best candidate immediately instead of idling out the window.
 		}
 
 		// Every handed candidate has reported and no further candidates are
@@ -2714,9 +2777,10 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 		}
 	}
 
-	// Nothing validated. Fall back to the deprioritized unknown-track result if
-	// one exists, otherwise surface the lowest-indexed failure observed, or a
-	// sentinel when the stream carried no candidates at all.
+	// Nothing validated (or the stream drained during a settle window): if a
+	// candidate validated during the settle, prefer it; otherwise fall back to
+	// the deprioritized unknown-track result, the lowest-indexed failure
+	// observed, or a sentinel when the stream carried no candidates at all.
 	cancelRace()
 	wg.Wait()
 	// A cancellation can land exactly as the exhaustion break fires, after the
@@ -2725,6 +2789,9 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	if ctx.Err() != nil {
 		return nil, false, ctx.Err()
 	}
+	if settledBest != nil {
+		return settledBest, false, nil
+	}
 	if fallback != nil {
 		return fallback, true, nil
 	}
@@ -2732,6 +2799,19 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 		return nil, false, firstErr
 	}
 	return nil, false, errNoSearchCandidates
+}
+
+// lowestInFlightBetterRanked returns the lowest (best-ranked) candidate index
+// currently in flight that ranks above idx, or -1 when none — the condition for
+// entering the resolution settle window.
+func lowestInFlightBetterRanked(activeSet map[int]struct{}, idx int) int {
+	best := -1
+	for i := range activeSet {
+		if i < idx && (best == -1 || i < best) {
+			best = i
+		}
+	}
+	return best
 }
 
 // prequeueCandidateAttempt builds a latency-tracker candidate attempt record
@@ -2749,13 +2829,14 @@ func prequeueCandidateAttempt(index int, result models.NZBResult, outcome string
 
 // resolveCandidates races the candidate source (bounded worker pool) and
 // returns the winning resolution together with the candidate and probe data the
-// rest of the worker needs. It preserves the serial loop's semantics: the first
-// fully validated candidate wins; deprioritized unknown-track results are a
-// fallback only when nothing validates; and IsArticleUnavailable failures still
-// mark bad streams. Candidates flow from src, so a streaming source lets the
-// race start resolving the first-ready search source while later sources are
-// still feeding; the debrid torrent preflight runs on the feeder
-// side (prequeueSearchFeeder) before a debrid batch is published.
+// rest of the worker needs. The best-ranked fully validated candidate wins,
+// honoring the bounded settle window when a better-ranked candidate is still in
+// flight; deprioritized unknown-track results are a fallback only when nothing
+// validates; and IsArticleUnavailable failures still mark bad streams. Candidates
+// flow from src, so a streaming source lets the race start resolving the
+// first-ready search source while later sources are still feeding; the debrid
+// torrent preflight runs on the feeder side (prequeueSearchFeeder) before a
+// debrid batch is published.
 func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID string, src prequeueCandidateSource, opts prequeueResolutionOptions) (prequeueResolutionChoice, error) {
 	resolveStart := time.Now()
 
@@ -2978,7 +3059,7 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 		}
 		h.updatePrequeueRaceProgress(prequeueID, inFlightMin+1, inFlightMax+1, total)
 	}
-	winner, usedFallback, raceErr := racePrequeueResolutions(ctx, src, prequeueResolutionRaceWidth, process, reportProgress)
+	winner, usedFallback, raceErr := racePrequeueResolutions(ctx, src, prequeueResolutionRaceWidth, process, reportProgress, prequeueResolutionSettleWindow)
 	if winner == nil {
 		return prequeueResolutionChoice{}, raceErr
 	}

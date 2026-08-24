@@ -524,6 +524,10 @@ type LiveTuningSettings struct {
 	AnalyzeDurationSec int
 	LowLatency         bool
 	RequestHeaders     map[string]string
+	// ForceHLSInput applies HLS-demuxer options when a provider identifies an
+	// extensionless URL as HLS. URL-only detection cannot recognize every signed
+	// Stremio sports playlist.
+	ForceHLSInput bool
 	// ProxyURL, when set, routes the upstream live fetch through this proxy.
 	// SOCKS5 proxies (which ffmpeg cannot use natively) are honored by fetching
 	// the stream with the Go HTTP client and piping it into ffmpeg's stdin.
@@ -2585,7 +2589,7 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		// HLS demuxer rejects by default. Only apply them for actual .m3u8 inputs —
 		// for a direct MPEG-TS (.ts) input the mpegts demuxer is selected and these
 		// options abort the command ("Option ... not found").
-		if inputLooksLikeHLS(session.Path) {
+		if session.LiveTuning.ForceHLSInput || inputLooksLikeHLS(session.Path) {
 			args = append(args,
 				"-allowed_extensions", "ALL",
 				"-allowed_segment_extensions", "ALL",

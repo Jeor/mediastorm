@@ -5203,6 +5203,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	// HLS mode: create a segmented HLS session
 	selectedStremioStreamIndex := parseOptionalStremioStreamIndex(r.URL.Query().Get("stremioStreamIndex"))
 	var stremioRequestHeaders map[string]string
+	stremioHLSInput := false
 	resolvedStremioIndex := -1
 	var availableStremioIndexes []int
 	if resolved, err := resolveStremioLiveStreamResource(r.Context(), liveURL, target.ProxyURL, selectedStremioStreamIndex); err != nil {
@@ -5211,6 +5212,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		return
 	} else {
 		stremioRequestHeaders = resolved.RequestHeaders
+		stremioHLSInput = resolved.IsHLS
 		resolvedStremioIndex = resolved.Index
 		availableStremioIndexes = resolved.AvailableIndexes
 		if resolved.URL != liveURL {
@@ -5230,6 +5232,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		LowLatency:         target.LowLatency,
 		ProxyURL:           target.ProxyURL,
 		RequestHeaders:     stremioRequestHeaders,
+		ForceHLSInput:      stremioHLSInput,
 	}
 	playbackTarget := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("target")))
 	clientID := requestClientID(r)

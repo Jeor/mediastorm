@@ -112,7 +112,9 @@ type stremioChannelsCacheEntry struct {
 
 type resolvedStremioStream struct {
 	URL              string
+	OriginalURL      string
 	RequestHeaders   map[string]string
+	IsHLS            bool
 	Index            int
 	AvailableIndexes []int
 }
@@ -171,12 +173,29 @@ func playableStremioStream(streams []stremioStream, selectedIndex int) (resolved
 		}
 		return resolvedStremioStream{
 			URL:              u,
+			OriginalURL:      strings.TrimSpace(stream.URL),
 			RequestHeaders:   headers,
+			IsHLS:            stremioStreamLooksLikeHLS(stream, u),
 			Index:            i,
 			AvailableIndexes: availableIndexes,
 		}, true
 	}
 	return resolvedStremioStream{}, false
+}
+
+func stremioStreamLooksLikeHLS(stream stremioStream, normalizedURL string) bool {
+	if inputLooksLikeHLS(normalizedURL) || inputLooksLikeHLS(stream.URL) {
+		return true
+	}
+	// Some sports resolvers expose an extensionless worker endpoint and signal
+	// the actual format only in a query value such as `ext=.m3u8`. The generic
+	// URL detector intentionally ignores queries, but Stremio stream metadata is
+	// trusted as a format hint and must retain this signal.
+	if strings.Contains(strings.ToLower(normalizedURL), ".m3u8") || strings.Contains(strings.ToLower(stream.URL), ".m3u8") {
+		return true
+	}
+	hint := strings.ToLower(strings.Join([]string{stream.Name, stream.Title, stream.Description}, " "))
+	return strings.Contains(hint, "m3u8") || strings.Contains(hint, "hls")
 }
 
 func playableStremioStreamIndexes(streams []stremioStream) []int {
@@ -197,7 +216,7 @@ func playableStremioStreamIndexes(streams []stremioStream) []int {
 // directly, even with behaviorHints.proxyHeaders. Keeping the request on the
 // addon's origin preserves that context while MediaStorm still owns playback.
 func maybeRouteStremioStreamThroughAddonRelay(ctx context.Context, client *http.Client, streamResourceURL string, stream resolvedStremioStream) resolvedStremioStream {
-	if client == nil || len(stream.RequestHeaders) == 0 || !strings.Contains(strings.ToLower(stream.URL), ".m3u8") {
+	if client == nil {
 		return stream
 	}
 
@@ -210,42 +229,81 @@ func maybeRouteStremioStreamThroughAddonRelay(ctx context.Context, client *http.
 		return stream
 	}
 
-	relayURL := *resourceURL
-	relayURL.Path = strings.TrimSuffix(resourceURL.Path[:streamPathIndex], "/") + "/api/hls/playlist.m3u8"
-	relayURL.RawPath = ""
-	relayURL.Fragment = ""
-	query := url.Values{}
-	query.Set("url", stream.URL)
-	if referer := requestHeaderValue(stream.RequestHeaders, "Referer"); referer != "" {
-		query.Set("referer", referer)
-	}
-	if origin := requestHeaderValue(stream.RequestHeaders, "Origin"); origin != "" {
-		query.Set("embedOrigin", origin)
-	}
-	relayURL.RawQuery = query.Encode()
-
-	probeCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(probeCtx, http.MethodGet, relayURL.String(), nil)
-	if err != nil {
-		return stream
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return stream
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return stream
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
-	if err != nil || !strings.Contains(string(body), "#EXTM3U") {
-		return stream
+	addonPrefix := strings.TrimSuffix(resourceURL.Path[:streamPathIndex], "/")
+	candidates := make([]url.URL, 0, 3)
+	seen := make(map[string]struct{})
+	addCandidate := func(candidate url.URL) {
+		candidate.RawPath = ""
+		candidate.Fragment = ""
+		key := candidate.String()
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		candidates = append(candidates, candidate)
 	}
 
-	log.Printf("[live][stremio] using addon HLS relay for stream host %s", requestsecurity.URLForLog(stream.URL))
-	stream.URL = relayURL.String()
-	stream.RequestHeaders = nil
+	// Several Nuvio-compatible addons return a wrapper on an internal hostname,
+	// for example /proxy/hls/manifest.m3u8?d=<signed-url>&h_Referer=.... The
+	// wrapper is the playable resource; decoding `d` and contacting the signed
+	// URL from MediaStorm changes the network/session context and yields 404.
+	// Rebase the exact wrapper path and query onto the already-allowed addon
+	// origin so the addon continues to own its upstream session.
+	if original, parseErr := url.Parse(strings.TrimSpace(stream.OriginalURL)); parseErr == nil && original != nil && original.Query().Get("d") != "" {
+		rebased := *resourceURL
+		rebased.Path = addonPrefix + "/" + strings.TrimPrefix(original.Path, "/")
+		rebased.RawQuery = original.RawQuery
+		addCandidate(rebased)
+		if addonPrefix != "" {
+			rebased.Path = "/" + strings.TrimPrefix(original.Path, "/")
+			addCandidate(rebased)
+		}
+	}
+
+	// Some addons expose a generic relay rather than returning a wrapper URL.
+	if len(stream.RequestHeaders) > 0 && strings.Contains(strings.ToLower(stream.URL), ".m3u8") {
+		relay := *resourceURL
+		relay.Path = addonPrefix + "/api/hls/playlist.m3u8"
+		query := url.Values{}
+		query.Set("url", stream.URL)
+		if referer := requestHeaderValue(stream.RequestHeaders, "Referer"); referer != "" {
+			query.Set("referer", referer)
+		}
+		if origin := requestHeaderValue(stream.RequestHeaders, "Origin"); origin != "" {
+			query.Set("embedOrigin", origin)
+		}
+		relay.RawQuery = query.Encode()
+		addCandidate(relay)
+	}
+
+	for _, relayURL := range candidates {
+		probeCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+		req, reqErr := http.NewRequestWithContext(probeCtx, http.MethodGet, relayURL.String(), nil)
+		if reqErr != nil {
+			cancel()
+			continue
+		}
+		resp, reqErr := client.Do(req)
+		if reqErr != nil {
+			cancel()
+			continue
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		resp.Body.Close()
+		cancel()
+		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices || readErr != nil || !strings.Contains(string(body), "#EXTM3U") {
+			continue
+		}
+
+		log.Printf("[live][stremio] using addon HLS relay for stream host %s", requestsecurity.URLForLog(stream.URL))
+		stream.URL = relayURL.String()
+		stream.RequestHeaders = nil
+		stream.IsHLS = true
+		return stream
+	}
+	if len(candidates) > 0 {
+		log.Printf("[live][stremio] addon HLS relay unavailable after %d candidate(s); using direct stream host %s", len(candidates), requestsecurity.URLForLog(stream.URL))
+	}
 	return stream
 }
 

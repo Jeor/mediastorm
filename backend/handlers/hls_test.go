@@ -1509,6 +1509,21 @@ func TestInputLooksLikeHLS(t *testing.T) {
 	}
 }
 
+func TestStremioStreamLooksLikeHLSExtensionless(t *testing.T) {
+	stream := stremioStream{Name: "M3U8", URL: "https://sports.example/live/signed-token"}
+	if !stremioStreamLooksLikeHLS(stream, stream.URL) {
+		t.Fatal("M3U8 stream hint should identify extensionless Stremio URL as HLS")
+	}
+	stream = stremioStream{URL: "https://worker.example/?action=stream&ext=.m3u8"}
+	if !stremioStreamLooksLikeHLS(stream, stream.URL) {
+		t.Fatal("ext=.m3u8 query hint should identify extensionless Stremio URL as HLS")
+	}
+	stream = stremioStream{Name: "MPEG-TS", URL: "https://sports.example/live/channel.ts"}
+	if stremioStreamLooksLikeHLS(stream, stream.URL) {
+		t.Fatal("direct MPEG-TS stream should not be forced through HLS demuxer options")
+	}
+}
+
 func TestResolvedSessionDuration(t *testing.T) {
 	tests := []struct {
 		name   string

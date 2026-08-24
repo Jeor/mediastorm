@@ -89,6 +89,20 @@ func stremioTestServer(t *testing.T, hits *int32) *httptest.Server {
 			{"name":"M3U8","description":"Proxy Wrapped","url":"http://10.0.6.130:8888/proxy/hls/manifest.m3u8?d=https%3A%2F%2Fcdn.test%2Fwrapped.m3u8&h_User-Agent=StremioUA&h_Referer=https%3A%2F%2Fsonyliv.test%2F&h_Origin=https%3A%2F%2Fsonyliv.test&api_password=flow","behaviorHints":{"proxyHeaders":{"request":{"User-Agent":"BehaviorUA","x-playback-session-id":"abc123"}}}}
 		]}`))
 	})
+	mux.HandleFunc("/stream/sport/sf:rebased-relay.json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"streams":[
+			{"name":"M3U8","url":"http://10.0.6.130:8888/proxy/hls/manifest.m3u8?d=https%3A%2F%2Fsession-bound.test%2Flive%2Fsigned-token&h_Referer=https%3A%2F%2Fembed.test%2F&api_password=flow"}
+		]}`))
+	})
+	mux.HandleFunc("/proxy/hls/manifest.m3u8", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("d") != "https://session-bound.test/live/signed-token" ||
+			r.URL.Query().Get("h_Referer") != "https://embed.test/" ||
+			r.URL.Query().Get("api_password") != "flow" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte("#EXTM3U\n#EXTINF:2,\nsegment-one\n"))
+	})
 	mux.HandleFunc("/stream/sport/sf:relay.json", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"streams":[
 			{"name":"M3U8","url":"https://session-bound.test/live.m3u8","behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://embed.test/","Origin":"https://embed.test"}}}}
@@ -289,6 +303,24 @@ func TestResolveStremioStream(t *testing.T) {
 	}
 	if got.RequestHeaders["x-playback-session-id"] != "abc123" {
 		t.Errorf("proxy-wrapped headers = %+v, want behavior session header", got.RequestHeaders)
+	}
+
+	got, err = h.resolveStremioStream(context.Background(), srv.URL+"/stream/sport/sf:rebased-relay.json", "", -1)
+	if err != nil {
+		t.Fatalf("resolveStremioStream rebased relay error: %v", err)
+	}
+	rebasedRelayURL, err := url.Parse(got.URL)
+	if err != nil {
+		t.Fatalf("parse rebased relay URL: %v", err)
+	}
+	if rebasedRelayURL.Host != strings.TrimPrefix(srv.URL, "http://") || rebasedRelayURL.Path != "/proxy/hls/manifest.m3u8" {
+		t.Fatalf("rebased relay URL = %q", got.URL)
+	}
+	if rebasedRelayURL.Query().Get("d") != "https://session-bound.test/live/signed-token" {
+		t.Fatalf("rebased relay target = %q", rebasedRelayURL.Query().Get("d"))
+	}
+	if !got.IsHLS || len(got.RequestHeaders) != 0 {
+		t.Fatalf("rebased relay metadata = IsHLS %v headers %+v", got.IsHLS, got.RequestHeaders)
 	}
 
 	got, err = h.resolveStremioStream(context.Background(), srv.URL+"/stream/sport/sf:relay.json", "", -1)

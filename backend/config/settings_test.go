@@ -188,6 +188,28 @@ func TestDefaultSettingsWaitsForCombinedSearchRanking(t *testing.T) {
 	if settings.Streaming.ResolveFirstReadySource {
 		t.Fatal("ResolveFirstReadySource must default off so prequeue preserves combined cross-source ranking")
 	}
+	if settings.Streaming.ResolutionSettleWindowMs != 0 {
+		t.Fatalf("ResolutionSettleWindowMs = %d, want unambiguous no-grace default 0", settings.Streaming.ResolutionSettleWindowMs)
+	}
+}
+
+func TestLoadNormalizesLegacyNegativeResolutionSettleWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"streaming":{"resolutionSettleWindowMs":-1,"resolutionEndRaceEarly":true}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Streaming.ResolutionSettleWindowMs != 0 {
+		t.Fatalf("ResolutionSettleWindowMs = %d, want legacy -1 normalized to 0", settings.Streaming.ResolutionSettleWindowMs)
+	}
+	if !settings.Streaming.ResolutionEndRaceEarly {
+		t.Fatal("ResolutionEndRaceEarly must preserve its explicit true value")
+	}
 }
 
 func TestDefaultSettingsDisablesCropDetectSubtitlePosition(t *testing.T) {

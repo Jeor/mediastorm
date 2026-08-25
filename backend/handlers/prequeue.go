@@ -2381,24 +2381,12 @@ func prequeueResolutionWidth(concurrent bool) int {
 	return 1
 }
 
-// prequeueResolutionSettleWindowDefault is the fallback settle window used when
-// no config is available (e.g. unit tests / a handler constructed without a
-// config manager). <= 0 selects STRICT order — the resolution race keeps every
-// batch candidate alive and only concludes once the stream drains (each
-// candidate resolves or fails, or the overall prequeue times out), preferring
-// the best-ranked candidate that resolves. This is also the server default
-// (config Streaming.ResolutionSettleWindowMs defaults to -1), matching the
-// requirement that the default strategy retain the strict filtering order the
-// user configured: releases race as a batch and only those that time out or
-// fail are rejected, so the first release that resolves, scanning most-preferred
-// first, is the one that starts playing.
-//
-// A positive value configures a bounded settle window instead: after the first
-// candidate validates, the race keeps a better-ranked candidate that is still
-// mid-download alive for up to that long and prefers the best-ranked candidate
-// that validates within it (a bounded compromise that reintroduces the old
-// "dead top candidate must not stall playback" fast path).
-const prequeueResolutionSettleWindowDefault = -1
+// prequeueResolutionSettleWindowDefault is the fallback grace window used when
+// no config is available. Zero means no grace when endRaceEarly is enabled; a
+// positive value lets an already-running, better-ranked candidate continue for
+// that long after another candidate validates. The fallback endRaceEarly value
+// remains false, so an unconfigured handler still waits for the whole batch.
+const prequeueResolutionSettleWindowDefault = 0
 
 // prequeueCandidateProcessor resolves and validates one prequeue candidate.
 // accepted is the fully validated candidate (playable + policy-ok);
@@ -2634,25 +2622,19 @@ func (s *streamCandidateSource) Snapshot() []models.NZBResult {
 // feeding. The lowest-indexed deprioritized unknown-track candidate is kept as a
 // fallback and returned only when nothing validates.
 //
-// settle > 0 selects a BOUNDED settle window: once a candidate validates while
+// settle > 0 selects a bounded grace window: once a candidate validates while
 // a better-ranked candidate is still in flight, the race keeps the losers alive
 // for up to settle and prefers the best-ranked candidate that validates within
 // it (so a better-ranked release that lost the finish by milliseconds still
-// beats a faster but worse-ranked one). settle <= 0 selects STRICT order (the
-// default): no timer — the race keeps every batch candidate alive and only
-// concludes once the stream drains (every handed candidate reported), preferring
-// the best-ranked candidate that resolves; candidates that time out or fail are
-// simply rejected. In both modes the race also ends early (and on exhaustion the
-// stream drains) without waiting out a bounded window when that is the fastest
-// correct result.
+// beats a faster but worse-ranked one). settle <= 0 disables that grace: when
+// endEarly is enabled, the first valid candidate wins immediately.
 //
-// endEarly controls whether the race is allowed to conclude the instant a
-// candidate validates while it is already the best-ranked candidate in flight
-// (no better-ranked candidate still resolving). With endEarly=true that
-// best-ranked win is adopted immediately with zero added latency. With
-// endEarly=false (the default) the race keeps going until the stream drains
-// even then — useful when a streaming source may still feed a better-ranked
-// candidate after the current best validates (cross-source strict ordering).
+// endEarly controls whether the race may conclude before every concurrent
+// candidate reports. With endEarly=true, a valid candidate wins immediately
+// unless a positive settle window gives a better-ranked in-flight candidate a
+// brief grace period. With endEarly=false (the default), settle is ignored and
+// the race keeps going until the stream drains, then selects the best-ranked
+// valid candidate.
 //
 // On a winner (settled or not), losing workers are cancelled and released; on
 // exhaustion every handed candidate has already reported, so the caller may
@@ -2719,13 +2701,13 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	activeByService := map[models.ContentServiceType]int{}
 
 	// Settle state: the first validated candidate that cannot immediately win
-	// (a better-ranked candidate is still in flight, or endRaceEarly is off)
+	// (a positive grace window applies, or endRaceEarly is off)
 	// becomes the incumbent (settledBest) and the race keeps racing rather than
 	// cancelling the losers. In bounded mode a settleTimer is armed so a
 	// better-ranked candidate can still win within the window but cannot stall
-	// forever; in strict mode (settle <= 0, or endRaceEarly off) there is no
-	// timer and the race waits for the batch to drain. Either way the window
-	// also closes on caller cancellation or when the stream drains.
+	// forever. With endRaceEarly off there is no timer and the race waits for the
+	// batch to drain. Either way the window also closes on caller cancellation or
+	// when the stream drains.
 	var settledBest *candidateResolution
 	var settleTimer <-chan time.Time // non-nil only in bounded mode
 	publishWindow := func() {
@@ -2831,20 +2813,18 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 						log.Printf("[prequeue] settle: better-ranked candidate %d validated while settling; preferring it over %d", r.idx, settledBest.index)
 						settledBest = r.accepted
 					}
-				} else if better := lowestInFlightBetterRanked(activeSet, r.idx); better >= 0 {
+				} else if better := lowestInFlightBetterRanked(activeSet, r.idx); better >= 0 && (!endEarly || settle > 0) {
 					// A better-ranked candidate is still mid-download (e.g. it
 					// lost the finish by milliseconds). We must not discard it. In
 					// bounded mode (settle > 0 and endEarly enabled) we arm a timer
 					// so it can still win within the window but cannot stall forever.
-					// In strict mode (settle <= 0, or endEarly disabled) this is an
-					// UNBOUNDED wait for the batch — the better candidate is kept
-					// alive until it resolves, fails, or the stream drains.
+					// With endEarly disabled this is an unbounded wait for the batch.
 					settledBest = r.accepted
 					if settle > 0 && endEarly {
 						settleTimer = time.After(settle)
 						log.Printf("[prequeue] candidate %d validated while better-ranked candidate %d still in flight; settling up to %s", r.idx, better, settle)
 					} else {
-						log.Printf("[prequeue] candidate %d validated while better-ranked candidate %d still in flight; strict order keeps it alive until the batch settles", r.idx, better)
+						log.Printf("[prequeue] candidate %d validated while better-ranked candidate %d still in flight; endRaceEarly off, waiting for the batch to drain", r.idx, better)
 					}
 				} else if endEarly {
 					// Fast path: the winner is already the best-ranked candidate in
@@ -3155,7 +3135,7 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 	}
 
 	resolutionWidth := prequeueResolutionWidth(opts.concurrent)
-	settleWindow := time.Duration(-1)
+	settleWindow := time.Duration(0)
 	endEarly := true
 	resolutionMode := "sequential"
 	if opts.concurrent {
@@ -3200,14 +3180,11 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 	}, nil
 }
 
-// resolutionRacePolicy returns the configured settle window and end-early flag
-// for the resolution race. The settle window is strict-order by default
-// (<= 0 = wait for the whole batch to resolve before deciding, preferring the
-// best-ranked release that resolves; candidates that time out or fail are
-// rejected); a positive value bounds how long a better-ranked candidate may
-// keep racing after the first validation. endRaceEarly defaults false — an
-// unconfigured handler behaves conservatively and only concludes once the batch
-// settles.
+// resolutionRacePolicy returns the configured grace window and end-early flag.
+// Zero means no grace; a positive value bounds how long a better-ranked
+// candidate may keep racing after the first validation. endRaceEarly defaults
+// false, so an unconfigured handler still waits for the whole batch and ignores
+// the grace window.
 func (h *PrequeueHandler) resolutionRacePolicy() (settle time.Duration, endEarly bool) {
 	if h == nil || h.configManager == nil {
 		return time.Duration(prequeueResolutionSettleWindowDefault) * time.Millisecond, false

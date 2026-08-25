@@ -2678,15 +2678,35 @@ func TestSettingsSchemaFirstReadySourceIsGlobalOnly(t *testing.T) {
 		t.Fatalf("resolveFirstReadySource schema = %#v, want global-only boolean", field)
 	}
 
-	for _, key := range []string{"resolutionEndRaceEarly", "resolutionSettleWindowMs"} {
-		subField, ok := fields[key].(map[string]interface{})
-		if !ok {
-			t.Fatalf("%s setting is missing", key)
-		}
-		showWhen, ok := subField["showWhen"].(map[string]interface{})
-		if !ok || showWhen["field"] != "resolveFirstReadySource" || showWhen["value"] != true {
-			t.Fatalf("%s showWhen = %#v, want resolveFirstReadySource=true", key, subField["showWhen"])
-		}
+	endRaceField, ok := fields["resolutionEndRaceEarly"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolutionEndRaceEarly setting is missing")
+	}
+	endRaceShowWhen, ok := endRaceField["showWhen"].(map[string]interface{})
+	if !ok || endRaceShowWhen["field"] != "resolveFirstReadySource" || endRaceShowWhen["value"] != true {
+		t.Fatalf("resolutionEndRaceEarly showWhen = %#v, want resolveFirstReadySource=true", endRaceField["showWhen"])
+	}
+
+	settleField, ok := fields["resolutionSettleWindowMs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolutionSettleWindowMs setting is missing")
+	}
+	settleShowWhen, ok := settleField["showWhen"].(map[string]interface{})
+	conditions, conditionsOK := settleShowWhen["conditions"].([]map[string]interface{})
+	if !ok || settleShowWhen["operator"] != "and" || !conditionsOK || len(conditions) != 2 {
+		t.Fatalf("resolutionSettleWindowMs showWhen = %#v, want two AND conditions", settleField["showWhen"])
+	}
+	if conditions[0]["field"] != "resolveFirstReadySource" || conditions[0]["value"] != true ||
+		conditions[1]["field"] != "resolutionEndRaceEarly" || conditions[1]["value"] != true {
+		t.Fatalf("resolutionSettleWindowMs conditions = %#v, want both parent toggles enabled", conditions)
+	}
+	if settleField["min"] != 0 {
+		t.Fatalf("resolutionSettleWindowMs min = %#v, want 0", settleField["min"])
+	}
+	for key, subField := range map[string]map[string]interface{}{
+		"resolutionEndRaceEarly":   endRaceField,
+		"resolutionSettleWindowMs": settleField,
+	} {
 		if subField["group"] != "earlyResolution" {
 			t.Fatalf("%s group = %#v, want earlyResolution", key, subField["group"])
 		}

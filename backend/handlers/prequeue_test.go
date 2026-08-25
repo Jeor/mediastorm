@@ -411,7 +411,7 @@ func TestRacePrequeueResolutionsSettlePrefersBetterRankedArrivingLate(t *testing
 		t.Fatalf("race returned error: %v", err)
 	}
 	if usedFallback {
-		t.Fatal("better-ranked candidate was adopted as a fallback instead of winning directly")
+		t.Fatal("first valid candidate was adopted as a fallback instead of winning directly")
 	}
 	if winner == nil || winner.index != 0 {
 		t.Fatalf("winner index = %v, want 0 (better-ranked late arrival must win the settle)", winnerIndex(winner))
@@ -526,10 +526,9 @@ func TestRacePrequeueResolutionsSettleSkippedWhenWinnerBestRanked(t *testing.T) 
 	}
 }
 
-func TestRacePrequeueResolutionsStrictOrderPrefersBetterRankedArrivingLate(t *testing.T) {
-	// STRICT order (settle <= 0, the default): a better-ranked candidate that
-	// resolves after a worse-ranked one validates first is kept alive until it
-	// lands (no timer), and wins. The race only concludes when the batch drains.
+func TestRacePrequeueResolutionsZeroSettleEndsOnFirstValidCandidate(t *testing.T) {
+	// With endEarly enabled, a zero settle window means no grace for an
+	// already-running, better-ranked candidate: the first valid candidate wins.
 	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
 		switch i {
 		case 0:
@@ -553,8 +552,7 @@ func TestRacePrequeueResolutionsStrictOrderPrefersBetterRankedArrivingLate(t *te
 
 	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-slow"}, {Title: "worse-fast"}})
 	start := time.Now()
-	// settle <= 0 selects strict order; the batch must resolve before deciding.
-	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, -1, true)
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 0, true)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -563,25 +561,17 @@ func TestRacePrequeueResolutionsStrictOrderPrefersBetterRankedArrivingLate(t *te
 	if usedFallback {
 		t.Fatal("better-ranked candidate was adopted as a fallback instead of winning directly")
 	}
-	if winner == nil || winner.index != 0 {
-		t.Fatalf("winner index = %v, want 0 (better-ranked late arrival must win under strict order)", winnerIndex(winner))
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %v, want 1 (first valid candidate with no grace)", winnerIndex(winner))
 	}
-	// It must have actually waited for the better-ranked candidate to resolve
-	// (no timer cut it off), but the drained batch means it fired the moment it
-	// landed — well under its 200ms resolve.
-	if elapsed < 150*time.Millisecond {
-		t.Fatalf("race returned in %v, want it to wait for the better-ranked candidate under strict order", elapsed)
-	}
-	if elapsed >= 400*time.Millisecond {
-		t.Fatalf("race took %v, want it to conclude as soon as the batch drains", elapsed)
+	if elapsed >= 150*time.Millisecond {
+		t.Fatalf("race took %v, want immediate adoption without a settle grace", elapsed)
 	}
 }
 
-func TestRacePrequeueResolutionsStrictOrderWaitsForSlowDeadTopToFail(t *testing.T) {
-	// STRICT order (settle <= 0): a lower-ranked release must NOT be adopted
-	// while a better-ranked one is still resolving — it has not yet timed out or
-	// failed, so it is not rejected. Only once the better-ranked candidate fails
-	// does the already-resolved lower-ranked one win (the batch has drained).
+func TestRacePrequeueResolutionsLegacyNegativeSettleAlsoMeansNoGrace(t *testing.T) {
+	// Defensive runtime behavior matches config normalization: a legacy negative
+	// settle value means no grace, not an undocumented unbounded wait.
 	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
 		switch i {
 		case 0:
@@ -615,12 +605,10 @@ func TestRacePrequeueResolutionsStrictOrderWaitsForSlowDeadTopToFail(t *testing.
 		t.Fatal("fast candidate was adopted as a fallback instead of winning directly")
 	}
 	if winner == nil || winner.index != 1 {
-		t.Fatalf("winner index = %v, want 1 (fast candidate after the slow top failed)", winnerIndex(winner))
+		t.Fatalf("winner index = %v, want 1 (first valid candidate with legacy negative grace)", winnerIndex(winner))
 	}
-	// Strict order waited for the better-ranked candidate to fail (150ms) rather
-	// than adopting the fast candidate the moment it resolved (20ms).
-	if elapsed < 120*time.Millisecond {
-		t.Fatalf("race returned in %v, want it to wait for the better-ranked candidate to fail under strict order", elapsed)
+	if elapsed >= 120*time.Millisecond {
+		t.Fatalf("race took %v, want legacy negative settle to behave as no grace", elapsed)
 	}
 }
 
@@ -648,9 +636,9 @@ func TestRacePrequeueResolutionsEndRaceEarlyOffWaitsForBatch(t *testing.T) {
 
 	src := newSliceCandidateSource([]models.NZBResult{{Title: "best-fast"}, {Title: "worse-slow"}})
 	start := time.Now()
-	// settle <= 0 (strict) + endEarly=false: must wait for the batch even
-	// though the best-ranked candidate validated instantly.
-	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, -1, false)
+	// endEarly=false must wait for the batch even though the settle grace is off
+	// and the best-ranked candidate validated instantly.
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 0, false)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -1120,7 +1108,7 @@ func TestResolveCandidatesStreamsUsenetBeforeDebrid(t *testing.T) {
 		// This test pins the cross-source end-early behavior (usenet adopts
 		// while debrid is still scraping), which requires endRaceEarly=true.
 		configManager: testResolutionConfigManager(t, config.Settings{Streaming: config.StreamingSettings{
-			ResolutionSettleWindowMs: -1,
+			ResolutionSettleWindowMs: 0,
 			ResolutionEndRaceEarly:   true,
 		}}),
 	}

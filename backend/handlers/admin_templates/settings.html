@@ -6944,6 +6944,9 @@
         if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
             return showWhen.conditions.some(condition => getItemValue(condition.field) === condition.value);
         }
+        if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+            return showWhen.conditions.every(condition => getItemValue(condition.field) === condition.value);
+        }
         if (showWhen.field) return getItemValue(showWhen.field) === showWhen.value;
         return true;
     }
@@ -7165,6 +7168,8 @@
                         shouldShow = getItemValue(field) === value;
                     } else if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
                         shouldShow = showWhen.conditions.some(cond => getItemValue(cond.field) === cond.value);
+                    } else if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+                        shouldShow = showWhen.conditions.every(cond => getItemValue(cond.field) === cond.value);
                     } else if (showWhen.field) {
                         shouldShow = getItemValue(showWhen.field) === showWhen.value;
                     }
@@ -10988,6 +10993,8 @@
                         shouldShow = getCondValue(field) === value;
                     } else if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
                         shouldShow = showWhen.conditions.some(cond => getCondValue(cond.field) === cond.value);
+                    } else if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+                        shouldShow = showWhen.conditions.every(cond => getCondValue(cond.field) === cond.value);
                     } else if (showWhen.field) {
                         shouldShow = getCondValue(showWhen.field) === showWhen.value;
                     }
@@ -11080,6 +11087,9 @@
         }
         if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
             return showWhen.conditions.some(cond => read(cond.field) === cond.value);
+        }
+        if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+            return showWhen.conditions.every(cond => read(cond.field) === cond.value);
         }
         if (showWhen.field) {
             return read(showWhen.field) === showWhen.value;

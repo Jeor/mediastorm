@@ -354,28 +354,20 @@ type StreamingSettings struct {
 	DebridProviders            []DebridProviderSettings `json:"debridProviders,omitempty"`
 	UsenetResolutionTimeoutSec int                      `json:"usenetResolutionTimeoutSec"` // Timeout for usenet content resolution in seconds (0 = no limit)
 	UsenetPreflightProbeSec    int                      `json:"usenetPreflightProbeSec"`    // Per-candidate pre-download availability probe budget in seconds (default: 5, 0 = default)
-	// ResolutionSettleWindowMs controls how the candidate resolution race picks a
-	// winner. <= 0 (e.g. 0 or -1) means STRICT order (the default): releases race
-	// as a batch and the race keeps every candidate alive until it resolves,
-	// fails, or the overall prequeue times out, then prefers the best-ranked
-	// release that resolved — candidates that time out or don't resolve are the
-	// only ones rejected, so the first release that resolves, scanning
-	// most-preferred first, is the one that starts playing. A positive value
-	// bounds the wait instead: once a candidate validates while a better-ranked
-	// candidate is still resolving, the race keeps that better-ranked candidate
-	// alive for up to this many ms and prefers it if it validates within the
-	// window (a fast-path compromise for installs that accept a slightly
-	// lower-ranked win rather than stalling on a slow top release).
+	// ResolutionSettleWindowMs gives already-running, better-ranked candidates a
+	// bounded grace period after another candidate validates. Zero disables the
+	// grace period, so the first valid candidate wins immediately when
+	// ResolutionEndRaceEarly is enabled. Positive values wait up to this many
+	// milliseconds for a better-ranked in-flight candidate. The setting is
+	// ignored when ResolutionEndRaceEarly is disabled because that mode always
+	// waits for every concurrent candidate to finish.
 	ResolutionSettleWindowMs int `json:"resolutionSettleWindowMs"`
-	// ResolutionEndRaceEarly, when true, adopts the winner immediately the
-	// moment a release validates and it is already the highest-preference
-	// release in flight (no better-ranked release still resolving) — zero added
-	// latency on the common path. When false (default), even that best-ranked
-	// win waits for the whole batch to drain first, so a streaming search source
-	// that is still feeding can still supply a higher-preference release
-	// (cross-source strict ordering). Defaults false to preserve existing
-	// installs' behavior on upgrade: the race only concludes once the batch
-	// settles.
+	// ResolutionEndRaceEarly, when true, adopts the first valid candidate unless
+	// ResolutionSettleWindowMs gives an already-running, better-ranked candidate
+	// a bounded grace period. When false (default), the race waits for every
+	// concurrent candidate, ignores the settle window, and selects the
+	// best-ranked valid result. Defaults false to preserve existing installs'
+	// wait-for-all behavior on upgrade.
 	ResolutionEndRaceEarly    bool    `json:"resolutionEndRaceEarly"`
 	IndexerTimeoutSec         float64 `json:"indexerTimeoutSec"`         // Timeout for indexer/scraper searches in seconds (default: 5)
 	HealthCheckTimeoutSec     int     `json:"healthCheckTimeoutSec"`     // Timeout for manual debrid/usenet health checks in seconds (default: 15)
@@ -1867,7 +1859,7 @@ func DefaultSettings() Settings {
 		Cache:     CacheSettings{Directory: "cache", MetadataTTLHours: 24},
 		WebDAV:    WebDAVSettings{Enabled: true, Prefix: "/webdav", Username: "novastream", Password: ""},
 		Database:  DatabaseSettings{Path: "cache/queue.db"},
-		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, ResolveFirstReadySource: false, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5, ResolutionSettleWindowMs: -1, ResolutionEndRaceEarly: false},
+		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, ResolveFirstReadySource: false, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5, ResolutionSettleWindowMs: 0, ResolutionEndRaceEarly: false},
 		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8, UsenetMaxConcurrentFileParsers: 16, UsenetParserShareDivisor: 4},
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
@@ -2201,14 +2193,12 @@ func (m *Manager) Load() (Settings, error) {
 	}
 
 	// Backfill the resolution race policy defaults for installs that predate
-	// these fields. The settle window defaults to STRICT order (wait for the
-	// whole batch to resolve before deciding) and end-race-early defaults OFF, so
-	// an existing install that upgrades keeps the conservative "the race only
-	// concludes once the batch settles" behavior — an explicit 0/false from an
-	// old config must not silently restore the old bounded/first-wins behavior.
+	// these fields. End-race-early defaults off, so existing installs retain the
+	// conservative wait-for-all behavior. The settle window defaults to zero and
+	// is only meaningful when end-race-early is explicitly enabled.
 	if streamingRaw, ok := raw["streaming"].(map[string]interface{}); ok {
 		if _, has := streamingRaw["resolutionSettleWindowMs"]; !has {
-			streamingRaw["resolutionSettleWindowMs"] = -1
+			streamingRaw["resolutionSettleWindowMs"] = 0
 		}
 		if _, has := streamingRaw["resolutionEndRaceEarly"]; !has {
 			streamingRaw["resolutionEndRaceEarly"] = false
@@ -2500,13 +2490,11 @@ func (m *Manager) Load() (Settings, error) {
 	if s.Streaming.UsenetPreflightProbeSec <= 0 {
 		s.Streaming.UsenetPreflightProbeSec = 5
 	}
-	// Backfill the resolution race settle window: the strict-order default is
-	// <= 0 (wait for the whole batch to resolve before deciding). A 0 left over
-	// from an older config must not restore bounded first-wins, so it maps to
-	// the strict sentinel. (ResolutionEndRaceEarly's false default is injected at
-	// the raw-map layer in Load for old installs.)
-	if s.Streaming.ResolutionSettleWindowMs == 0 {
-		s.Streaming.ResolutionSettleWindowMs = -1
+	// Normalize the legacy -1 sentinel to the single supported "no grace"
+	// representation. ResolutionEndRaceEarly's false default is injected at the
+	// raw-map layer for old installs, preserving their wait-for-all behavior.
+	if s.Streaming.ResolutionSettleWindowMs < 0 {
+		s.Streaming.ResolutionSettleWindowMs = 0
 	}
 
 	// Backfill Import settings

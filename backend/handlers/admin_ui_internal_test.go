@@ -789,6 +789,17 @@ func TestAdminSettingsScopeOptionsKeepDarkThemeContrast(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsShowWhenSupportsAndConditions(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+	if count := strings.Count(source, "showWhen.operator === 'and'"); count != 4 {
+		t.Fatalf("settings template AND showWhen evaluators = %d, want 4", count)
+	}
+}
+
 func TestAdminDashboardWatchTimeStacksOnNarrowViewports(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
 	if err != nil {

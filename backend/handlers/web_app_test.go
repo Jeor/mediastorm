@@ -178,6 +178,29 @@ func TestAdminPlaybackTemplateDoesNotForceEndedProgressToDuration(t *testing.T) 
 	}
 }
 
+func TestAdminPlaybackTemplatePreservesAIOStreamsPassthroughFormatting(t *testing.T) {
+	body, err := adminTemplates.ReadFile("admin_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read admin playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, want := range []string{
+		"function resolveAIOStreamsPassthroughDisplay(attrs)",
+		"manual-result-title-passthrough",
+		".manual-result-title-passthrough,",
+		"white-space: pre-wrap;",
+		"const passthroughDisplay = resolveAIOStreamsPassthroughDisplay(attrs);",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("admin playback template missing passthrough formatting hook %q", want)
+		}
+	}
+	if count := strings.Count(rendered, "resolveAIOStreamsPassthroughDisplay(attrs)"); count != 3 {
+		t.Fatalf("passthrough resolver occurrence count = %d, want definition plus two renderers", count)
+	}
+}
+
 func TestWebPlaybackTemplateSendsFinalHeartbeatOnTeardown(t *testing.T) {
 	body, err := webTemplates.ReadFile("web_templates/playback.html")
 	if err != nil {

@@ -957,6 +957,24 @@ func TestProfileActivityPrivacyCopyIncludesDashboardShelf(t *testing.T) {
 	}
 }
 
+func TestAdminAccountPasswordChangeRedirectsAfterCurrentSessionRevoked(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/accounts.html")
+	if err != nil {
+		t.Fatalf("read admin accounts template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"async function changePassword(e, targetAccountId)",
+		"if (targetAccountId === accountId)",
+		"window.location.href = serverBasePath + '/admin/login'",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("admin password change is missing revoked-session handling marker %q", marker)
+		}
+	}
+}
+
 func TestAdminStatusActiveStreamsPreferSeriesPosters(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
 	if err != nil {

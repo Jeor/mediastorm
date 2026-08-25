@@ -1334,7 +1334,7 @@ function showChangePasswordModal(accountId, username) {
     `);
 }
 
-async function changePassword(e, accountId) {
+async function changePassword(e, targetAccountId) {
     e.preventDefault();
     const form = e.target;
     if (form.password.value !== form.confirm.value) {
@@ -1342,15 +1342,22 @@ async function changePassword(e, accountId) {
         return;
     }
     try {
-        const res = await fetch(basePath + '/api/accounts/password?accountId=' + accountId, {
+        const res = await fetch(basePath + '/api/accounts/password?accountId=' + encodeURIComponent(targetAccountId), {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ newPassword: form.password.value })
         });
         if (!res.ok) throw new Error(await res.text());
         hideModal();
+        if (targetAccountId === accountId) {
+            showToast('Password changed. Sign in again with the new password.');
+            setTimeout(() => {
+                window.location.href = serverBasePath + '/admin/login';
+            }, 1000);
+            return;
+        }
         showToast('Password changed');
-        loadData();
+        await loadData();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }

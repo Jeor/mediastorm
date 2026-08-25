@@ -669,6 +669,51 @@ func TestRacePrequeueResolutionsEndRaceEarlyOffWaitsForBatch(t *testing.T) {
 	}
 }
 
+func TestRacePrequeueResolutionsEndRaceEarlyOffIgnoresBoundedSettleWindow(t *testing.T) {
+	// endEarly=false must drain the batch even when a positive settle window is
+	// configured. The settle window only bounds an early-ending race; it must not
+	// override the explicit instruction to keep racing until every candidate has
+	// resolved or failed.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(200 * time.Millisecond):
+			}
+			return &candidateResolution{index: 0, result: models.NZBResult{Title: "better-slow"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/better.mkv"}}, nil, nil
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(30 * time.Millisecond):
+			}
+			return &candidateResolution{index: 1, result: models.NZBResult{Title: "worse-fast"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"}}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-slow"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 50*time.Millisecond, false)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("winner adopted as fallback")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0 after endRaceEarly=false drains the batch", winnerIndex(winner))
+	}
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("race returned in %v, want it to ignore the bounded settle window and drain the batch", elapsed)
+	}
+}
+
 func TestRacePrequeueResolutionsReportsInFlightWindow(t *testing.T) {
 	// During the race the reporter must publish the in-flight candidate window
 	// (0-based indices, -1/-1 when idle) as workers pick candidates up and

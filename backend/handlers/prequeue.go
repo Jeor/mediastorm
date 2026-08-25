@@ -2824,13 +2824,13 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 				} else if better := lowestInFlightBetterRanked(activeSet, r.idx); better >= 0 {
 					// A better-ranked candidate is still mid-download (e.g. it
 					// lost the finish by milliseconds). We must not discard it. In
-					// bounded mode (settle > 0) we arm a timer so it can still win
-					// within the window but cannot stall forever. In strict mode
-					// (settle <= 0) this is an UNBOUNDED wait for the batch — the
-					// better candidate is kept alive until it resolves, fails, or
-					// the stream drains.
+					// bounded mode (settle > 0 and endEarly enabled) we arm a timer
+					// so it can still win within the window but cannot stall forever.
+					// In strict mode (settle <= 0, or endEarly disabled) this is an
+					// UNBOUNDED wait for the batch — the better candidate is kept
+					// alive until it resolves, fails, or the stream drains.
 					settledBest = r.accepted
-					if settle > 0 {
+					if settle > 0 && endEarly {
 						settleTimer = time.After(settle)
 						log.Printf("[prequeue] candidate %d validated while better-ranked candidate %d still in flight; settling up to %s", r.idx, better, settle)
 					} else {

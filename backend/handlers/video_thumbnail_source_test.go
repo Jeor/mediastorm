@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
+
+	"novastream/internal/torboxrate"
 )
 
 type thumbnailRoundTripFunc func(*http.Request) (*http.Response, error)
@@ -80,5 +84,44 @@ func TestThumbnailRedirectPolicyPreservesAuthOnlyWithinOrigin(t *testing.T) {
 	}
 	if got := crossOrigin.Header.Get("Authorization"); got != "" {
 		t.Fatalf("cross-origin Authorization = %q, want empty", got)
+	}
+}
+
+func TestThumbnailSourceBridgeRetriesTorBox429AfterSharedCooldown(t *testing.T) {
+	originalCooldown := torboxrate.Downloads
+	torboxrate.Downloads = &torboxrate.Cooldown{}
+	defer func() { torboxrate.Downloads = originalCooldown }()
+
+	var hits int64
+	bridge := &thumbnailSourceBridge{}
+	bridge.client = &http.Client{Transport: thumbnailRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if hit := atomic.AddInt64(&hits, 1); hit == 1 {
+			return &http.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Status:     "429 Too Many Requests",
+				Header:     http.Header{"Retry-After": []string{"0"}},
+				Body:       io.NopCloser(strings.NewReader("Too many requests, retry in 0s")),
+			}, nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusPartialContent,
+			Status:     "206 Partial Content",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader("frame")),
+		}, nil
+	})}
+
+	response, err := bridge.doRequest(context.Background(), http.MethodGet, thumbnailSourceSession{
+		sourceURL: "https://store-073.wnam.tb-cdn.io/movie.mkv",
+	}, http.Header{"Range": []string{"bytes=0-9"}})
+	if err != nil {
+		t.Fatalf("doRequest() error = %v", err)
+	}
+	defer response.Body.Close()
+	if body, readErr := io.ReadAll(response.Body); readErr != nil || string(body) != "frame" {
+		t.Fatalf("response body = %q, err=%v; want frame", body, readErr)
+	}
+	if got := atomic.LoadInt64(&hits); got != 2 {
+		t.Fatalf("upstream hits = %d, want 2", got)
 	}
 }

@@ -17,6 +17,7 @@ import (
 
 	"novastream/config"
 	"novastream/internal/mediaresolve"
+	"novastream/internal/torboxrate"
 	"novastream/models"
 	"novastream/utils"
 )
@@ -1657,7 +1658,7 @@ func (s *HealthService) probeAllTracksWithTimeout(ctx context.Context, streamURL
 	defer cancel()
 
 	args := []string{
-		"-v", "quiet",
+		"-v", "error",
 		"-print_format", "json",
 		"-show_streams",
 		"-analyzeduration", "10000000", // 10 seconds
@@ -1665,14 +1666,34 @@ func (s *HealthService) probeAllTracksWithTimeout(ctx context.Context, streamURL
 		streamURL,
 	}
 
-	cmd := exec.CommandContext(probeCtx, s.ffprobePath, args...)
-
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	isTorboxDownload := torboxrate.IsDownloadURL(streamURL)
+	for attempt := 0; ; attempt++ {
+		if isTorboxDownload {
+			if err := torboxrate.Downloads.Wait(probeCtx, streamURL); err != nil {
+				return nil, fmt.Errorf("ffprobe cooldown wait: %w", err)
+			}
+		}
 
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("ffprobe failed: %w (stderr: %s)", err, stderr.String())
+		stdout.Reset()
+		stderr.Reset()
+		cmd := exec.CommandContext(probeCtx, s.ffprobePath, args...)
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		err := cmd.Run()
+		if err == nil {
+			break
+		}
+
+		probeError := strings.ToLower(stderr.String())
+		if !isTorboxDownload || (!strings.Contains(probeError, "429") && !strings.Contains(probeError, "too many requests")) {
+			return nil, fmt.Errorf("ffprobe failed: %w (stderr: %s)", err, stderr.String())
+		}
+		delay := torboxrate.Downloads.Record(streamURL, "", stderr.Bytes())
+		if attempt >= 1 {
+			return nil, fmt.Errorf("ffprobe failed after TorBox rate-limit retry: %w (stderr: %s)", err, stderr.String())
+		}
+		log.Printf("[debrid-health] TorBox CDN rate limited track probe; retrying after %s", delay.Round(time.Millisecond))
 	}
 
 	var result struct {

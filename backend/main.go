@@ -92,6 +92,8 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("🚀 mediastorm Backend Starting...")
+	startupStarted := time.Now()
+	startupPhaseStarted := startupStarted
 	if *demoMode {
 		fmt.Println("🧪 Demo mode enabled: returning curated public domain trending rows.")
 	}
@@ -116,7 +118,7 @@ func main() {
 			log.Printf("warning: failed to persist global Live TV proxy migration: %v", err)
 		}
 	}
-	apiusage.ConfigureStorage(settings.Cache.Directory)
+	apiusage.ConfigureStorageAsync(settings.Cache.Directory)
 
 	// Set up file logging with rotation
 	if settings.Log.File != "" {
@@ -144,6 +146,8 @@ func main() {
 	if *portOverride > 0 {
 		settings.Server.Port = *portOverride
 	}
+	log.Printf("[startup] phase=config-load duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Initialize PostgreSQL DataStore if configured
 	var store *datastore.DataStore
@@ -169,14 +173,20 @@ func main() {
 		}
 		defer store.Close()
 		fmt.Println("🐘 PostgreSQL datastore initialized")
+		log.Printf("[startup] phase=datastore-connect-and-schema-migrations duration=%s", time.Since(startupPhaseStarted))
+		startupPhaseStarted = time.Now()
 
 		// Run one-time JSON→PostgreSQL migration for existing users
 		if migrateErr := datastore.MigrateFromJSON(context.Background(), store, settings.Cache.Directory); migrateErr != nil {
 			log.Printf("Warning: JSON migration encountered errors: %v", migrateErr)
 		}
+		log.Printf("[startup] phase=legacy-json-migrations duration=%s", time.Since(startupPhaseStarted))
+		startupPhaseStarted = time.Now()
 		if migrateErr := datastore.RunDataMigrations(context.Background(), store); migrateErr != nil {
 			log.Printf("Warning: datastore data migration encountered errors: %v", migrateErr)
 		}
+		log.Printf("[startup] phase=data-migration-recheck duration=%s", time.Since(startupPhaseStarted))
+		startupPhaseStarted = time.Now()
 	} else {
 		fmt.Println("")
 		fmt.Println("╔══════════════════════════════════════════════════════════════════════╗")
@@ -207,7 +217,6 @@ func main() {
 		fmt.Println("")
 		log.Fatal("DATABASE_URL is required. Set it as an environment variable or in settings.json under database.url")
 	}
-
 	// Construct router
 	var r *mux.Router = utils.NewRouter()
 
@@ -303,10 +312,14 @@ func main() {
 		MaxDownloadWorkers:  settings.Streaming.MaxDownloadWorkers,
 	}
 
+	log.Printf("[startup] phase=core-services-and-usenet duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	nzbSystem, err := integration.NewNzbSystem(nzbSystemConfig, poolManager, configAdapter.GetConfigGetter())
 	if err != nil {
 		log.Fatalf("failed to initialize NZB system: %v", err)
 	}
+	log.Printf("[startup] phase=nzb-system duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	defer nzbSystem.Close()
 
 	// Create WebDAV handler if enabled
@@ -515,7 +528,8 @@ func main() {
 		log.Fatalf("failed to initialise content preferences: %v", err)
 	}
 	contentPreferencesHandler := handlers.NewContentPreferencesHandler(contentPreferencesService, userService)
-	startupPhaseStarted := time.Now()
+	log.Printf("[startup] phase=services-before-profiles duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	var hiddenItemsService *hiddenitems.Service
 	if store != nil {
@@ -778,6 +792,7 @@ func main() {
 		compositeProvider,
 	)
 	log.Printf("[startup] phase=video-handler duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	videoHandler.SetThumbnailCacheDir(settings.Cache.Directory)
 	playbackHandler.SetThumbnailPrewarmer(videoHandler)
 	videoHandler.SetPrequeueStore(prequeueHandler.GetStore())
@@ -925,6 +940,8 @@ func main() {
 	latencyAdmin := handlers.NewPlaybackLatencyAdmin(latencyTracker)
 	prequeueHandler.SetPlaybackLatencyTracker(latencyTracker)
 	videoHandler.GetHLSManager().SetPlaybackLatencyTracker(latencyTracker)
+	log.Printf("[startup] phase=post-video-service-wiring duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	api.Register(
 		r,
@@ -967,6 +984,8 @@ func main() {
 		settings.Server.HomepageAPIKey,
 		latencyAdmin,
 	)
+	log.Printf("[startup] phase=primary-api-routes duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Register Trakt accounts API routes
 	traktAccountsHandler := handlers.NewTraktAccountsHandler(cfgManager, traktClient, userService, accountsService)
@@ -1028,6 +1047,8 @@ func main() {
 	if store != nil {
 		numbersStationHandler = handlers.NewNumbersStationHandler(numbersstation.New(store))
 	}
+	log.Printf("[startup] phase=admin-service-wiring duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Login/logout routes (no auth required)
 	r.HandleFunc("/admin/login", adminUIHandler.LoginPage).Methods(http.MethodGet)
@@ -1448,6 +1469,9 @@ func main() {
 	r.HandleFunc("/account/login", api.RateLimitHandlerFunc(adminLoginLimiter, accountUIHandler.LoginSubmit)).Methods(http.MethodPost)
 	r.HandleFunc("/account/logout", accountUIHandler.Logout).Methods(http.MethodGet, http.MethodPost)
 
+	log.Printf("[startup] phase=admin-routes duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
+
 	// Protected account routes - Pages (use adminUIHandler with unified templates)
 	r.HandleFunc("/account", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
 	r.HandleFunc("/account/status", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
@@ -1645,6 +1669,8 @@ func main() {
 	r.HandleFunc("/account/api/library/items/{itemID}", adminUIHandler.RequireAuth(adminUIHandler.DeleteLocalMediaItem)).Methods(http.MethodDelete)
 
 	fmt.Println("👤 Account management available at /account")
+	log.Printf("[startup] phase=account-routes duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Dedicated browser player handoff backed by the server-side HLS web player.
 	webPlaybackHandler := handlers.NewWebPlaybackHandler(userService, sessionsService, settings.Server.BasePath)
@@ -1833,10 +1859,13 @@ func main() {
 		}()
 	}
 
+	log.Printf("[startup] phase=route-and-background-wiring duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
+	log.Printf("[startup] phase=listener-bind duration=%s", time.Since(startupPhaseStarted))
 	if remoteAccessService != nil {
 		go superviseRemoteAccess(remoteAccessService)
 	}
@@ -1848,6 +1877,7 @@ func main() {
 		}
 	}()
 	log.Printf("Server listening on %s", addr)
+	log.Printf("[startup] phase=ready total=%s", time.Since(startupStarted))
 	startupNotificationCtx, startupNotificationCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	if err := notificationService.NotifySystem(startupNotificationCtx, models.NotificationEventSystemStartup); err != nil {
 		log.Printf("[notifications] startup delivery failed: %v", err)

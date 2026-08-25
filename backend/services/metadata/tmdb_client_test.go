@@ -49,6 +49,36 @@ func TestDoGETStopsRetryBackoffWhenContextCanceled(t *testing.T) {
 	}
 }
 
+func TestDoGETReturnsTypedNotFound(t *testing.T) {
+	c := newTMDBClient("test-key", "en", &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}, nil)
+
+	err := c.doGET(context.Background(), "https://api.themoviedb.org/test", &struct{}{})
+	if !isTMDBNotFound(err) {
+		t.Fatalf("doGET error = %v, want typed TMDB 404", err)
+	}
+}
+
+func TestTMDBSharedCooldownDelaysOtherCallers(t *testing.T) {
+	c := newTMDBClient("test-key", "en", &http.Client{}, nil)
+	c.minInterval = 0
+	c.beginSharedCooldown(60 * time.Millisecond)
+
+	started := time.Now()
+	if err := c.waitForRequestSlot(context.Background()); err != nil {
+		t.Fatalf("waitForRequestSlot: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed < 45*time.Millisecond {
+		t.Fatalf("shared cooldown waited %v, want at least 45ms", elapsed)
+	}
+}
+
 // countingRoundTripper returns a canned response for every request and counts calls.
 type countingRoundTripper struct {
 	mu     sync.Mutex

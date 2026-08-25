@@ -3313,7 +3313,12 @@ func (s *Service) resolveSeriesTVDBIDActual(ctx context.Context, req models.Seri
 			log.Printf("[metadata] tmdb→tvdb resolution cache hit tmdbId=%d → tvdbId=%d for series %q", req.TMDBID, cachedTVDBID, name)
 			return cachedTVDBID, nil
 		}
-		if s.tmdb != nil && s.tmdb.isConfigured() {
+		missingKey := missingTMDBSeriesCacheKey(req.TMDBID)
+		var knownMissing bool
+		missingCached, _ := s.cache.get(missingKey, &knownMissing)
+		if missingCached && knownMissing {
+			log.Printf("[metadata] TMDB missing-series cache hit tmdbId=%d", req.TMDBID)
+		} else if s.tmdb != nil && s.tmdb.isConfigured() {
 			title, err := s.tmdb.seriesDetails(ctx, req.TMDBID)
 			if err == nil && title != nil {
 				if title.TVDBID > 0 {
@@ -3329,6 +3334,9 @@ func (s *Service) resolveSeriesTVDBIDActual(ctx context.Context, req models.Seri
 			}
 			if err != nil {
 				log.Printf("[metadata] TMDB external id lookup failed tmdbId=%d err=%v", req.TMDBID, err)
+				if isTMDBNotFound(err) {
+					_ = s.cache.set(missingKey, true)
+				}
 			}
 		}
 	}
@@ -3454,6 +3462,10 @@ func seriesTVDBResolutionCacheKey(tmdbID int64) string {
 	// v2 invalidates legacy name-derived mappings that could associate an
 	// authoritative TMDB title with an unrelated TVDB search result.
 	return cacheKey("tvdb", "resolve", "tmdb", "v2", fmt.Sprintf("%d", tmdbID))
+}
+
+func missingTMDBSeriesCacheKey(tmdbID int64) string {
+	return cacheKey("tmdb", "missing", "series", "v1", fmt.Sprintf("%d", tmdbID))
 }
 
 func seriesTMDBIDMismatch(title models.Title, requestedTMDBID int64) bool {
@@ -4471,6 +4483,53 @@ func (s *Service) enrichCachedTMDBEpisodeMetadata(ctx context.Context, details *
 	return changed || complete
 }
 
+type cachedTMDBSeasonDetails struct {
+	Season   models.SeriesSeason `json:"season"`
+	NotFound bool                `json:"notFound,omitempty"`
+}
+
+func (s *Service) cachedTMDBSeason(ctx context.Context, tmdbID int64, summary tmdbSeasonSummary) (models.SeriesSeason, bool, error) {
+	if s.tmdb == nil || !s.tmdb.isConfigured() {
+		return models.SeriesSeason{}, false, errors.New("tmdb api key not configured")
+	}
+	if s.cache == nil {
+		season, err := s.tmdb.seriesSeasonDetails(ctx, tmdbID, summary)
+		if isTMDBNotFound(err) {
+			return models.SeriesSeason{}, false, nil
+		}
+		return season, err == nil, err
+	}
+	key := cacheKey("tmdb", "tv-season", "v1", s.tmdb.language, strconv.FormatInt(tmdbID, 10), strconv.Itoa(summary.Number))
+	var cached cachedTMDBSeasonDetails
+	if ok, _ := s.cache.get(key, &cached); ok {
+		return cached.Season, !cached.NotFound, nil
+	}
+
+	value, err := s.singleflightCachedFetch(ctx, key, func() (any, error) {
+		var cached cachedTMDBSeasonDetails
+		if ok, _ := s.cache.get(key, &cached); ok {
+			return cached, nil
+		}
+		season, err := s.tmdb.seriesSeasonDetails(ctx, tmdbID, summary)
+		if err != nil {
+			if isTMDBNotFound(err) {
+				result := cachedTMDBSeasonDetails{NotFound: true}
+				_ = s.cache.set(key, result)
+				return result, nil
+			}
+			return cachedTMDBSeasonDetails{}, err
+		}
+		result := cachedTMDBSeasonDetails{Season: season}
+		_ = s.cache.set(key, result)
+		return result, nil
+	})
+	if err != nil {
+		return models.SeriesSeason{}, false, err
+	}
+	result, _ := value.(cachedTMDBSeasonDetails)
+	return result.Season, !result.NotFound, nil
+}
+
 func (s *Service) enrichTMDBEpisodeMetadata(ctx context.Context, details *models.SeriesDetails, tmdbID int64) (changed bool, complete bool) {
 	if details == nil || tmdbID <= 0 || s.tmdb == nil || !s.tmdb.isConfigured() || len(details.Seasons) == 0 {
 		return false, false
@@ -4501,13 +4560,17 @@ func (s *Service) enrichTMDBEpisodeMetadata(ctx context.Context, details *models
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			tmdbSeason, err := s.tmdb.seriesSeasonDetails(ctx, tmdbID, tmdbSeasonSummary{
+			tmdbSeason, found, err := s.cachedTMDBSeason(ctx, tmdbID, tmdbSeasonSummary{
 				Number:       seasonNumber,
 				Name:         seasonName,
 				EpisodeCount: episodeCount,
 			})
 			if err != nil {
 				results <- seasonEpisodeResult{seasonNumber: seasonNumber, err: err}
+				return
+			}
+			if !found {
+				results <- seasonEpisodeResult{seasonNumber: seasonNumber}
 				return
 			}
 

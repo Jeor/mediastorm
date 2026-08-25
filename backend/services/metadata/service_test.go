@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -47,6 +48,103 @@ func TestApplyTVDBMovieExtendedMetadataCopiesGenresWithoutExternalIDs(t *testing
 	}
 	if title.CountryCode != "usa" {
 		t.Fatalf("CountryCode = %q, want provider country usa", title.CountryCode)
+	}
+}
+
+func TestEnrichTMDBEpisodeMetadataCachesMissingSeason(t *testing.T) {
+	var calls atomic.Int32
+	httpc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	cache := newFileCache(t.TempDir(), 24)
+	service := &Service{
+		tmdb:  newTMDBClient("test-key", "en", httpc, cache),
+		cache: cache,
+	}
+	details := models.SeriesDetails{Seasons: []models.SeriesSeason{{
+		Number:   0,
+		Name:     "Specials",
+		Episodes: []models.SeriesEpisode{{SeasonNumber: 0, EpisodeNumber: 1}},
+	}}}
+
+	for i := 0; i < 2; i++ {
+		changed, complete := service.enrichTMDBEpisodeMetadata(context.Background(), &details, 82782)
+		if changed || !complete {
+			t.Fatalf("enrichment pass %d = changed %v complete %v, want false/true", i+1, changed, complete)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("TMDB calls = %d, want one cached 404", got)
+	}
+}
+
+func TestCachedTMDBSeasonSingleflightsConcurrentMiss(t *testing.T) {
+	var calls atomic.Int32
+	httpc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		time.Sleep(20 * time.Millisecond)
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	cache := newFileCache(t.TempDir(), 24)
+	service := &Service{
+		tmdb:  newTMDBClient("test-key", "en", httpc, cache),
+		cache: cache,
+	}
+
+	const callers = 12
+	var wg sync.WaitGroup
+	wg.Add(callers)
+	for i := 0; i < callers; i++ {
+		go func() {
+			defer wg.Done()
+			_, found, err := service.cachedTMDBSeason(context.Background(), 82782, tmdbSeasonSummary{Number: 0})
+			if err != nil || found {
+				t.Errorf("cachedTMDBSeason = found %v err %v, want false/nil", found, err)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("TMDB calls = %d, want one singleflight request", got)
+	}
+}
+
+func TestResolveSeriesTVDBIDNegativeCachesMissingTMDBSeries(t *testing.T) {
+	var calls atomic.Int32
+	httpc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	cache := newFileCache(t.TempDir(), 24)
+	service := &Service{
+		tmdb:  newTMDBClient("test-key", "en", httpc, cache),
+		cache: cache,
+	}
+	req := models.SeriesDetailsQuery{TMDBID: 327723}
+
+	for i := 0; i < 2; i++ {
+		if _, err := service.resolveSeriesTVDBIDActual(context.Background(), req); err == nil {
+			t.Fatalf("resolution pass %d unexpectedly succeeded", i+1)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("TMDB calls = %d, want one request followed by negative-cache hit", got)
 	}
 }
 

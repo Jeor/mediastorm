@@ -90,6 +90,20 @@ type movieDetailsCacheEntry struct {
 	done   chan struct{}
 }
 
+type tmdbHTTPError struct {
+	StatusCode int
+	Status     string
+}
+
+func (e *tmdbHTTPError) Error() string {
+	return "tmdb request failed: " + e.Status
+}
+
+func isTMDBNotFound(err error) bool {
+	var httpErr *tmdbHTTPError
+	return errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound
+}
+
 type tmdbClient struct {
 	apiKey   string
 	language string
@@ -97,13 +111,74 @@ type tmdbClient struct {
 	cache    *fileCache // Optional cache for expensive lookups
 
 	// Rate limiting
-	throttleMu  sync.Mutex
-	lastRequest time.Time
-	minInterval time.Duration
+	throttleMu    sync.Mutex
+	lastRequest   time.Time
+	minInterval   time.Duration
+	cooldownUntil time.Time
 
 	// In-flight singleflight map for movieDetails — holds only requests
 	// currently being fetched (bounded), not a process-lifetime cache.
 	movieCache sync.Map
+}
+
+func (c *tmdbClient) waitForRequestSlot(ctx context.Context) error {
+	for {
+		now := time.Now()
+		c.throttleMu.Lock()
+		if now.Before(c.cooldownUntil) {
+			wait := time.Until(c.cooldownUntil)
+			c.throttleMu.Unlock()
+			if err := sleepWithContext(ctx, wait); err != nil {
+				return err
+			}
+			continue
+		}
+		availableAt := c.lastRequest.Add(c.minInterval)
+		if availableAt.Before(now) {
+			availableAt = now
+		}
+		c.lastRequest = availableAt
+		c.throttleMu.Unlock()
+
+		if err := sleepWithContext(ctx, time.Until(availableAt)); err != nil {
+			return err
+		}
+
+		c.throttleMu.Lock()
+		coolingDown := time.Now().Before(c.cooldownUntil)
+		c.throttleMu.Unlock()
+		if !coolingDown {
+			return nil
+		}
+	}
+}
+
+func tmdbRetryDelay(resp *http.Response, fallback time.Duration) time.Duration {
+	if resp != nil {
+		if raw := strings.TrimSpace(resp.Header.Get("Retry-After")); raw != "" {
+			if seconds, err := strconv.Atoi(raw); err == nil && seconds > 0 {
+				return time.Duration(seconds) * time.Second
+			}
+			if retryAt, err := http.ParseTime(raw); err == nil {
+				if delay := time.Until(retryAt); delay > 0 {
+					return delay
+				}
+			}
+		}
+	}
+	return fallback
+}
+
+func (c *tmdbClient) beginSharedCooldown(delay time.Duration) {
+	if delay <= 0 {
+		return
+	}
+	until := time.Now().Add(delay)
+	c.throttleMu.Lock()
+	if until.After(c.cooldownUntil) {
+		c.cooldownUntil = until
+	}
+	c.throttleMu.Unlock()
 }
 
 func newTMDBClient(apiKey, language string, httpc *http.Client, cache *fileCache) *tmdbClient {
@@ -130,20 +205,8 @@ func (c *tmdbClient) doGET(ctx context.Context, endpoint string, v any) error {
 			return err
 		}
 
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait) // reserve slot
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			if err := sleepWithContext(ctx, wait); err != nil {
-				return err
-			}
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -167,27 +230,23 @@ func (c *tmdbClient) doGET(ctx context.Context, endpoint string, v any) error {
 
 		// Handle rate limiting and server errors
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] rate limited or server error (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb request failed: %s", resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					if err := sleepWithContext(ctx, time.Duration(secs)*time.Second); err != nil {
-						return err
-					}
-				}
-			} else {
-				if err := sleepWithContext(ctx, backoff); err != nil {
-					return err
-				}
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return fmt.Errorf("tmdb request failed: %s", resp.Status)
+			return &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		err = json.NewDecoder(resp.Body).Decode(v)
@@ -2462,18 +2521,8 @@ func (c *tmdbClient) fetchExternalID(ctx context.Context, mediaType string, tmdb
 	backoff := 300 * time.Millisecond
 
 	for attempt := 0; attempt < 3; attempt++ {
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait)
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			time.Sleep(wait)
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return "", err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -2492,23 +2541,23 @@ func (c *tmdbClient) fetchExternalID(ctx context.Context, mediaType string, tmdb
 
 		// Handle rate limiting and server errors with retry
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] fetchExternalID rate limited (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb external_ids for %s/%d failed: %s", apiMediaType, tmdbID, resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					time.Sleep(time.Duration(secs) * time.Second)
-				}
-			} else {
-				time.Sleep(backoff)
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return "", err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return "", fmt.Errorf("tmdb external_ids for %s/%d failed: %s", apiMediaType, tmdbID, resp.Status)
+			return "", &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		err = json.NewDecoder(resp.Body).Decode(&payload)
@@ -2547,18 +2596,8 @@ func (c *tmdbClient) findMovieByIMDBID(ctx context.Context, imdbID string) (int6
 			return 0, ctx.Err()
 		}
 
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait)
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			time.Sleep(wait)
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return 0, err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -2579,23 +2618,23 @@ func (c *tmdbClient) findMovieByIMDBID(ctx context.Context, imdbID string) (int6
 		}
 
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] findMovieByIMDBID rate limited (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb find %s failed: %s", imdbID, resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					time.Sleep(time.Duration(secs) * time.Second)
-				}
-			} else {
-				time.Sleep(backoff)
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return 0, err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return 0, fmt.Errorf("tmdb find %s failed: %s", imdbID, resp.Status)
+			return 0, &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		var result struct {
@@ -2640,18 +2679,8 @@ func (c *tmdbClient) findTVByIMDBID(ctx context.Context, imdbID string) (int64, 
 			return 0, ctx.Err()
 		}
 
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait)
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			time.Sleep(wait)
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return 0, err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -2672,23 +2701,23 @@ func (c *tmdbClient) findTVByIMDBID(ctx context.Context, imdbID string) (int64, 
 		}
 
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] findTVByIMDBID rate limited (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb find TV %s failed: %s", imdbID, resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					time.Sleep(time.Duration(secs) * time.Second)
-				}
-			} else {
-				time.Sleep(backoff)
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return 0, err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return 0, fmt.Errorf("tmdb find TV %s failed: %s", imdbID, resp.Status)
+			return 0, &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		var result struct {

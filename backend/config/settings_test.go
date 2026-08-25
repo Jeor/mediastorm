@@ -188,8 +188,46 @@ func TestDefaultSettingsWaitsForCombinedSearchRanking(t *testing.T) {
 	if settings.Streaming.ResolveFirstReadySource {
 		t.Fatal("ResolveFirstReadySource must default off so prequeue preserves combined cross-source ranking")
 	}
-	if settings.Streaming.ResolutionSettleWindowMs != 0 {
-		t.Fatalf("ResolutionSettleWindowMs = %d, want unambiguous no-grace default 0", settings.Streaming.ResolutionSettleWindowMs)
+	if !settings.Streaming.ResolutionEndRaceEarly {
+		t.Fatal("ResolutionEndRaceEarly must default on for concurrent early resolution")
+	}
+	if settings.Streaming.ResolutionSettleWindowMs != 250 {
+		t.Fatalf("ResolutionSettleWindowMs = %d, want default 250", settings.Streaming.ResolutionSettleWindowMs)
+	}
+}
+
+func TestLoadBackfillsEarlyResolutionChildDefaultsWithoutEnablingParent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"streaming":{"resolveFirstReadySource":false}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Streaming.ResolveFirstReadySource {
+		t.Fatal("backfilling child defaults must not enable ResolveFirstReadySource")
+	}
+	if !settings.Streaming.ResolutionEndRaceEarly || settings.Streaming.ResolutionSettleWindowMs != 250 {
+		t.Fatalf("child defaults = endEarly:%v settle:%d, want true/250", settings.Streaming.ResolutionEndRaceEarly, settings.Streaming.ResolutionSettleWindowMs)
+	}
+}
+
+func TestLoadPreservesExplicitEarlyResolutionChildSettings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"streaming":{"resolutionSettleWindowMs":0,"resolutionEndRaceEarly":false}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Streaming.ResolutionEndRaceEarly || settings.Streaming.ResolutionSettleWindowMs != 0 {
+		t.Fatalf("explicit child settings = endEarly:%v settle:%d, want false/0", settings.Streaming.ResolutionEndRaceEarly, settings.Streaming.ResolutionSettleWindowMs)
 	}
 }
 

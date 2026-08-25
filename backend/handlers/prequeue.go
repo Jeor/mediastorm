@@ -2381,12 +2381,13 @@ func prequeueResolutionWidth(concurrent bool) int {
 	return 1
 }
 
-// prequeueResolutionSettleWindowDefault is the fallback grace window used when
-// no config is available. Zero means no grace when endRaceEarly is enabled; a
-// positive value lets an already-running, better-ranked candidate continue for
-// that long after another candidate validates. The fallback endRaceEarly value
-// remains false, so an unconfigured handler still waits for the whole batch.
-const prequeueResolutionSettleWindowDefault = 0
+// These fallbacks mirror StreamingSettings defaults for handlers constructed
+// without a config manager. They only affect concurrent resolution; the default
+// ResolveFirstReadySource=false path remains ranked and sequential.
+const (
+	prequeueResolutionSettleWindowDefault = 250
+	prequeueResolutionEndRaceEarlyDefault = true
+)
 
 // prequeueCandidateProcessor resolves and validates one prequeue candidate.
 // accepted is the fully validated candidate (playable + policy-ok);
@@ -3182,17 +3183,16 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 
 // resolutionRacePolicy returns the configured grace window and end-early flag.
 // Zero means no grace; a positive value bounds how long a better-ranked
-// candidate may keep racing after the first validation. endRaceEarly defaults
-// false, so an unconfigured handler still waits for the whole batch and ignores
-// the grace window.
+// candidate may keep racing after the first validation. These defaults only
+// affect callers that explicitly select concurrent resolution.
 func (h *PrequeueHandler) resolutionRacePolicy() (settle time.Duration, endEarly bool) {
 	if h == nil || h.configManager == nil {
-		return time.Duration(prequeueResolutionSettleWindowDefault) * time.Millisecond, false
+		return time.Duration(prequeueResolutionSettleWindowDefault) * time.Millisecond, prequeueResolutionEndRaceEarlyDefault
 	}
 	s, err := h.configManager.Load()
 	if err != nil {
 		log.Printf("[prequeue] failed to load settings for resolution race policy: %v", err)
-		return time.Duration(prequeueResolutionSettleWindowDefault) * time.Millisecond, false
+		return time.Duration(prequeueResolutionSettleWindowDefault) * time.Millisecond, prequeueResolutionEndRaceEarlyDefault
 	}
 	return time.Duration(s.Streaming.ResolutionSettleWindowMs) * time.Millisecond, s.Streaming.ResolutionEndRaceEarly
 }

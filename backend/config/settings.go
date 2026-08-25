@@ -364,10 +364,10 @@ type StreamingSettings struct {
 	ResolutionSettleWindowMs int `json:"resolutionSettleWindowMs"`
 	// ResolutionEndRaceEarly, when true, adopts the first valid candidate unless
 	// ResolutionSettleWindowMs gives an already-running, better-ranked candidate
-	// a bounded grace period. When false (default), the race waits for every
+	// a bounded grace period. When false, the race waits for every
 	// concurrent candidate, ignores the settle window, and selects the
-	// best-ranked valid result. Defaults false to preserve existing installs'
-	// wait-for-all behavior on upgrade.
+	// best-ranked valid result. This setting only applies when
+	// ResolveFirstReadySource is enabled.
 	ResolutionEndRaceEarly    bool    `json:"resolutionEndRaceEarly"`
 	IndexerTimeoutSec         float64 `json:"indexerTimeoutSec"`         // Timeout for indexer/scraper searches in seconds (default: 5)
 	HealthCheckTimeoutSec     int     `json:"healthCheckTimeoutSec"`     // Timeout for manual debrid/usenet health checks in seconds (default: 15)
@@ -1859,7 +1859,7 @@ func DefaultSettings() Settings {
 		Cache:     CacheSettings{Directory: "cache", MetadataTTLHours: 24},
 		WebDAV:    WebDAVSettings{Enabled: true, Prefix: "/webdav", Username: "novastream", Password: ""},
 		Database:  DatabaseSettings{Path: "cache/queue.db"},
-		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, ResolveFirstReadySource: false, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5, ResolutionSettleWindowMs: 0, ResolutionEndRaceEarly: false},
+		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, ResolveFirstReadySource: false, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5, ResolutionSettleWindowMs: 250, ResolutionEndRaceEarly: true},
 		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8, UsenetMaxConcurrentFileParsers: 16, UsenetParserShareDivisor: 4},
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
@@ -2193,15 +2193,14 @@ func (m *Manager) Load() (Settings, error) {
 	}
 
 	// Backfill the resolution race policy defaults for installs that predate
-	// these fields. End-race-early defaults off, so existing installs retain the
-	// conservative wait-for-all behavior. The settle window defaults to zero and
-	// is only meaningful when end-race-early is explicitly enabled.
+	// these fields. These child settings are inert while ResolveFirstReadySource
+	// is off, which remains the default. Preserve any explicitly stored values.
 	if streamingRaw, ok := raw["streaming"].(map[string]interface{}); ok {
 		if _, has := streamingRaw["resolutionSettleWindowMs"]; !has {
-			streamingRaw["resolutionSettleWindowMs"] = 0
+			streamingRaw["resolutionSettleWindowMs"] = 250
 		}
 		if _, has := streamingRaw["resolutionEndRaceEarly"]; !has {
-			streamingRaw["resolutionEndRaceEarly"] = false
+			streamingRaw["resolutionEndRaceEarly"] = true
 		}
 	}
 
@@ -2491,8 +2490,8 @@ func (m *Manager) Load() (Settings, error) {
 		s.Streaming.UsenetPreflightProbeSec = 5
 	}
 	// Normalize the legacy -1 sentinel to the single supported "no grace"
-	// representation. ResolutionEndRaceEarly's false default is injected at the
-	// raw-map layer for old installs, preserving their wait-for-all behavior.
+	// representation. Missing child defaults are injected at the raw-map layer;
+	// explicit zero/false values remain unchanged.
 	if s.Streaming.ResolutionSettleWindowMs < 0 {
 		s.Streaming.ResolutionSettleWindowMs = 0
 	}

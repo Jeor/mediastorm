@@ -311,7 +311,7 @@ var SettingsSchema = map[string]interface{}{
 			"resolutionSettleWindowMs": map[string]interface{}{
 				"type":        "number",
 				"label":       "Better-ranked Candidate Grace (ms)",
-				"description": "After a candidate validates, wait up to this long only when a better-ranked candidate is already resolving. 0 means no grace: the first valid candidate wins immediately. Turn End the Race Early off to wait for all concurrent candidates.",
+				"description": "After a candidate validates, wait up to this long only when a better-ranked candidate is already resolving. The default is 250 ms. Set 0 for no grace, so the first valid candidate wins immediately. Turn End the Race Early off to wait for all concurrent candidates.",
 				"min":         0,
 				"step":        50,
 				"order":       3,
@@ -329,7 +329,7 @@ var SettingsSchema = map[string]interface{}{
 			"resolutionEndRaceEarly": map[string]interface{}{
 				"type":             "boolean",
 				"label":            "End the Race Early",
-				"description":      "On stops the concurrent race when a winner is chosen; the grace setting below can briefly wait for an already-running, better-ranked candidate. Off (default) waits for every concurrent candidate, then selects the best-ranked valid result.",
+				"description":      "On (default) stops the concurrent race when a winner is chosen; the grace setting below briefly waits for an already-running, better-ranked candidate. Off waits for every concurrent candidate, then selects the best-ranked valid result. This has no effect while Resolve candidates early is off.",
 				"order":            2,
 				"showWhen":         map[string]interface{}{"field": "resolveFirstReadySource", "value": true},
 				"group":            "earlyResolution",

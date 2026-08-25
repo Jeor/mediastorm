@@ -2677,6 +2677,20 @@ func TestSettingsSchemaFirstReadySourceIsGlobalOnly(t *testing.T) {
 	if field["type"] != "boolean" || field["globalOnly"] != true {
 		t.Fatalf("resolveFirstReadySource schema = %#v, want global-only boolean", field)
 	}
+
+	for _, key := range []string{"resolutionEndRaceEarly", "resolutionSettleWindowMs"} {
+		subField, ok := fields[key].(map[string]interface{})
+		if !ok {
+			t.Fatalf("%s setting is missing", key)
+		}
+		showWhen, ok := subField["showWhen"].(map[string]interface{})
+		if !ok || showWhen["field"] != "resolveFirstReadySource" || showWhen["value"] != true {
+			t.Fatalf("%s showWhen = %#v, want resolveFirstReadySource=true", key, subField["showWhen"])
+		}
+		if subField["group"] != "earlyResolution" {
+			t.Fatalf("%s group = %#v, want earlyResolution", key, subField["group"])
+		}
+	}
 }
 
 func TestNavigationVisibilitySchemaIncludesWatchlist(t *testing.T) {

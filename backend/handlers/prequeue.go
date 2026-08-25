@@ -1908,13 +1908,14 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		e.ProgressTotal = candidates.Total()
 	})
 
-	// Resolution phase — race the candidate stream concurrently (bounded worker
-	// pool) and adopt the first fully validated candidate instead of
-	// resolving serially. Deprioritized unknown-track results are kept as a
-	// fallback and used only when nothing validates.
+	// Resolution phase. First-ready mode races the streaming candidates with a
+	// bounded worker pool. The default combined-search mode walks the globally
+	// ranked list sequentially and stops at the first fully validated candidate.
+	// Deprioritized unknown-track results are kept as a fallback and used only
+	// when nothing validates.
 	resolveStart := time.Now()
 	log.Printf("[prequeue] TIMING: starting resolution phase (first-ready-source=%t, candidates=%d, width=%d, elapsed: %v)",
-		resolveFirstReadySource, candidates.Total(), prequeueResolutionRaceWidth, time.Since(workerStart))
+		resolveFirstReadySource, candidates.Total(), prequeueResolutionWidth(resolveFirstReadySource), time.Since(workerStart))
 
 	choice, resolveErr := h.resolveCandidates(ctx, prequeueID, candidates, prequeueResolutionOptions{
 		mediaType:                 mediaType,
@@ -1926,6 +1927,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		needsDVCheck:              needsDVCheck,
 		needsUnknownTrackCheck:    needsUnknownTrackCheck,
 		needsAllowedLanguageCheck: needsAllowedLanguageCheck,
+		concurrent:                resolveFirstReadySource,
 		workerStart:               workerStart,
 	})
 
@@ -2372,6 +2374,13 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 // represented; all eight slots can then be used concurrently.
 const prequeueResolutionRaceWidth = 8
 
+func prequeueResolutionWidth(concurrent bool) int {
+	if concurrent {
+		return prequeueResolutionRaceWidth
+	}
+	return 1
+}
+
 // prequeueResolutionSettleWindowDefault is the fallback settle window used when
 // no config is available (e.g. unit tests / a handler constructed without a
 // config manager). <= 0 selects STRICT order — the resolution race keeps every
@@ -2436,6 +2445,7 @@ type prequeueResolutionOptions struct {
 	needsDVCheck              bool
 	needsUnknownTrackCheck    bool
 	needsAllowedLanguageCheck bool
+	concurrent                bool
 	workerStart               time.Time
 }
 
@@ -2927,16 +2937,15 @@ func prequeueCandidateAttempt(index int, result models.NZBResult, outcome string
 	}
 }
 
-// resolveCandidates races the candidate source (bounded source-aware scheduler) and
-// returns the winning resolution together with the candidate and probe data the
-// rest of the worker needs. The best-ranked fully validated candidate wins,
-// honoring the bounded settle window when a better-ranked candidate is still in
-// flight; deprioritized unknown-track results are a fallback only when nothing
-// validates; and IsArticleUnavailable failures still mark bad streams. Candidates
-// flow from src, so a streaming source lets the race start resolving the
-// first-ready search source while later sources are still feeding; the debrid
-// torrent preflight runs on the feeder side (prequeueSearchFeeder) before a
-// debrid batch is published.
+// resolveCandidates resolves the candidate source and returns the winning
+// resolution together with the candidate and probe data the rest of the worker
+// needs. In the default mode candidates are attempted sequentially in ranked
+// order. With opts.concurrent enabled, the bounded source-aware scheduler races
+// candidates and honors the configured settle policy. Deprioritized
+// unknown-track results are a fallback only when nothing validates, and
+// IsArticleUnavailable failures still mark bad streams. A streaming source is
+// only paired with concurrent mode, allowing the first-ready search source to
+// begin resolving while later sources are still feeding.
 func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID string, src prequeueCandidateSource, opts prequeueResolutionOptions) (prequeueResolutionChoice, error) {
 	resolveStart := time.Now()
 
@@ -3145,7 +3154,15 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 		return &candidateResolution{result: result, index: i, resolution: resolution, probeResult: probeResult, metadataResult: metadataResult, migrationSnapshot: src.Snapshot()}, nil, nil
 	}
 
-	log.Printf("[prequeue] TIMING: starting streaming candidate resolution (width=%d, elapsed: %v)", prequeueResolutionRaceWidth, time.Since(resolveStart))
+	resolutionWidth := prequeueResolutionWidth(opts.concurrent)
+	settleWindow := time.Duration(-1)
+	endEarly := true
+	resolutionMode := "sequential"
+	if opts.concurrent {
+		settleWindow, endEarly = h.resolutionRacePolicy()
+		resolutionMode = "concurrent"
+	}
+	log.Printf("[prequeue] TIMING: starting %s candidate resolution (width=%d, elapsed: %v)", resolutionMode, resolutionWidth, time.Since(resolveStart))
 	// Publish the in-flight window as 1-based candidate numbers. During the race
 	// only this publisher owns numeric progress; worker updates carry stage and
 	// release detail only, so the UI can render "trying streams X–Y of Z". The
@@ -3159,8 +3176,7 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 		}
 		h.updatePrequeueRaceProgress(prequeueID, inFlightMin+1, inFlightMax+1, total)
 	}
-	settleWindow, endEarly := h.resolutionRacePolicy()
-	winner, usedFallback, raceErr := racePrequeueResolutions(ctx, src, prequeueResolutionRaceWidth, process, reportProgress, settleWindow, endEarly)
+	winner, usedFallback, raceErr := racePrequeueResolutions(ctx, src, resolutionWidth, process, reportProgress, settleWindow, endEarly)
 	if winner == nil {
 		return prequeueResolutionChoice{}, raceErr
 	}

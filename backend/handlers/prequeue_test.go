@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -887,6 +888,67 @@ func TestRacePrequeueResolutionsCancelledContext(t *testing.T) {
 	}
 }
 
+func TestResolveCandidatesSequentialUsesRankedOrder(t *testing.T) {
+	var mu sync.Mutex
+	active := 0
+	maxActive := 0
+	var attempted []string
+	playbackSvc := &stubPlaybackService{
+		resolve: func(_ context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
+			mu.Lock()
+			active++
+			if active > maxActive {
+				maxActive = active
+			}
+			attempted = append(attempted, candidate.Title)
+			mu.Unlock()
+			defer func() {
+				mu.Lock()
+				active--
+				mu.Unlock()
+			}()
+
+			if candidate.Title == "rank-0-fails" {
+				time.Sleep(60 * time.Millisecond)
+				return nil, errors.New("unavailable")
+			}
+			return &models.PlaybackResolution{WebDAVPath: "/webdav/selected.mkv", HealthStatus: "healthy"}, nil
+		},
+	}
+	handler := &PrequeueHandler{
+		store:       playback.NewPrequeueStore(time.Minute),
+		playbackSvc: playbackSvc,
+		fullProber:  &raceProbeResult{},
+	}
+
+	choice, err := handler.resolveCandidates(context.Background(), "prequeue-sequential", newSliceCandidateSource([]models.NZBResult{
+		{Title: "rank-0-fails", ServiceType: models.ServiceTypeUsenet},
+		{Title: "rank-1-wins", ServiceType: models.ServiceTypeDebrid},
+		{Title: "rank-2-must-not-run", ServiceType: models.ServiceTypeUsenet},
+	}), prequeueResolutionOptions{
+		mediaType:          "movie",
+		hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
+		unknownTrackPolicy: "none",
+		concurrent:         false,
+	})
+
+	if err != nil {
+		t.Fatalf("resolveCandidates returned error: %v", err)
+	}
+	if choice.selectedResultIndex != 1 {
+		t.Fatalf("selectedResultIndex = %d, want 1", choice.selectedResultIndex)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if maxActive != 1 {
+		t.Fatalf("maximum concurrent resolutions = %d, want 1", maxActive)
+	}
+	wantAttempts := []string{"rank-0-fails", "rank-1-wins"}
+	if !reflect.DeepEqual(attempted, wantAttempts) {
+		t.Fatalf("attempted candidates = %v, want %v", attempted, wantAttempts)
+	}
+}
+
 // TestResolveCandidatesAdoptsFastHealthyCandidate is the handler-level
 // verification for the concurrent resolution race: the wired resolution phase
 // (preflight gate, resolve, probe, policy checks) races candidates and adopts
@@ -926,6 +988,7 @@ func TestResolveCandidatesAdoptsFastHealthyCandidate(t *testing.T) {
 		mediaType:          "movie",
 		hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
 		unknownTrackPolicy: "none",
+		concurrent:         true,
 	})
 	elapsed := time.Since(start)
 
@@ -984,6 +1047,7 @@ func TestResolveCandidatesProbeRejectionMarksBadStream(t *testing.T) {
 		mediaType:          "movie",
 		hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
 		unknownTrackPolicy: "none",
+		concurrent:         true,
 	})
 	if err != nil {
 		t.Fatalf("resolveCandidates returned error: %v", err)
@@ -1069,6 +1133,7 @@ func TestResolveCandidatesStreamsUsenetBeforeDebrid(t *testing.T) {
 			mediaType:          "movie",
 			hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
 			unknownTrackPolicy: "none",
+			concurrent:         true,
 		})
 		if err != nil {
 			resolveErrCh <- err

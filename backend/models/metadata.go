@@ -60,6 +60,7 @@ type Title struct {
 	CountryCode       string      `json:"countryCode,omitempty"` // Original production country (ISO 3166 where available)
 	Poster            *Image      `json:"poster,omitempty"`
 	TextPoster        *Image      `json:"textPoster,omitempty"` // Original poster with text (preserved when Poster is overridden with textless)
+	Posters           []Image     `json:"posters,omitempty"`    // Additional localized/textless poster options beyond the primary
 	Backdrop          *Image      `json:"backdrop,omitempty"`
 	TextBackdrop      *Image      `json:"textBackdrop,omitempty"` // Original backdrop with text (preserved when Backdrop is overridden with textless)
 	Backdrops         []Image     `json:"backdrops,omitempty"`    // Additional backdrop options beyond the primary

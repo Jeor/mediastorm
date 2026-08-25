@@ -373,6 +373,7 @@ type tmdbImagesResult struct {
 	Logo             *models.Image
 	TextlessPoster   *models.Image
 	TextPoster       *models.Image // Best poster with title text (has language tag)
+	Posters          []models.Image
 	TextlessBackdrop *models.Image
 	TextBackdrop     *models.Image // Best backdrop with language tag when available
 	Backdrops        []models.Image
@@ -508,9 +509,57 @@ func (c *tmdbClient) fetchImages(ctx context.Context, mediaType string, tmdbID i
 				result.TextPoster.IsFallbackLanguage = withText[0].ISO6391 != preferredLang
 			}
 		}
+		result.Posters = rankAlternatePosters(payload.Posters, result.TextlessPoster, preferredLang)
 	}
 
 	return result, nil
+}
+
+func rankAlternatePosters(items []tmdbImageItem, primary *models.Image, preferredLang string) []models.Image {
+	const maxAlternatePosters = 7
+	primaryKey := ""
+	if primary != nil {
+		primaryKey = comparableTMDBImageURL(primary.URL)
+	}
+
+	usable := make([]tmdbImageItem, 0, len(items))
+	for _, item := range items {
+		if logoLanguageRank(item, preferredLang) >= 0 {
+			usable = append(usable, item)
+		}
+	}
+	sort.SliceStable(usable, func(i, j int) bool {
+		iRank := logoLanguageRank(usable[i], preferredLang)
+		jRank := logoLanguageRank(usable[j], preferredLang)
+		if iRank != jRank {
+			return iRank < jRank
+		}
+		return usable[i].VoteAverage > usable[j].VoteAverage
+	})
+	seen := make(map[string]struct{})
+	result := make([]models.Image, 0, maxAlternatePosters)
+	for _, item := range usable {
+		img := buildTMDBImage(item.FilePath, tmdbPosterSize, "poster")
+		if img == nil {
+			continue
+		}
+		key := comparableTMDBImageURL(img.URL)
+		if key == "" || key == primaryKey {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		img.Language = item.ISO6391
+		img.IsTextless = item.ISO6391 == ""
+		img.IsFallbackLanguage = item.ISO6391 != "" && item.ISO6391 != preferredLang
+		result = append(result, *img)
+		if len(result) == maxAlternatePosters {
+			break
+		}
+	}
+	return result
 }
 
 func (c *tmdbClient) selectLogoCandidate(ctx context.Context, logos []tmdbImageItem, preferredLang string) (tmdbImageItem, bool) {

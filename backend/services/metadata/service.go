@@ -1124,7 +1124,7 @@ func (s *Service) GetCachedArtworkURLs(mediaType string, tmdbID int64, tvdbID in
 			if ok, _ := s.cache.get(cacheID, &cached); ok {
 				mergeTitle(cached)
 			}
-			imagesKey := cacheKey("tmdb", "images", "v7", s.client.language, "movie", fmt.Sprintf("%d", tmdbID))
+			imagesKey := cacheKey("tmdb", "images", "v9", s.client.language, "movie", fmt.Sprintf("%d", tmdbID))
 			var images tmdbImagesResult
 			if ok, _ := s.cache.get(imagesKey, &images); ok {
 				mergeImages(images)
@@ -1164,7 +1164,7 @@ func (s *Service) GetCachedArtworkURLs(mediaType string, tmdbID int64, tvdbID in
 			}
 		}
 		if tmdbID > 0 {
-			imagesKey := cacheKey("tmdb", "images", "v7", s.client.language, "series", fmt.Sprintf("%d", tmdbID))
+			imagesKey := cacheKey("tmdb", "images", "v9", s.client.language, "series", fmt.Sprintf("%d", tmdbID))
 			var images tmdbImagesResult
 			if ok, _ := s.cache.get(imagesKey, &images); ok {
 				mergeImages(images)
@@ -4379,6 +4379,7 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 				seriesTitle.Poster = images.TextlessPoster
 				metadataTracef("[metadata] textless poster applied to series tmdbId=%d", seriesTitle.TMDBID)
 			}
+			seriesTitle.Posters = mergeRankedPosters(seriesTitle.Posters, images.Posters, seriesTitle.Poster)
 			if images.TextBackdrop != nil {
 				seriesTitle.TextBackdrop = images.TextBackdrop
 			}
@@ -5028,6 +5029,7 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 				}
 				seriesTitle.Poster = images.TextlessPoster
 			}
+			seriesTitle.Posters = mergeRankedPosters(seriesTitle.Posters, images.Posters, seriesTitle.Poster)
 			if images.TextBackdrop != nil {
 				seriesTitle.TextBackdrop = images.TextBackdrop
 			}
@@ -6549,21 +6551,20 @@ func (s *Service) movieDetailsInternal(ctx context.Context, req models.MovieDeta
 			}
 		}
 
-		// Enrich with logo and textless poster if available
+		// Enrich cached movie details with the current TMDB image payload. In
+		// particular, older details cache entries do not contain alternate posters.
 		tmdbIDForImages := cached.TMDBID
 		if tmdbIDForImages == 0 {
 			tmdbIDForImages = req.TMDBID
 		}
-		// Only refresh the logo if missing or if an older cache selected a white-only SVG variant.
-		shouldRefreshLogo := cached.Logo == nil
-		if !shouldRefreshLogo && s.tmdb != nil && s.tmdb.isConfigured() {
-			shouldRefreshLogo = s.tmdb.isWhiteOnlySVGURL(ctx, cached.Logo.URL)
+		shouldRefreshImages := len(cached.Posters) == 0 || cached.Logo == nil
+		if !shouldRefreshImages && s.tmdb != nil && s.tmdb.isConfigured() {
+			shouldRefreshImages = s.tmdb.isWhiteOnlySVGURL(ctx, cached.Logo.URL)
 		}
-		if shouldRefreshLogo && tmdbIDForImages > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+		if shouldRefreshImages && tmdbIDForImages > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
 			if images, err := s.cachedFetchImages(ctx, "movie", tmdbIDForImages); err == nil && images != nil {
-				if images.Logo != nil {
-					cached.Logo = images.Logo
-					metadataTracef("[metadata] logo added to cached movie tmdbId=%d", tmdbIDForImages)
+				if applyTMDBImagesToTitle(&cached, images) {
+					metadataTracef("[metadata] artwork added to cached movie tmdbId=%d posters=%d", tmdbIDForImages, len(cached.Posters))
 					_ = s.cache.set(cacheID, cached)
 				}
 			}
@@ -6786,6 +6787,7 @@ func (s *Service) movieDetailsInternal(ctx context.Context, req models.MovieDeta
 					movieTitle.Poster = images.TextlessPoster
 					metadataTracef("[metadata] textless poster applied to movie tmdbId=%d", tmdbIDForEnrichment)
 				}
+				movieTitle.Posters = mergeRankedPosters(movieTitle.Posters, images.Posters, movieTitle.Poster)
 				if images.TextBackdrop != nil {
 					movieTitle.TextBackdrop = images.TextBackdrop
 				}
@@ -8014,7 +8016,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	if s.tmdb == nil || !s.tmdb.isConfigured() {
 		return nil, errors.New("tmdb api key not configured")
 	}
-	key := cacheKey("tmdb", "images", "v7", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
+	key := cacheKey("tmdb", "images", "v9", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, nil
@@ -8048,7 +8050,7 @@ func (s *Service) cachedTMDBImagesOnly(mediaType string, tmdbID int64) (*tmdbIma
 	if s.client != nil {
 		language = s.client.language
 	}
-	key := cacheKey("tmdb", "images", "v7", language, mediaType, fmt.Sprintf("%d", tmdbID))
+	key := cacheKey("tmdb", "images", "v9", language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, true
@@ -8075,6 +8077,11 @@ func applyTMDBImagesToTitle(title *models.Title, images *tmdbImagesResult) bool 
 			title.TextPoster = title.Poster
 		}
 		title.Poster = images.TextlessPoster
+		updated = true
+	}
+	mergedPosters := mergeRankedPosters(title.Posters, images.Posters, title.Poster)
+	if len(mergedPosters) > 0 {
+		title.Posters = mergedPosters
 		updated = true
 	}
 	if images.TextBackdrop != nil {
@@ -8244,6 +8251,44 @@ func mergeRankedBackdrops(existing, ranked []models.Image, primary, textBackdrop
 		merged = append(merged, img)
 	}
 
+	for _, img := range ranked {
+		add(img)
+	}
+	for _, img := range existing {
+		add(img)
+	}
+	return merged
+}
+
+func mergeRankedPosters(existing, ranked []models.Image, primary *models.Image) []models.Image {
+	const maxPosters = 7
+	if len(ranked) == 0 && len(existing) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	for _, img := range []*models.Image{primary} {
+		if img != nil {
+			if key := comparableArtworkURL(img.URL); key != "" {
+				seen[key] = struct{}{}
+			}
+		}
+	}
+	merged := make([]models.Image, 0, maxPosters)
+	add := func(img models.Image) {
+		if len(merged) >= maxPosters {
+			return
+		}
+		key := comparableArtworkURL(img.URL)
+		if key == "" {
+			return
+		}
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		merged = append(merged, img)
+	}
 	for _, img := range ranked {
 		add(img)
 	}

@@ -155,7 +155,7 @@ func TestGetMovieDetailsFromTMDBHydratesLogoOnServiceCacheHit(t *testing.T) {
 		t.Fatalf("seed details cache: %v", err)
 	}
 	logo := &models.Image{URL: "https://image.tmdb.org/t/p/w500/logo.png", Type: "logo"}
-	imagesCacheID := cacheKey("tmdb", "images", "v7", "en", "movie", strconv.FormatInt(tmdbID, 10))
+	imagesCacheID := cacheKey("tmdb", "images", "v9", "en", "movie", strconv.FormatInt(tmdbID, 10))
 	if err := cache.set(imagesCacheID, tmdbImagesResult{Logo: logo}); err != nil {
 		t.Fatalf("seed images cache: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestGetMovieDetailsFromTMDBHydratesLogoOnFreshResponse(t *testing.T) {
 	}
 	logo := &models.Image{URL: "https://image.tmdb.org/t/p/w500/logo.png", Type: "logo"}
 	if err := cache.set(
-		cacheKey("tmdb", "images", "v7", "en", "movie", strconv.FormatInt(tmdbID, 10)),
+		cacheKey("tmdb", "images", "v9", "en", "movie", strconv.FormatInt(tmdbID, 10)),
 		tmdbImagesResult{Logo: logo},
 	); err != nil {
 		t.Fatalf("seed images cache: %v", err)
@@ -769,12 +769,12 @@ func TestGetCachedArtworkURLsUsesMetadataLanguageForTMDBImages(t *testing.T) {
 		cache:  cache,
 	}
 
-	if err := cache.set(cacheKey("tmdb", "images", "v7", "eng", "series", "71712"), tmdbImagesResult{
+	if err := cache.set(cacheKey("tmdb", "images", "v9", "eng", "series", "71712"), tmdbImagesResult{
 		TextPoster: &models.Image{URL: "https://example.test/english-poster.jpg", Type: "poster", Language: "en"},
 	}); err != nil {
 		t.Fatalf("set english images cache: %v", err)
 	}
-	if err := cache.set(cacheKey("tmdb", "images", "v7", "fra", "series", "71712"), tmdbImagesResult{
+	if err := cache.set(cacheKey("tmdb", "images", "v9", "fra", "series", "71712"), tmdbImagesResult{
 		TextPoster: &models.Image{URL: "https://example.test/french-poster.jpg", Type: "poster", Language: "fr"},
 	}); err != nil {
 		t.Fatalf("set french images cache: %v", err)
@@ -793,7 +793,7 @@ func TestEnrichShelfArtworkFromCacheAppliesArtworkPastFetchLimit(t *testing.T) {
 		cache:  cache,
 	}
 
-	if err := cache.set(cacheKey("tmdb", "images", "v7", "eng", "movie", "1674087"), tmdbImagesResult{
+	if err := cache.set(cacheKey("tmdb", "images", "v9", "eng", "movie", "1674087"), tmdbImagesResult{
 		TextlessPoster: &models.Image{URL: "https://image.example/poster.jpg", Type: "poster"},
 		TextPoster:     &models.Image{URL: "https://image.example/text-poster.jpg", Type: "poster"},
 	}); err != nil {
@@ -1255,7 +1255,7 @@ func TestSeriesDetailsLiteFallsBackToTMDBAndKeepsLogoOnCachedProviderMismatch(t 
 	}); err != nil {
 		t.Fatalf("seed mismatched lite cache: %v", err)
 	}
-	imagesCacheID := cacheKey("tmdb", "images", "v7", "eng", "series", "107124")
+	imagesCacheID := cacheKey("tmdb", "images", "v9", "eng", "series", "107124")
 	if err := cache.set(imagesCacheID, tmdbImagesResult{
 		Logo: &models.Image{
 			URL:      "https://image.tmdb.org/t/p/w500/animaniacs-logo.png",

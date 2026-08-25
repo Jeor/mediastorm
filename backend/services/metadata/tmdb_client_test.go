@@ -151,6 +151,39 @@ func TestBuildTMDBImage(t *testing.T) {
 	}
 }
 
+func TestRankAlternatePostersUsesMetadataLanguageAndAcceptedFallbacks(t *testing.T) {
+	primary := buildTMDBImage("/primary.jpg", tmdbPosterSize, "poster")
+	items := []tmdbImageItem{
+		{FilePath: "/french-low.jpg", ISO6391: "fr", VoteAverage: 4.5},
+		{FilePath: "/spanish.jpg", ISO6391: "es", VoteAverage: 10},
+		{FilePath: "/english.jpg", ISO6391: "en", VoteAverage: 10},
+		{FilePath: "/primary.jpg", VoteAverage: 10},
+		{FilePath: "/french-high.jpg", ISO6391: "fr", VoteAverage: 8.5},
+		{FilePath: "/french-high.jpg", ISO6391: "fr", VoteAverage: 8},
+		{FilePath: "/textless.jpg", VoteAverage: 9},
+	}
+
+	got := rankAlternatePosters(items, primary, "fr")
+	if len(got) != 4 {
+		t.Fatalf("alternate poster count = %d, want 4", len(got))
+	}
+	wantSuffixes := []string{"/french-high.jpg", "/french-low.jpg", "/english.jpg", "/textless.jpg"}
+	for i, suffix := range wantSuffixes {
+		if !strings.HasSuffix(got[i].URL, suffix) {
+			t.Fatalf("poster %d URL = %q, want suffix %q", i, got[i].URL, suffix)
+		}
+	}
+	if got[0].Language != "fr" || got[0].IsFallbackLanguage {
+		t.Fatalf("preferred poster metadata = %#v", got[0])
+	}
+	if got[2].Language != "en" || !got[2].IsFallbackLanguage {
+		t.Fatalf("English fallback poster metadata = %#v", got[2])
+	}
+	if !got[3].IsTextless || got[3].IsFallbackLanguage {
+		t.Fatalf("textless poster metadata = %#v", got[3])
+	}
+}
+
 func TestParseTMDBYear(t *testing.T) {
 	if year := parseTMDBYear("2024-05-01", ""); year != 2024 {
 		t.Fatalf("expected 2024, got %d", year)

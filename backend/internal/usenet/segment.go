@@ -139,6 +139,18 @@ type segment struct {
 	boundBytes    int64
 	decoder       *rapidyenc.Decoder
 	maxReadWindow int64
+	required      int32
+}
+
+// markRequired identifies the segment currently blocking ordered delivery to
+// the consumer. Download workers may fetch later segments concurrently, but a
+// pause in this segment is the only one that can stall playback.
+func (s *segment) markRequired() {
+	atomic.StoreInt32(&s.required, 1)
+}
+
+func (s *segment) isRequired() bool {
+	return atomic.LoadInt32(&s.required) != 0
 }
 
 func (s *segment) GetReader() io.Reader {

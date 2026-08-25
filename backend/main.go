@@ -515,6 +515,7 @@ func main() {
 		log.Fatalf("failed to initialise content preferences: %v", err)
 	}
 	contentPreferencesHandler := handlers.NewContentPreferencesHandler(contentPreferencesService, userService)
+	startupPhaseStarted := time.Now()
 
 	var hiddenItemsService *hiddenitems.Service
 	if store != nil {
@@ -550,6 +551,8 @@ func main() {
 	clearLegacyAppearanceOverridesOnce(settings.Cache.Directory, userSettingsService, clientSettingsService)
 	clientsHandler := handlers.NewClientsHandler(clientsService, clientSettingsService, userService)
 	clientsHandler.SetConfigManager(cfgManager)
+	log.Printf("[startup] phase=profile-client-services duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Wire up user settings to services for per-user settings
 	debridSearchService.SetUserSettingsProvider(userSettingsService)
@@ -571,6 +574,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialise watch history: %v", err)
 	}
+	log.Printf("[startup] phase=history-service duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	// Wire up metadata service for continue watching generation
 	historyService.SetMetadataService(metadataService)
 
@@ -659,6 +664,8 @@ func main() {
 	}
 	libraryAccessService := libraryaccess.New(store.LibraryAccess(), store.LocalMedia(), store.RemoteMedia())
 	remotePlaybackReporter := remotemedia.NewPlaybackReporter(remoteMediaService)
+	log.Printf("[startup] phase=media-and-scrobble-services duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	multiRTScrobbler := history.NewMultiRealTimeScrobbler(
 		scrobbleTracker,
 		mdblistRTScrobbler,
@@ -708,19 +715,16 @@ func main() {
 	displayListHandler.SetPrequeueStore(prequeueHandler.GetStore())
 	historyHandler.SetPrequeueStore(prequeueHandler.GetStore())
 	startupHandler.SetPrequeueStore(prequeueHandler.GetStore())
-
-	// Restore magnet links from persisted prequeue entries into the magnet registry
-	// so stale torrents can be re-added after a server restart
-	for _, m := range prequeueHandler.GetStore().RestoredMagnets() {
-		debrid.RegisterMagnet(m.Provider, m.TorrentID, m.MagnetLink)
-	}
+	log.Printf("[startup] phase=prequeue-handler-wiring duration=%s", time.Since(startupPhaseStarted))
 
 	if settings.Transmux.FFmpegPath == "" {
 		settings.Transmux.FFmpegPath = "ffmpeg"
 	}
 
 	// Best-effort save so the config persists the defaults
+	startupPhaseStarted = time.Now()
 	_ = cfgManager.Save(settings)
+	log.Printf("[startup] phase=config-default-save duration=%s", time.Since(startupPhaseStarted))
 
 	// Recordings service is created early so its streaming provider can join the
 	// composite provider, letting recordings play through the shared HLS pipeline.
@@ -765,6 +769,7 @@ func main() {
 	})
 
 	// Create video handler with composite provider
+	startupPhaseStarted = time.Now()
 	videoHandler := handlers.NewVideoHandlerWithProvider(
 		settings.Transmux.Enabled,
 		settings.Transmux.FFmpegPath,
@@ -772,6 +777,7 @@ func main() {
 		settings.Transmux.HLSTempDirectory,
 		compositeProvider,
 	)
+	log.Printf("[startup] phase=video-handler duration=%s", time.Since(startupPhaseStarted))
 	videoHandler.SetThumbnailCacheDir(settings.Cache.Directory)
 	playbackHandler.SetThumbnailPrewarmer(videoHandler)
 	videoHandler.SetPrequeueStore(prequeueHandler.GetStore())
@@ -1851,6 +1857,19 @@ func main() {
 	// Start expensive restore/sync/warmup work after the socket is accepting
 	// connections so restart health checks are not blocked by external probes.
 	go func() {
+		prequeueRestoreCtx, prequeueRestoreCancel := context.WithTimeout(context.Background(), 45*time.Second)
+		if err := prequeueHandler.GetStore().RestorePersisted(prequeueRestoreCtx); err != nil {
+			log.Printf("[prequeue] Warning: persisted restore failed: %v", err)
+		}
+		prequeueRestoreCancel()
+
+		// Restore magnet links after persisted entries have been loaded so stale
+		// torrents can be re-added after a server restart.
+		for _, m := range prequeueHandler.GetStore().RestoredMagnets() {
+			debrid.RegisterMagnet(m.Provider, m.TorrentID, m.MagnetLink)
+		}
+		prequeueHandler.GetStore().CleanupExpiredPersisted(context.Background())
+
 		prewarmService.RestorePrequeueEntries()
 
 		// Start scheduler service for background tasks. Its immediate task check

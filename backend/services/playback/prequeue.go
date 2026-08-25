@@ -32,6 +32,8 @@ const (
 
 const readyStreamValidationTTL = 5 * time.Minute
 
+const persistedPrequeueOperationTimeout = 30 * time.Second
+
 const ManualPrequeueReason = "manual"
 
 var manualPrequeueExpiry = time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)
@@ -307,16 +309,29 @@ type MagnetInfo struct {
 	MagnetLink string
 }
 
-// SetStoragePath enables persistence of ready entries to the given directory.
-// Entries are saved to prequeue.json in that directory.
+// SetStoragePath configures persistence of ready entries in the given directory.
+// RestorePersisted performs the potentially expensive initial load separately so
+// callers can start serving HTTP before persisted entries are decoded.
 func (s *PrequeueStore) SetStoragePath(dir string) {
 	if dir == "" {
 		return
 	}
 	s.storagePath = filepath.Join(dir, "prequeue.json")
-	if err := s.loadFromDisk(); err != nil {
-		log.Printf("[prequeue] Warning: failed to load persisted entries: %v", err)
+}
+
+// RestorePersisted loads ready entries from PostgreSQL or disk. Database work is
+// bounded so a slow or blocked persistence layer cannot hang background startup.
+func (s *PrequeueStore) RestorePersisted(ctx context.Context) error {
+	if s.storagePath == "" {
+		return nil
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if s.useDB() {
+		return s.loadFromDB(ctx)
+	}
+	return s.loadFromDisk(ctx)
 }
 
 // RestoredMagnets returns magnet link info from restored prequeue entries.
@@ -358,10 +373,13 @@ func parseDebridStreamPath(path string) (provider, torrentID string) {
 }
 
 // loadFromDisk restores ready entries from disk (or from DB when useDB)
-func (s *PrequeueStore) loadFromDisk() error {
+func (s *PrequeueStore) loadFromDisk(ctx context.Context) error {
 	if s.useDB() {
-		return s.loadFromDB()
+		return s.loadFromDB(ctx)
 	}
+
+	started := time.Now()
+	log.Printf("[prequeue] Persisted restore started source=disk")
 
 	file, err := os.Open(s.storagePath)
 	if errors.Is(err, os.ErrNotExist) {
@@ -383,6 +401,9 @@ func (s *PrequeueStore) loadFromDisk() error {
 	now := time.Now()
 	restored := 0
 	for _, e := range stored {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if e.Reason == ManualPrequeueReason {
 			e.Persistent = true
 			e.ExpiresAt = manualPrequeueExpiry
@@ -398,35 +419,44 @@ func (s *PrequeueStore) loadFromDisk() error {
 	if restored > 0 {
 		log.Printf("[prequeue] Restored %d ready entries from disk", restored)
 	}
+	log.Printf("[prequeue] Persisted restore completed source=disk rows=%d duration=%s", restored, time.Since(started))
 	return nil
 }
 
 // loadFromDB restores ready entries from PostgreSQL.
-func (s *PrequeueStore) loadFromDB() error {
-	ctx := context.Background()
+func (s *PrequeueStore) loadFromDB(parent context.Context) error {
+	started := time.Now()
+	log.Printf("[prequeue] Persisted restore started source=database timeout=%s", persistedPrequeueOperationTimeout)
 
-	// Clean up expired entries first
-	if n, err := s.repo.DeleteExpired(ctx); err != nil {
-		log.Printf("[prequeue] Warning: failed to delete expired DB rows on load: %v", err)
-	} else if n > 0 {
-		log.Printf("[prequeue] Cleaned up %d expired rows from database on startup", n)
-	}
-
+	queryStarted := time.Now()
+	ctx, cancel := context.WithTimeout(parent, persistedPrequeueOperationTimeout)
 	blobs, err := s.repo.List(ctx)
+	cancel()
 	if err != nil {
+		log.Printf("[prequeue] Persisted restore query failed duration=%s: %v", time.Since(queryStarted), err)
 		return fmt.Errorf("load prequeue from db: %w", err)
 	}
+	var payloadBytes int
+	for _, data := range blobs {
+		payloadBytes += len(data)
+	}
+	log.Printf("[prequeue] Persisted restore query completed rows=%d payload_bytes=%d duration=%s", len(blobs), payloadBytes, time.Since(queryStarted))
 
+	decodeStarted := time.Now()
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	now := time.Now()
 	restored := 0
-	// Track which IDs we keep so we can delete superseded duplicates
-	keptIDs := make(map[string]bool)
+	// Track entries loaded in this pass separately from entries created after
+	// the listener opened.
+	restoredIDs := make(map[string]bool)
 	var supersededIDs []string
 
 	for _, data := range blobs {
+		if err := parent.Err(); err != nil {
+			s.mu.Unlock()
+			return err
+		}
 		var e PrequeueEntry
 		if err := json.Unmarshal(data, &e); err != nil {
 			log.Printf("[prequeue] Warning: failed to unmarshal DB entry: %v", err)
@@ -441,34 +471,68 @@ func (s *PrequeueStore) loadFromDB() error {
 		}
 
 		key := titleUserKey(e.TitleID, e.UserID, e.SettingsScopeKey)
+		// A request may have created a newer in-memory entry after the HTTP
+		// listener opened but before this background restore completed.
+		if currentID, exists := s.byTitleUser[key]; exists && currentID != e.ID {
+			if current, ok := s.entries[currentID]; ok && !current.CreatedAt.Before(e.CreatedAt) {
+				supersededIDs = append(supersededIDs, e.ID)
+				continue
+			}
+		}
 		// If we already have an entry for this title+user, the new one (later in created_at order) supersedes it
+		previousWasRestored := false
 		if prevID, exists := s.byTitleUser[key]; exists {
+			previousWasRestored = restoredIDs[prevID]
 			delete(s.entries, prevID)
-			delete(keptIDs, prevID)
+			delete(restoredIDs, prevID)
 			supersededIDs = append(supersededIDs, prevID)
 		}
 
 		s.entries[e.ID] = &e
 		s.byTitleUser[key] = e.ID
-		keptIDs[e.ID] = true
-		restored++
+		restoredIDs[e.ID] = true
+		if !previousWasRestored {
+			restored++
+		}
 	}
+	s.mu.Unlock()
+	log.Printf("[prequeue] Persisted restore decode completed restored=%d superseded=%d duration=%s", restored, len(supersededIDs), time.Since(decodeStarted))
 
 	// Delete superseded duplicates from DB
 	if len(supersededIDs) > 0 {
 		for _, id := range supersededIDs {
-			if err := s.repo.Delete(ctx, id); err != nil {
+			deleteCtx, deleteCancel := context.WithTimeout(parent, persistedPrequeueOperationTimeout)
+			err := s.repo.Delete(deleteCtx, id)
+			deleteCancel()
+			if err != nil {
 				log.Printf("[prequeue] Warning: failed to delete superseded DB entry %s: %v", id, err)
 			}
 		}
 		log.Printf("[prequeue] Removed %d superseded duplicate entries from database", len(supersededIDs))
-		restored -= len(supersededIDs)
 	}
 
 	if restored > 0 {
 		log.Printf("[prequeue] Restored %d ready entries from database", restored)
 	}
+	log.Printf("[prequeue] Persisted restore completed source=database rows=%d payload_bytes=%d duration=%s", restored, payloadBytes, time.Since(started))
 	return nil
+}
+
+// CleanupExpiredPersisted removes expired database rows independently of the
+// restore path. It is safe to run after the listener is accepting requests.
+func (s *PrequeueStore) CleanupExpiredPersisted(parent context.Context) {
+	if !s.useDB() {
+		return
+	}
+	started := time.Now()
+	ctx, cancel := context.WithTimeout(parent, persistedPrequeueOperationTimeout)
+	n, err := s.repo.DeleteExpired(ctx)
+	cancel()
+	if err != nil {
+		log.Printf("[prequeue] Warning: expired-row cleanup failed after %s: %v", time.Since(started), err)
+		return
+	}
+	log.Printf("[prequeue] Expired-row cleanup completed rows=%d duration=%s", n, time.Since(started))
 }
 
 // saveToDisk persists all ready entries to disk (or DB when useDB). Caller must hold s.mu.

@@ -263,7 +263,7 @@ type SeriesOrderingRepository interface {
 type PrequeueRepository interface {
 	Get(ctx context.Context, id string) ([]byte, error) // returns raw JSON
 	GetByTitleUser(ctx context.Context, titleID, userID string) ([]byte, error)
-	List(ctx context.Context) ([][]byte, error) // returns all entries as raw JSON
+	List(ctx context.Context) ([][]byte, error) // returns ready, unexpired entries as raw JSON
 	Upsert(ctx context.Context, id, titleID, userID, status string, data []byte, expiresAt interface{}) error
 	Delete(ctx context.Context, id string) error
 	DeleteExpired(ctx context.Context) (int64, error)

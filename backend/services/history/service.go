@@ -3960,6 +3960,87 @@ func episodeScopedIndexKeys(externalIDs map[string]string) []string {
 	return keys
 }
 
+type watchHistoryReconcileIndexKey struct {
+	seriesToken string
+	season      int
+	number      int
+}
+
+type watchHistoryReconcileIndex struct {
+	byEpisode  map[watchHistoryReconcileIndexKey]map[string]struct{}
+	byAbsolute map[watchHistoryReconcileIndexKey]map[string]struct{}
+}
+
+func newWatchHistoryReconcileIndex(perUser map[string]models.WatchHistoryItem) *watchHistoryReconcileIndex {
+	idx := &watchHistoryReconcileIndex{
+		byEpisode:  make(map[watchHistoryReconcileIndexKey]map[string]struct{}),
+		byAbsolute: make(map[watchHistoryReconcileIndexKey]map[string]struct{}),
+	}
+	for key, item := range perUser {
+		idx.add(key, item)
+	}
+	return idx
+}
+
+func (idx *watchHistoryReconcileIndex) add(itemKey string, item models.WatchHistoryItem) {
+	if idx == nil || item.MediaType != "episode" || item.SeasonNumber <= 0 || item.EpisodeNumber <= 0 || len(item.ExternalIDs) == 0 {
+		return
+	}
+	seriesIDs := canonicalSeriesExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs)
+	absolute, hasAbsolute := positiveExternalIDInt(item.ExternalIDs, "absoluteEpisode")
+	for provider, id := range seriesIDs {
+		provider = strings.ToLower(strings.TrimSpace(provider))
+		id = strings.ToLower(strings.TrimSpace(id))
+		if provider == "" || id == "" {
+			continue
+		}
+		seriesToken := provider + "\x00" + id
+		idx.addKey(idx.byEpisode, watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: item.EpisodeNumber}, itemKey)
+		if hasAbsolute {
+			idx.addKey(idx.byAbsolute, watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: absolute}, itemKey)
+		}
+	}
+}
+
+func (idx *watchHistoryReconcileIndex) addKey(index map[watchHistoryReconcileIndexKey]map[string]struct{}, key watchHistoryReconcileIndexKey, itemKey string) {
+	items := index[key]
+	if items == nil {
+		items = make(map[string]struct{})
+		index[key] = items
+	}
+	items[itemKey] = struct{}{}
+}
+
+func (idx *watchHistoryReconcileIndex) candidates(item models.WatchHistoryItem) map[string]struct{} {
+	result := make(map[string]struct{})
+	if idx == nil {
+		return result
+	}
+	seriesIDs := canonicalSeriesExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs)
+	absolute, hasAbsolute := positiveExternalIDInt(item.ExternalIDs, "absoluteEpisode")
+	for provider, id := range seriesIDs {
+		provider = strings.ToLower(strings.TrimSpace(provider))
+		id = strings.ToLower(strings.TrimSpace(id))
+		if provider == "" || id == "" {
+			continue
+		}
+		seriesToken := provider + "\x00" + id
+		idx.addCandidates(result, idx.byEpisode[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: item.EpisodeNumber}])
+		idx.addCandidates(result, idx.byAbsolute[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: item.EpisodeNumber}])
+		if hasAbsolute {
+			idx.addCandidates(result, idx.byEpisode[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: absolute}])
+			idx.addCandidates(result, idx.byAbsolute[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: absolute}])
+		}
+	}
+	return result
+}
+
+func (idx *watchHistoryReconcileIndex) addCandidates(dst, src map[string]struct{}) {
+	for key := range src {
+		dst[key] = struct{}{}
+	}
+}
+
 func reconcileEquivalentEpisodeWatchHistoryLocked(perUser map[string]models.WatchHistoryItem) bool {
 	if len(perUser) < 2 {
 		return false
@@ -3980,19 +4061,31 @@ func reconcileEquivalentEpisodeWatchHistoryLocked(perUser map[string]models.Watc
 		return items[i].UpdatedAt.Before(items[j].UpdatedAt)
 	})
 
+	index := newWatchHistoryReconcileIndex(perUser)
 	changed := false
 	for _, item := range items {
-		before := make(map[string]models.WatchHistoryItem, len(perUser))
-		for key, candidate := range perUser {
-			before[key] = candidate
+		if previous, exists := perUser[item.ID]; !exists || watchHistoryItemsDiffer(previous, item) {
+			changed = true
 		}
 		perUser[item.ID] = item
-		syncEquivalentEpisodeWatchHistoryLocked(perUser, item.ID, item)
-		for key, candidate := range perUser {
-			if previous, ok := before[key]; !ok || watchHistoryItemsDiffer(previous, candidate) {
-				changed = true
-				break
+		index.add(item.ID, item)
+		for key := range index.candidates(item) {
+			if key == item.ID {
+				continue
 			}
+			candidate, exists := perUser[key]
+			if !exists || candidate.MediaType != "episode" || candidate.SeasonNumber != item.SeasonNumber ||
+				!watchHistorySeriesIdentitiesCompatible(candidate, item) ||
+				!watchHistoryEquivalentEpisodeIDsMatch(candidate, item) {
+				continue
+			}
+			updated, updatedCandidate := mergeEquivalentEpisodeWatchHistoryItem(item, candidate)
+			if !updatedCandidate {
+				continue
+			}
+			perUser[key] = updated
+			index.add(key, updated)
+			changed = true
 		}
 	}
 	return changed
@@ -4028,28 +4121,37 @@ func syncEquivalentEpisodeWatchHistoryLocked(perUser map[string]models.WatchHist
 			continue
 		}
 
-		if !preferEquivalentEpisodeWatchHistoryState(item, candidate) {
+		updated, changed := mergeEquivalentEpisodeWatchHistoryItem(item, candidate)
+		if !changed {
 			continue
 		}
-
-		candidate.Watched = item.Watched
-		if item.WatchedSeconds > candidate.WatchedSeconds {
-			candidate.WatchedSeconds = item.WatchedSeconds
-		}
-		candidate.UpdatedAt = item.UpdatedAt
-		if item.Watched {
-			candidate.WatchedAt = item.WatchedAt
-		}
-		if candidate.ExternalIDs == nil {
-			candidate.ExternalIDs = make(map[string]string)
-		}
-		for k, v := range item.ExternalIDs {
-			if v != "" {
-				candidate.ExternalIDs[k] = v
-			}
-		}
-		perUser[key] = candidate
+		perUser[key] = updated
 	}
+}
+
+func mergeEquivalentEpisodeWatchHistoryItem(source, target models.WatchHistoryItem) (models.WatchHistoryItem, bool) {
+	if !preferEquivalentEpisodeWatchHistoryState(source, target) {
+		return target, false
+	}
+	updated := target
+	updated.Watched = source.Watched
+	if source.WatchedSeconds > updated.WatchedSeconds {
+		updated.WatchedSeconds = source.WatchedSeconds
+	}
+	updated.UpdatedAt = source.UpdatedAt
+	if source.Watched {
+		updated.WatchedAt = source.WatchedAt
+	}
+	updated.ExternalIDs = make(map[string]string, len(target.ExternalIDs)+len(source.ExternalIDs))
+	for k, v := range target.ExternalIDs {
+		updated.ExternalIDs[k] = v
+	}
+	for k, v := range source.ExternalIDs {
+		if v != "" {
+			updated.ExternalIDs[k] = v
+		}
+	}
+	return updated, watchHistoryItemsDiffer(target, updated)
 }
 
 func preferEquivalentEpisodeWatchHistoryState(source, target models.WatchHistoryItem) bool {
@@ -4141,14 +4243,21 @@ func (s *Service) loadWatchHistory() error {
 	defer s.mu.Unlock()
 
 	if s.useDB() {
+		loadStarted := time.Now()
 		ctx := context.Background()
+		queryStarted := time.Now()
 		allItems, err := s.store.WatchHistory().ListAll(ctx)
 		if err != nil {
 			return fmt.Errorf("load watch history from db: %w", err)
 		}
+		queryDuration := time.Since(queryStarted)
+		processingStarted := time.Now()
 		s.watchHistory = make(map[string]map[string]models.WatchHistoryItem, len(allItems))
 		persisted := make(map[historyPersistenceKey][sha256.Size]byte)
+		rowCount := 0
+		var reconcileDuration time.Duration
 		for userID, items := range allItems {
+			rowCount += len(items)
 			perUser := make(map[string]models.WatchHistoryItem, len(items))
 			for _, item := range items {
 				fingerprint, err := watchHistoryPersistenceFingerprint(item)
@@ -4160,10 +4269,14 @@ func (s *Service) loadWatchHistory() error {
 				key := item.ID
 				perUser[key] = item
 			}
+			reconcileStarted := time.Now()
 			reconcileEquivalentEpisodeWatchHistoryLocked(perUser)
+			reconcileDuration += time.Since(reconcileStarted)
 			s.watchHistory[userID] = perUser
 		}
 		s.persistedWatchHistory = persisted
+		log.Printf("[history] Startup load completed table=watch_history rows=%d users=%d query=%s processing=%s reconcile=%s total=%s",
+			rowCount, len(allItems), queryDuration, time.Since(processingStarted), reconcileDuration, time.Since(loadStarted))
 		return nil
 	}
 
@@ -5502,14 +5615,20 @@ func (s *Service) loadPlaybackProgress() error {
 	defer s.mu.Unlock()
 
 	if s.useDB() {
+		loadStarted := time.Now()
 		ctx := context.Background()
+		queryStarted := time.Now()
 		allItems, err := s.store.PlaybackProgress().ListAll(ctx)
 		if err != nil {
 			return fmt.Errorf("load playback progress from db: %w", err)
 		}
+		queryDuration := time.Since(queryStarted)
+		processingStarted := time.Now()
 		s.playbackProgress = make(map[string]map[string]models.PlaybackProgress, len(allItems))
 		persisted := make(map[historyPersistenceKey][sha256.Size]byte)
+		rowCount := 0
 		for userID, items := range allItems {
+			rowCount += len(items)
 			perUser := make(map[string]models.PlaybackProgress, len(items))
 			for _, item := range items {
 				fingerprint, err := playbackProgressPersistenceFingerprint(item)
@@ -5524,6 +5643,8 @@ func (s *Service) loadPlaybackProgress() error {
 			s.playbackProgress[userID] = perUser
 		}
 		s.persistedPlaybackProgress = persisted
+		log.Printf("[history] Startup load completed table=playback_progress rows=%d users=%d query=%s processing=%s total=%s",
+			rowCount, len(allItems), queryDuration, time.Since(processingStarted), time.Since(loadStarted))
 		return nil
 	}
 

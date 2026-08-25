@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -2333,6 +2334,79 @@ func TestReconcileEquivalentEpisodeWatchHistoryNewestStateWins(t *testing.T) {
 	if perUser["episode:tmdb:tv:37854:s23e10"].Watched {
 		t.Fatalf("expected canonical row to keep newest unwatched state: %+v", perUser["episode:tmdb:tv:37854:s23e10"])
 	}
+}
+
+func TestReconcileEquivalentEpisodeWatchHistoryFindsLegacyAbsoluteAlias(t *testing.T) {
+	older := time.Date(2026, 6, 11, 1, 2, 55, 0, time.UTC)
+	newer := older.Add(time.Hour)
+	legacyKey := "episode:tvdb:series:81797:s23e1165"
+	canonicalKey := "episode:tmdb:tv:37854:s23e10"
+	perUser := map[string]models.WatchHistoryItem{
+		legacyKey: {
+			ID: legacyKey, MediaType: "episode", ItemID: "tvdb:series:81797:s23e1165",
+			SeriesID: "tvdb:series:81797", SeasonNumber: 23, EpisodeNumber: 1165,
+			Watched: false, WatchedAt: older, UpdatedAt: older,
+			ExternalIDs: map[string]string{"tmdb": "37854", "tvdb": "81797"},
+		},
+		canonicalKey: {
+			ID: canonicalKey, MediaType: "episode", ItemID: "tmdb:tv:37854:s23e10",
+			SeriesID: "tmdb:tv:37854", SeasonNumber: 23, EpisodeNumber: 10,
+			Watched: true, WatchedAt: newer, UpdatedAt: newer,
+			ExternalIDs: map[string]string{
+				"tmdb": "37854", "tvdb": "81797", "episodeTvdb": "11700062", "absoluteEpisode": "1165",
+			},
+		},
+	}
+
+	if !reconcileEquivalentEpisodeWatchHistoryLocked(perUser) {
+		t.Fatal("expected legacy absolute alias reconciliation to change history")
+	}
+	if got := perUser[legacyKey]; !got.Watched || !got.UpdatedAt.Equal(newer) {
+		t.Fatalf("legacy alias did not receive canonical state: %+v", got)
+	}
+}
+
+func TestReconcileEquivalentEpisodeWatchHistoryScalesToLargeHistory(t *testing.T) {
+	const (
+		seriesCount     = 70
+		episodesPerShow = 50
+	)
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	perUser := make(map[string]models.WatchHistoryItem, seriesCount*episodesPerShow*2)
+	for series := 1; series <= seriesCount; series++ {
+		for episode := 1; episode <= episodesPerShow; episode++ {
+			olderKey := fmt.Sprintf("episode:tvdb:series:%d:s01e%02d", series, episode)
+			newerKey := fmt.Sprintf("episode:tmdb:tv:%d:s01e%02d", series, episode)
+			externalIDs := map[string]string{
+				"tmdb":        strconv.Itoa(series),
+				"tvdb":        strconv.Itoa(series),
+				"episodeTvdb": fmt.Sprintf("%d-%d", series, episode),
+			}
+			perUser[olderKey] = models.WatchHistoryItem{
+				ID: olderKey, MediaType: "episode", ItemID: strings.TrimPrefix(olderKey, "episode:"),
+				SeriesID: fmt.Sprintf("tvdb:series:%d", series), SeasonNumber: 1, EpisodeNumber: episode,
+				Watched: false, UpdatedAt: base, ExternalIDs: maps.Clone(externalIDs),
+			}
+			perUser[newerKey] = models.WatchHistoryItem{
+				ID: newerKey, MediaType: "episode", ItemID: strings.TrimPrefix(newerKey, "episode:"),
+				SeriesID: fmt.Sprintf("tmdb:tv:%d", series), SeasonNumber: 1, EpisodeNumber: episode,
+				Watched: true, WatchedAt: base.Add(time.Hour), UpdatedAt: base.Add(time.Hour), ExternalIDs: maps.Clone(externalIDs),
+			}
+		}
+	}
+
+	started := time.Now()
+	if !reconcileEquivalentEpisodeWatchHistoryLocked(perUser) {
+		t.Fatal("expected large history reconciliation to update provider aliases")
+	}
+	elapsed := time.Since(started)
+	if elapsed > 5*time.Second {
+		t.Fatalf("indexed reconciliation took %s for %d rows", elapsed, len(perUser))
+	}
+	if got := perUser["episode:tvdb:series:1:s01e01"]; !got.Watched {
+		t.Fatalf("older provider alias was not reconciled: %+v", got)
+	}
+	t.Logf("reconciled %d history rows in %s", len(perUser), elapsed)
 }
 
 func TestSyncEquivalentEpisodeWatchHistoryPreservesNewerManualUnwatch(t *testing.T) {

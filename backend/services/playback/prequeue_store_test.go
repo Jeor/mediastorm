@@ -14,8 +14,12 @@ import (
 )
 
 type recordingPrequeueRepository struct {
-	mu        sync.Mutex
-	upsertIDs []string
+	mu         sync.Mutex
+	upsertIDs  []string
+	deletedIDs []string
+	listBlobs  [][]byte
+	listFunc   func(context.Context) ([][]byte, error)
+	listCalls  int
 }
 
 func (r *recordingPrequeueRepository) Get(context.Context, string) ([]byte, error) {
@@ -26,8 +30,16 @@ func (r *recordingPrequeueRepository) GetByTitleUser(context.Context, string, st
 	return nil, nil
 }
 
-func (r *recordingPrequeueRepository) List(context.Context) ([][]byte, error) {
-	return nil, nil
+func (r *recordingPrequeueRepository) List(ctx context.Context) ([][]byte, error) {
+	r.mu.Lock()
+	r.listCalls++
+	listFunc := r.listFunc
+	blobs := append([][]byte(nil), r.listBlobs...)
+	r.mu.Unlock()
+	if listFunc != nil {
+		return listFunc(ctx)
+	}
+	return blobs, nil
 }
 
 func (r *recordingPrequeueRepository) Upsert(_ context.Context, id, _, _, _ string, _ []byte, _ interface{}) error {
@@ -37,7 +49,10 @@ func (r *recordingPrequeueRepository) Upsert(_ context.Context, id, _, _, _ stri
 	return nil
 }
 
-func (r *recordingPrequeueRepository) Delete(context.Context, string) error {
+func (r *recordingPrequeueRepository) Delete(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.deletedIDs = append(r.deletedIDs, id)
 	return nil
 }
 
@@ -53,6 +68,99 @@ func (r *recordingPrequeueRepository) IDs() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]string(nil), r.upsertIDs...)
+}
+
+func (r *recordingPrequeueRepository) ListCalls() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.listCalls
+}
+
+func (r *recordingPrequeueRepository) DeletedIDs() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.deletedIDs...)
+}
+
+func TestPrequeueStoreConfiguresPersistenceWithoutBlockingRestore(t *testing.T) {
+	store := NewPrequeueStore(time.Hour)
+	repo := &recordingPrequeueRepository{}
+	store.repo = repo
+
+	store.SetStoragePath(t.TempDir())
+
+	if calls := repo.ListCalls(); calls != 0 {
+		t.Fatalf("SetStoragePath performed %d restore queries; want 0", calls)
+	}
+}
+
+func TestPrequeueStoreRestorePreservesNewerRuntimeEntry(t *testing.T) {
+	now := time.Now()
+	persisted := &PrequeueEntry{
+		ID:                    "persisted-old",
+		TitleID:               "movie:1",
+		TitleName:             "Persisted",
+		UserID:                "user1",
+		SettingsScopeKey:      DefaultPrequeueSettingsScopeKey,
+		MediaType:             "movie",
+		Reason:                "details",
+		Status:                PrequeueStatusReady,
+		StreamPath:            "/debrid/torbox/old/file.mkv",
+		SelectedAudioTrack:    -1,
+		SelectedSubtitleTrack: -1,
+		CreatedAt:             now.Add(-time.Hour),
+		ExpiresAt:             now.Add(time.Hour),
+	}
+	blob, err := json.Marshal(persisted)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewPrequeueStore(time.Hour)
+	repo := &recordingPrequeueRepository{listBlobs: [][]byte{blob}}
+	store.repo = repo
+	store.SetStoragePath(t.TempDir())
+	runtimeEntry, created := store.Create("movie:1", "Runtime", "user1", "movie", 2026, nil, "details")
+	if !created {
+		t.Fatal("runtime entry was not created")
+	}
+
+	if err := store.RestorePersisted(context.Background()); err != nil {
+		t.Fatalf("RestorePersisted: %v", err)
+	}
+
+	got, ok := store.Get(runtimeEntry.ID)
+	if !ok || got.TitleName != "Runtime" {
+		t.Fatalf("newer runtime entry was replaced: %#v", got)
+	}
+	if _, ok := store.Get(persisted.ID); ok {
+		t.Fatal("older persisted entry was restored over runtime state")
+	}
+	deleted := repo.DeletedIDs()
+	if len(deleted) != 1 || deleted[0] != persisted.ID {
+		t.Fatalf("deleted IDs = %v, want [%s]", deleted, persisted.ID)
+	}
+}
+
+func TestPrequeueStoreRestoreHonorsContextDeadline(t *testing.T) {
+	store := NewPrequeueStore(time.Hour)
+	repo := &recordingPrequeueRepository{listFunc: func(ctx context.Context) ([][]byte, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}}
+	store.repo = repo
+	store.SetStoragePath(t.TempDir())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	err := store.RestorePersisted(ctx)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("RestorePersisted error = %v, want deadline exceeded", err)
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("RestorePersisted ignored deadline; elapsed=%s", elapsed)
+	}
 }
 
 func TestPrequeueStoreReadyUpdatePersistsOnlyChangedEntry(t *testing.T) {

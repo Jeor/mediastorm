@@ -91,6 +91,24 @@ type LiveChannelsResponse struct {
 
 const maxLiveChannelPageSize = 500
 
+const (
+	maxLiveChannelsRequestBody = 1 << 20 // 1 MiB
+	maxLiveChannelCategories   = 2000
+	maxLiveChannelFavoriteIDs  = 10000
+	maxLiveChannelFilterBytes  = 512
+)
+
+type liveChannelsRequest struct {
+	ProfileID     string   `json:"profileId"`
+	SourceID      string   `json:"sourceId"`
+	Offset        *int     `json:"offset,omitempty"`
+	Limit         *int     `json:"limit,omitempty"`
+	Filter        string   `json:"filter,omitempty"`
+	Categories    []string `json:"categories,omitempty"`
+	FavoriteIDs   []string `json:"favoriteIds,omitempty"`
+	FavoritesOnly bool     `json:"favoritesOnly,omitempty"`
+}
+
 func parseLiveChannelPagination(r *http.Request) (offset, limit int, paginated bool, err error) {
 	query := r.URL.Query()
 	offsetValue, hasOffset := query["offset"]
@@ -114,6 +132,113 @@ func parseLiveChannelPagination(r *http.Request) (offset, limit int, paginated b
 		}
 	}
 	return offset, limit, true, nil
+}
+
+func parseLiveChannelsRequest(w http.ResponseWriter, r *http.Request) (liveChannelsRequest, bool, error) {
+	if r.Method != http.MethodPost {
+		offset, limit, paginated, err := parseLiveChannelPagination(r)
+		if err != nil {
+			return liveChannelsRequest{}, false, err
+		}
+		query := r.URL.Query()
+		request := liveChannelsRequest{
+			ProfileID:     query.Get("profileId"),
+			SourceID:      query.Get("sourceId"),
+			Filter:        query.Get("filter"),
+			Categories:    query["category"],
+			FavoriteIDs:   query["favoriteId"],
+			FavoritesOnly: parseOptionalBool(query.Get("favoritesOnly")),
+		}
+		if paginated {
+			request.Offset = &offset
+			request.Limit = &limit
+		}
+		return normalizeLiveChannelsRequest(request)
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxLiveChannelsRequestBody)
+	decoder := json.NewDecoder(r.Body)
+	var request liveChannelsRequest
+	if err := decoder.Decode(&request); err != nil {
+		return liveChannelsRequest{}, false, fmt.Errorf("invalid JSON request: %w", err)
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		return liveChannelsRequest{}, false, err
+	}
+	return normalizeLiveChannelsRequest(request)
+}
+
+func ensureJSONEOF(decoder *json.Decoder) error {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return errors.New("request body must contain one JSON object")
+		}
+		return fmt.Errorf("invalid JSON request: %w", err)
+	}
+	return nil
+}
+
+func normalizeLiveChannelsRequest(request liveChannelsRequest) (liveChannelsRequest, bool, error) {
+	request.ProfileID = strings.TrimSpace(request.ProfileID)
+	request.SourceID = strings.TrimSpace(request.SourceID)
+	request.Filter = strings.TrimSpace(request.Filter)
+
+	if len(request.Categories) > maxLiveChannelCategories {
+		return liveChannelsRequest{}, false, fmt.Errorf("categories must contain at most %d values", maxLiveChannelCategories)
+	}
+	if len(request.FavoriteIDs) > maxLiveChannelFavoriteIDs {
+		return liveChannelsRequest{}, false, fmt.Errorf("favoriteIds must contain at most %d values", maxLiveChannelFavoriteIDs)
+	}
+	if len(request.Filter) > maxLiveChannelFilterBytes {
+		return liveChannelsRequest{}, false, fmt.Errorf("filter must be at most %d bytes", maxLiveChannelFilterBytes)
+	}
+	request.Categories = normalizedLiveChannelValues(request.Categories)
+	request.FavoriteIDs = normalizedLiveChannelValues(request.FavoriteIDs)
+
+	paginated := request.Offset != nil || request.Limit != nil
+	if !paginated {
+		return request, false, nil
+	}
+	offset := 0
+	limit := 250
+	if request.Offset != nil {
+		offset = *request.Offset
+		if offset < 0 {
+			return liveChannelsRequest{}, false, errors.New("offset must be a non-negative integer")
+		}
+	}
+	if request.Limit != nil {
+		limit = *request.Limit
+		if limit <= 0 || limit > maxLiveChannelPageSize {
+			return liveChannelsRequest{}, false, fmt.Errorf("limit must be between 1 and %d", maxLiveChannelPageSize)
+		}
+	}
+	request.Offset = &offset
+	request.Limit = &limit
+	return request, true, nil
+}
+
+func normalizedLiveChannelValues(values []string) []string {
+	normalized := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		normalized = append(normalized, value)
+	}
+	return normalized
+}
+
+func parseOptionalBool(value string) bool {
+	parsed, _ := strconv.ParseBool(value)
+	return parsed
 }
 
 // CategoryInfo represents category metadata.
@@ -1703,11 +1828,14 @@ func (h *LiveHandler) isXtreamMode() bool {
 		settings.Live.XtreamPassword != ""
 }
 
-// resolveProfileLiveSource resolves the IPTV source for the current request.
-// If a profileId query parameter is provided and the profile has per-profile
-// IPTV overrides, those are merged with the global settings.
+// resolveProfileLiveSource resolves the IPTV source for a legacy query-based
+// request. If the profile has per-profile IPTV overrides, those are merged
+// with the global settings.
 func (h *LiveHandler) resolveProfileLiveSource(r *http.Request, globalSettings config.Settings) models.ResolvedLiveSource {
-	profileID := r.URL.Query().Get("profileId")
+	return h.resolveProfileLiveSourceForID(r.URL.Query().Get("profileId"), globalSettings)
+}
+
+func (h *LiveHandler) resolveProfileLiveSourceForID(profileID string, globalSettings config.Settings) models.ResolvedLiveSource {
 	globalSettings = config.FilterSettingsForProfile(globalSettings, profileID)
 	global := models.ResolvedLiveSource{
 		Mode:                    globalSettings.Live.Mode,
@@ -1750,13 +1878,24 @@ func (h *LiveHandler) resolveProfileLiveSource(r *http.Request, globalSettings c
 func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	requestStartedAt := time.Now()
 	var allChannels []LiveChannel
-	offset, limit, paginated, err := parseLiveChannelPagination(r)
+	request, paginated, err := parseLiveChannelsRequest(w, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadRequest)
+		status := http.StatusBadRequest
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			status = http.StatusRequestEntityTooLarge
+		}
+		http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), status)
 		return
 	}
-	profileID := strings.TrimSpace(r.URL.Query().Get("profileId"))
-	requestedSourceID := strings.TrimSpace(r.URL.Query().Get("sourceId"))
+	offset := 0
+	limit := 0
+	if paginated {
+		offset = *request.Offset
+		limit = *request.Limit
+	}
+	profileID := request.ProfileID
+	requestedSourceID := request.SourceID
 	log.Printf(
 		"[live] GetChannels request start profileId=%q sourceId=%q paginated=%t offset=%d limit=%d categoryCount=%d favoriteCount=%d favoritesOnly=%q filterLength=%d",
 		profileID,
@@ -1764,10 +1903,10 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 		paginated,
 		offset,
 		limit,
-		len(r.URL.Query()["category"]),
-		len(r.URL.Query()["favoriteId"]),
-		r.URL.Query().Get("favoritesOnly"),
-		len(strings.TrimSpace(r.URL.Query().Get("filter"))),
+		len(request.Categories),
+		len(request.FavoriteIDs),
+		strconv.FormatBool(request.FavoritesOnly),
+		len(request.Filter),
 	)
 
 	settings, err := h.cfgManager.Load()
@@ -1777,7 +1916,7 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	src := h.resolveProfileLiveSource(r, settings)
+	src := h.resolveProfileLiveSourceForID(profileID, settings)
 	filter := config.LiveTVFilterSettings{
 		EnabledCategories: src.EnabledCategories,
 		MaxChannels:       src.MaxChannels,
@@ -1866,18 +2005,18 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	requestedCategories := make(map[string]struct{})
-	for _, category := range r.URL.Query()["category"] {
+	for _, category := range request.Categories {
 		if category = strings.TrimSpace(category); category != "" {
 			requestedCategories[category] = struct{}{}
 		}
 	}
 	requestedFavoriteIDs := make(map[string]struct{})
-	for _, channelID := range r.URL.Query()["favoriteId"] {
+	for _, channelID := range request.FavoriteIDs {
 		if channelID = strings.TrimSpace(channelID); channelID != "" {
 			requestedFavoriteIDs[channelID] = struct{}{}
 		}
 	}
-	favoritesOnly, _ := strconv.ParseBool(r.URL.Query().Get("favoritesOnly"))
+	favoritesOnly := request.FavoritesOnly
 	hasValidCategorySelection := false
 	for _, category := range availableCategories {
 		if _, selected := requestedCategories[category]; selected {
@@ -1898,7 +2037,7 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	filteredChannels = filterLiveChannelsByText(
 		filteredChannels,
-		r.URL.Query().Get("filter"),
+		request.Filter,
 		requestedFavoriteIDs,
 		h.epgService,
 		time.Duration(src.EPGTimeOffsetMinutes)*time.Minute,

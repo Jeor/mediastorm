@@ -400,7 +400,7 @@ func Register(
 
 	protected.HandleFunc("/live/playlist", liveHandler.FetchPlaylist).Methods(http.MethodGet)
 	protected.HandleFunc("/live/playlist", handleOptions).Methods(http.MethodOptions)
-	protected.HandleFunc("/live/channels", liveHandler.GetChannels).Methods(http.MethodGet)
+	protected.HandleFunc("/live/channels", liveHandler.GetChannels).Methods(http.MethodGet, http.MethodPost)
 	protected.HandleFunc("/live/channels", handleOptions).Methods(http.MethodOptions)
 	protected.HandleFunc("/live/stremio/streams", liveHandler.GetStremioStreamOptions).Methods(http.MethodGet)
 	protected.HandleFunc("/live/stremio/streams", handleOptions).Methods(http.MethodOptions)

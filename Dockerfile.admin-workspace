@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.7
+FROM --platform=$TARGETPLATFORM golang:1.26.5-bookworm@sha256:1ecb7edf62a0408027bd5729dfd6b1b8766e578e8df93995b225dfd0944eb651 AS builder
+
+WORKDIR /src
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/go.mod backend/go.sum ./
+ENV GOTOOLCHAIN=local
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked go mod download
+
+COPY backend/ ./
+ARG TARGETOS
+ARG TARGETARCH
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
+    mkdir -p /out \
+    && test "$TARGETOS" = "linux" \
+    && CGO_ENABLED=1 GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -trimpath -o /out/mediastorm .
+
+FROM godver3/mediastorm:latest
+ARG SOURCE_COMMIT=unknown
+LABEL org.opencontainers.image.title="MediaStorm admin workspace test image" \
+      org.opencontainers.image.source="https://github.com/Jeor/mediastorm" \
+      org.opencontainers.image.revision="$SOURCE_COMMIT"
+
+USER root
+COPY --from=builder --chmod=0755 /out/mediastorm /tmp/mediastorm-custom
+RUN install -m 0755 /tmp/mediastorm-custom /app/mediastorm \
+    && install -m 0755 /tmp/mediastorm-custom /app/strmr \
+    && install -m 0755 /tmp/mediastorm-custom /root/strmr \
+    && if [ ! -L /root/mediastorm ]; then install -m 0755 /tmp/mediastorm-custom /root/mediastorm; fi \
+    && rm /tmp/mediastorm-custom

@@ -7,7 +7,7 @@ on:
     paths:
       - backend/**
       - Dockerfile.admin-workspace
-      - .github/workflows/publish-admin-workspace-image.yml
+      - .github/workflows/publish-admin-redesign-image.yml
 
 permissions:
   contents: read

@@ -1854,6 +1854,54 @@ func TestMetadataHandler_GetPersonalizedRecommendations_CachesUnchangedWatchStat
 	}
 }
 
+func TestMetadataHandler_GetPersonalizedRecommendations_DoesNotCacheEmptyResultWithEligibleSeed(t *testing.T) {
+	now := time.Now().UTC()
+	fake := &fakeMetadataService{}
+	handler := NewMetadataHandler(fake, testConfigManager(t))
+	handler.HistoryService = &fakeMetadataHistoryService{progress: []models.PlaybackProgress{{
+		ID:             "episode:tmdb:tv:233629:s01e08",
+		MediaType:      "episode",
+		ItemID:         "tmdb:tv:233629:s01e08",
+		SeriesID:       "tmdb:tv:233629",
+		SeriesName:     "Seed Series",
+		PercentWatched: 41.6,
+		UpdatedAt:      now.Add(-10 * 24 * time.Hour),
+		ExternalIDs:    map[string]string{"tmdb": "233629"},
+	}}}
+
+	request := func() PersonalizedRecommendationsResponse {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/api/recommendations/personalized?userId=user1&limitPerType=1", nil)
+		handler.GetPersonalizedRecommendations(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var payload PersonalizedRecommendationsResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		return payload
+	}
+
+	first := request()
+	if first.SeedCount != 1 || len(first.Items) != 0 {
+		t.Fatalf("first response seeds=%d items=%d, want one seed and no candidates", first.SeedCount, len(first.Items))
+	}
+
+	fake.similarByKey = map[string][]models.Title{
+		"series:233629": {{
+			ID:        "tmdb:tv:999",
+			Name:      "Recovered Recommendation",
+			MediaType: "series",
+			TMDBID:    999,
+		}},
+	}
+	second := request()
+	if len(second.Items) != 1 || second.Items[0].Title.TMDBID != 999 {
+		t.Fatalf("second response should rebuild after transient empty result, got %+v", second.Items)
+	}
+}
+
 func TestPersonalizedRecommendationsCacheKeyChangesWithProgress(t *testing.T) {
 	now := time.Now().UTC()
 	progress := []models.PlaybackProgress{{
@@ -1869,6 +1917,25 @@ func TestPersonalizedRecommendationsCacheKeyChangesWithProgress(t *testing.T) {
 	second := personalizedRecommendationsCacheKey("user1", 14, 20, nil, progress)
 	if first == second {
 		t.Fatalf("cache key did not change after progress update: %q", first)
+	}
+}
+
+func TestPersonalizedRecommendationsCacheKeyChangesWithExternalIDs(t *testing.T) {
+	now := time.Now().UTC()
+	progress := []models.PlaybackProgress{{
+		ID:             "episode:tvdb:series:417257:s01e08",
+		MediaType:      "episode",
+		ItemID:         "tvdb:series:417257:s01e08",
+		SeriesID:       "tvdb:series:417257",
+		PercentWatched: 41.6,
+		UpdatedAt:      now,
+		ExternalIDs:    map[string]string{"tvdb": "417257"},
+	}}
+	first := personalizedRecommendationsCacheKey("user1", 14, 20, nil, progress)
+	progress[0].ExternalIDs["tmdb"] = "233629"
+	second := personalizedRecommendationsCacheKey("user1", 14, 20, nil, progress)
+	if first == second {
+		t.Fatalf("cache key did not change after TMDB enrichment: %q", first)
 	}
 }
 

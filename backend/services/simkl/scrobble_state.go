@@ -2,6 +2,7 @@ package simkl
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"novastream/models"
+	"novastream/services/realtimesessions"
 )
 
 type scrobbleState int
@@ -35,6 +37,11 @@ type ScrobbleStateTracker struct {
 	scrobbler       *Scrobbler
 	refreshInterval time.Duration
 	staleTimeout    time.Duration
+	registry        *realtimesessions.Registry
+}
+
+func (t *ScrobbleStateTracker) SetSessionRegistry(registry *realtimesessions.Registry) {
+	t.registry = registry
 }
 
 func NewScrobbleStateTracker(client *Client, scrobbler *Scrobbler, refreshInterval time.Duration) *ScrobbleStateTracker {
@@ -87,6 +94,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 				logScrobbleSuccess("pause", userID, key, req, resp)
 				sess.state = statePaused
 				sess.lastAPICall = now
+				t.registry.Record("simkl", userID, "paused", "", update, percentWatched)
 			}
 		}
 		return
@@ -100,6 +108,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 			logScrobbleSuccess("start", userID, key, req, resp)
 			sess.state = stateWatching
 			sess.lastAPICall = now
+			t.registry.Record("simkl", userID, "playing", "", update, percentWatched)
 		}
 	case stateWatching:
 		if now.Sub(sess.lastAPICall) >= t.refreshInterval {
@@ -108,6 +117,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 			} else {
 				logScrobbleSuccess("refresh", userID, key, req, resp)
 				sess.lastAPICall = now
+				t.registry.Record("simkl", userID, "playing", "", update, percentWatched)
 			}
 		}
 	}
@@ -140,6 +150,17 @@ func (t *ScrobbleStateTracker) StopSession(userID string, update models.Playback
 	}
 	logScrobbleSuccess("stop", userID, key, req, resp)
 	t.scrobbler.noteRecentStop(userID, update)
+	t.registry.Remove("simkl", userID, update)
+}
+
+func (t *ScrobbleStateTracker) CleanupRealtimeSession(_ context.Context, session models.RealtimeScrobbleSession) error {
+	account := t.scrobbler.getAccountForUser(session.UserID)
+	if account == nil || account.ClientID == "" || account.AccessToken == "" {
+		return fmt.Errorf("no Simkl credentials for user %s", session.UserID)
+	}
+	req := BuildScrobbleRequest(session.Update, session.PercentWatched)
+	_, err := t.client.ScrobbleStop(account.ClientID, account.AccessToken, req)
+	return err
 }
 
 func logScrobbleSuccess(event, userID, key string, req ScrobbleRequest, resp *ScrobbleResponse) {

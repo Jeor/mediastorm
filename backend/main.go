@@ -57,6 +57,7 @@ import (
 	"novastream/services/playback"
 	"novastream/services/plex"
 	"novastream/services/prewarm"
+	"novastream/services/realtimesessions"
 	"novastream/services/recordings"
 	"novastream/services/remoteaccess"
 	"novastream/services/remotemedia"
@@ -621,6 +622,20 @@ func main() {
 	simklRTScrobbler := simkl.NewScrobbleStateTracker(simklClient, simklScrobbler, 15*time.Minute)
 	go simklRTScrobbler.StartCleanup(context.Background())
 
+	var realtimeSessionStore realtimesessions.Store = realtimesessions.NewMemoryStore()
+	if store != nil {
+		realtimeSessionStore = store.RealtimeScrobbleSessions()
+	}
+	realtimeSessionRegistry := realtimesessions.New(realtimeSessionStore, time.Hour)
+	scrobbleTracker.SetSessionRegistry(realtimeSessionRegistry)
+	mdblistRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
+	simklRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
+	scrobRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
+	realtimeSessionRegistry.RegisterCleaner("trakt", scrobbleTracker)
+	realtimeSessionRegistry.RegisterCleaner("mdblist", mdblistRTScrobbler)
+	realtimeSessionRegistry.RegisterCleaner("simkl", simklRTScrobbler)
+	realtimeSessionRegistry.RegisterCleaner("scrob", scrobRTScrobbler)
+
 	// Wire up multi-scrobblers that fan out to all enabled providers
 	multiScrobbler := history.NewMultiScrobbler(traktScrobbler, mdblistScrobbler, simklScrobbler, scrobScrobbler)
 	historyService.SetTraktScrobbler(multiScrobbler)
@@ -807,6 +822,11 @@ func main() {
 	videoHandler.GetHLSManager().AddPlaybackActivityObserver(notificationService)
 	handlers.GetStreamTracker().AddPlaybackActivityObserver(notificationService)
 	historyHandler.SetActivePlaybackTrackers(handlers.GetStreamTracker())
+	cleanupDashboard := handlers.NewAdminHandler(videoHandler.GetHLSManager())
+	cleanupDashboard.SetProgressService(historyService)
+	cleanupDashboard.SetUserService(userService)
+	realtimeSessionRegistry.SetActivePlaybackProvider(cleanupDashboard)
+	go realtimeSessionRegistry.Start(context.Background())
 
 	if videoHandler != nil && settings.WebDAV.Enabled {
 		videoHandler.ConfigureLocalWebDAVAccess(localBaseURL, settings.WebDAV.Prefix, settings.WebDAV.Username, settings.WebDAV.Password)

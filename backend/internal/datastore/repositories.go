@@ -250,6 +250,14 @@ type PlaybackProgressRepository interface {
 	Count(ctx context.Context) (int64, error)
 }
 
+// RealtimeScrobbleSessionRepository stores provider-side playback sessions so
+// cleanup can continue across backend restarts.
+type RealtimeScrobbleSessionRepository interface {
+	Upsert(ctx context.Context, session *models.RealtimeScrobbleSession) error
+	List(ctx context.Context) ([]models.RealtimeScrobbleSession, error)
+	Delete(ctx context.Context, provider, userID, mediaType, itemID string) error
+}
+
 // ContentPreferencesRepository manages per-content audio/subtitle preferences.
 type ContentPreferencesRepository interface {
 	Get(ctx context.Context, userID, contentID string) (*models.ContentPreference, error)

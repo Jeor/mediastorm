@@ -495,12 +495,22 @@ func normalizePlex(library *models.RemoteMediaLibrary, source []plex.PlexLibrary
 			posterPath = item.GrandparentThumb
 			backdropPath = item.GrandparentArt
 		}
-		exts := plexExternalIDs(item.Guid)
+		guids := item.Guid
+		year := item.Year
+		if item.Type == "episode" {
+			if len(item.GrandparentGuid) > 0 {
+				guids = item.GrandparentGuid
+			}
+			if item.GrandparentYear > 0 {
+				year = item.GrandparentYear
+			}
+		}
+		exts := plexExternalIDs(guids)
 		for _, media := range item.Media {
 			for _, part := range media.Part {
 				externalMediaID := strconv.FormatInt(part.ID, 10)
 				v := models.RemoteMediaItem{ID: stableItemID(library.ID, item.RatingKey, externalMediaID), ExternalItemID: item.RatingKey, ExternalMediaID: externalMediaID, GroupKey: groupKey,
-					LibraryType: library.Type, Title: title, Year: item.Year, Overview: item.Summary, Certification: item.ContentRating,
+					LibraryType: library.Type, Title: title, Year: year, Overview: item.Summary, Certification: item.ContentRating,
 					SeasonNumber: item.ParentIndex, EpisodeNumber: item.Index, EpisodeTitle: episodeTitle, ExternalIDs: exts,
 					FileName: filepath.Base(part.File), Container: part.Container, VideoCodec: media.VideoCodec, AudioCodec: media.AudioCodec,
 					Width: media.Width, Height: media.Height, HDRFormat: media.VideoDynamicRange, DurationSeconds: float64(item.Duration) / 1000, SizeBytes: part.Size, CreatedAt: createdAt, UpdatedAt: now,

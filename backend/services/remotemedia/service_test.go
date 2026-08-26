@@ -292,6 +292,34 @@ func TestNormalizePlexMovieParts(t *testing.T) {
 	}
 }
 
+func TestNormalizePlexEpisodeUsesParentShowIdentity(t *testing.T) {
+	library := &models.RemoteMediaLibrary{ID: "lib", Type: models.LocalMediaLibraryTypeShow, Provider: models.MediaSourcePlex}
+	items := normalizePlex(library, []plex.PlexLibraryItem{{
+		RatingKey: "episode-1", GrandparentRatingKey: "show-1", GrandparentTitle: "World War II with Tom Hanks",
+		Title: "The Beginning", Type: "episode", Year: 2025, GrandparentYear: 2026, ParentIndex: 1, Index: 1,
+		Guid:            []plex.PlexGuid{{ID: "imdb://tt40556496"}, {ID: "tmdb://7060577"}, {ID: "tvdb://11564259"}},
+		GrandparentGuid: []plex.PlexGuid{{ID: "imdb://tt40385200"}, {ID: "tmdb://316992"}, {ID: "tvdb://472884"}},
+		Media:           []plex.PlexMedia{{Part: []plex.PlexPart{{ID: 7, Key: "/library/parts/7/file.mkv", File: "/shows/episode.mkv"}}}},
+	}})
+	if len(items) != 1 {
+		t.Fatalf("len(items)=%d, want 1", len(items))
+	}
+	item := items[0]
+	if item.Year != 2026 {
+		t.Fatalf("year=%d, want parent show year 2026", item.Year)
+	}
+	if item.ExternalIDs.IMDB != "tt40385200" || item.ExternalIDs.TMDB != "316992" || item.ExternalIDs.TVDB != "472884" {
+		t.Fatalf("external IDs=%#v, want parent show IDs", item.ExternalIDs)
+	}
+	if got := remoteCatalogTitleID(&item); got != "tmdb:tv:316992" {
+		t.Fatalf("titleID=%q, want tmdb:tv:316992", got)
+	}
+	group := groupItems(library, items, false)[0]
+	if !matches(group, models.LocalMediaMatchQuery{MediaType: "series", Title: "Different localized title", Year: 2026, TMDBID: "316992"}) {
+		t.Fatal("expected ordinary details page to match the Plex group by parent show ID")
+	}
+}
+
 func TestRemoteMediaItemProviderDataSurvivesJSONRoundTrip(t *testing.T) {
 	// Backup/restore must keep partKey; previously json:"-" dropped it and broke Plex playback.
 	item := models.RemoteMediaItem{

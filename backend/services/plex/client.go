@@ -800,25 +800,30 @@ type PlexMedia struct {
 	Part              []PlexPart `json:"Part"`
 }
 type PlexLibraryItem struct {
-	RatingKey            string      `json:"ratingKey"`
-	GrandparentRatingKey string      `json:"grandparentRatingKey,omitempty"`
-	Title                string      `json:"title"`
-	GrandparentTitle     string      `json:"grandparentTitle,omitempty"`
-	Type                 string      `json:"type"`
-	Year                 int         `json:"year,omitempty"`
-	Summary              string      `json:"summary,omitempty"`
-	ContentRating        string      `json:"contentRating,omitempty"`
-	Duration             int64       `json:"duration,omitempty"`
-	AddedAt              int64       `json:"addedAt,omitempty"`
-	Thumb                string      `json:"thumb,omitempty"`
-	Art                  string      `json:"art,omitempty"`
-	GrandparentThumb     string      `json:"grandparentThumb,omitempty"`
-	GrandparentArt       string      `json:"grandparentArt,omitempty"`
-	Index                int         `json:"index,omitempty"`
-	ParentIndex          int         `json:"parentIndex,omitempty"`
-	GUID                 string      `json:"guid,omitempty"`
-	Guid                 []PlexGuid  `json:"Guid,omitempty"`
-	Media                []PlexMedia `json:"Media,omitempty"`
+	RatingKey            string `json:"ratingKey"`
+	GrandparentRatingKey string `json:"grandparentRatingKey,omitempty"`
+	// GrandparentGuid and GrandparentYear are populated by GetServerLibraryItems
+	// for episodes. Plex's type=4 response exposes episode-level provider GUIDs,
+	// but consumers matching/scrobbling a series need the parent show's IDs.
+	GrandparentGuid  []PlexGuid  `json:"-"`
+	GrandparentYear  int         `json:"-"`
+	Title            string      `json:"title"`
+	GrandparentTitle string      `json:"grandparentTitle,omitempty"`
+	Type             string      `json:"type"`
+	Year             int         `json:"year,omitempty"`
+	Summary          string      `json:"summary,omitempty"`
+	ContentRating    string      `json:"contentRating,omitempty"`
+	Duration         int64       `json:"duration,omitempty"`
+	AddedAt          int64       `json:"addedAt,omitempty"`
+	Thumb            string      `json:"thumb,omitempty"`
+	Art              string      `json:"art,omitempty"`
+	GrandparentThumb string      `json:"grandparentThumb,omitempty"`
+	GrandparentArt   string      `json:"grandparentArt,omitempty"`
+	Index            int         `json:"index,omitempty"`
+	ParentIndex      int         `json:"parentIndex,omitempty"`
+	GUID             string      `json:"guid,omitempty"`
+	Guid             []PlexGuid  `json:"Guid,omitempty"`
+	Media            []PlexMedia `json:"Media,omitempty"`
 }
 
 // WatchHistoryItem represents an item from Plex watch history
@@ -1041,6 +1046,32 @@ func (c *Client) GetServerLibraryItems(server PlexResource, sectionID, libraryTy
 	if libraryType == "show" {
 		params.Set("type", "4")
 	}
+	items, err := c.getServerLibraryItems(server, base, sectionID, params)
+	if err != nil || libraryType != "show" {
+		return items, err
+	}
+
+	showParams := url.Values{"includeGuids": {"1"}, "type": {"2"}}
+	shows, err := c.getServerLibraryItems(server, base, sectionID, showParams)
+	if err != nil {
+		return nil, err
+	}
+	parents := make(map[string]PlexLibraryItem, len(shows))
+	for _, show := range shows {
+		parents[show.RatingKey] = show
+	}
+	for i := range items {
+		parent, ok := parents[items[i].GrandparentRatingKey]
+		if !ok {
+			continue
+		}
+		items[i].GrandparentGuid = append([]PlexGuid(nil), parent.Guid...)
+		items[i].GrandparentYear = parent.Year
+	}
+	return items, nil
+}
+
+func (c *Client) getServerLibraryItems(server PlexResource, base, sectionID string, params url.Values) ([]PlexLibraryItem, error) {
 	start := 0
 	items := []PlexLibraryItem{}
 	for {

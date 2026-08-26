@@ -3,6 +3,7 @@ package watchrooms
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -372,19 +373,23 @@ func TestCreateJoinAndUpdateWatchRoom(t *testing.T) {
 	}
 }
 
-func TestExternalInvitationJoinsGuestWithoutLocalProfile(t *testing.T) {
+func TestExternalInvitationCoexistsWithLocalProfileInvite(t *testing.T) {
 	repo := &fakeRoomRepo{}
 	svc := New(repo, fakeProfiles{
-		"host": {ID: "host", AccountID: "home", Name: "Host", AllowShareLinks: true},
+		"host":  {ID: "host", AccountID: "home", Name: "Host", AllowShareLinks: true},
+		"local": {ID: "local", AccountID: "home", Name: "Local"},
 	}, fakeAccounts{"home": {ID: "home", Username: "home"}})
 	now := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
 	svc.now = func() time.Time { return now }
 
 	room, err := svc.Create(context.Background(), "home", "host", models.WatchRoomCreate{
-		Title: "Movie", MediaType: "movie", ItemID: "tmdb:movie:1", Capabilities: supportedCapabilities,
+		Title: "Movie", MediaType: "movie", ItemID: "tmdb:movie:1", InviteeProfileIDs: []string{"local"}, Capabilities: supportedCapabilities,
 	})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
+	}
+	if !repo.invites["local"] {
+		t.Fatal("local profile invitation was not retained")
 	}
 	invite, err := svc.CreateExternalInvitation(context.Background(), "home", "host", room.ID)
 	if err != nil {
@@ -396,6 +401,11 @@ func TestExternalInvitationJoinsGuestWithoutLocalProfile(t *testing.T) {
 	resolved, err := svc.ResolveExternalInvitation(context.Background(), invite.Token, false)
 	if err != nil || resolved.RoomID != room.ID {
 		t.Fatalf("ResolveExternalInvitation() = %#v, %v", resolved, err)
+	}
+	compactCode := strings.ToLower(strings.ReplaceAll(invite.ShortCode, "-", ""))
+	resolvedByCompactCode, err := svc.ResolveExternalInvitation(context.Background(), compactCode, true)
+	if err != nil || resolvedByCompactCode.RoomID != room.ID {
+		t.Fatalf("ResolveExternalInvitation(compact code) = %#v, %v", resolvedByCompactCode, err)
 	}
 	guestRoom, err := svc.JoinExternalGuest(context.Background(), resolved, "browser-1", "Outside Guest", "browser", models.WatchRoomClientCapabilities{
 		StateSync: true, ProtocolVersion: 1,

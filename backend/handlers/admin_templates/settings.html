@@ -11017,11 +11017,14 @@
                     ? (inheritanceInfo.isOverridden ? ' field-overridden' : ' field-inherited')
                     : '';
                 const fieldInputId = (sectionKey+'_'+fieldKey).replace(/\./g, '_');
+                const requiredForBadge = fieldDef.requiredFor
+                    ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required for ' + escapeHtml(fieldDef.requiredFor) + '</span>'
+                    : '';
                 return {
                     group: fieldDef.group || '',
                     groupLabel: fieldDef.groupLabel || '',
                     groupDescription: fieldDef.groupDescription || '',
-                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+requiredForBadge+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
             .filter(Boolean);

@@ -149,6 +149,59 @@
       box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
     }
 
+    .watch-party-panel {
+      position: absolute;
+      top: clamp(0.75rem, 2vw, 1.25rem);
+      right: clamp(0.75rem, 2vw, 1.25rem);
+      z-index: 7;
+      width: min(280px, 32%);
+      padding: 0.8rem 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      background: rgba(8, 10, 14, 0.82);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(14px);
+    }
+
+    .watch-party-panel-title {
+      margin-bottom: 0.55rem;
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .watch-party-member {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.28rem 0;
+      color: #e7eaf0;
+      font-size: 0.82rem;
+    }
+
+    .watch-party-member-dot {
+      width: 0.52rem;
+      height: 0.52rem;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: #64748b;
+    }
+
+    .watch-party-member.is-ready .watch-party-member-dot { background: #4ade80; }
+    .watch-party-member.is-loading .watch-party-member-dot { background: #fbbf24; }
+    .watch-party-member-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .watch-party-member-state { color: var(--muted); font-size: 0.72rem; }
+
+    .btn:disabled,
+    .seek:disabled {
+      opacity: 0.34;
+      filter: grayscale(1);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     #videoHost {
       position: relative;
       height: 100%;
@@ -1151,6 +1204,8 @@
     let watchPartySyncTimer = null;
     let watchPartySyncInFlight = false;
     let watchPartyReadySent = false;
+    let watchPartyReadyInFlight = false;
+    let watchPartyPlaybackAllowed = false;
 
     document.addEventListener('DOMContentLoaded', safeInit);
     window.addEventListener('beforeunload', () => {
@@ -1703,6 +1758,7 @@
         attemptAutoplay(video);
         startKeepalive();
         startProgressTracking();
+        startWatchPartySync();
       } catch (error) {
         renderLoading(`Web player failed: ${error.message || String(error)}`, true);
         if (options.throwOnError) throw error;
@@ -1813,8 +1869,9 @@
                far enough to fire canplay without it. Mirrors the admin player. -->
           <video id="webPlayer" playsinline webkit-playsinline autoplay controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"></video>
           <div id="subtitleOverlay" class="subtitle-overlay"></div>
+          ${WATCH_PARTY_MODE ? `<aside id="watchPartyPanel" class="watch-party-panel desktop-only" aria-label="Watching Together"><div class="watch-party-panel-title">Watching Together</div><div id="watchPartyMembers"></div></aside>` : ''}
           <div id="skipSegmentPrompt" class="skip-segment-prompt">
-            <button id="skipSegmentButton" class="skip-segment-button" type="button" onclick="skipActiveWebSegment()"></button>
+            <button id="skipSegmentButton" class="skip-segment-button" type="button" onclick="skipActiveWebSegment()" ${WATCH_PARTY_MODE ? 'disabled aria-disabled="true" title="The host controls playback"' : ''}></button>
             <label class="web-auto-skip-control" title="Remember on this browser">
               <input class="web-auto-skip-toggle" type="checkbox" data-skip-type="intro" onchange="setWebAutoSkipPreference(this.checked, this.dataset.skipType)">
               <span>Auto</span>
@@ -1832,7 +1889,7 @@
                   <span>Auto-skip credits</span>
                 </label>
                 <div class="up-next-actions">
-                  <button class="btn btn-primary" type="button" onclick="playNextEpisode()">Watch Now</button>
+                  <button class="btn btn-primary" type="button" onclick="playNextEpisode()" ${WATCH_PARTY_MODE ? 'disabled aria-disabled="true" title="The host controls playback"' : ''}>Watch Now</button>
                   <button class="btn" type="button" onclick="dismissUpNext()">Dismiss</button>
                 </div>
               </div>
@@ -1851,14 +1908,14 @@
           <button class="btn icon-btn nav-back desktop-only" onclick="goBackToWatch()" aria-label="Back to details" title="Back to details">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></span>
           </button>
-          ${isLive ? '' : `<button class="btn icon-btn" onclick="skipWebPlayer(-30)" aria-label="Skip back 30 seconds" title="Skip back 30 seconds">
+          ${isLive ? '' : `<button id="skipBackButton" class="btn icon-btn" onclick="skipWebPlayer(-30)" aria-label="Skip back 30 seconds" title="${WATCH_PARTY_MODE ? 'The host controls playback' : 'Skip back 30 seconds'}" ${WATCH_PARTY_MODE ? 'disabled aria-disabled="true"' : ''}>
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg></span>
           </button>`}
-          ${isLive ? '' : `<button id="playButton" class="btn icon-btn play-btn" onclick="togglePlayback()" aria-label="Play" title="Play">
+          ${isLive ? '' : `<button id="playButton" class="btn icon-btn play-btn" onclick="togglePlayback()" aria-label="${WATCH_PARTY_MODE ? 'Playback controlled by host' : 'Play'}" title="${WATCH_PARTY_MODE ? 'The host controls playback' : 'Play'}" ${WATCH_PARTY_MODE ? 'disabled aria-disabled="true"' : ''}>
             <span class="icon play-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
             <span class="icon pause-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></span>
           </button>`}
-          ${isLive ? '' : `<button class="btn icon-btn" onclick="skipWebPlayer(30)" aria-label="Skip forward 30 seconds" title="Skip forward 30 seconds">
+          ${isLive ? '' : `<button id="skipForwardButton" class="btn icon-btn" onclick="skipWebPlayer(30)" aria-label="Skip forward 30 seconds" title="${WATCH_PARTY_MODE ? 'The host controls playback' : 'Skip forward 30 seconds'}" ${WATCH_PARTY_MODE ? 'disabled aria-disabled="true"' : ''}>
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></span>
           </button>`}
           <button id="muteButton" class="btn icon-btn" onclick="toggleMute()" aria-label="Mute" title="Mute">
@@ -2093,6 +2150,7 @@
           networkState: video.networkState,
           currentTime: Number(video.currentTime || 0),
         });
+        reportWatchPartyReady();
         attemptAutoplay(video);
         installSubtitleTrack(video);
       }, { once: true });
@@ -2197,7 +2255,7 @@
     }
 
     function attemptAutoplay(video) {
-      if (!video) return;
+      if (!video || (WATCH_PARTY_MODE && !watchPartyPlaybackAllowed)) return;
       const result = video.play();
       if (!result || typeof result.catch !== 'function') return;
       result.catch(() => {
@@ -2519,8 +2577,9 @@
       host.classList.toggle('is-paused', !playbackMeta.isLive && !playing);
       if (playButton) {
         playButton.classList.toggle('is-playing', playing);
-        playButton.setAttribute('aria-label', playing ? 'Pause' : 'Play');
-        playButton.setAttribute('title', playing ? 'Pause' : 'Play');
+        playButton.disabled = WATCH_PARTY_MODE;
+        playButton.setAttribute('aria-label', WATCH_PARTY_MODE ? 'Playback controlled by host' : playing ? 'Pause' : 'Play');
+        playButton.setAttribute('title', WATCH_PARTY_MODE ? 'The host controls playback' : playing ? 'Pause' : 'Play');
       }
 
       const duration = currentDuration();
@@ -2563,27 +2622,58 @@
       return `${SERVER_BASE_PATH}/api/watch-party/room/${encodeURIComponent(WATCH_PARTY_ROOM_ID)}${suffix}`;
     }
 
+    async function reportWatchPartyReady() {
+      if (!WATCH_PARTY_MODE || watchPartyReadySent || watchPartyReadyInFlight) return;
+      watchPartyReadyInFlight = true;
+      try {
+        const response = await fetch(watchPartyApiPath('/ready'), {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ready: true }),
+        });
+        if (!response.ok) throw new Error(`ready failed (${response.status})`);
+        watchPartyReadySent = true;
+        webPlayerDebugLog('info', 'watch party ready reported');
+      } catch (error) {
+        webPlayerDebugLog('warn', 'watch party ready report failed', { message: error?.message || String(error) });
+      } finally {
+        watchPartyReadyInFlight = false;
+      }
+    }
+
+    function renderWatchPartyMembers(room) {
+      if (!WATCH_PARTY_MODE) return;
+      const panel = document.getElementById('watchPartyPanel');
+      const list = document.getElementById('watchPartyMembers');
+      if (!panel || !list) return;
+      const members = Array.isArray(room?.members) ? room.members.filter((member) => member?.joined !== false) : [];
+      list.innerHTML = members.map((member) => {
+        const ready = Boolean(member?.ready);
+        const present = member?.present !== false;
+        const buffering = Boolean(member?.buffering);
+        const state = !present ? 'Away' : buffering ? 'Buffering' : ready ? 'Ready' : 'Loading';
+        const stateClass = !present ? '' : ready && !buffering ? 'is-ready' : 'is-loading';
+        const host = member?.isCreator ? ' · Host' : '';
+        return `<div class="watch-party-member ${stateClass}"><span class="watch-party-member-dot"></span><span class="watch-party-member-name">${escapeHtml(member?.name || 'Guest')}${host}</span><span class="watch-party-member-state">${state}</span></div>`;
+      }).join('') || '<div class="watch-party-member"><span class="watch-party-member-state">Connecting…</span></div>';
+      panel.hidden = false;
+    }
+
     async function syncWatchPartyState() {
       if (!WATCH_PARTY_MODE || watchPartySyncInFlight) return;
       watchPartySyncInFlight = true;
       try {
         const video = document.getElementById('webPlayer');
         if (!video) return;
-        if (!watchPartyReadySent && video.readyState >= 2) {
-          const readyResponse = await fetch(watchPartyApiPath('/ready'), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ready: true }),
-          });
-          if (!readyResponse.ok) throw new Error(`ready failed (${readyResponse.status})`);
-          watchPartyReadySent = true;
-        }
+        if (!watchPartyReadySent && video.readyState >= 2) await reportWatchPartyReady();
 
-        const response = await fetch(watchPartyApiPath(), { credentials: 'same-origin', cache: 'no-store' });
+        const response = await fetch(watchPartyApiPath(`?buffering=${encodeURIComponent(String(Boolean(webPlayerBuffering)))}`), { credentials: 'same-origin', cache: 'no-store' });
         if (!response.ok) throw new Error(`room sync failed (${response.status})`);
         const room = await response.json();
+        renderWatchPartyMembers(room);
         if (room.status === 'ended') {
+          watchPartyPlaybackAllowed = false;
           video.pause();
           setTransientStatus('The Watch Together room has ended.', 10000);
           if (watchPartySyncTimer) window.clearInterval(watchPartySyncTimer);
@@ -2591,10 +2681,12 @@
           return;
         }
         if (room.status !== 'playing' || room.waitingForReady) {
+          watchPartyPlaybackAllowed = false;
           if (!video.paused) video.pause();
           return;
         }
 
+        watchPartyPlaybackAllowed = true;
         const target = Number(room.position || 0);
         const drift = target - currentAbsoluteTime();
         if (Number.isFinite(target) && Math.abs(drift) > 2.5 && !webPlayerSeekInProgress) {
@@ -2879,7 +2971,9 @@
         closeTrackSheet();
         return;
       }
-      startWebPlayerFromSource({ startOffset: currentAbsoluteTime() });
+      const video = document.getElementById('webPlayer');
+      installSubtitleTrack(video);
+      closeTrackSheet();
     }
 
     async function installSubtitleTrack(video, options = {}) {
@@ -3203,6 +3297,11 @@
       const host = document.getElementById('videoHost');
       const button = document.getElementById('skipSegmentButton');
       if (!host || !button) return;
+      if (WATCH_PARTY_MODE) {
+        button.disabled = true;
+        host.classList.remove('skip-segment-visible');
+        return;
+      }
       if (webPlayerEpisodeTransitionActive) {
         host.classList.remove('skip-segment-visible');
         return;
@@ -3220,7 +3319,7 @@
     }
 
     async function performWebSegmentSkip(segment) {
-      if (!segment || webPlayerAutoSkipInProgress) return false;
+      if (WATCH_PARTY_MODE || !segment || webPlayerAutoSkipInProgress) return false;
       webPlayerAutoSkipInProgress = true;
       try {
         const succeeded = await seekWebPlayer(segment.end);
@@ -3252,7 +3351,7 @@
     }
 
     function ensureWatchNextCountdown() {
-      if (!webPlayerPromptConfirmed || !webAutoSkipEnabled('credits') || webPlayerWatchNextAutoAdvanceBlocked || upNextDismissed || playingNextEpisode) {
+      if (WATCH_PARTY_MODE || !webPlayerPromptConfirmed || !webAutoSkipEnabled('credits') || webPlayerWatchNextAutoAdvanceBlocked || upNextDismissed || playingNextEpisode) {
         clearWatchNextCountdown();
         return;
       }
@@ -3406,6 +3505,11 @@
     function updateUpNextVisibility(options = {}) {
       const host = document.getElementById('videoHost');
       if (!host) return;
+      if (WATCH_PARTY_MODE) {
+        host.classList.remove('up-next-visible', 'skip-segment-visible');
+        clearWatchNextCountdown();
+        return;
+      }
       if (webPlayerEpisodeTransitionActive) {
         host.classList.remove('up-next-visible', 'skip-segment-visible');
         clearWatchNextCountdown();
@@ -4018,7 +4122,7 @@
     }
 
     async function playNextEpisode() {
-      if (!nextEpisodeInfo || playingNextEpisode) return;
+      if (WATCH_PARTY_MODE || !nextEpisodeInfo || playingNextEpisode) return;
       playingNextEpisode = true;
       webPlayerEpisodeTransitionActive = true;
       webPlayerWatchNextAutoAdvanceBlocked = false;

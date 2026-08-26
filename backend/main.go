@@ -916,6 +916,7 @@ func main() {
 		watchRoomsHandler = handlers.NewWatchRoomsHandler(watchRoomsService)
 		watchPartyHandler = handlers.NewWatchPartyHandler(watchRoomsService, sessionsService, settings.Server.BasePath)
 		watchPartyHandler.SetLibraryAccessService(libraryAccessService)
+		watchPartyHandler.SetSettingsProvider(cfgManager)
 		go func() {
 			runCleanup := func() {
 				ended, deleted, err := watchRoomsService.Cleanup(context.Background())

@@ -33,3 +33,28 @@ func TestNormalizeAllowedPrivateMediaOriginsRejectsUnsafeValues(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeExternalBackendURL(t *testing.T) {
+	settings := ServerSettings{ExternalBackendURL: " https://Watch.Example.com/mediastorm/api/ "}
+	if err := settings.NormalizeExternalBackendURL(); err != nil {
+		t.Fatalf("NormalizeExternalBackendURL() error = %v", err)
+	}
+	if got, want := settings.ExternalBackendURL, "https://Watch.Example.com/mediastorm"; got != want {
+		t.Fatalf("external backend URL = %q, want %q", got, want)
+	}
+}
+
+func TestNormalizeExternalBackendURLRejectsUnsafeValues(t *testing.T) {
+	for _, raw := range []string{
+		"watch.example.com",
+		"file:///etc/passwd",
+		"https://user:password@watch.example.com",
+		"https://watch.example.com/path?token=secret",
+		"https://watch.example.com/path#fragment",
+	} {
+		settings := ServerSettings{ExternalBackendURL: raw}
+		if err := settings.NormalizeExternalBackendURL(); err == nil {
+			t.Errorf("NormalizeExternalBackendURL(%q) error = nil, want rejection", raw)
+		}
+	}
+}

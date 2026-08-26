@@ -378,6 +378,68 @@ func TestWebPlaybackTemplateForwardsClientIdentity(t *testing.T) {
 	}
 }
 
+func TestWebPlaybackTemplateSynchronizesExternalWatchPartyGuests(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, want := range []string{
+		"startProgressTracking();\n        startWatchPartySync();",
+		"video.readyState >= 2",
+		"reportWatchPartyReady();",
+		"?buffering=${encodeURIComponent(String(Boolean(webPlayerBuffering)))}",
+		`id="watchPartyPanel"`,
+		"renderWatchPartyMembers(room);",
+		"member?.buffering",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("web playback template missing external watch party sync hook %q", want)
+		}
+	}
+}
+
+func TestWebPlaybackTemplateLocksGuestPlaybackControls(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, want := range []string{
+		".btn:disabled,",
+		"seek.disabled = WATCH_PARTY_MODE",
+		"if (WATCH_PARTY_MODE || !segment || webPlayerAutoSkipInProgress)",
+		"if (WATCH_PARTY_MODE || !nextEpisodeInfo || playingNextEpisode)",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("web playback template missing guest control lock %q", want)
+		}
+	}
+}
+
+func TestWebPlaybackTemplateChangesSubtitlesWithoutRestartingPlayer(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	start := strings.Index(rendered, "function changeSubtitleTrack(value)")
+	end := strings.Index(rendered, "async function installSubtitleTrack(video, options = {})")
+	if start < 0 || end <= start {
+		t.Fatal("could not locate subtitle track change function")
+	}
+	changeTrack := rendered[start:end]
+	if !strings.Contains(changeTrack, "installSubtitleTrack(video);") {
+		t.Fatal("subtitle track change must update the active player")
+	}
+	if strings.Contains(changeTrack, "startWebPlayerFromSource") {
+		t.Fatal("subtitle track change must not recreate the HLS session")
+	}
+}
+
 func TestWebPlaybackHandlerRedirectsWithoutValidSession(t *testing.T) {
 	handler := NewWebPlaybackHandler(fakeWebPlaybackUsers{
 		users: []models.User{{ID: "profile-1", Name: "Main"}},

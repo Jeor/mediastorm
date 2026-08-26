@@ -2773,6 +2773,24 @@ func TestSettingsSchemaFirstReadySourceIsGlobalOnly(t *testing.T) {
 	}
 }
 
+func TestSettingsSchemaExternalBackendURLIsGlobalOnlyWatchPartyRequirement(t *testing.T) {
+	section, ok := handlers.SettingsSchema["server"].(map[string]interface{})
+	if !ok {
+		t.Fatal("server settings schema is missing")
+	}
+	fields, ok := section["fields"].(map[string]interface{})
+	if !ok {
+		t.Fatal("server settings fields are missing")
+	}
+	field, ok := fields["externalBackendUrl"].(map[string]interface{})
+	if !ok {
+		t.Fatal("externalBackendUrl setting is missing")
+	}
+	if field["type"] != "text" || field["globalOnly"] != true || field["requiredFor"] != "External Watch Together access" {
+		t.Fatalf("externalBackendUrl schema = %#v", field)
+	}
+}
+
 func TestNavigationVisibilitySchemaIncludesWatchlist(t *testing.T) {
 	section, ok := handlers.SettingsSchema["display"].(map[string]interface{})
 	if !ok {

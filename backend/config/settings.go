@@ -56,8 +56,42 @@ type ServerSettings struct {
 	Host                       string   `json:"host"`
 	Port                       int      `json:"port"`
 	BasePath                   string   `json:"basePath,omitempty"`                   // URL path prefix for reverse proxy (e.g. "/mediastorm")
+	ExternalBackendURL         string   `json:"externalBackendUrl,omitempty"`         // Public backend URL used for external Watch Together invitations
 	HomepageAPIKey             string   `json:"homepageApiKey,omitempty"`             // API key for Homepage dashboard integration
 	AllowedPrivateMediaOrigins []string `json:"allowedPrivateMediaOrigins,omitempty"` // Explicit private origins permitted for server-side media requests
+}
+
+// NormalizeExternalBackendURL validates the optional public backend address.
+// A trailing /api is accepted because client backend URLs commonly include it;
+// Watch Together links target public web routes and therefore store the base
+// without that suffix.
+func (s *ServerSettings) NormalizeExternalBackendURL() error {
+	raw := strings.TrimSpace(s.ExternalBackendURL)
+	if raw == "" {
+		s.ExternalBackendURL = ""
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Hostname() == "" || !parsed.IsAbs() {
+		return fmt.Errorf("invalid external backend URL %q", raw)
+	}
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("invalid external backend URL %q: only http and https are permitted", raw)
+	}
+	if parsed.User != nil {
+		return fmt.Errorf("invalid external backend URL %q: credentials are not permitted", raw)
+	}
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("invalid external backend URL %q: query parameters and fragments are not permitted", raw)
+	}
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	if strings.HasSuffix(parsed.Path, "/api") {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/api")
+	}
+	parsed.RawPath = ""
+	s.ExternalBackendURL = strings.TrimRight(parsed.String(), "/")
+	return nil
 }
 
 // NormalizeAllowedPrivateMediaOrigins validates and reduces private media URL
@@ -2902,6 +2936,9 @@ func (m *Manager) Save(s Settings) error {
 	s.Playback.NormalizeAllowedTrackLanguages()
 	s.Playback.NormalizePreroll()
 	if err := s.Server.NormalizeAllowedPrivateMediaOrigins(); err != nil {
+		return err
+	}
+	if err := s.Server.NormalizeExternalBackendURL(); err != nil {
 		return err
 	}
 	s.UsenetEngines = normalizeEnabledUsenetEngines(s.UsenetEngines)

@@ -88,6 +88,22 @@ func generateExternalInviteSecret() (token string, shortCode string, err error) 
 	return token, shortCode, nil
 }
 
+func normalizeExternalInviteCode(value string) string {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	var compact strings.Builder
+	compact.Grow(8)
+	for _, r := range value {
+		if (r >= 'A' && r <= 'Z') || (r >= '2' && r <= '7') {
+			compact.WriteRune(r)
+		}
+	}
+	if compact.Len() != 8 {
+		return ""
+	}
+	code := compact.String()
+	return code[:4] + "-" + code[4:]
+}
+
 func (s *Service) Create(ctx context.Context, actorAccountID, creatorID string, in models.WatchRoomCreate) (*models.WatchRoom, error) {
 	in.Title = strings.TrimSpace(in.Title)
 	in.MediaType = strings.TrimSpace(in.MediaType)
@@ -292,7 +308,10 @@ func (s *Service) RevokeExternalInvitation(ctx context.Context, actorAccountID, 
 func (s *Service) ResolveExternalInvitation(ctx context.Context, secret string, byCode bool) (*models.WatchRoomExternalInvite, error) {
 	secret = strings.TrimSpace(secret)
 	if byCode {
-		secret = strings.ToUpper(secret)
+		secret = normalizeExternalInviteCode(secret)
+		if secret == "" {
+			return nil, ErrInviteUnavailable
+		}
 	}
 	var (
 		invite *models.WatchRoomExternalInvite

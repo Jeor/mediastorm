@@ -529,6 +529,66 @@ func TestAdminUIHandler_CreateUserAccount(t *testing.T) {
 	}
 }
 
+func TestAdminUIHandler_TransferAdmin(t *testing.T) {
+	handler, tmpDir := setupAdminUIHandler(t)
+	accountsService, err := accounts.NewService(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionsService, err := sessions.NewService(tmpDir, sessions.DefaultSessionDuration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.SetAccountsService(accountsService)
+	handler.SetSessionsService(sessionsService)
+
+	current, _ := accountsService.GetMasterAccount()
+	target, err := accountsService.Create("next-admin", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetSession, err := sessionsService.Create(target.ID, false, "target-agent", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(map[string]string{"accountId": target.ID})
+	req := createAuthenticatedRequest(t, http.MethodPost, "/admin/api/accounts/transfer-admin", body, sessionsService, current.ID, true)
+	currentToken := req.Header.Get("Authorization")[len("Bearer "):]
+	rec := httptest.NewRecorder()
+
+	handler.RequireMasterAuth(handler.TransferAdmin)(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("TransferAdmin status = %d: %s", rec.Code, rec.Body.String())
+	}
+	master, ok := accountsService.GetMasterAccount()
+	if !ok || master.ID != target.ID {
+		t.Fatalf("master = %+v, %v; want %q", master, ok, target.ID)
+	}
+	if _, err := sessionsService.Validate(currentToken); err == nil {
+		t.Fatal("initiating admin session was not revoked")
+	}
+	if _, err := sessionsService.Validate(targetSession.Token); err == nil {
+		t.Fatal("target account session was not revoked")
+	}
+}
+
+func TestAdminUIHandler_TransferAdminRejectsRegularAccount(t *testing.T) {
+	handler, tmpDir := setupAdminUIHandler(t)
+	accountsService, _ := accounts.NewService(tmpDir)
+	sessionsService, _ := sessions.NewService(tmpDir, sessions.DefaultSessionDuration)
+	handler.SetAccountsService(accountsService)
+	handler.SetSessionsService(sessionsService)
+	regular, _ := accountsService.Create("regular", "password123")
+	body, _ := json.Marshal(map[string]string{"accountId": models.MasterAccountID})
+	req := createAuthenticatedRequest(t, http.MethodPost, "/admin/api/accounts/transfer-admin", body, sessionsService, regular.ID, false)
+	rec := httptest.NewRecorder()
+
+	handler.RequireMasterAuth(handler.TransferAdmin)(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("regular transfer status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
 func TestAdminUIHandler_ListInvitations(t *testing.T) {
 	handler, tmpDir := setupAdminUIHandler(t)
 

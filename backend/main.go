@@ -1235,6 +1235,7 @@ func main() {
 	r.HandleFunc("/admin/api/accounts", adminUIHandler.RequireAuth(adminUIHandler.RenameUserAccount)).Methods(http.MethodPatch)
 	r.HandleFunc("/admin/api/accounts", adminUIHandler.RequireAuth(adminUIHandler.DeleteUserAccount)).Methods(http.MethodDelete)
 	r.HandleFunc("/admin/api/accounts/password", adminUIHandler.RequireAuth(adminUIHandler.ResetUserAccountPassword)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/api/accounts/transfer-admin", adminUIHandler.RequireMasterAuth(adminUIHandler.TransferAdmin)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/accounts/max-streams", adminUIHandler.RequireMasterAuth(adminUIHandler.SetAccountMaxStreams)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/api/profiles/share-links", adminUIHandler.RequireMasterAuth(adminUIHandler.SetProfileAllowShareLinks)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/api/profiles/activity-privacy", adminUIHandler.RequireAuth(adminUIHandler.SetProfileActivityPrivacy)).Methods(http.MethodPut)

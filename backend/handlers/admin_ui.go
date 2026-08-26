@@ -8008,6 +8008,61 @@ func (h *AdminUIHandler) SetAccountMaxStreams(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(map[string]string{"status": "max streams updated"})
 }
 
+// TransferAdmin moves administrator status to another account and invalidates
+// sessions for both accounts so cached session roles cannot outlive the change.
+func (h *AdminUIHandler) TransferAdmin(w http.ResponseWriter, r *http.Request) {
+	if h.accountsService == nil {
+		http.Error(w, "Accounts service not available", http.StatusInternalServerError)
+		return
+	}
+	if !h.requireAdminScope(w, r) {
+		return
+	}
+
+	var req struct {
+		AccountID string `json:"accountId"`
+	}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, sourceID, _, _ := h.getPageRoleInfo(r)
+	targetID := strings.TrimSpace(req.AccountID)
+	if targetID == "" {
+		http.Error(w, "accountId is required", http.StatusBadRequest)
+		return
+	}
+	if err := h.accountsService.TransferMaster(sourceID, targetID); err != nil {
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, accounts.ErrAccountNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, accounts.ErrAlreadyMaster), errors.Is(err, accounts.ErrAccountExpired):
+			status = http.StatusBadRequest
+		case errors.Is(err, accounts.ErrMasterChanged):
+			status = http.StatusForbidden
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if h.sessionsService != nil {
+		h.sessionsService.RevokeAllForAccount(sourceID)
+		h.sessionsService.RevokeAllForAccount(targetID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status":  "admin transferred",
+		"adminId": targetID,
+	})
+}
+
 // SetProfileAllowShareLinks grants or revokes a profile's permission to create
 // shareable playback links. Master-only.
 func (h *AdminUIHandler) SetProfileAllowShareLinks(w http.ResponseWriter, r *http.Request) {

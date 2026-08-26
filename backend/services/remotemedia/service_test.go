@@ -3,6 +3,7 @@ package remotemedia
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -22,7 +23,13 @@ type fakeRemoteMediaRepo struct {
 func (f *fakeRemoteMediaRepo) ListLibraries(context.Context) ([]models.RemoteMediaLibrary, error) {
 	return append([]models.RemoteMediaLibrary(nil), f.libraries...), nil
 }
-func (f *fakeRemoteMediaRepo) GetLibrary(context.Context, string) (*models.RemoteMediaLibrary, error) {
+func (f *fakeRemoteMediaRepo) GetLibrary(_ context.Context, libraryID string) (*models.RemoteMediaLibrary, error) {
+	for i := range f.libraries {
+		if f.libraries[i].ID == libraryID {
+			copy := f.libraries[i]
+			return &copy, nil
+		}
+	}
 	return nil, nil
 }
 func (f *fakeRemoteMediaRepo) CreateLibrary(context.Context, *models.RemoteMediaLibrary) error {
@@ -35,7 +42,15 @@ func (f *fakeRemoteMediaRepo) DeleteLibrary(context.Context, string) error { ret
 func (f *fakeRemoteMediaRepo) ListItems(_ context.Context, libraryID string, _ bool) ([]models.RemoteMediaItem, error) {
 	return append([]models.RemoteMediaItem(nil), f.items[libraryID]...), nil
 }
-func (f *fakeRemoteMediaRepo) GetItem(context.Context, string) (*models.RemoteMediaItem, error) {
+func (f *fakeRemoteMediaRepo) GetItem(_ context.Context, itemID string) (*models.RemoteMediaItem, error) {
+	for _, items := range f.items {
+		for i := range items {
+			if items[i].ID == itemID {
+				copy := items[i]
+				return &copy, nil
+			}
+		}
+	}
 	return nil, nil
 }
 func (f *fakeRemoteMediaRepo) UpsertItem(context.Context, *models.RemoteMediaItem) error { return nil }
@@ -317,6 +332,48 @@ func TestNormalizePlexEpisodeUsesParentShowIdentity(t *testing.T) {
 	group := groupItems(library, items, false)[0]
 	if !matches(group, models.LocalMediaMatchQuery{MediaType: "series", Title: "Different localized title", Year: 2026, TMDBID: "316992"}) {
 		t.Fatal("expected ordinary details page to match the Plex group by parent show ID")
+	}
+}
+
+func TestPlexEpisodePlaybackCarriesDashboardMetadata(t *testing.T) {
+	repo := &fakeRemoteMediaRepo{
+		libraries: []models.RemoteMediaLibrary{{ID: "plex-shows", Type: models.LocalMediaLibraryTypeShow, Provider: models.MediaSourcePlex}},
+		items: map[string][]models.RemoteMediaItem{"plex-shows": {{
+			ID: "row-1", LibraryID: "plex-shows", LibraryType: models.LocalMediaLibraryTypeShow,
+			Title: "World War II with Tom Hanks", Year: 2026, SeasonNumber: 1, EpisodeNumber: 1, EpisodeTitle: "The Beginning",
+			ExternalIDs: &models.LocalMediaExternalIDs{IMDB: "tt40385200", TMDB: "316992", TVDB: "472884"},
+			StreamPath:  "plexmedia:row-1",
+		}}},
+	}
+	service := &Service{repo: repo}
+	playback, err := service.Playback(context.Background(), "row-1")
+	if err != nil {
+		t.Fatalf("Playback() error = %v", err)
+	}
+	parsed, err := url.Parse(playback.StreamURL)
+	if err != nil {
+		t.Fatalf("parse stream URL: %v", err)
+	}
+	query := parsed.Query()
+	want := map[string]string{
+		"sourceServiceType": "plex",
+		"mediaType":         "episode",
+		"itemId":            "tmdb:tv:316992:S01E01",
+		"titleId":           "tmdb:tv:316992",
+		"title":             "World War II with Tom Hanks",
+		"seriesId":          "tmdb:tv:316992",
+		"seriesName":        "World War II with Tom Hanks",
+		"episodeName":       "The Beginning",
+		"seasonNumber":      "1",
+		"episodeNumber":     "1",
+		"imdb":              "tt40385200",
+		"tmdb":              "316992",
+		"tvdb":              "472884",
+	}
+	for key, expected := range want {
+		if got := query.Get(key); got != expected {
+			t.Errorf("%s=%q, want %q (URL=%s)", key, got, expected, playback.StreamURL)
+		}
 	}
 }
 

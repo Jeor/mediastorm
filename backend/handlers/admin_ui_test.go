@@ -2834,7 +2834,7 @@ func TestDisplaySchemaIncludesTVHomeCardDimmingOptOut(t *testing.T) {
 	}
 }
 
-func TestSettingsSchemaDoesNotOfferTorrinProvider(t *testing.T) {
+func TestSettingsSchemaOffersTorrinProvider(t *testing.T) {
 	section, ok := handlers.SettingsSchema["debridProviders"].(map[string]interface{})
 	if !ok {
 		t.Fatal("debrid provider settings schema is missing")
@@ -2853,9 +2853,10 @@ func TestSettingsSchemaDoesNotOfferTorrinProvider(t *testing.T) {
 	}
 	for _, option := range options {
 		if option == "torrin" {
-			t.Fatal("torrin must remain hidden from the backend settings page")
+			return
 		}
 	}
+	t.Fatal("torrin is missing from the backend settings page provider options")
 }
 
 // multipartWriter creates a multipart form with a file field

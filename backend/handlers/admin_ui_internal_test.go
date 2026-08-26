@@ -203,6 +203,25 @@ func TestAdminSettingsSensitiveFieldsAllowOnlyOneReveal(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsMediaLibraryOptionsDisambiguateServersAndPreserveMissingSelections(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"library.sourceServerName || library.serverName",
+		"function getMediaLibraryOptionsHTML(selectedValue)",
+		"selectedValue && !mediaLibrariesData.some",
+		"Missing library · ${libraryId}",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing media-library option behavior %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsInheritedTermListsShowEffectiveValuesAndReplacementSemantics(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

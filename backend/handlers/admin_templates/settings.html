@@ -7829,24 +7829,31 @@
 
     function getMediaLibraryLabel(libraryId) {
         const library = mediaLibrariesData.find((item) => item.id === libraryId);
-        if (!library) return libraryId ? 'Missing library' : 'No library selected';
+        if (!library) return libraryId ? `Missing library · ${libraryId}` : 'No library selected';
         const source = library.sourceType && library.sourceType !== 'local'
             ? (library.sourceName || library.serverName || library.sourceType)
             : 'Local';
-        return `${library.name} · ${source}`;
+        const server = library.sourceServerName || library.serverName || '';
+        return [library.name, source, server].filter(Boolean).join(' · ');
+    }
+
+    function getMediaLibraryOptionsHTML(selectedValue) {
+        const options = mediaLibrariesData.map((library) => {
+            const selected = library.id === selectedValue ? 'selected' : '';
+            return `<option value="${escapeHtml(library.id).replace(/"/g, '&quot;')}" ${selected}>${escapeHtml(getMediaLibraryLabel(library.id))}</option>`;
+        });
+        if (selectedValue && !mediaLibrariesData.some((library) => library.id === selectedValue)) {
+            options.unshift(
+                `<option value="${escapeHtml(selectedValue).replace(/"/g, '&quot;')}" selected>${escapeHtml(getMediaLibraryLabel(selectedValue))}</option>`,
+            );
+        }
+        return options.join('') || '<option value="">No configured libraries</option>';
     }
 
     function renderMediaLibraryOptions(selectId, selectedValue) {
         const select = document.getElementById(selectId);
         if (!select) return;
-        if (!mediaLibrariesData.length) {
-            select.innerHTML = '<option value="">No configured libraries</option>';
-            return;
-        }
-        select.innerHTML = mediaLibrariesData.map((library) => {
-            const selected = library.id === selectedValue ? 'selected' : '';
-            return `<option value="${library.id}" ${selected}>${getMediaLibraryLabel(library.id)}</option>`;
-        }).join('');
+        select.innerHTML = getMediaLibraryOptionsHTML(selectedValue);
         if (!selectedValue && select.options.length) select.value = select.options[0].value;
     }
 
@@ -9697,9 +9704,7 @@
         const isDecadeShelf = shelf.type === 'decade';
         const isLibraryShelf = shelf.type === 'library' || shelf.type === 'local-library';
         const selectedLibraryId = shelf.libraryId || getLegacyShelfLibraryId(shelf);
-        const mediaLibraryOptions = mediaLibrariesData.map((library) =>
-            `<option value="${library.id}" ${library.id === selectedLibraryId ? 'selected' : ''}>${getMediaLibraryLabel(library.id)}</option>`
-        ).join('') || '<option value="">No configured libraries</option>';
+        const mediaLibraryOptions = getMediaLibraryOptionsHTML(selectedLibraryId);
         const traktAccounts = getAvailableTraktAccountsForShelfForm();
         const traktAccountOptions = traktAccounts.map((acc) => {
             const selected = acc.id === (shelf.traktAccountId || '') ? 'selected' : '';

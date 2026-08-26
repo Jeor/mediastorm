@@ -2400,6 +2400,7 @@
 
     async function uploadDatabaseSnapshot() {
         const btn = document.getElementById('upload-database-snapshot-btn');
+        const status = document.getElementById('troubleshooting-upload-status');
         if (!btn) return;
 
         if (!confirm('Upload a de-identified database snapshot for debugging?')) {
@@ -2409,6 +2410,7 @@
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-small"></span> Uploading...';
+        if (status) status.textContent = 'Uploading de-identified database snapshot...';
 
         try {
             const response = await fetch(basePath + '/api/logs/database', {
@@ -2419,17 +2421,24 @@
             });
             const result = await response.json();
             if (response.ok && result.url) {
+                if (status) {
+                    status.innerHTML = `Shared database snapshot: <a href="${result.url}" target="_blank" rel="noopener noreferrer">${result.url}</a>`;
+                }
                 try {
                     await navigator.clipboard.writeText(result.url);
                     showToast('Database snapshot uploaded. Link copied to clipboard.');
                 } catch (_) {
-                    showToast('Database snapshot uploaded: ' + result.url);
+                    showToast('Database snapshot uploaded successfully.');
                 }
             } else {
-                showToast(result.error || 'Failed to upload database snapshot', 'error');
+                const message = result.error || 'Failed to upload database snapshot';
+                if (status) status.textContent = message;
+                showToast(message, 'error');
             }
         } catch (e) {
-            showToast('Error uploading database snapshot: ' + e.message, 'error');
+            const message = 'Error uploading database snapshot: ' + e.message;
+            if (status) status.textContent = message;
+            showToast(message, 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHtml;

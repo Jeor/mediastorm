@@ -651,6 +651,24 @@ func TestAdminMaintenanceLinksAllSubpages(t *testing.T) {
 	}
 }
 
+func TestDatabaseSnapshotUploadKeepsShareLinkVisible(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/tools.html")
+	if err != nil {
+		t.Fatalf("read tools template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`const status = document.getElementById('troubleshooting-upload-status');`,
+		`status.textContent = 'Uploading de-identified database snapshot...'`,
+		`status.innerHTML = ` + "`Shared database snapshot: <a",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("database snapshot upload missing persistent status marker %q", marker)
+		}
+	}
+}
+
 func TestClearDatabaseDataRequiresExactConfirmation(t *testing.T) {
 	maintenance := &fakeDatabaseMaintenance{}
 	handler := &AdminUIHandler{databaseMaintenance: maintenance}

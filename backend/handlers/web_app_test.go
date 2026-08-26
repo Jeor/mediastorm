@@ -391,12 +391,48 @@ func TestWebPlaybackTemplateSynchronizesExternalWatchPartyGuests(t *testing.T) {
 		"reportWatchPartyReady();",
 		"?buffering=${encodeURIComponent(String(Boolean(webPlayerBuffering)))}",
 		`id="watchPartyPanel"`,
+		`id="watchPartyPanelToggle"`,
+		"#videoHost.controls-hidden .watch-party-panel",
+		"function toggleWatchPartyPanel()",
 		"renderWatchPartyMembers(room);",
 		"member?.buffering",
+		"watchPartyEstimatedSeekStartupSeconds",
+		"setWatchPartyPlaybackRate(video, drift);",
+		"seekWebPlayer(clampSeekTarget(target + startupLead));",
+		"WEB_WATCH_PARTY_HARD_SYNC_COOLDOWN_MS",
+		"video.paused && !webPlayerSeekInProgress && !webPlayerSessionRecovering",
 	} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("web playback template missing external watch party sync hook %q", want)
 		}
+	}
+}
+
+func TestWebPlaybackTemplateRecoversStalledSeekWithoutChangingSubtitlePipeline(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	start := strings.Index(rendered, "async function seekWebPlayer(target)")
+	end := strings.Index(rendered, "function currentAbsoluteTime()")
+	if start < 0 || end <= start {
+		t.Fatal("could not locate web player seek function")
+	}
+	seek := rendered[start:end]
+	for _, want := range []string{
+		"seekParams.set('subtitleTrack', '-1');",
+		"video.addEventListener('canplay', finishSeek",
+		"releaseSeekState(false);",
+		"forceNewSession: true",
+	} {
+		if !strings.Contains(seek, want) {
+			t.Fatalf("web player seek missing recovery hook %q", want)
+		}
+	}
+	if strings.Contains(seek, "seekParams.set('subtitleTrack', String(webPlayerSelectedSubtitleTrack))") {
+		t.Fatal("web player seek must not rebuild its video pipeline around the selected overlay subtitle")
 	}
 }
 
@@ -437,6 +473,15 @@ func TestWebPlaybackTemplateChangesSubtitlesWithoutRestartingPlayer(t *testing.T
 	}
 	if strings.Contains(changeTrack, "startWebPlayerFromSource") {
 		t.Fatal("subtitle track change must not recreate the HLS session")
+	}
+	for _, want := range []string{
+		"X-Subtitle-Timestamp-Base",
+		"webPlayerSubtitleTimestampBase",
+		"Number(webPlayerSubtitleTimestampBase || 0)",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("subtitle overlay missing timestamp alignment hook %q", want)
+		}
 	}
 }
 

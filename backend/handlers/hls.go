@@ -6187,6 +6187,7 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("X-Subtitle-Timestamp-Base", fmt.Sprintf("%.3f", session.subtitleTimestampBase()))
 		if session.subtitleExtractionInProgress(requestedTrack) || syncedSamePass {
 			// For synced same-pass subtitles the transcode is still writing the file; signal
 			// "extracting" so the overlay polls quickly instead of waiting the long interval.
@@ -6229,6 +6230,7 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache") // Don't cache since file is growing
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("X-Subtitle-Timestamp-Base", fmt.Sprintf("%.3f", session.subtitleTimestampBase()))
 	if session.subtitleExtractionInProgress(requestedTrack) || syncedSamePassWriting {
 		w.Header().Set("X-Subtitle-Extracting", "true")
 	}

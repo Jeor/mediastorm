@@ -1285,6 +1285,48 @@ func TestHLSManager_ServeSubtitlePlaylist(t *testing.T) {
 	}
 }
 
+func TestHLSManager_ServeSubtitleTrackReportsVideoTimestampBase(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewHLSManager(tmpDir, "", "", nil)
+	defer manager.Shutdown()
+
+	const sessionID = "subtitle-timestamp-base-test"
+	outputDir := filepath.Join(tmpDir, sessionID)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDir, "subtitles_11.vtt"), []byte("WEBVTT\n\n00:01.000 --> 00:02.000\nHello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	session := &HLSSession{
+		ID:                           sessionID,
+		OutputDir:                    outputDir,
+		CreatedAt:                    time.Now(),
+		LastAccess:                   time.Now(),
+		SubtitleTrackIndex:           -1,
+		SubtitleTimestampBaseSeconds: mpegtsDefaultPreloadSeconds,
+	}
+	session.setSubtitleExtractionOffset(11, 686.37)
+	manager.mu.Lock()
+	manager.sessions[sessionID] = session
+	manager.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodGet, "/video/hls/"+sessionID+"/subtitles-11.vtt", nil)
+	rr := httptest.NewRecorder()
+	manager.ServeSubtitleTrack(rr, req, sessionID, 11, false)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rr.Code)
+	}
+	if got := rr.Header().Get("X-Subtitle-Start-Offset"); got != "686.370" {
+		t.Fatalf("subtitle start offset = %q, want 686.370", got)
+	}
+	if got := rr.Header().Get("X-Subtitle-Timestamp-Base"); got != "1.400" {
+		t.Fatalf("subtitle timestamp base = %q, want 1.400", got)
+	}
+}
+
 func TestHLSManager_Seek_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager := NewHLSManager(tmpDir, "", "", nil)

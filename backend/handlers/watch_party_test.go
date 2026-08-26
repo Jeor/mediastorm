@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"novastream/config"
 	"novastream/models"
+	"novastream/services/sessions"
 )
 
 func TestWatchPartyLandingFormatsShortCode(t *testing.T) {
@@ -96,5 +99,55 @@ func TestWatchPartyRoomPageIncludesGuestReadinessControls(t *testing.T) {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("watch party room page missing guest readiness hook %q", want)
 		}
+	}
+}
+
+func TestWatchPartyGuestSessionReusesRoomScopedIdentity(t *testing.T) {
+	sessionService, err := sessions.NewService("", time.Hour)
+	if err != nil {
+		t.Fatalf("create session service: %v", err)
+	}
+	session, err := sessionService.CreateScopedWithResource(
+		"account-1",
+		false,
+		"browser",
+		"127.0.0.1",
+		time.Hour,
+		models.SessionScopeWatchParty,
+		"room-1",
+	)
+	if err != nil {
+		t.Fatalf("create guest session: %v", err)
+	}
+
+	handler := &WatchPartyHandler{sessions: sessionService}
+	request := httptest.NewRequest(http.MethodPost, "/watch-party/token", nil)
+	request.AddCookie(&http.Cookie{Name: watchPartyCookieName, Value: session.Token})
+
+	gotSession, gotGuestID, ok := handler.guestSession(request, "room-1")
+	if !ok {
+		t.Fatal("guestSession() ok = false, want true")
+	}
+	if gotSession.Token != session.Token {
+		t.Fatalf("guestSession() token = %q, want existing token", gotSession.Token)
+	}
+	if want := watchPartyGuestID(session.Token); gotGuestID != want {
+		t.Fatalf("guestSession() guest ID = %q, want %q", gotGuestID, want)
+	}
+	if _, _, ok := handler.guestSession(request, "room-2"); ok {
+		t.Fatal("guestSession() accepted a session scoped to another room")
+	}
+}
+
+func TestJoinInvitationChecksExistingGuestBeforeCreatingSession(t *testing.T) {
+	body, err := os.ReadFile("watch_party.go")
+	if err != nil {
+		t.Fatalf("read watch party handler: %v", err)
+	}
+	source := string(body)
+	reuse := strings.Index(source, `if session, guestID, ok := h.guestSession(r, invite.RoomID); ok {`)
+	create := strings.Index(source, `h.sessions.CreateScopedWithResource(invite.AccountID`)
+	if reuse < 0 || create < 0 || reuse > create {
+		t.Fatal("joinInvitation must reuse a valid room guest session before creating a new identity")
 	}
 }

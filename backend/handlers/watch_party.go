@@ -216,6 +216,19 @@ func (h *WatchPartyHandler) joinInvitation(w http.ResponseWriter, r *http.Reques
 		h.renderPage(w, "Display name required", `<p>Enter a display name of 40 characters or fewer.</p><p><a href="javascript:history.back()">Go back</a></p>`)
 		return
 	}
+	capabilities := models.WatchRoomClientCapabilities{StateSync: true, ProtocolVersion: 1}
+	if session, guestID, ok := h.guestSession(r, invite.RoomID); ok {
+		if _, err := h.service.JoinExternalGuest(r.Context(), invite, guestID, name, r.UserAgent(), capabilities); err != nil {
+			h.writeError(w, err)
+			return
+		}
+		// Refresh the browser cookie while preserving the room-scoped token. A
+		// returning guest must keep the same derived member ID so browser back /
+		// rejoin cannot leave an orphaned Away member in the room.
+		h.setWatchPartyCookie(w, r, session)
+		h.redirectToRoom(w, r, invite.RoomID)
+		return
+	}
 	duration := time.Until(invite.ExpiresAt)
 	if duration <= 0 {
 		h.renderUnavailable(w)
@@ -227,14 +240,21 @@ func (h *WatchPartyHandler) joinInvitation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	guestID := watchPartyGuestID(session.Token)
-	capabilities := models.WatchRoomClientCapabilities{StateSync: true, ProtocolVersion: 1}
 	if _, err := h.service.JoinExternalGuest(r.Context(), invite, guestID, name, r.UserAgent(), capabilities); err != nil {
 		_ = h.sessions.Revoke(session.Token)
 		h.writeError(w, err)
 		return
 	}
+	h.setWatchPartyCookie(w, r, session)
+	h.redirectToRoom(w, r, invite.RoomID)
+}
+
+func (h *WatchPartyHandler) setWatchPartyCookie(w http.ResponseWriter, r *http.Request, session models.Session) {
 	http.SetCookie(w, &http.Cookie{Name: watchPartyCookieName, Value: session.Token, Path: "/", HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode, Expires: session.ExpiresAt})
-	http.Redirect(w, r, h.serverBasePath+"/watch-party/room/"+invite.RoomID, http.StatusSeeOther)
+}
+
+func (h *WatchPartyHandler) redirectToRoom(w http.ResponseWriter, r *http.Request, roomID string) {
+	http.Redirect(w, r, h.serverBasePath+"/watch-party/room/"+roomID, http.StatusSeeOther)
 }
 
 func watchPartyGuestID(token string) string {

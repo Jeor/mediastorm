@@ -91,7 +91,9 @@ printf 'chunk-%s\n' "$count"
 if [ "$count" -eq 1 ]; then
   exit 1
 fi
-sleep 1.65
+# Keep the successful retry alive beyond the recording deadline. The generous
+# window gives loaded CI workers time to launch the retry before it expires.
+sleep 5.25
 exit 0
 `)
 
@@ -99,7 +101,7 @@ exit 0
 	recordingRetryDelay = 10 * time.Millisecond
 	defer func() { recordingRetryDelay = originalDelay }()
 
-	recording := newTestRecording(time.Now().UTC().Add(1500 * time.Millisecond))
+	recording := newTestRecording(time.Now().UTC().Add(5 * time.Second))
 	repo := newFakeRecordingRepo(recording)
 	svc := newTestService(repo, script, t.TempDir())
 

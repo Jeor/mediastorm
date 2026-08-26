@@ -117,6 +117,17 @@ type WatchRoomRepository interface {
 	AcceptAccountInvite(ctx context.Context, inviteID, accountID, profileID string, now time.Time) (string, bool, error)
 	DeclineAccountInvite(ctx context.Context, inviteID, accountID string, now time.Time) (bool, error)
 	RevokeAccountInvite(ctx context.Context, inviteID, roomID, creatorProfileID string, now time.Time) (bool, error)
+	ReplaceExternalInvite(ctx context.Context, invite *models.WatchRoomExternalInvite) error
+	RevokeExternalInvite(ctx context.Context, roomID, creatorProfileID string) (bool, error)
+	GetExternalInviteByTokenHash(ctx context.Context, tokenHash string, now time.Time) (*models.WatchRoomExternalInvite, error)
+	GetExternalInviteByCode(ctx context.Context, shortCode string, now time.Time) (*models.WatchRoomExternalInvite, error)
+	JoinExternalGuest(ctx context.Context, roomID, guestID, name, clientID string, capabilities models.WatchRoomClientCapabilities, now time.Time) error
+	IsExternalGuest(ctx context.Context, roomID, guestID string) (bool, error)
+	HeartbeatExternalGuest(ctx context.Context, roomID, guestID, clientID string, buffering bool, now time.Time) error
+	LeaveExternalGuest(ctx context.Context, roomID, guestID string) error
+	SetExternalGuestReady(ctx context.Context, roomID, guestID string, ready bool, now time.Time) error
+	BindExternalSource(ctx context.Context, roomID, creatorProfileID, resource string, params map[string]string, now time.Time) (bool, error)
+	GetExternalSource(ctx context.Context, roomID string) (*models.WatchRoomExternalSource, error)
 }
 
 type RemoteAccessInviteRepository interface {

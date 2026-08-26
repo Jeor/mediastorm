@@ -421,6 +421,32 @@ func TestWebPlaybackHandlerScopesProfilesForAccountSession(t *testing.T) {
 	}
 }
 
+func TestWebPlaybackHandlerScopesStreamSessionToRequestedProfile(t *testing.T) {
+	handler := NewWebPlaybackHandler(fakeWebPlaybackUsers{
+		users: []models.User{
+			{ID: "profile-1", Name: "One", AccountID: "account-a"},
+			{ID: "profile-2", Name: "Two", AccountID: "account-a"},
+		},
+	}, fakeWebPlaybackSessions{token: "tok", session: models.Session{
+		AccountID: "account-a", Scope: models.SessionScopeStream, ScopeResource: "/movie.mkv",
+	}}, "")
+
+	req := httptest.NewRequest(http.MethodGet, "/watch?token=tok&profileId=profile-1", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"id":"profile-1"`) {
+		t.Fatal("expected requested profile in stream-scoped page")
+	}
+	if strings.Contains(body, `"id":"profile-2"`) {
+		t.Fatal("stream-scoped page exposed another profile from the account")
+	}
+}
+
 func TestWebPlaybackHandlerInjectsProfileShareFlag(t *testing.T) {
 	// The share button is gated client-side on the active profile's allowShareLinks
 	// flag, which rides in the injected PROFILES (.Users) JSON. Assert the flag is

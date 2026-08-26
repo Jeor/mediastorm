@@ -910,9 +910,12 @@ func main() {
 	shareHandler := handlers.NewShareHandler(handlers.NewShareStore(shareLinkRepo), sessionsService, userService, settings.Server.BasePath)
 	shareHandler.SetLibraryAccessService(libraryAccessService)
 	var watchRoomsHandler *handlers.WatchRoomsHandler
+	var watchPartyHandler *handlers.WatchPartyHandler
 	if store != nil {
 		watchRoomsService := watchrooms.New(store.WatchRooms(), userService, accountsService)
 		watchRoomsHandler = handlers.NewWatchRoomsHandler(watchRoomsService)
+		watchPartyHandler = handlers.NewWatchPartyHandler(watchRoomsService, sessionsService, settings.Server.BasePath)
+		watchPartyHandler.SetLibraryAccessService(libraryAccessService)
 		go func() {
 			runCleanup := func() {
 				ended, deleted, err := watchRoomsService.Cleanup(context.Background())
@@ -981,6 +984,7 @@ func main() {
 		userService,
 		shareHandler,
 		watchRoomsHandler,
+		watchPartyHandler,
 		settings.Server.HomepageAPIKey,
 		latencyAdmin,
 	)
@@ -1679,6 +1683,15 @@ func main() {
 
 	// One-time share link consumption (public, no auth — opening mints a scoped session).
 	r.HandleFunc("/share/{token}", shareHandler.Open).Methods(http.MethodGet)
+	if watchPartyHandler != nil {
+		r.HandleFunc("/watch-party", watchPartyHandler.Landing).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/code", watchPartyHandler.ResolveCode).Methods(http.MethodPost)
+		r.HandleFunc("/watch-party/code/{code}", watchPartyHandler.OpenCode).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/code/{code}", watchPartyHandler.JoinCode).Methods(http.MethodPost)
+		r.HandleFunc("/watch-party/room/{roomID}", watchPartyHandler.RoomPage).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/{token}", watchPartyHandler.OpenToken).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/{token}", watchPartyHandler.JoinToken).Methods(http.MethodPost)
+	}
 
 	// Dedicated consumer web app served from the frontend Expo web export.
 	webAppHandler := handlers.NewWebAppHandler(handlers.ResolveWebAppDir(), "/watch")

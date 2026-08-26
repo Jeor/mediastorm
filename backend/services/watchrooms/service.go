@@ -2,6 +2,10 @@ package watchrooms
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base32"
+	"encoding/base64"
 	"errors"
 	"math"
 	"strings"
@@ -27,14 +31,18 @@ var (
 	ErrSameAccount        = errors.New("account already belongs to this household")
 	ErrInviteUnavailable  = errors.New("watch room invitation is no longer available")
 	ErrAlreadyInvited     = errors.New("account is already invited to this watch room")
+	ErrShareLinksDisabled = errors.New("share links are not enabled for this profile")
+	ErrSourceConflict     = errors.New("watch party source is already bound")
+	ErrSourceUnavailable  = errors.New("watch party source is not ready")
 )
 
 const (
-	roomLifetime     = 24 * time.Hour
-	presenceTTL      = 15 * time.Second
-	disconnectGrace  = 2 * time.Minute
-	endedAuditWindow = 24 * time.Hour
-	protocolVersion  = 1
+	roomLifetime       = 24 * time.Hour
+	presenceTTL        = 15 * time.Second
+	disconnectGrace    = 2 * time.Minute
+	endedAuditWindow   = 24 * time.Hour
+	protocolVersion    = 1
+	externalTokenBytes = 32
 )
 
 type profileProvider interface {
@@ -58,6 +66,26 @@ func New(repo datastore.WatchRoomRepository, profiles profileProvider, accounts 
 
 func supportsWatchTogether(capabilities models.WatchRoomClientCapabilities) bool {
 	return capabilities.NativePlayback && capabilities.StateSync && capabilities.ProtocolVersion >= protocolVersion
+}
+
+func supportsGuestWatchTogether(capabilities models.WatchRoomClientCapabilities) bool {
+	return capabilities.StateSync && capabilities.ProtocolVersion >= protocolVersion
+}
+
+func externalInviteTokenHash(token string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+func generateExternalInviteSecret() (token string, shortCode string, err error) {
+	buf := make([]byte, externalTokenBytes)
+	if _, err = rand.Read(buf); err != nil {
+		return "", "", err
+	}
+	token = base64.RawURLEncoding.EncodeToString(buf)
+	code := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(buf[:5])
+	shortCode = code[:4] + "-" + code[4:8]
+	return token, shortCode, nil
 }
 
 func (s *Service) Create(ctx context.Context, actorAccountID, creatorID string, in models.WatchRoomCreate) (*models.WatchRoom, error) {
@@ -208,6 +236,181 @@ func (s *Service) RevokeAccountInvitation(ctx context.Context, actorAccountID, c
 		return ErrInviteUnavailable
 	}
 	return nil
+}
+
+// CreateExternalInvitation rotates the room's bearer invitation. The raw token
+// is returned once; only its SHA-256 hash is persisted.
+func (s *Service) CreateExternalInvitation(ctx context.Context, actorAccountID, creatorProfileID, roomID string) (*models.WatchRoomExternalInvite, error) {
+	creator, ok := s.profiles.Get(creatorProfileID)
+	if !ok || creator.AccountID != actorAccountID {
+		return nil, ErrNotFound
+	}
+	if !creator.AllowShareLinks {
+		return nil, ErrShareLinksDisabled
+	}
+	room, err := s.Get(ctx, roomID, creatorProfileID)
+	if err != nil {
+		return nil, err
+	}
+	if room.CreatorProfileID != creatorProfileID {
+		return nil, ErrNotCreator
+	}
+	if room.Status == models.WatchRoomStatusEnded {
+		return nil, ErrRoomEnded
+	}
+	token, shortCode, err := generateExternalInviteSecret()
+	if err != nil {
+		return nil, err
+	}
+	now := s.now().UTC()
+	invite := &models.WatchRoomExternalInvite{
+		RoomID: roomID, AccountID: actorAccountID, Token: token,
+		TokenHash: externalInviteTokenHash(token), ShortCode: shortCode,
+		Active: true, CreatedAt: now, ExpiresAt: room.ExpiresAt,
+	}
+	if err := s.repo.ReplaceExternalInvite(ctx, invite); err != nil {
+		return nil, err
+	}
+	return invite, nil
+}
+
+func (s *Service) RevokeExternalInvitation(ctx context.Context, actorAccountID, creatorProfileID, roomID string) error {
+	creator, ok := s.profiles.Get(creatorProfileID)
+	if !ok || creator.AccountID != actorAccountID {
+		return ErrNotFound
+	}
+	ok, err := s.repo.RevokeExternalInvite(ctx, roomID, creatorProfileID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrInviteUnavailable
+	}
+	return nil
+}
+
+func (s *Service) ResolveExternalInvitation(ctx context.Context, secret string, byCode bool) (*models.WatchRoomExternalInvite, error) {
+	secret = strings.TrimSpace(secret)
+	if byCode {
+		secret = strings.ToUpper(secret)
+	}
+	var (
+		invite *models.WatchRoomExternalInvite
+		err    error
+	)
+	if byCode {
+		invite, err = s.repo.GetExternalInviteByCode(ctx, secret, s.now().UTC())
+	} else {
+		invite, err = s.repo.GetExternalInviteByTokenHash(ctx, externalInviteTokenHash(secret), s.now().UTC())
+	}
+	if err != nil {
+		return nil, err
+	}
+	if invite == nil {
+		return nil, ErrInviteUnavailable
+	}
+	return invite, nil
+}
+
+// GetForExternalInvite returns the room metadata needed to render the claim
+// page. Callers must resolve a live invitation before calling it.
+func (s *Service) GetForExternalInvite(ctx context.Context, roomID string) (*models.WatchRoom, error) {
+	room, err := s.repo.Get(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+	if room == nil {
+		return nil, ErrNotFound
+	}
+	s.decorate(room)
+	return room, nil
+}
+
+func (s *Service) JoinExternalGuest(ctx context.Context, invite *models.WatchRoomExternalInvite, guestID, name, clientID string, capabilities models.WatchRoomClientCapabilities) (*models.WatchRoom, error) {
+	if invite == nil || !invite.Active || !invite.ExpiresAt.After(s.now()) {
+		return nil, ErrInviteUnavailable
+	}
+	name = strings.TrimSpace(name)
+	if name == "" || len([]rune(name)) > 40 || !supportsGuestWatchTogether(capabilities) {
+		return nil, ErrIncompatibleClient
+	}
+	if err := s.repo.JoinExternalGuest(ctx, invite.RoomID, guestID, name, strings.TrimSpace(clientID), capabilities, s.now().UTC()); err != nil {
+		return nil, err
+	}
+	return s.GetForExternalGuest(ctx, invite.RoomID, guestID)
+}
+
+func (s *Service) GetForExternalGuest(ctx context.Context, roomID, guestID string) (*models.WatchRoom, error) {
+	allowed, err := s.repo.IsExternalGuest(ctx, roomID, guestID)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, ErrNotMember
+	}
+	room, err := s.repo.Get(ctx, roomID)
+	if err != nil || room == nil {
+		if err == nil {
+			err = ErrNotFound
+		}
+		return room, err
+	}
+	s.decorate(room)
+	return room, nil
+}
+
+func (s *Service) HeartbeatExternalGuest(ctx context.Context, roomID, guestID, clientID string, buffering bool) error {
+	if _, err := s.GetForExternalGuest(ctx, roomID, guestID); err != nil {
+		return err
+	}
+	return s.repo.HeartbeatExternalGuest(ctx, roomID, guestID, strings.TrimSpace(clientID), buffering, s.now().UTC())
+}
+
+func (s *Service) LeaveExternalGuest(ctx context.Context, roomID, guestID string) error {
+	return s.repo.LeaveExternalGuest(ctx, roomID, guestID)
+}
+
+func (s *Service) SetExternalGuestReady(ctx context.Context, roomID, guestID string, ready bool) error {
+	if _, err := s.GetForExternalGuest(ctx, roomID, guestID); err != nil {
+		return err
+	}
+	return s.repo.SetExternalGuestReady(ctx, roomID, guestID, ready, s.now().UTC())
+}
+
+func (s *Service) BindExternalSource(ctx context.Context, actorAccountID, creatorProfileID, roomID, resource string, params map[string]string) (*models.WatchRoomExternalSource, error) {
+	creator, ok := s.profiles.Get(creatorProfileID)
+	if !ok || creator.AccountID != actorAccountID {
+		return nil, ErrNotFound
+	}
+	if !creator.AllowShareLinks {
+		return nil, ErrShareLinksDisabled
+	}
+	resource = strings.TrimSpace(resource)
+	if resource == "" {
+		return nil, ErrInvalidMedia
+	}
+	bound, err := s.repo.BindExternalSource(ctx, roomID, creatorProfileID, resource, params, s.now().UTC())
+	if err != nil {
+		return nil, err
+	}
+	if !bound {
+		return nil, ErrSourceConflict
+	}
+	return s.repo.GetExternalSource(ctx, roomID)
+}
+
+func (s *Service) ExternalSourceForGuest(ctx context.Context, roomID, guestID string) (*models.WatchRoomExternalSource, error) {
+	if _, err := s.GetForExternalGuest(ctx, roomID, guestID); err != nil {
+		return nil, err
+	}
+	source, err := s.repo.GetExternalSource(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+	if source == nil || strings.TrimSpace(source.Resource) == "" {
+		return nil, ErrSourceUnavailable
+	}
+	return source, nil
 }
 
 func (s *Service) Invitations(ctx context.Context, profileID string) ([]models.WatchRoom, error) {

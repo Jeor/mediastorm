@@ -438,7 +438,7 @@
     padding-top: 0.7rem;
     border-top: 1px solid var(--border);
 }
-.settings-level-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
+.settings-level-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
 .settings-level-btn:disabled {
     cursor: not-allowed;
     opacity: 0.42;
@@ -1108,6 +1108,35 @@
     background: var(--bg-secondary);
 }
 .settings-related-card p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.75rem; }
+.settings-mobile-heading-row { display: block; }
+.settings-mobile-search-button,
+.settings-context-trigger,
+.settings-context-scrim,
+.settings-scope-sheet-close,
+.settings-scope-sheet-kicker,
+.settings-mobile-level-section { display: none; }
+.settings-scope-sheet-header { display: contents; }
+#settingsContainer .section { scroll-margin-top: 7rem; }
+#settingsContainer.settings-essentials-view .section {
+    border-color: var(--border);
+}
+
+.settings-workspace.settings-essentials-workspace {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-workspace.settings-essentials-workspace .settings-sidebar {
+    display: none;
+}
+#settingsContainer.settings-essentials-view .section-header {
+    cursor: default;
+}
+#settingsContainer.settings-essentials-view .section-toggle {
+    display: none;
+}
+#settingsContainer.settings-essentials-view .section-content {
+    display: block;
+}
 @media (max-width: 900px) {
     .page-header-controls { flex-wrap: wrap; }
     .settings-workspace { grid-template-columns: 1fr; }
@@ -1248,25 +1277,243 @@
 }
 
 @media (max-width: 760px) {
+    .settings-page-shell {
+        padding-bottom: 5rem;
+    }
+
+    .settings-page-header {
+        position: sticky;
+        top: 0;
+        z-index: 24;
+        margin: -0.75rem -0.75rem 0;
+        padding: 0.7rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
+        backdrop-filter: blur(14px);
+    }
+
+    .settings-page-header .settings-page-kicker,
+    .settings-page-header > p {
+        display: none;
+    }
+
+    .settings-mobile-heading-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
     .settings-page-header h1 {
-        font-size: 1.5rem;
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .settings-mobile-search-button {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .settings-mobile-search-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .settings-mobile-search-button:focus-visible,
+    .settings-context-trigger:focus-visible,
+    .settings-scope-sheet-close:focus-visible {
+        outline: 2px solid var(--accent-hover);
+        outline-offset: 2px;
     }
 
     .settings-command-bar {
+        display: none;
         grid-template-columns: 1fr;
-        margin-top: 0.85rem;
+        margin-top: 0.65rem;
     }
 
-    .settings-command-bar .settings-level-switch {
+    .settings-page-shell.mobile-search-open .settings-command-bar {
+        display: grid;
+    }
+
+    .settings-command-bar .settings-level-switch,
+    .settings-command-bar .settings-save-state {
+        display: none;
+    }
+
+    .settings-context-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
         width: 100%;
+        min-height: 48px;
+        margin: 0.75rem 0;
+        padding: 0.55rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        text-align: left;
     }
 
-    .settings-save-state {
-        grid-column: auto;
+    .settings-context-trigger svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        color: var(--text-muted);
+    }
+
+    .settings-context-label {
+        display: block;
+        margin-bottom: 0.08rem;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .settings-context-summary {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.82rem;
+        font-weight: 650;
+    }
+
+    .settings-context-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 69;
+        border: 0;
+        background: rgba(0, 0, 0, 0.62);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.18s ease, visibility 0.18s ease;
+    }
+
+    .settings-context-scrim.open {
+        display: block;
+        opacity: 1;
+        visibility: visible;
     }
 
     .settings-scope-panel {
-        padding: 0.85rem;
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 70;
+        display: block;
+        max-height: min(82vh, 720px);
+        margin: 0;
+        padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-bottom: 0;
+        border-radius: 18px 18px 0 0;
+        background: var(--bg-secondary);
+        box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.45);
+        transform: translateY(105%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s ease;
+    }
+
+    .settings-scope-panel.open {
+        transform: translateY(0);
+        visibility: visible;
+    }
+
+    .settings-scope-sheet-header {
+        position: sticky;
+        top: -0.9rem;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: -0.9rem -0.9rem 0.75rem;
+        padding: 1rem 0.9rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-secondary);
+    }
+
+    .settings-scope-sheet-kicker {
+        display: block;
+        margin-bottom: 0.15rem;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    .settings-scope-heading {
+        display: block;
+        font-size: 0.875rem;
+    }
+
+    .settings-scope-sheet-close {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1.4rem;
+    }
+
+    .settings-scope-panel .settings-scope-bar {
+        display: none;
+    }
+
+    .settings-scope-tree-storage {
+        display: flex;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .settings-scope-tree-storage[aria-hidden="true"] {
+        visibility: visible;
+    }
+
+    .settings-scope-row {
+        min-height: 44px;
+    }
+
+    .settings-mobile-level-section {
+        display: block;
+        margin-top: 0.9rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .settings-mobile-level-label {
+        display: block;
+        margin-bottom: 0.45rem;
+        color: var(--text-muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .settings-mobile-level-section .settings-level-btn {
+        min-height: 44px;
     }
 
     .settings-scope-actions {
@@ -1305,6 +1552,10 @@
     .settings-sticky-save-actions .btn {
         flex: 1;
     }
+
+    #settingsContainer .section {
+        scroll-margin-top: 5.5rem;
+    }
 }
 </style>
 {{end}}
@@ -1329,7 +1580,12 @@
 <div class="settings-page-shell">
 <header class="settings-page-header">
     <div class="settings-page-kicker">Configure</div>
-    <h1>Settings</h1>
+    <div class="settings-mobile-heading-row">
+        <h1>Settings</h1>
+        <button class="settings-mobile-search-button" type="button" aria-label="Search settings" aria-expanded="false" onclick="toggleSettingsMobileSearch(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        </button>
+    </div>
     <p>Find, understand, and safely customize MediaStorm.</p>
     <div class="settings-command-bar">
         <label class="settings-search-wrap" for="settingsSearch">
@@ -1337,8 +1593,9 @@
             <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Search every setting" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)">
         </label>
         <div class="settings-level-switch" aria-label="Settings detail level">
-            <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is not ready yet">Basic</button>
+            <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
+            <button id="settingsEssentialsBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Watch Essentials</button>
         </div>
         <div id="settingsSaveState" class="settings-save-state" role="status" aria-live="polite">
             <span aria-hidden="true">✓</span>
@@ -1347,10 +1604,29 @@
     </div>
 </header>
 
-<section class="settings-scope-panel" aria-label="Settings scope">
-    <span class="settings-scope-heading">Current scope · <span id="settingsScopeName">Server defaults</span></span>
+<button id="settingsContextTrigger" class="settings-context-trigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsScopePanel" onclick="openSettingsContextSheet()">
+    <span>
+        <span class="settings-context-label">Editing</span>
+        <span id="settingsContextSummary" class="settings-context-summary">Server defaults</span>
+    </span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+</button>
+<button id="settingsContextScrim" class="settings-context-scrim" type="button" aria-label="Close settings context" onclick="closeSettingsContextSheet()"></button>
+
+<section id="settingsScopePanel" class="settings-scope-panel" aria-label="Settings scope">
+    <div class="settings-scope-sheet-header">
+        <div>
+            <span class="settings-scope-sheet-kicker">Editing context</span>
+            <span class="settings-scope-heading">Current scope · <span id="settingsScopeName">Server defaults</span></span>
+        </div>
+        <button class="settings-scope-sheet-close" type="button" aria-label="Close settings context" onclick="closeSettingsContextSheet()">×</button>
+    </div>
     <div class="settings-scope-bar">
         {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
+        {{if .IsAdmin}}<label class="settings-scope-select-wrap" id="settingsHouseholdScopeWrap">
+            <span class="settings-scope-control-label">Household</span>
+            <select id="settingsHouseholdSelector" aria-label="Household access filter" onchange="handleSettingsHouseholdFilter(this.value)"><option value="">All households</option></select>
+        </label>{{end}}
         <label class="settings-scope-select-wrap" id="settingsPersonScopeWrap">
             <span class="settings-scope-control-label">Person</span>
             <select id="userSelector" aria-label="Person" onchange="selectSettingsScope(this.value ? 'person' : 'server', this.value)">
@@ -1373,6 +1649,14 @@
     </div>
     <p id="settingsCascadeCopy" class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides. Applies to all people and devices unless overridden.</p>
     <div id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage" aria-hidden="true"></div>
+    <div class="settings-mobile-level-section">
+        <span class="settings-mobile-level-label">Settings view</span>
+        <div class="settings-level-switch" aria-label="Mobile settings detail level">
+            <button id="settingsMobileBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+            <button id="settingsMobileAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
+            <button id="settingsMobileEssentialsBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Watch Essentials</button>
+        </div>
+    </div>
     <div id="settingsLevelHelp" hidden aria-hidden="true"></div>
 </section>
 
@@ -1416,8 +1700,8 @@
 
 <div id="settingsStickySave" class="settings-sticky-save" hidden>
     <div>
-        <strong>Unsaved changes</strong>
-        <p>Your edits stay on this device until you save them.</p>
+        <strong id="settingsStickySaveTitle">Unsaved changes</strong>
+        <p id="settingsStickySaveCopy">Review and save your changes.</p>
     </div>
     <div class="settings-sticky-save-actions">
         <button class="btn btn-secondary" type="button" onclick="resetSettings()">Discard</button>
@@ -1661,9 +1945,12 @@
     // Sensitive settings may be revealed only until their first blur. Keep the
     // lock outside renderSettings so rerendering cannot make them viewable again.
     const lockedSensitiveFields = new Set();
-    const basicSettingsReady = false;
-    let settingsLevel = 'advanced';
-    localStorage.setItem('mediastorm-settings-level', settingsLevel);
+    const settingsLevels = new Set(['basic', 'advanced', 'essentials']);
+    const storedSettingsLevel = localStorage.getItem('mediastorm-settings-level');
+    let settingsLevel = settingsLevels.has(storedSettingsLevel) ? storedSettingsLevel : 'basic';
+    let settingsContextReturnFocus = null;
+    let settingsLastSectionViewport = null;
+    let selectedSettingsHouseholdId = '';
     let expandedIndexerEditIndex = -1;
     const expandedProviderEditIndexes = {
         debridProviders: -1,
@@ -1693,11 +1980,11 @@
         network: 'Local and remote access URLs'
     };
     const settingsOverviewGroups = [
-        { id: 'sources', label: 'Sources & Providers' },
-        { id: 'search', label: 'Search & Results' },
-        { id: 'playback', label: 'Playback' },
-        { id: 'metadata', label: 'Metadata & Services' },
-        { id: 'interface', label: 'Interface' },
+        { id: 'sources', label: 'Sources' },
+        { id: 'search', label: 'Search & Quality' },
+        { id: 'playback', label: 'Playback & Subtitles' },
+        { id: 'interface', label: 'Home & Appearance' },
+        { id: 'metadata', label: 'Metadata & Integrations' },
         { id: 'server', label: 'Server & Network' }
     ];
     const settingsLandingGroups = [
@@ -1709,10 +1996,10 @@
         { id: 'server', label: 'Server & Network', description: 'Server, storage, WebDAV, networking, and maintenance.' }
     ];
     const settingsOverviewSectionOrder = new Map([
-        'indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines',
+        'indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines', 'live', 'liveTV',
         'streaming', 'filtering', 'animeFiltering', 'ranking',
-        'playback', 'transmux',
-        'metadata', 'mdblist', 'subtitles',
+        'playback', 'subtitles', 'transmux',
+        'metadata', 'mdblist',
         'homeShelves', 'display',
         'server', 'network'
     ].map((key, index) => [key, index]));
@@ -1773,6 +2060,22 @@
         'liveTV.sources.proxyUrl', 'liveTV.sources.playlistCacheTtlHours', 'liveTV.sources.probeSizeMb', 'liveTV.sources.analyzeDurationSec', 'liveTV.sources.lowLatency',
         'usenetEngines.apiPath', 'usenetEngines.priority', 'usenetEngines.config.webdavPathPrefix', 'usenetEngines.pollIntervalSeconds', 'usenetEngines.timeoutSeconds'
     ]);
+    // This presentation-only allowlist intentionally uses existing section and
+    // field paths. It can be reviewed independently without changing stored
+    // values, defaults, APIs, or inheritance behavior.
+    const watchEssentialSections = new Set([
+        'indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines',
+        'streaming', 'filtering', 'playback', 'subtitles'
+    ]);
+    const watchEssentialFieldPaths = new Set([
+        'streaming.serviceMode',
+        'filtering.maxSizeMovieGb', 'filtering.maxSizeEpisodeGb', 'filtering.maxResolution', 'filtering.hdrDvPolicy',
+        'filtering.requiredTerms', 'filtering.filterOutTerms', 'filtering.preferredTerms', 'filtering.nonPreferredTerms',
+        'playback.preferredPlayer', 'playback.preferredAudioLanguage', 'playback.preferredSubtitleLanguage',
+        'playback.allowedTrackLanguages', 'playback.preferredSubtitleMode', 'playback.forceAacTranscoding',
+        'subtitles.openSubtitlesUsername', 'subtitles.openSubtitlesPassword', 'subtitles.subdlApiKey',
+        'subtitles.subsourceApiKey', 'subtitles.enableTranslatedSubs'
+    ]);
     const requestedSettingsSection = window.location.hash.replace(/^#/, '');
     const requestedSettingsCategory = new URLSearchParams(window.location.search).get('category') || '';
     if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
@@ -1786,12 +2089,24 @@
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = (basicSettingsReady && level === 'basic') ? 'basic' : 'advanced';
+        settingsLevel = settingsLevels.has(level) ? level : 'basic';
         localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        if (settingsLevel === 'essentials') {
+            activeSettingsGroup = '';
+            const url = new URL(window.location.href);
+            url.searchParams.delete('category');
+            url.hash = '';
+            history.pushState({}, '', url);
+        }
         renderSettings();
+        closeSettingsContextSheet();
     }
 
     function setSettingsGroup(groupId) {
+        if (settingsLevel === 'essentials' && groupId) {
+            settingsLevel = 'basic';
+            localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        }
         activeSettingsGroup = groupId;
         searchTerm = '';
         filteredSections = null;
@@ -1807,13 +2122,64 @@
         requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
+    function toggleSettingsMobileSearch(button) {
+        const shell = document.querySelector('.settings-page-shell');
+        if (!shell) return;
+        const shouldOpen = !shell.classList.contains('mobile-search-open');
+        shell.classList.toggle('mobile-search-open', shouldOpen);
+        button?.setAttribute('aria-expanded', String(shouldOpen));
+        if (shouldOpen) {
+            const input = document.getElementById('settingsSearch');
+            activateSettingsSearch(input);
+            requestAnimationFrame(() => input?.focus());
+        }
+    }
+
+    function openSettingsContextSheet() {
+        const panel = document.getElementById('settingsScopePanel');
+        const scrim = document.getElementById('settingsContextScrim');
+        const trigger = document.getElementById('settingsContextTrigger');
+        if (!panel || !window.matchMedia('(max-width: 760px)').matches) return;
+        settingsContextReturnFocus = document.activeElement;
+        settingsScopeServerExpanded = true;
+        const households = settingsScopeHouseholds();
+        if (!isAdmin || households.length === 1) expandedSettingsHouseholds.add(households[0]?.id || '__household__');
+        if (selectedUserId) expandedSettingsPeople.add(selectedUserId);
+        renderSettingsScopeTree();
+        panel.classList.add('open');
+        scrim?.classList.add('open');
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        document.getElementById('settingsScopeTree')?.setAttribute('aria-hidden', 'false');
+        trigger?.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => panel.querySelector('.settings-scope-sheet-close')?.focus());
+    }
+
+    function closeSettingsContextSheet() {
+        const panel = document.getElementById('settingsScopePanel');
+        const scrim = document.getElementById('settingsContextScrim');
+        const trigger = document.getElementById('settingsContextTrigger');
+        if (!panel?.classList.contains('open')) return;
+        panel.classList.remove('open');
+        scrim?.classList.remove('open');
+        panel.removeAttribute('role');
+        panel.removeAttribute('aria-modal');
+        document.getElementById('settingsScopeTree')?.setAttribute('aria-hidden', 'true');
+        trigger?.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+        const returnFocus = settingsContextReturnFocus;
+        settingsContextReturnFocus = null;
+        requestAnimationFrame(() => returnFocus?.focus?.());
+    }
+
     function renderSettingsWorkspaceNavigation() {
         renderSettingsScopeTree();
         updateSettingsScopeBarState();
         const nav = document.getElementById('settingsCategoryNav');
         const availableGroups = settingsLandingGroups.filter(group => Object.entries(schema).some(([key, def]) => {
             if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id || def.hidden) return false;
-            if (settingsLevel === 'basic' && advancedSections.has(key)) return false;
+            if (!settingsSectionVisibleAtCurrentLevel(key)) return false;
             if (selectedClientId && !clientConfigSections.includes(key)) return false;
             if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
             if (!selectedUserId && def.inheritFrom) return false;
@@ -1831,14 +2197,28 @@
         }
         const basicButton = document.getElementById('settingsBasicBtn');
         const advancedButton = document.getElementById('settingsAdvancedBtn');
+        const essentialsButton = document.getElementById('settingsEssentialsBtn');
+        const mobileBasicButton = document.getElementById('settingsMobileBasicBtn');
+        const mobileAdvancedButton = document.getElementById('settingsMobileAdvancedBtn');
+        const mobileEssentialsButton = document.getElementById('settingsMobileEssentialsBtn');
         basicButton?.classList.toggle('active', settingsLevel === 'basic');
         advancedButton?.classList.toggle('active', settingsLevel === 'advanced');
+        essentialsButton?.classList.toggle('active', settingsLevel === 'essentials');
+        mobileBasicButton?.classList.toggle('active', settingsLevel === 'basic');
+        mobileAdvancedButton?.classList.toggle('active', settingsLevel === 'advanced');
+        mobileEssentialsButton?.classList.toggle('active', settingsLevel === 'essentials');
         basicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
         advancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
+        essentialsButton?.setAttribute('aria-pressed', String(settingsLevel === 'essentials'));
+        mobileBasicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
+        mobileAdvancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
+        mobileEssentialsButton?.setAttribute('aria-pressed', String(settingsLevel === 'essentials'));
         const help = document.getElementById('settingsLevelHelp');
         if (help) help.textContent = settingsLevel === 'basic'
             ? 'Showing common settings. Switch to Advanced or search to find everything else.'
-            : 'Showing all settings.';
+            : (settingsLevel === 'essentials'
+                ? 'Showing the settings needed to find and watch content on one page.'
+                : 'Showing all settings.');
     }
 
     function updateSettingsScopeBarState() {
@@ -1847,6 +2227,7 @@
         const deviceWrap = document.getElementById('settingsDeviceScopeWrap');
         const userSelector = document.getElementById('userSelector');
         const clientSelector = document.getElementById('clientSelector');
+        renderSettingsHouseholdFilter();
         const isServer = !selectedUserId;
         const isPerson = !!selectedUserId && !selectedClientId;
         const isDevice = !!selectedClientId;
@@ -1859,8 +2240,10 @@
             if (clientSelector.value !== selectedClientId) clientSelector.value = selectedClientId;
         }
         const scopeName = document.getElementById('settingsScopeName');
+        const contextSummary = document.getElementById('settingsContextSummary');
         const cascadeCopy = document.getElementById('settingsCascadeCopy');
         if (scopeName) scopeName.textContent = settingsScopeDisplayName();
+        if (contextSummary) contextSummary.textContent = settingsContextDisplayName();
         if (cascadeCopy) {
             cascadeCopy.textContent = isDevice
                 ? 'Overrides this device only · inherits from the selected person, then Server defaults.'
@@ -1871,10 +2254,10 @@
     }
 
     function settingsOverviewGroupForSection(sectionKey, sectionDef) {
-        if (['indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines'].includes(sectionKey)) return 'sources';
+        if (['indexers', 'debridProviders', 'torrentScrapers', 'live', 'liveTV', 'usenet', 'usenetEngines'].includes(sectionKey)) return 'sources';
         if (['streaming', 'filtering', 'animeFiltering', 'ranking'].includes(sectionKey)) return 'search';
-        if (['playback', 'transmux'].includes(sectionKey)) return 'playback';
-        if (['metadata', 'mdblist', 'subtitles'].includes(sectionKey)) return 'metadata';
+        if (['playback', 'transmux', 'subtitles'].includes(sectionKey)) return 'playback';
+        if (['metadata', 'mdblist'].includes(sectionKey)) return 'metadata';
         if (['homeShelves', 'display'].includes(sectionKey)) return 'interface';
         if (['server', 'network'].includes(sectionKey)) return 'server';
         return {
@@ -1889,7 +2272,7 @@
     function settingsAvailableSectionsForOverview(groupId) {
         return Object.entries(schema).filter(([key, def]) => {
             if (!def.group || def.hidden || settingsOverviewGroupForSection(key, def) !== groupId) return false;
-            if (settingsLevel === 'basic' && advancedSections.has(key)) return false;
+            if (!settingsSectionVisibleAtCurrentLevel(key)) return false;
             if (selectedClientId && !clientConfigSections.includes(key)) return false;
             if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
             if (!selectedUserId && def.inheritFrom) return false;
@@ -1907,6 +2290,77 @@
             return 'Person · ' + (profile?.name || 'Selected person');
         }
         return 'Server defaults';
+    }
+
+    function renderSettingsHouseholdFilter() {
+        const householdSelector = document.getElementById('settingsHouseholdSelector');
+        const personSelector = document.getElementById('userSelector');
+        if (!householdSelector || !personSelector || !isAdmin) return;
+        const households = settingsScopeHouseholds();
+        const selectedProfile = profilesData.find(candidate => candidate.id === selectedUserId);
+        if (selectedProfile?.accountId) selectedSettingsHouseholdId = selectedProfile.accountId;
+        if (selectedSettingsHouseholdId && !households.some(household => household.id === selectedSettingsHouseholdId)) {
+            selectedSettingsHouseholdId = '';
+        }
+        householdSelector.innerHTML = '<option value="">All households</option>' + households.map(household => {
+            const id = household.id || '__household__';
+            const name = household.username || household.name || 'Household';
+            return '<option value="'+escapeHtml(id)+'">'+escapeHtml(/household$/i.test(name) ? name : name + '’s Household')+'</option>';
+        }).join('');
+        householdSelector.value = selectedSettingsHouseholdId;
+        const visibleProfiles = selectedSettingsHouseholdId
+            ? profilesData.filter(profile => profile.accountId === selectedSettingsHouseholdId)
+            : profilesData;
+        personSelector.innerHTML = '<option value="">Choose a person</option>' + visibleProfiles.map(profile =>
+            '<option value="'+escapeHtml(profile.id)+'">'+escapeHtml(profile.name || 'Unnamed person')+'</option>'
+        ).join('');
+        personSelector.value = visibleProfiles.some(profile => profile.id === selectedUserId) ? selectedUserId : '';
+    }
+
+    async function handleSettingsHouseholdFilter(householdId) {
+        selectedSettingsHouseholdId = householdId || '';
+        const selectedProfile = profilesData.find(candidate => candidate.id === selectedUserId);
+        if (selectedUserId && selectedSettingsHouseholdId && selectedProfile?.accountId !== selectedSettingsHouseholdId) {
+            await selectSettingsScope('server', '');
+        }
+        renderSettingsHouseholdFilter();
+    }
+
+    function settingsHouseholdDisplayName() {
+        if (!selectedUserId) return 'All households';
+        const profile = profilesData.find(candidate => candidate.id === selectedUserId);
+        const household = settingsScopeHouseholds().find(candidate => candidate.id === profile?.accountId);
+        const name = household?.username || household?.name || settingsScopeUsername || 'Household';
+        return /household$/i.test(name) ? name : name + '’s Household';
+    }
+
+    function settingsContextDisplayName() {
+        const parts = [settingsHouseholdDisplayName()];
+        if (selectedUserId) {
+            const profile = profilesData.find(candidate => candidate.id === selectedUserId);
+            parts.push(profile?.name || 'Selected person');
+        } else {
+            parts.push('Server defaults');
+        }
+        if (selectedClientId) {
+            const client = clientsForUser.find(candidate => candidate.id === selectedClientId);
+            parts.push(client?.nickname || client?.name || 'Selected device');
+        }
+        return parts.join(' · ');
+    }
+
+    function settingsSectionVisibleAtCurrentLevel(sectionKey) {
+        if (searchTerm) return true;
+        if (settingsLevel === 'essentials') return watchEssentialSections.has(sectionKey);
+        if (settingsLevel === 'basic') return !advancedSections.has(sectionKey);
+        return true;
+    }
+
+    function settingsFieldVisibleAtCurrentLevel(sectionKey, fieldKey, isAdvancedField) {
+        if (searchTerm) return true;
+        if (settingsLevel === 'essentials') return watchEssentialFieldPaths.has(sectionKey + '.' + fieldKey);
+        if (settingsLevel === 'basic') return !isAdvancedField;
+        return true;
     }
 
     function settingsCategoryMeta(groupId) {
@@ -1949,12 +2403,19 @@
         const title = document.getElementById('settingsCategoryTitle');
         const description = document.getElementById('settingsCategoryDescription');
         const summary = document.getElementById('settingsCategorySummary');
-        if (title) title.textContent = searchTerm ? 'Search results' : (group?.label || 'All settings');
+        const isEssentials = settingsLevel === 'essentials' && !searchTerm;
+        if (title) title.textContent = searchTerm ? 'Search results' : (isEssentials ? 'Watch Essentials' : (group?.label || 'All settings'));
         if (description) description.textContent = searchTerm
             ? 'Every matching setting is shown, including advanced and technical options.'
-            : (group?.description || 'Browse every available MediaStorm setting.');
+            : (isEssentials
+                ? 'The settings most people need to connect sources, choose results, and start watching. All other controls remain available in Basic and Advanced.'
+                : (group?.description || 'Browse every available MediaStorm setting.'));
         if (summary) {
-            const count = searchTerm && filteredSections ? filteredSections.size : (group ? settingsAvailableSectionsForOverview(group.id).length : 0);
+            const count = searchTerm && filteredSections
+                ? filteredSections.size
+                : (isEssentials
+                    ? Object.entries(schema).filter(([key, def]) => def.group && !def.hidden && watchEssentialSections.has(key)).length
+                    : (group ? settingsAvailableSectionsForOverview(group.id).length : 0));
             summary.textContent = count + (count === 1 ? ' section' : ' sections') + ' · ' + settingsScopeDisplayName();
         }
     }
@@ -1962,13 +2423,17 @@
     function openFirstSettingsIssue() {
         const firstKey = Object.keys(validationErrors)[0];
         if (!firstKey || !schema[firstKey]) return;
+        if (!settingsSectionVisibleAtCurrentLevel(firstKey)) {
+            settingsLevel = 'advanced';
+            localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        }
         activeSettingsGroup = settingsOverviewGroupForSection(firstKey, schema[firstKey]);
         const url = new URL(window.location.href);
         url.searchParams.set('category', activeSettingsGroup);
         url.hash = firstKey;
         history.pushState({}, '', url);
         renderSettings();
-        requestAnimationFrame(() => document.getElementById('section-' + firstKey)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        requestAnimationFrame(() => openSettingsSection(firstKey, { focus: true, scroll: true, historyMode: 'none' }));
     }
 
     function settingsHasUnsavedChanges() {
@@ -1980,9 +2445,24 @@
         const state = document.getElementById('settingsSaveState');
         const stateText = document.getElementById('settingsSaveStateText');
         const sticky = document.getElementById('settingsStickySave');
+        const stickyTitle = document.getElementById('settingsStickySaveTitle');
+        const stickyCopy = document.getElementById('settingsStickySaveCopy');
         state?.classList.toggle('unsaved', hasChanges);
         if (stateText) stateText.textContent = hasChanges ? 'Unsaved changes' : 'All changes saved';
         if (sticky) sticky.hidden = !hasChanges;
+        if (stickyTitle) stickyTitle.textContent = 'Unsaved changes · ' + settingsScopeDisplayName();
+        if (stickyCopy) stickyCopy.textContent = selectedClientId
+            ? 'Saving updates this device only.'
+            : (selectedUserId ? 'Saving updates this person and leaves device overrides unchanged.' : 'Saving updates the Server defaults. Existing overrides remain customized.');
+    }
+
+    function announceSettingsSaved() {
+        const stateText = document.getElementById('settingsSaveStateText');
+        if (!stateText) return;
+        stateText.textContent = 'Saved · ' + settingsScopeDisplayName();
+        window.setTimeout(() => {
+            if (!settingsHasUnsavedChanges()) stateText.textContent = 'All changes saved';
+        }, 3200);
     }
 
     function settingsSectionRowDescription(sectionKey, sectionDef) {
@@ -2204,6 +2684,7 @@
         settingsScopeServerExpanded = true;
         const householdId = profile.accountId || '__household__';
         expandedSettingsHouseholds.add(householdId);
+        expandedSettingsPeople.add(profileId);
     }
 
     async function selectSettingsScope(kind, profileId, clientId = '') {
@@ -2211,6 +2692,7 @@
             const selector = document.getElementById('userSelector');
             if (selector) selector.value = '';
             await handleUserChange('');
+            closeSettingsContextSheet();
             return;
         }
         const selector = document.getElementById('userSelector');
@@ -2221,6 +2703,7 @@
             if (clientSelector) clientSelector.value = clientId;
             await handleClientChange(clientId);
         }
+        closeSettingsContextSheet();
     }
 
     function stringifyDebugArg(arg) {
@@ -2679,6 +3162,13 @@
             return;
         }
         handleSettingsSearch(input.value);
+    }
+
+    function clearSettingsSearch() {
+        const input = document.getElementById('settingsSearch');
+        if (input) input.value = '';
+        handleSettingsSearch('');
+        requestAnimationFrame(() => input?.focus());
     }
 
     function handleSettingsSearch(term) {
@@ -7332,6 +7822,8 @@
                     showToast('Device settings saved successfully');
                     updateRevertButtonVisibility();
                     renderSettingsScopeTree();
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                     setTimeout(() => renderSettings(), 500);
                 } else {
                     const result = await response.json().catch(() => ({}));
@@ -7363,6 +7855,7 @@
                     setTimeout(() => renderSettings(), 500);
                     await updateClientSaveImpact();
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.text();
                     showToast(result || 'Failed to save settings', 'error');
@@ -7387,6 +7880,7 @@
                     setTimeout(() => renderSettings(), 500);
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -7487,7 +7981,7 @@
         return Object.entries(sectionDef.fields)
             .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
             .map(([fieldKey, fieldDef]) => {
-                if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return '';
+                if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return '';
                 if (!providerTableFieldVisible(item, fieldDef)) return '';
                 const fieldValue = fieldKey.includes('.')
                     ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
@@ -7684,10 +8178,10 @@
             const fieldEntries = Object.entries(sectionDef.fields)
                 .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
                 .map(([fieldKey, fieldDef]) => {
-                if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) {
+                if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) {
                     return null;
                 }
-                if (settingsLevel === 'basic' && sectionKey === 'usenetEngines' && ['apiPath', 'priority', 'config.webdavPathPrefix', 'pollIntervalSeconds', 'timeoutSeconds', 'allowedProfiles'].includes(fieldKey)) {
+                if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && sectionKey === 'usenetEngines' && ['apiPath', 'priority', 'config.webdavPathPrefix', 'pollIntervalSeconds', 'timeoutSeconds', 'allowedProfiles'].includes(fieldKey)) {
                     return null;
                 }
                 const showWhen = fieldDef.showWhen;
@@ -11495,7 +11989,7 @@
                 // Skip hidden fields
                 if (fieldDef.hidden) return '';
                 const isAdvancedField = fieldDef.advanced || advancedFieldPaths.has(sectionKey + '.' + fieldKey);
-                if (settingsLevel === 'basic' && !searchTerm && isAdvancedField) return '';
+                if (!settingsFieldVisibleAtCurrentLevel(sectionKey, fieldKey, isAdvancedField)) return '';
                 // Skip global-only fields (like file uploads) when viewing profile/client settings
                 if (fieldDef.globalOnly && (selectedUserId || selectedClientId)) return '';
                 // When editing device settings, only show fields that support client overrides.
@@ -11725,8 +12219,8 @@
             resultSpan.className = 'test-result error';
         }
     }
-    function renderSection(sectionKey, sectionDef) {
-        const isOpen = window.location.hash === '#'+sectionKey;
+    function renderSection(sectionKey, sectionDef, forceOpen = false) {
+        const isOpen = forceOpen || window.location.hash === '#'+sectionKey;
         const errorCount = getSectionErrorCount(sectionKey);
         const customizationCount = settingsSectionCustomizationCount(sectionKey);
         const sectionMessages = validationErrors[sectionKey]?.messages || [];
@@ -11789,6 +12283,7 @@
         for (const [nestedKey, nestedDef] of Object.entries(schema)) {
             // Only render as nested if parent matches AND section doesn't have its own group
             if (nestedDef.parent === sectionKey && !nestedDef.group) {
+                if (settingsLevel === 'essentials' && !searchTerm && !watchEssentialSections.has(nestedKey)) continue;
                 if (selectedUserId && !perUserSections.includes(nestedKey)) continue;
                 if (!sectionShowWhenMatches(nestedDef)) continue;
                 nestedHtml += renderNestedSectionPanel(nestedKey, nestedDef);
@@ -11797,8 +12292,11 @@
         const advancedBadge = advancedSections.has(sectionKey) ? '<span class="advanced-setting-badge">Advanced</span>' : '';
         const rowDescription = settingsSectionRowDescription(sectionKey, sectionDef);
         const configuredBadge = renderSettingsSectionBadge(sectionKey, sectionDef);
+        const headerInteractionAttrs = forceOpen
+            ? 'role="heading" aria-level="3"'
+            : 'role="button" tabindex="0" aria-expanded="'+(isOpen ? 'true' : 'false')+'" aria-controls="section-content-'+sectionKey+'" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)"';
         return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'">' +
-            '<div class="section-header" role="button" tabindex="0" aria-expanded="'+(isOpen ? 'true' : 'false')+'" aria-controls="section-content-'+sectionKey+'" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)">' +
+            '<div class="section-header" '+headerInteractionAttrs+'>' +
                 '<div class="section-title">'+getIcon(sectionDef.icon)+'<span class="settings-section-copy"><span class="settings-section-label">'+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</span><span class="settings-section-description">'+escapeHtml(rowDescription)+'</span></span></div>' +
                 '<div class="section-header-actions">'+configuredBadge+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></div>' +
             '</div>' +
@@ -12558,9 +13056,14 @@
         const settingsHome = document.getElementById('settingsHome');
         const settingsWorkspace = document.getElementById('settingsCategoryWorkspace');
         const sectionHash = window.location.hash.replace(/^#/, '');
-        const showHome = !activeSettingsGroup && !searchTerm && !schema[sectionHash];
+        const isEssentials = settingsLevel === 'essentials' && !searchTerm;
+        const showHome = !isEssentials && !activeSettingsGroup && !searchTerm && !schema[sectionHash];
         if (settingsHome) settingsHome.hidden = !showHome;
-        if (settingsWorkspace) settingsWorkspace.hidden = showHome;
+        if (settingsWorkspace) {
+            settingsWorkspace.hidden = showHome;
+            settingsWorkspace.classList.toggle('settings-essentials-workspace', isEssentials);
+        }
+        container.classList.toggle('settings-essentials-view', isEssentials);
         if (showHome) {
             container.innerHTML = '';
             renderSettingsLanding();
@@ -12612,7 +13115,7 @@
                 if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
                 if (def.hidden) return false;
-                if (settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)) return false;
+                if (!settingsSectionVisibleAtCurrentLevel(key)) return false;
                 // If search is active, only show matching sections
                 if (filteredSections !== null && !filteredSections.has(key)) return false;
                 // If a client is selected, only show client-configurable sections
@@ -12634,18 +13137,23 @@
             const relatedHtml = group.id === 'metadata' && isAdmin && !selectedUserId && !selectedClientId
                 ? '<div class="settings-related-card"><div><strong>Connected services</strong><p>Connect Trakt, Simkl, MDBList, Plex, or Jellyfin and assign them to profiles.</p></div><a class="btn btn-secondary btn-sm" href="'+basePath+'/integrations">Manage Services</a></div>'
                 : '';
-            html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+relatedHtml+groupSections.map(([key, def]) => renderSection(key, def)).join('')+'</div></div>';
+            html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+relatedHtml+groupSections.map(([key, def]) => renderSection(key, def, isEssentials)).join('')+'</div></div>';
         }
 
         // Show "no results" message if search found nothing
         if (searchTerm && totalMatchingSections === 0) {
-            html += '<div style="text-align: center; padding: 3rem; color: var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="margin: 0;">No settings found for "<strong>' + searchTerm + '</strong>"</p><p style="margin: 0.5rem 0 0; font-size: 0.875rem;">Try a different search term</p></div>';
+            html += '<div role="status" style="text-align: center; padding: 3rem; color: var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="margin: 0;">No settings found for "<strong>' + escapeHtml(searchTerm) + '</strong>"</p><p style="margin: 0.5rem 0 1rem; font-size: 0.875rem;">Search includes Basic, Advanced, and Watch Essentials.</p><button class="btn btn-secondary btn-sm" type="button" onclick="clearSettingsSearch()">Clear search</button></div>';
         }
 
         container.innerHTML = html;
 
         // Restore previously open sections (or auto-expand if searching)
-        if (searchTerm && filteredSections && filteredSections.size > 0) {
+        if (isEssentials) {
+            container.querySelectorAll('.section').forEach(section => {
+                section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            });
+        } else if (searchTerm && filteredSections && filteredSections.size > 0) {
             // Keep progressive disclosure intact while searching: open the first match only.
             const firstMatch = filteredSections.values().next().value;
             const section = document.getElementById('section-'+firstMatch);
@@ -12661,13 +13169,10 @@
             }
         }
 
-        if (window.location.hash) {
+        if (window.location.hash && !isEssentials) {
             const section = document.getElementById('section-'+window.location.hash.substring(1));
             if (section) {
-                container.querySelectorAll('.section.open').forEach(open => open.classList.remove('open'));
-                section.classList.add('open');
-                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                requestAnimationFrame(() => openSettingsSection(section.id.replace('section-', ''), { focus: false, scroll: true, historyMode: 'none' }));
             }
         }
 
@@ -12677,16 +13182,51 @@
         updateSettingsSaveStatus();
     }
 
+    function openSettingsSection(sectionKey, options = {}) {
+        const { focus = true, scroll = true, historyMode = 'push' } = options;
+        const container = document.getElementById('settingsContainer');
+        const section = document.getElementById('section-' + sectionKey);
+        if (!container || !section) return false;
+        if (settingsLevel !== 'essentials') {
+            container.querySelectorAll('.section.open').forEach(openSection => {
+                if (openSection === section) return;
+                openSection.classList.remove('open');
+                openSection.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'false');
+            });
+        }
+        section.classList.add('open');
+        const header = section.querySelector(':scope > .section-header');
+        header?.setAttribute('aria-expanded', 'true');
+        if (historyMode !== 'none') {
+            const url = new URL(window.location.href);
+            url.hash = sectionKey;
+            history[historyMode === 'replace' ? 'replaceState' : 'pushState']({}, '', url);
+        }
+        if (scroll) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (focus) requestAnimationFrame(() => header?.focus({ preventScroll: true }));
+        return true;
+    }
+
     function toggleSettingsSection(header) {
         const section = header.closest('.section');
-        if (!section) return;
+        if (!section || settingsLevel === 'essentials') return;
+        const sectionKey = section.id.replace('section-', '');
         const shouldOpen = !section.classList.contains('open');
-        document.querySelectorAll('#settingsContainer .section.open').forEach(openSection => {
-            openSection.classList.remove('open');
-            openSection.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'false');
-        });
-        section.classList.toggle('open', shouldOpen);
-        header.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        if (shouldOpen) {
+            settingsLastSectionViewport = window.scrollY;
+            openSettingsSection(sectionKey, { focus: true, scroll: true, historyMode: 'push' });
+            return;
+        }
+        section.classList.remove('open');
+        header.setAttribute('aria-expanded', 'false');
+        const url = new URL(window.location.href);
+        url.hash = '';
+        history.pushState({}, '', url);
+        if (Number.isFinite(settingsLastSectionViewport)) {
+            const restoreTop = settingsLastSectionViewport;
+            settingsLastSectionViewport = null;
+            window.scrollTo({ top: restoreTop, behavior: 'smooth' });
+        }
     }
 
     function handleSettingsSectionKeydown(event, header) {
@@ -12735,6 +13275,8 @@
                     updateClientDropdownIndicators();
                     updateRevertButtonVisibility();
                     renderSettingsScopeTree();
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.json().catch(() => ({}));
                     showToast(result.error || 'Failed to save client settings', 'error');
@@ -12760,6 +13302,7 @@
                     renderSettings(); // Re-render to update inherited field styling
                     await updateClientSaveImpact();
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.text();
                     showToast(result || 'Failed to save user settings', 'error');
@@ -12781,6 +13324,7 @@
                     if (committedPendingTextArrays) renderSettings();
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -12854,19 +13398,42 @@
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.substring(1);
         if (hash && schema[hash]) {
+            if (settingsLevel === 'essentials' && !watchEssentialSections.has(hash)) {
+                settingsLevel = 'advanced';
+                localStorage.setItem('mediastorm-settings-level', settingsLevel);
+            }
             activeSettingsGroup = settingsOverviewGroupForSection(hash, schema[hash]);
             renderSettings();
-            requestAnimationFrame(() => {
-                document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
-                const section = document.getElementById('section-'+hash);
-                if (section) { section.classList.add('open'); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-            });
+            requestAnimationFrame(() => openSettingsSection(hash, { focus: true, scroll: true, historyMode: 'none' }));
         }
     });
     window.addEventListener('popstate', () => {
         const category = new URLSearchParams(window.location.search).get('category') || '';
         activeSettingsGroup = settingsLandingGroups.some(group => group.id === category) ? category : '';
         renderSettings();
+    });
+    document.addEventListener('keydown', event => {
+        const panel = document.getElementById('settingsScopePanel');
+        if (event.key === 'Escape') {
+            closeSettingsContextSheet();
+            return;
+        }
+        if (event.key !== 'Tab' || !panel?.classList.contains('open')) return;
+        const focusable = Array.from(panel.querySelectorAll('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+            .filter(element => element.getClientRects().length > 0);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+    window.addEventListener('resize', () => {
+        if (!window.matchMedia('(max-width: 760px)').matches) closeSettingsContextSheet();
     });
     window.addEventListener('beforeunload', event => {
         if (!settingsHasUnsavedChanges()) return;

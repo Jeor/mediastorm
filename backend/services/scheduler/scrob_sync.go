@@ -92,7 +92,7 @@ func (s *Service) syncScrobHistoryToLocal(account *config.ScrobAccount, profileI
 	seen := make(map[string]struct{})
 	updates := make([]models.WatchHistoryUpdate, 0, len(events))
 	for _, event := range events {
-		update := scrobEventToUpdate(event, &watched)
+		update := s.scrobEventToLocalUpdate(event, &watched)
 		if update == nil {
 			continue
 		}
@@ -119,6 +119,45 @@ func (s *Service) syncScrobHistoryToLocal(account *config.ScrobAccount, profileI
 	}
 	log.Printf("[scheduler] Imported %d/%d unique items from Scrob history", result.Count, len(updates))
 	return result, nil
+}
+
+// scrobEventToLocalUpdate normalizes Scrob's provider-facing episode
+// coordinates before they reach local history. Scrob can represent anime using
+// a hybrid season + absolute episode number (for example One Piece S23E1173),
+// while local history consistently uses the season-relative coordinate
+// (S23E18). Keep the absolute number as metadata for round-trip exports.
+func (s *Service) scrobEventToLocalUpdate(event scrob.HistoryEvent, watched *bool) *models.WatchHistoryUpdate {
+	update := scrobEventToUpdate(event, watched)
+	if update == nil || update.MediaType != "episode" {
+		return update
+	}
+
+	media := event.Media
+	showIDs := map[string]string{}
+	if media.ShowTMDBID > 0 {
+		showIDs["tmdb"] = strconv.Itoa(media.ShowTMDBID)
+	}
+	if media.ShowTVDBID > 0 {
+		showIDs["tvdb"] = strconv.Itoa(media.ShowTVDBID)
+	}
+	episodeIDs := map[string]string{}
+	if media.TMDBID > 0 {
+		episodeIDs["tmdb"] = strconv.Itoa(media.TMDBID)
+	}
+	absoluteEpisode := 0
+	if media.EpisodeNumber >= 1000 {
+		absoluteEpisode = media.EpisodeNumber
+	}
+
+	season, episode, absolute, title := s.canonicalizeProviderEpisode(
+		"scrob", showIDs, episodeIDs, media.SeasonNumber, media.EpisodeNumber, absoluteEpisode, media.Title,
+	)
+	update.SeasonNumber = season
+	update.EpisodeNumber = episode
+	update.ItemID = fmt.Sprintf("%s:s%02de%02d", update.SeriesID, season, episode)
+	update.Name = title
+	addEpisodeExternalIDs(update.ExternalIDs, episodeIDs, absolute)
+	return update
 }
 
 func scrobEventToUpdate(event scrob.HistoryEvent, watched *bool) *models.WatchHistoryUpdate {

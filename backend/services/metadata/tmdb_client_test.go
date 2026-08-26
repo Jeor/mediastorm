@@ -49,6 +49,36 @@ func TestDoGETStopsRetryBackoffWhenContextCanceled(t *testing.T) {
 	}
 }
 
+func TestDoGETReturnsTypedNotFound(t *testing.T) {
+	c := newTMDBClient("test-key", "en", &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}, nil)
+
+	err := c.doGET(context.Background(), "https://api.themoviedb.org/test", &struct{}{})
+	if !isTMDBNotFound(err) {
+		t.Fatalf("doGET error = %v, want typed TMDB 404", err)
+	}
+}
+
+func TestTMDBSharedCooldownDelaysOtherCallers(t *testing.T) {
+	c := newTMDBClient("test-key", "en", &http.Client{}, nil)
+	c.minInterval = 0
+	c.beginSharedCooldown(60 * time.Millisecond)
+
+	started := time.Now()
+	if err := c.waitForRequestSlot(context.Background()); err != nil {
+		t.Fatalf("waitForRequestSlot: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed < 45*time.Millisecond {
+		t.Fatalf("shared cooldown waited %v, want at least 45ms", elapsed)
+	}
+}
+
 // countingRoundTripper returns a canned response for every request and counts calls.
 type countingRoundTripper struct {
 	mu     sync.Mutex
@@ -148,6 +178,39 @@ func TestBuildTMDBImage(t *testing.T) {
 	}
 	if img.Type != "poster" {
 		t.Fatalf("unexpected image type: %s", img.Type)
+	}
+}
+
+func TestRankAlternatePostersUsesMetadataLanguageAndAcceptedFallbacks(t *testing.T) {
+	primary := buildTMDBImage("/primary.jpg", tmdbPosterSize, "poster")
+	items := []tmdbImageItem{
+		{FilePath: "/french-low.jpg", ISO6391: "fr", VoteAverage: 4.5},
+		{FilePath: "/spanish.jpg", ISO6391: "es", VoteAverage: 10},
+		{FilePath: "/english.jpg", ISO6391: "en", VoteAverage: 10},
+		{FilePath: "/primary.jpg", VoteAverage: 10},
+		{FilePath: "/french-high.jpg", ISO6391: "fr", VoteAverage: 8.5},
+		{FilePath: "/french-high.jpg", ISO6391: "fr", VoteAverage: 8},
+		{FilePath: "/textless.jpg", VoteAverage: 9},
+	}
+
+	got := rankAlternatePosters(items, primary, "fr")
+	if len(got) != 4 {
+		t.Fatalf("alternate poster count = %d, want 4", len(got))
+	}
+	wantSuffixes := []string{"/french-high.jpg", "/french-low.jpg", "/english.jpg", "/textless.jpg"}
+	for i, suffix := range wantSuffixes {
+		if !strings.HasSuffix(got[i].URL, suffix) {
+			t.Fatalf("poster %d URL = %q, want suffix %q", i, got[i].URL, suffix)
+		}
+	}
+	if got[0].Language != "fr" || got[0].IsFallbackLanguage {
+		t.Fatalf("preferred poster metadata = %#v", got[0])
+	}
+	if got[2].Language != "en" || !got[2].IsFallbackLanguage {
+		t.Fatalf("English fallback poster metadata = %#v", got[2])
+	}
+	if !got[3].IsTextless || got[3].IsFallbackLanguage {
+		t.Fatalf("textless poster metadata = %#v", got[3])
 	}
 }
 

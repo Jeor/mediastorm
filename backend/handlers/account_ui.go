@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -1052,6 +1053,11 @@ func (h *AccountUIHandler) SetKidsProfile(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if req.IsKidsProfile && h.userSettingsService != nil {
+		if _, err := h.userSettingsService.ApplyKidsProfileDefaults(profileID); err != nil {
+			log.Printf("[account] failed to apply kids profile defaults for %s: %v", profileID, err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

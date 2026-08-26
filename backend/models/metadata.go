@@ -60,6 +60,7 @@ type Title struct {
 	CountryCode       string      `json:"countryCode,omitempty"` // Original production country (ISO 3166 where available)
 	Poster            *Image      `json:"poster,omitempty"`
 	TextPoster        *Image      `json:"textPoster,omitempty"` // Original poster with text (preserved when Poster is overridden with textless)
+	Posters           []Image     `json:"posters,omitempty"`    // Additional localized/textless poster options beyond the primary
 	Backdrop          *Image      `json:"backdrop,omitempty"`
 	TextBackdrop      *Image      `json:"textBackdrop,omitempty"` // Original backdrop with text (preserved when Backdrop is overridden with textless)
 	Backdrops         []Image     `json:"backdrops,omitempty"`    // Additional backdrop options beyond the primary
@@ -75,7 +76,7 @@ type Title struct {
 	AirsTimezone      string      `json:"airsTimezone,omitempty"`    // IANA timezone inferred from network/country
 	Status            string      `json:"status,omitempty"`          // Release availability: movies released/theatrical/upcoming/unknown; series released/unreleased.
 	LifecycleStatus   string      `json:"lifecycleStatus,omitempty"` // Series lifecycle from provider (Continuing, Ended, Upcoming, etc.).
-	IsDaily           bool        `json:"isDaily,omitempty"`         // True for daily shows (talk shows, news, etc.) that use date-based episode naming
+	IsDaily           bool        `json:"isDaily,omitempty"`         // True for shows whose releases commonly use date-based episode naming
 	Certification     string      `json:"certification,omitempty"`   // MPAA/TV content rating (G, PG, PG-13, R, TV-Y, TV-G, TV-PG, TV-14, TV-MA)
 	PrimaryTrailer    *Trailer    `json:"primaryTrailer,omitempty"`
 	Trailers          []Trailer   `json:"trailers,omitempty"`

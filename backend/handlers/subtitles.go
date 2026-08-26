@@ -26,12 +26,15 @@ import (
 type SubtitlesHandler struct {
 	configManager      *config.Manager
 	translationManager *subtitleTranslationManager
+	downloadCache      *subtitleDownloadCache
+	downloadRunner     func(SubtitleDownloadParams) ([]byte, error)
 }
 
 // NewSubtitlesHandler creates a new SubtitlesHandler
 func NewSubtitlesHandler() *SubtitlesHandler {
 	return &SubtitlesHandler{
 		translationManager: newSubtitleTranslationManager("", newGoogleUnofficialTranslator()),
+		downloadCache:      newSubtitleDownloadCache(defaultSubtitleDownloadCacheTTL, defaultSubtitleDownloadCacheMaxEntries),
 	}
 }
 
@@ -40,6 +43,7 @@ func NewSubtitlesHandlerWithConfig(configManager *config.Manager) *SubtitlesHand
 	return &SubtitlesHandler{
 		configManager:      configManager,
 		translationManager: newSubtitleTranslationManager("", newGoogleUnofficialTranslator()),
+		downloadCache:      newSubtitleDownloadCache(defaultSubtitleDownloadCacheTTL, defaultSubtitleDownloadCacheMaxEntries),
 	}
 }
 
@@ -314,28 +318,37 @@ func (h *SubtitlesHandler) Download(w http.ResponseWriter, r *http.Request) {
 		params.Episode = &episode
 	}
 
-	// Convert params to JSON for Python script
-	paramsJSON, err := json.Marshal(params)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+	cacheKey := subtitleDownloadCacheKey(params)
+	cacheKeyForLog := cacheKey[:12]
+	if output, ok := h.downloadCache.get(cacheKey); ok {
+		log.Printf("[subtitles] download cache HIT key=%s bytes=%d", cacheKeyForLog, len(output))
+		writeSubtitleDownloadResponse(w, output)
 		return
 	}
 
-	scriptPath, pythonPath, err := getSubtitleScriptPaths("download_subtitle.py")
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
-	}
+	result, err, shared := h.downloadCache.flights.Do(cacheKey, func() (interface{}, error) {
+		// A previous flight may have populated the cache between the initial lookup
+		// and this callback acquiring the singleflight slot.
+		if output, ok := h.downloadCache.get(cacheKey); ok {
+			return output, nil
+		}
 
-	log.Printf("[subtitles] Running Python script: %s", scriptPath)
-	// Pass params via stdin to avoid exposing credentials in process listings
-	cmd := exec.Command(pythonPath, scriptPath)
-	cmd.Stdin = strings.NewReader(string(paramsJSON))
-	output, err := cmd.Output()
+		runner := h.downloadRunner
+		if runner == nil {
+			runner = runSubtitleDownloadScript
+		}
+		output, runErr := runner(params)
+		if runErr != nil {
+			return nil, runErr
+		}
+		if isCacheableSubtitleVTT(output) {
+			h.downloadCache.set(cacheKey, output)
+			log.Printf("[subtitles] download cache STORE key=%s bytes=%d", cacheKeyForLog, len(output))
+		} else {
+			log.Printf("[subtitles] download cache SKIP key=%s reason=non-vtt bytes=%d", cacheKeyForLog, len(output))
+		}
+		return output, nil
+	})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -350,10 +363,34 @@ func (h *SubtitlesHandler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	output := result.([]byte)
+	if shared {
+		log.Printf("[subtitles] download singleflight shared key=%s bytes=%d", cacheKeyForLog, len(output))
+	}
 	log.Printf("[subtitles] Python script output: %d bytes", len(output))
-	// Output is VTT content
+	writeSubtitleDownloadResponse(w, output)
+}
+
+func runSubtitleDownloadScript(params SubtitleDownloadParams) ([]byte, error) {
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+
+	scriptPath, pythonPath, err := getSubtitleScriptPaths("download_subtitle.py")
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("[subtitles] Running Python script: %s", scriptPath)
+	cmd := exec.Command(pythonPath, scriptPath)
+	cmd.Stdin = strings.NewReader(string(paramsJSON))
+	return cmd.Output()
+}
+
+func writeSubtitleDownloadResponse(w http.ResponseWriter, output []byte) {
 	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
-	w.Write(output)
+	_, _ = w.Write(output)
 }
 
 // Translate proxies and translates a VTT subtitle into a target language.

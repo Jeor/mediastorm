@@ -53,6 +53,63 @@ func TestNewService_InitializesMasterAccount(t *testing.T) {
 	}
 }
 
+func TestTransferMaster(t *testing.T) {
+	svc := setupTestService(t)
+	current, ok := svc.GetMasterAccount()
+	if !ok {
+		t.Fatal("expected master account")
+	}
+	target, err := svc.Create("next-admin", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.TransferMaster(current.ID, target.ID); err != nil {
+		t.Fatalf("TransferMaster: %v", err)
+	}
+
+	demoted, _ := svc.Get(current.ID)
+	promoted, _ := svc.Get(target.ID)
+	if demoted.IsMaster || !promoted.IsMaster {
+		t.Fatalf("roles after transfer: source master=%v target master=%v", demoted.IsMaster, promoted.IsMaster)
+	}
+	master, ok := svc.GetMasterAccount()
+	if !ok || master.ID != target.ID {
+		t.Fatalf("master after transfer = %+v, %v; want %q", master, ok, target.ID)
+	}
+
+	reloaded, err := NewService(filepath.Dir(svc.path))
+	if err != nil {
+		t.Fatalf("reload service: %v", err)
+	}
+	reloadedMaster, ok := reloaded.GetMasterAccount()
+	if !ok || reloadedMaster.ID != target.ID {
+		t.Fatalf("persisted master = %+v, %v; want %q", reloadedMaster, ok, target.ID)
+	}
+}
+
+func TestTransferMasterRejectsInvalidTargetsAndStaleSource(t *testing.T) {
+	svc := setupTestService(t)
+	current, _ := svc.GetMasterAccount()
+	target, err := svc.Create("next-admin", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.TransferMaster(current.ID, current.ID); !errors.Is(err, ErrAlreadyMaster) {
+		t.Fatalf("same-account error = %v, want %v", err, ErrAlreadyMaster)
+	}
+	if err := svc.TransferMaster(current.ID, "missing"); !errors.Is(err, ErrAccountNotFound) {
+		t.Fatalf("missing-target error = %v, want %v", err, ErrAccountNotFound)
+	}
+	if err := svc.TransferMaster(current.ID, target.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.TransferMaster(current.ID, current.ID); !errors.Is(err, ErrMasterChanged) {
+		t.Fatalf("stale-source error = %v, want %v", err, ErrMasterChanged)
+	}
+}
+
 func TestNewService_UsesDefaultInitialMasterPassword(t *testing.T) {
 	t.Setenv(initialMasterPasswordEnv, "")
 	svc, err := NewService(t.TempDir())

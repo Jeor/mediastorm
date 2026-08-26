@@ -85,6 +85,22 @@ type personalizedKidsRatingFilter struct {
 	maxTVRating    string
 }
 
+type personalizedBuildDiagnostics struct {
+	HistoryCount         int
+	ProgressCount        int
+	SeedCount            int
+	RecentWatchedCount   int
+	RecentProgressCount  int
+	MissingTMDBCount     int
+	SimilarItemCount     int
+	SimilarErrorCount    int
+	TopTenItemCount      int
+	TrendingItemCount    int
+	TrendingErrorCount   int
+	MovieCandidateCount  int
+	SeriesCandidateCount int
+}
+
 type personalizedRecommendationsCacheEntry struct {
 	response  PersonalizedRecommendationsResponse
 	expiresAt time.Time
@@ -138,7 +154,7 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 	kidsRatingFilter := h.personalizedKidsRatingFilter(userID)
 	cacheKey := personalizedRecommendationsCacheKey(userID, days, limitPerType, history, progress)
 	if response, ok := h.cachedPersonalizedRecommendations(cacheKey); ok {
-		log.Printf("[metadata] personalized recommendations cache hit user=%s items=%d", userID, len(response.Items))
+		log.Printf("[metadata] personalized recommendations cache hit user=%s seeds=%d items=%d", userID, response.SeedCount, len(response.Items))
 		h.writePersonalizedRecommendations(w, r, userID, response)
 		return
 	}
@@ -148,7 +164,7 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 		case <-r.Context().Done():
 			return
 		case <-build.done:
-			log.Printf("[metadata] personalized recommendations shared in-flight result user=%s items=%d", userID, len(build.response.Items))
+			log.Printf("[metadata] personalized recommendations shared in-flight result user=%s seeds=%d items=%d", userID, build.response.SeedCount, len(build.response.Items))
 			h.writePersonalizedRecommendations(w, r, userID, build.response)
 			return
 		}
@@ -183,7 +199,11 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 		enrichTrendingItems(resp.Series, idx)
 	}
 
-	h.finishPersonalizedRecommendationsBuild(cacheKey, build, resp, r.Context().Err() == nil)
+	cacheResponse := r.Context().Err() == nil && (resp.SeedCount == 0 || len(resp.Items) > 0)
+	if !cacheResponse && r.Context().Err() == nil {
+		log.Printf("[metadata] personalized recommendations empty result not cached user=%s seeds=%d", userID, resp.SeedCount)
+	}
+	h.finishPersonalizedRecommendationsBuild(cacheKey, build, resp, cacheResponse)
 	h.writePersonalizedRecommendations(w, r, userID, resp)
 }
 
@@ -235,17 +255,20 @@ func personalizedRecommendationsCacheKey(
 	records := make([]string, 0, len(history)+len(progress))
 	for _, item := range history {
 		records = append(records, strings.Join([]string{
-			"h", item.ID, item.MediaType, item.ItemID, item.SeriesID,
+			"h", item.ID, item.MediaType, item.ItemID, item.SeriesID, item.Name, item.SeriesName,
 			strconv.FormatBool(item.Watched),
 			strconv.FormatInt(item.WatchedAt.UnixNano(), 10),
 			strconv.FormatInt(item.UpdatedAt.UnixNano(), 10),
+			personalizedExternalIDsFingerprint(item.ExternalIDs),
 		}, "\x00"))
 	}
 	for _, item := range progress {
 		records = append(records, strings.Join([]string{
-			"p", item.ID, item.MediaType, item.ItemID, item.SeriesID,
+			"p", item.ID, item.MediaType, item.ItemID, item.SeriesID, item.MovieName, item.SeriesName,
 			strconv.FormatFloat(item.PercentWatched, 'f', 3, 64),
+			strconv.FormatBool(item.HiddenFromContinueWatching),
 			strconv.FormatInt(item.UpdatedAt.UnixNano(), 10),
+			personalizedExternalIDsFingerprint(item.ExternalIDs),
 		}, "\x00"))
 	}
 	sort.Strings(records)
@@ -260,6 +283,22 @@ func personalizedRecommendationsCacheKey(
 		strconv.Itoa(limitPerType),
 		strconv.FormatUint(hash.Sum64(), 16),
 	}, ":")
+}
+
+func personalizedExternalIDsFingerprint(ids map[string]string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(ids))
+	for key := range ids {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, strings.ToLower(strings.TrimSpace(key))+"="+strings.TrimSpace(ids[key]))
+	}
+	return strings.Join(parts, "\x1f")
 }
 
 func (h *MetadataHandler) cachedPersonalizedRecommendations(key string) (PersonalizedRecommendationsResponse, bool) {
@@ -410,12 +449,16 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 	limitPerType int,
 	kidsRatingFilter personalizedKidsRatingFilter,
 ) PersonalizedRecommendationsResponse {
+	startedAt := time.Now()
 	service := h.serviceForUser(userID)
 	now := time.Now().UTC()
 	cutoff := now.AddDate(0, 0, -days)
 	excluded := buildPersonalizedExclusion(history, progress)
 	seeds := buildPersonalizedSeeds(userID, history, progress, cutoff, now, personalizedSeedSampleSize)
+	diagnostics := summarizePersonalizedSeedEligibility(history, progress, cutoff)
+	diagnostics.SeedCount = len(seeds)
 	if len(seeds) == 0 {
+		logPersonalizedBuildDiagnostics(userID, diagnostics, 0, nil, time.Since(startedAt))
 		return PersonalizedRecommendationsResponse{
 			Items:  []models.TrendingItem{},
 			Movies: []models.TrendingItem{},
@@ -443,6 +486,7 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 	}
 
 	topTenAll, topTenMovies, topTenSeries := h.fetchPersonalizedTopTen(ctx, userID)
+	diagnostics.TopTenItemCount = len(topTenAll) + len(topTenMovies) + len(topTenSeries)
 	addTopTenRanks(topTenAll)
 	addTopTenRanks(topTenMovies)
 	addTopTenRanks(topTenSeries)
@@ -520,9 +564,11 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 	for index, seed := range seeds {
 		result := similarResults[index]
 		if result.err != nil {
-			log.Printf("[metadata] personalized recommendations similar skipped user=%s seed=%q type=%s tmdb=%d: %v", userID, seed.Title, seed.MediaType, seed.TMDBID, result.err)
+			diagnostics.SimilarErrorCount++
+			log.Printf("[metadata] personalized recommendations similar skipped user=%s seedIndex=%d type=%s: %v", userID, index, seed.MediaType, result.err)
 			continue
 		}
+		diagnostics.SimilarItemCount += len(result.titles)
 		for idx, title := range result.titles {
 			if idx >= personalizedSimilarLimitPerSeed {
 				break
@@ -537,6 +583,9 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 		movies := finalizePersonalizedBucket(movieCandidates, limitPerType)
 		series := finalizePersonalizedBucket(seriesCandidates, limitPerType)
 		items := interleavePersonalizedItems(movies, series, limitPerType)
+		diagnostics.MovieCandidateCount = len(movieCandidates)
+		diagnostics.SeriesCandidateCount = len(seriesCandidates)
+		logPersonalizedBuildDiagnostics(userID, diagnostics, len(items), ctx.Err(), time.Since(startedAt))
 		return PersonalizedRecommendationsResponse{
 			Items:       items,
 			Movies:      movies,
@@ -559,19 +608,23 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 
 	if len(movieCandidates) < limitPerType*2 {
 		if items, err := service.Trending(ctx, "movie"); err == nil {
+			diagnostics.TrendingItemCount += len(items)
 			for idx, item := range items {
 				addCandidate(item.Title, maxFloat(0, 10-float64(idx)*0.08), "trending-movie")
 			}
 		} else {
+			diagnostics.TrendingErrorCount++
 			log.Printf("[metadata] personalized recommendations movie trending skipped user=%s: %v", userID, err)
 		}
 	}
 	if len(seriesCandidates) < limitPerType*2 {
 		if items, err := service.Trending(ctx, "series"); err == nil {
+			diagnostics.TrendingItemCount += len(items)
 			for idx, item := range items {
 				addCandidate(item.Title, maxFloat(0, 10-float64(idx)*0.08), "trending-series")
 			}
 		} else {
+			diagnostics.TrendingErrorCount++
 			log.Printf("[metadata] personalized recommendations series trending skipped user=%s: %v", userID, err)
 		}
 	}
@@ -581,6 +634,9 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 	enrichPersonalizedArtwork(ctx, movies, service)
 	enrichPersonalizedArtwork(ctx, series, service)
 	items := interleavePersonalizedItems(movies, series, limitPerType)
+	diagnostics.MovieCandidateCount = len(movieCandidates)
+	diagnostics.SeriesCandidateCount = len(seriesCandidates)
+	logPersonalizedBuildDiagnostics(userID, diagnostics, len(items), ctx.Err(), time.Since(startedAt))
 	return PersonalizedRecommendationsResponse{
 		Items:       items,
 		Movies:      movies,
@@ -589,6 +645,71 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 		SeedCount:   len(seeds),
 		Explanation: buildPersonalizedExplanation(seeds, days, len(topTenAll)+len(topTenMovies)+len(topTenSeries) > 0),
 	}
+}
+
+func summarizePersonalizedSeedEligibility(
+	history []models.WatchHistoryItem,
+	progress []models.PlaybackProgress,
+	cutoff time.Time,
+) personalizedBuildDiagnostics {
+	diagnostics := personalizedBuildDiagnostics{
+		HistoryCount:  len(history),
+		ProgressCount: len(progress),
+	}
+	for _, item := range history {
+		if !item.Watched {
+			continue
+		}
+		activity := firstNonZeroTime(item.WatchedAt, item.UpdatedAt)
+		if activity.Before(cutoff) {
+			continue
+		}
+		diagnostics.RecentWatchedCount++
+		mediaType, _, id, ids := personalizedHistoryIdentity(item)
+		if mediaType != "" && extractTMDBID(mediaType, id, ids) <= 0 {
+			diagnostics.MissingTMDBCount++
+		}
+	}
+	for _, item := range progress {
+		if item.HiddenFromContinueWatching || item.PercentWatched < 20 || item.UpdatedAt.Before(cutoff) {
+			continue
+		}
+		diagnostics.RecentProgressCount++
+		mediaType, _, id, ids := personalizedProgressIdentity(item)
+		if mediaType != "" && extractTMDBID(mediaType, id, ids) <= 0 {
+			diagnostics.MissingTMDBCount++
+		}
+	}
+	return diagnostics
+}
+
+func logPersonalizedBuildDiagnostics(
+	userID string,
+	diagnostics personalizedBuildDiagnostics,
+	itemCount int,
+	buildErr error,
+	duration time.Duration,
+) {
+	log.Printf(
+		"[metadata] personalized recommendations build user=%s history=%d progress=%d recentWatched=%d recentProgress20=%d missingTMDB=%d seeds=%d similarItems=%d similarErrors=%d topTenItems=%d trendingItems=%d trendingErrors=%d movieCandidates=%d seriesCandidates=%d items=%d duration=%s contextErr=%v",
+		userID,
+		diagnostics.HistoryCount,
+		diagnostics.ProgressCount,
+		diagnostics.RecentWatchedCount,
+		diagnostics.RecentProgressCount,
+		diagnostics.MissingTMDBCount,
+		diagnostics.SeedCount,
+		diagnostics.SimilarItemCount,
+		diagnostics.SimilarErrorCount,
+		diagnostics.TopTenItemCount,
+		diagnostics.TrendingItemCount,
+		diagnostics.TrendingErrorCount,
+		diagnostics.MovieCandidateCount,
+		diagnostics.SeriesCandidateCount,
+		itemCount,
+		duration.Round(time.Millisecond),
+		buildErr,
+	)
 }
 
 func isPersonalizedRatingAllowed(title models.Title, filter personalizedKidsRatingFilter) bool {

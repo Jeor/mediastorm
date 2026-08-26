@@ -2,6 +2,8 @@ package watchrooms
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,80 @@ type fakeRoomRepo struct {
 	members        map[string]models.WatchRoomMember
 	stateSet       bool
 	accountInvites map[string]models.WatchRoomAccountInvite
+	externalInvite *models.WatchRoomExternalInvite
+	guestMembers   map[string]models.WatchRoomMember
+	externalSource *models.WatchRoomExternalSource
+}
+
+func (r *fakeRoomRepo) ReplaceExternalInvite(_ context.Context, invite *models.WatchRoomExternalInvite) error {
+	copy := *invite
+	r.externalInvite = &copy
+	return nil
+}
+func (r *fakeRoomRepo) RevokeExternalInvite(_ context.Context, roomID, creatorProfileID string) (bool, error) {
+	if r.externalInvite == nil || r.externalInvite.RoomID != roomID || r.room.CreatorProfileID != creatorProfileID || !r.externalInvite.Active {
+		return false, nil
+	}
+	r.externalInvite.Active = false
+	return true, nil
+}
+func (r *fakeRoomRepo) GetExternalInviteByTokenHash(_ context.Context, tokenHash string, now time.Time) (*models.WatchRoomExternalInvite, error) {
+	if r.externalInvite == nil || r.externalInvite.TokenHash != tokenHash || !r.externalInvite.Active || !r.externalInvite.ExpiresAt.After(now) {
+		return nil, nil
+	}
+	copy := *r.externalInvite
+	return &copy, nil
+}
+func (r *fakeRoomRepo) GetExternalInviteByCode(_ context.Context, shortCode string, now time.Time) (*models.WatchRoomExternalInvite, error) {
+	if r.externalInvite == nil || r.externalInvite.ShortCode != shortCode || !r.externalInvite.Active || !r.externalInvite.ExpiresAt.After(now) {
+		return nil, nil
+	}
+	copy := *r.externalInvite
+	return &copy, nil
+}
+func (r *fakeRoomRepo) JoinExternalGuest(_ context.Context, _, guestID, name, clientID string, capabilities models.WatchRoomClientCapabilities, now time.Time) error {
+	if r.guestMembers == nil {
+		r.guestMembers = map[string]models.WatchRoomMember{}
+	}
+	r.guestMembers[guestID] = models.WatchRoomMember{ProfileID: "guest:" + guestID, Name: name, IsGuest: true, ClientID: clientID, Joined: true, JoinedAt: now, LastSeenAt: now, Capabilities: capabilities}
+	return nil
+}
+func (r *fakeRoomRepo) IsExternalGuest(_ context.Context, roomID, guestID string) (bool, error) {
+	_, ok := r.guestMembers[guestID]
+	return r.room != nil && r.room.ID == roomID && ok, nil
+}
+func (r *fakeRoomRepo) HeartbeatExternalGuest(_ context.Context, _, guestID, clientID string, buffering bool, now time.Time) error {
+	m := r.guestMembers[guestID]
+	m.ClientID, m.Buffering, m.LastSeenAt = clientID, buffering, now
+	r.guestMembers[guestID] = m
+	return nil
+}
+func (r *fakeRoomRepo) LeaveExternalGuest(_ context.Context, _, guestID string) error {
+	delete(r.guestMembers, guestID)
+	return nil
+}
+func (r *fakeRoomRepo) SetExternalGuestReady(_ context.Context, _, guestID string, ready bool, now time.Time) error {
+	m := r.guestMembers[guestID]
+	m.Ready, m.LastSeenAt = ready, now
+	r.guestMembers[guestID] = m
+	return nil
+}
+func (r *fakeRoomRepo) BindExternalSource(_ context.Context, roomID, creatorProfileID, resource string, params map[string]string, now time.Time) (bool, error) {
+	if r.room == nil || r.room.ID != roomID || r.room.CreatorProfileID != creatorProfileID || r.externalInvite == nil || !r.externalInvite.Active {
+		return false, nil
+	}
+	if r.externalSource != nil {
+		return r.externalSource.Resource == resource, nil
+	}
+	r.externalSource = &models.WatchRoomExternalSource{RoomID: roomID, Resource: resource, Params: params, BoundAt: now}
+	return true, nil
+}
+func (r *fakeRoomRepo) GetExternalSource(_ context.Context, roomID string) (*models.WatchRoomExternalSource, error) {
+	if r.externalSource == nil || r.externalSource.RoomID != roomID {
+		return nil, nil
+	}
+	copy := *r.externalSource
+	return &copy, nil
 }
 
 func (r *fakeRoomRepo) CreateAccountInvite(_ context.Context, invite *models.WatchRoomAccountInvite) (bool, error) {
@@ -120,6 +196,9 @@ func (r *fakeRoomRepo) Get(_ context.Context, roomID string) (*models.WatchRoom,
 		if _, joined := r.members[profileID]; !joined {
 			copy.Members = append(copy.Members, models.WatchRoomMember{ProfileID: profileID})
 		}
+	}
+	for _, member := range r.guestMembers {
+		copy.Members = append(copy.Members, member)
 	}
 	return &copy, nil
 }
@@ -291,6 +370,70 @@ func TestCreateJoinAndUpdateWatchRoom(t *testing.T) {
 	}
 	if updated.Position != 15 {
 		t.Fatalf("effective position = %v, want 15", updated.Position)
+	}
+}
+
+func TestExternalInvitationCoexistsWithLocalProfileInvite(t *testing.T) {
+	repo := &fakeRoomRepo{}
+	svc := New(repo, fakeProfiles{
+		"host":  {ID: "host", AccountID: "home", Name: "Host", AllowShareLinks: true},
+		"local": {ID: "local", AccountID: "home", Name: "Local"},
+	}, fakeAccounts{"home": {ID: "home", Username: "home"}})
+	now := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
+	svc.now = func() time.Time { return now }
+
+	room, err := svc.Create(context.Background(), "home", "host", models.WatchRoomCreate{
+		Title: "Movie", MediaType: "movie", ItemID: "tmdb:movie:1", InviteeProfileIDs: []string{"local"}, Capabilities: supportedCapabilities,
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if !repo.invites["local"] {
+		t.Fatal("local profile invitation was not retained")
+	}
+	invite, err := svc.CreateExternalInvitation(context.Background(), "home", "host", room.ID)
+	if err != nil {
+		t.Fatalf("CreateExternalInvitation() error = %v", err)
+	}
+	if invite.Token == "" || invite.TokenHash == "" || invite.ShortCode == "" || invite.Token == invite.TokenHash {
+		t.Fatalf("external invite was not safely generated: %#v", invite)
+	}
+	resolved, err := svc.ResolveExternalInvitation(context.Background(), invite.Token, false)
+	if err != nil || resolved.RoomID != room.ID {
+		t.Fatalf("ResolveExternalInvitation() = %#v, %v", resolved, err)
+	}
+	compactCode := strings.ToLower(strings.ReplaceAll(invite.ShortCode, "-", ""))
+	resolvedByCompactCode, err := svc.ResolveExternalInvitation(context.Background(), compactCode, true)
+	if err != nil || resolvedByCompactCode.RoomID != room.ID {
+		t.Fatalf("ResolveExternalInvitation(compact code) = %#v, %v", resolvedByCompactCode, err)
+	}
+	guestRoom, err := svc.JoinExternalGuest(context.Background(), resolved, "browser-1", "Outside Guest", "browser", models.WatchRoomClientCapabilities{
+		StateSync: true, ProtocolVersion: 1,
+	})
+	if err != nil {
+		t.Fatalf("JoinExternalGuest() error = %v", err)
+	}
+	found := false
+	for _, member := range guestRoom.Members {
+		if member.ProfileID == "guest:browser-1" && member.IsGuest && member.Name == "Outside Guest" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("external guest missing from room: %#v", guestRoom.Members)
+	}
+	source, err := svc.BindExternalSource(context.Background(), "home", "host", room.ID, "/movies/movie.mkv", map[string]string{"title": "Movie"})
+	if err != nil || source.Resource != "/movies/movie.mkv" {
+		t.Fatalf("BindExternalSource() = %#v, %v", source, err)
+	}
+	if _, err := svc.BindExternalSource(context.Background(), "home", "host", room.ID, "/movies/other.mkv", nil); !errors.Is(err, ErrSourceConflict) {
+		t.Fatalf("second source bind err = %v, want %v", err, ErrSourceConflict)
+	}
+	if err := svc.RevokeExternalInvitation(context.Background(), "home", "host", room.ID); err != nil {
+		t.Fatalf("RevokeExternalInvitation() error = %v", err)
+	}
+	if _, err := svc.ResolveExternalInvitation(context.Background(), invite.Token, false); !errors.Is(err, ErrInviteUnavailable) {
+		t.Fatalf("resolved revoked invitation with err %v", err)
 	}
 }
 

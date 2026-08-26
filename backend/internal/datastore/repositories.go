@@ -117,6 +117,17 @@ type WatchRoomRepository interface {
 	AcceptAccountInvite(ctx context.Context, inviteID, accountID, profileID string, now time.Time) (string, bool, error)
 	DeclineAccountInvite(ctx context.Context, inviteID, accountID string, now time.Time) (bool, error)
 	RevokeAccountInvite(ctx context.Context, inviteID, roomID, creatorProfileID string, now time.Time) (bool, error)
+	ReplaceExternalInvite(ctx context.Context, invite *models.WatchRoomExternalInvite) error
+	RevokeExternalInvite(ctx context.Context, roomID, creatorProfileID string) (bool, error)
+	GetExternalInviteByTokenHash(ctx context.Context, tokenHash string, now time.Time) (*models.WatchRoomExternalInvite, error)
+	GetExternalInviteByCode(ctx context.Context, shortCode string, now time.Time) (*models.WatchRoomExternalInvite, error)
+	JoinExternalGuest(ctx context.Context, roomID, guestID, name, clientID string, capabilities models.WatchRoomClientCapabilities, now time.Time) error
+	IsExternalGuest(ctx context.Context, roomID, guestID string) (bool, error)
+	HeartbeatExternalGuest(ctx context.Context, roomID, guestID, clientID string, buffering bool, now time.Time) error
+	LeaveExternalGuest(ctx context.Context, roomID, guestID string) error
+	SetExternalGuestReady(ctx context.Context, roomID, guestID string, ready bool, now time.Time) error
+	BindExternalSource(ctx context.Context, roomID, creatorProfileID, resource string, params map[string]string, now time.Time) (bool, error)
+	GetExternalSource(ctx context.Context, roomID string) (*models.WatchRoomExternalSource, error)
 }
 
 type RemoteAccessInviteRepository interface {
@@ -239,6 +250,14 @@ type PlaybackProgressRepository interface {
 	Count(ctx context.Context) (int64, error)
 }
 
+// RealtimeScrobbleSessionRepository stores provider-side playback sessions so
+// cleanup can continue across backend restarts.
+type RealtimeScrobbleSessionRepository interface {
+	Upsert(ctx context.Context, session *models.RealtimeScrobbleSession) error
+	List(ctx context.Context) ([]models.RealtimeScrobbleSession, error)
+	Delete(ctx context.Context, provider, userID, mediaType, itemID string) error
+}
+
 // ContentPreferencesRepository manages per-content audio/subtitle preferences.
 type ContentPreferencesRepository interface {
 	Get(ctx context.Context, userID, contentID string) (*models.ContentPreference, error)
@@ -263,7 +282,7 @@ type SeriesOrderingRepository interface {
 type PrequeueRepository interface {
 	Get(ctx context.Context, id string) ([]byte, error) // returns raw JSON
 	GetByTitleUser(ctx context.Context, titleID, userID string) ([]byte, error)
-	List(ctx context.Context) ([][]byte, error) // returns all entries as raw JSON
+	List(ctx context.Context) ([][]byte, error) // returns ready, unexpired entries as raw JSON
 	Upsert(ctx context.Context, id, titleID, userID, status string, data []byte, expiresAt interface{}) error
 	Delete(ctx context.Context, id string) error
 	DeleteExpired(ctx context.Context) (int64, error)

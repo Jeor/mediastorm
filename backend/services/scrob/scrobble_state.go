@@ -2,6 +2,7 @@ package scrob
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"novastream/config"
 	"novastream/models"
+	"novastream/services/realtimesessions"
 )
 
 type realtimeSession struct {
@@ -32,6 +34,11 @@ type ScrobbleStateTracker struct {
 	scrobbler       *Scrobbler
 	refreshInterval time.Duration
 	staleTimeout    time.Duration
+	registry        *realtimesessions.Registry
+}
+
+func (t *ScrobbleStateTracker) SetSessionRegistry(registry *realtimesessions.Registry) {
+	t.registry = registry
 }
 
 func NewScrobbleStateTracker(client *Client, scrobbler *Scrobbler, refreshInterval time.Duration) *ScrobbleStateTracker {
@@ -51,7 +58,7 @@ func realtimeSessionKey(userID string, update models.PlaybackProgressUpdate) str
 	return userID + ":" + update.MediaType + ":" + strings.ToLower(update.ItemID)
 }
 
-func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models.PlaybackProgressUpdate, _ float64) {
+func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models.PlaybackProgressUpdate, percentWatched float64) {
 	if !t.scrobbler.IsEnabledForUser(userID) {
 		return
 	}
@@ -87,6 +94,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 		}
 		session = &realtimeSession{remoteKey: response.SessionKey, account: accountCopy, token: token}
 		t.sessions[key] = session
+		t.registry.Record("scrob", userID, "playing", response.SessionKey, update, percentWatched)
 	}
 
 	session.lastActivity = now
@@ -121,6 +129,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	}
 	session.lastSent = now
 	session.paused = update.IsPaused
+	t.registry.Record("scrob", userID, state, session.remoteKey, update, percentWatched)
 }
 
 func (t *ScrobbleStateTracker) StopSession(userID string, update models.PlaybackProgressUpdate, _ float64) {
@@ -153,7 +162,27 @@ func (t *ScrobbleStateTracker) stop(key string) {
 	}
 	if err != nil {
 		log.Printf("[scrob-now-playing] stop failed for %s: %v", key, err)
+		return
 	}
+	parts := strings.SplitN(key, ":", 3)
+	if len(parts) == 3 {
+		t.registry.Remove("scrob", parts[0], models.PlaybackProgressUpdate{MediaType: parts[1], ItemID: parts[2]})
+	}
+}
+
+func (t *ScrobbleStateTracker) CleanupRealtimeSession(ctx context.Context, session models.RealtimeScrobbleSession) error {
+	account := t.scrobbler.getAccountForUser(session.UserID)
+	if !scrobAccountCanPush(account) {
+		return fmt.Errorf("no Scrob credentials for user %s", session.UserID)
+	}
+	token, err := t.scrobbler.login(ctx, account)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(session.RemoteKey) == "" {
+		return fmt.Errorf("Scrob session has no remote key")
+	}
+	return t.client.StopSession(ctx, account.BaseURL, account.APIKey, token, session.RemoteKey)
 }
 
 func isUnauthorized(err error) bool {

@@ -9,12 +9,12 @@ import (
 func TestRedactingWriterRemovesCredentialForms(t *testing.T) {
 	var output bytes.Buffer
 	writer := NewRedactingWriter(&output)
-	input := `GET /download?apikey=secret&x=1 %3Ftoken%3Dencoded%26x%3D1 {"token":"json-secret"} Authorization: Bearer bearer-secret`
+	input := `GET /download?apikey=secret&x=1 %3Ftoken%3Dencoded%26x%3D1 {"token":"json-secret","xtreamUsername":"iptv-viewer","homeWifiSSID":"Private Network"} {"path":"network.homeWifiSSID","before":"Old Network","after":"New Network"} Authorization: Bearer bearer-secret`
 	if _, err := writer.Write([]byte(input)); err != nil {
 		t.Fatal(err)
 	}
 	got := output.String()
-	for _, secret := range []string{"secret", "encoded", "json-secret", "bearer-secret"} {
+	for _, secret := range []string{"secret", "encoded", "json-secret", "bearer-secret", "iptv-viewer", "Private Network", "Old Network", "New Network"} {
 		if strings.Contains(got, secret) {
 			t.Fatalf("redacted log still contains %q: %s", secret, got)
 		}

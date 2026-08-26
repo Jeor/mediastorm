@@ -64,6 +64,9 @@ type PlaybackResolution struct {
 	DebridProvider string `json:"debridProvider,omitempty"`
 	FileSize       int64  `json:"fileSize,omitempty"`
 	SourceNZBPath  string `json:"sourceNzbPath,omitempty"`
+	// Probe is internal reusable metadata populated while resolving pre-resolved
+	// streams. It avoids probing the same remote URL again in prequeue.
+	Probe *VideoFullResult `json:"-"`
 	// Pre-extracted subtitles (for manual selection path)
 	SubtitleSessions map[int]*SubtitleSessionInfo `json:"subtitleSessions,omitempty"`
 }

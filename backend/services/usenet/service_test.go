@@ -60,6 +60,8 @@ func (s *stubPoolManager) ClearPool() error {
 
 func (s *stubPoolManager) HasPool() bool { return s.pool != nil }
 
+func (s *stubPoolManager) AvailableConnections() int { return 0 }
+
 type stubPool struct {
 	mu    sync.Mutex
 	stats map[string]struct {

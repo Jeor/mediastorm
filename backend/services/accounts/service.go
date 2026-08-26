@@ -29,6 +29,8 @@ var (
 	ErrInvalidCredentials   = errors.New("invalid username or password")
 	ErrCannotDeleteMaster   = errors.New("cannot delete the master account")
 	ErrCannotDeleteLastAcct = errors.New("cannot delete the last account")
+	ErrMasterChanged        = errors.New("admin status has already changed")
+	ErrAlreadyMaster        = errors.New("account is already the admin")
 	ErrAccountExpired       = errors.New("account has expired")
 )
 
@@ -482,6 +484,53 @@ func (s *Service) SetMaxStreams(id string, maxStreams int) error {
 	s.accounts[id] = account
 
 	return s.saveLocked()
+}
+
+// TransferMaster atomically moves administrator status from the current master
+// account to another account. The source ID prevents an already-demoted session
+// from transferring the role again after a concurrent handoff.
+func (s *Service) TransferMaster(sourceID, targetID string) error {
+	sourceID = strings.TrimSpace(sourceID)
+	targetID = strings.TrimSpace(targetID)
+	if sourceID == "" || targetID == "" {
+		return ErrAccountNotFound
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	source, sourceOK := s.accounts[sourceID]
+	target, targetOK := s.accounts[targetID]
+	if !sourceOK || !targetOK {
+		return ErrAccountNotFound
+	}
+	if !source.IsMaster {
+		return ErrMasterChanged
+	}
+	if sourceID == targetID || target.IsMaster {
+		return ErrAlreadyMaster
+	}
+	if target.IsExpired() {
+		return ErrAccountExpired
+	}
+
+	now := time.Now().UTC()
+	previousSource := source
+	previousTarget := target
+	source.IsMaster = false
+	source.UpdatedAt = now
+	target.IsMaster = true
+	target.UpdatedAt = now
+	s.accounts[sourceID] = source
+	s.accounts[targetID] = target
+
+	if err := s.saveLocked(); err != nil {
+		s.accounts[sourceID] = previousSource
+		s.accounts[targetID] = previousTarget
+		return err
+	}
+
+	return nil
 }
 
 // Delete removes an account by ID. The master account cannot be deleted.

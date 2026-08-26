@@ -43,7 +43,7 @@ func TestUserEditableSettingsSchemaEligibility(t *testing.T) {
 	}
 
 	filtering := SettingsSchema["filtering"].(map[string]interface{})["fields"].(map[string]interface{})
-	for _, field := range []string{"adaptivePlaybackEnabled", "adaptiveTargetBufferFactor", "preferredScraper", "servicePriority"} {
+	for _, field := range []string{"adaptivePlaybackEnabled", "adaptiveTargetBufferFactor", "realDebridRestrictedTermsFilterEnabled", "preferredScraper", "servicePriority"} {
 		if filtering[field].(map[string]interface{})["userEditableEligible"] != true {
 			t.Fatalf("filtering.%s should be eligible", field)
 		}
@@ -108,19 +108,24 @@ func TestUserEditableSettingsSchemaIncludesSupportedScopes(t *testing.T) {
 		"display.badgeVisibility",
 		"display.enableAnimations",
 		"display.simpleMode",
+		"display.simpleModeHomeShelves",
 		"filtering.debrid.hdrDvPolicy",
 		"filtering.preferredScraper",
+		"filtering.realDebridRestrictedTermsFilterEnabled",
 	})
 	if got := strings.Join(schema["display.badgeVisibility"].Scopes, ","); got != "profile" {
 		t.Fatalf("badge visibility scopes = %q", got)
 	}
-	for _, path := range []string{"display.enableAnimations", "display.simpleMode", "filtering.debrid.hdrDvPolicy"} {
+	for _, path := range []string{"display.enableAnimations", "display.simpleMode", "display.simpleModeHomeShelves", "filtering.debrid.hdrDvPolicy"} {
 		if got := strings.Join(schema[path].Scopes, ","); got != "profile,device" {
 			t.Fatalf("%s scopes = %q", path, got)
 		}
 	}
 	if got := strings.Join(schema["filtering.preferredScraper"].Scopes, ","); got != "profile" {
 		t.Fatalf("preferred scraper scopes = %q", got)
+	}
+	if got := strings.Join(schema["filtering.realDebridRestrictedTermsFilterEnabled"].Scopes, ","); got != "profile,device" {
+		t.Fatalf("Real-Debrid restriction filter scopes = %q", got)
 	}
 }
 
@@ -131,6 +136,26 @@ func TestUserEditableSettingsSchemaResolvesScraperOptions(t *testing.T) {
 	options, ok := schema["filtering.preferredScraper"].Options.([]map[string]string)
 	if !ok || len(options) != 2 || options[0]["value"] != "Torrentio" || options[1]["value"] != "Comet" {
 		t.Fatalf("unexpected scraper options: %#v", schema["filtering.preferredScraper"].Options)
+	}
+}
+
+func TestUserEditableSettingsSchemaResolvesSimpleModeHomeShelves(t *testing.T) {
+	schema := userEditableSettingsSchemaForSettings([]string{"display.simpleModeHomeShelves"}, config.Settings{
+		HomeShelves: config.HomeShelvesSettings{
+			Shelves: []config.ShelfConfig{
+				{ID: "top-ten", Name: "Top 10 Today"},
+				{ID: "tonight", Name: "Tonight"},
+				{ID: "custom-list", Name: "Family Favorites"},
+			},
+		},
+	})
+	field := schema["display.simpleModeHomeShelves"]
+	if field.Type != "ordered-multiselect" {
+		t.Fatalf("simple mode home shelves type = %q", field.Type)
+	}
+	options, ok := field.Options.([]map[string]string)
+	if !ok || len(options) != 2 || options[0]["value"] != "top-ten" || options[1]["value"] != "custom-list" {
+		t.Fatalf("unexpected simple mode shelf options: %#v", field.Options)
 	}
 }
 
@@ -166,6 +191,9 @@ func TestSettingsTemplateUsesCompactEditablePencilToggle(t *testing.T) {
 		"@media (hover: hover) and (pointer: fine)",
 		`aria-label="Settings scope"`,
 		"Settings cascade: Server defaults → Person overrides → Device overrides",
+		"ordered-multiselect",
+		"openMultiselectModal",
+		"moveMultiselectOption",
 	} {
 		if !strings.Contains(template, expected) {
 			t.Fatalf("settings template missing %q", expected)

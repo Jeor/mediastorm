@@ -98,6 +98,9 @@ func (ds *DataStore) WatchHistory() WatchHistoryRepository { return &pgWatchHist
 func (ds *DataStore) PlaybackProgress() PlaybackProgressRepository {
 	return &pgPlaybackProgressRepo{pool: ds.pool}
 }
+func (ds *DataStore) RealtimeScrobbleSessions() RealtimeScrobbleSessionRepository {
+	return &pgRealtimeScrobbleSessionRepo{pool: ds.pool}
+}
 func (ds *DataStore) ContentPreferences() ContentPreferencesRepository {
 	return &pgContentPrefsRepo{pool: ds.pool}
 }

@@ -526,6 +526,8 @@ func TestLogsHandler_SubmitStoredLogsPackage_RedactsSecretsBeforeUpload(t *testi
 		`2026/03/22 10:00:02 /api/settings?token=query-secret&pin=1234`,
 		`2026/03/22 10:00:03 url=https://private.example.test/video.mkv`,
 		`2026/03/22 10:00:04 key=abcDEF1234567890ghiJKL1234567890mnopQR`,
+		`2026/03/22 10:00:05 {"xtreamUsername":"iptv-viewer"}`,
+		`2026/03/22 10:00:06 {"path":"network.homeWifiSSID","before":"Old Network","after":"Private Network"}`,
 	}, "\n")
 	if err := os.WriteFile(logFile, []byte(backendLog), 0644); err != nil {
 		t.Fatalf("failed to create temp log file: %v", err)
@@ -533,7 +535,7 @@ func TestLogsHandler_SubmitStoredLogsPackage_RedactsSecretsBeforeUpload(t *testi
 
 	h := NewLogsHandler(log.New(os.Stdout, "", 0), logFile)
 
-	frontendLog := `{"apiKey":"frontend-api-secret","accessToken":"frontend-access-secret","url":"https://user:webdav-secret@example.com/movie.mkv?token=frontend-query-secret"}`
+	frontendLog := `{"apiKey":"frontend-api-secret","accessToken":"frontend-access-secret","homeWifiSSID":"Private Network","currentSSID":"Private Network","url":"https://user:webdav-secret@example.com/movie.mkv?token=frontend-query-secret"}`
 	uploadBody, err := json.Marshal(map[string]string{"frontendLogs": frontendLog})
 	if err != nil {
 		t.Fatalf("failed to marshal upload body: %v", err)
@@ -545,6 +547,20 @@ func TestLogsHandler_SubmitStoredLogsPackage_RedactsSecretsBeforeUpload(t *testi
 	h.UploadFrontendLogs(uploadRec, uploadReq)
 	if uploadRec.Code != http.StatusOK {
 		t.Fatalf("expected upload status %d, got %d", http.StatusOK, uploadRec.Code)
+	}
+	storedEntries, err := h.readFrontendLogEntries(100, "client-secret")
+	if err != nil {
+		t.Fatalf("failed to read stored frontend logs: %v", err)
+	}
+	storedFrontendLogs := make([]string, 0, len(storedEntries))
+	for _, entry := range storedEntries {
+		storedFrontendLogs = append(storedFrontendLogs, entry.Line)
+	}
+	storedFrontendContent := strings.Join(storedFrontendLogs, "\n")
+	for _, secret := range []string{"frontend-api-secret", "frontend-access-secret", "Private Network"} {
+		if strings.Contains(storedFrontendContent, secret) {
+			t.Fatalf("stored frontend logs leaked %q in:\n%s", secret, storedFrontendContent)
+		}
 	}
 
 	url, err := h.SubmitStoredLogsPackage("client-secret")
@@ -565,6 +581,9 @@ func TestLogsHandler_SubmitStoredLogsPackage_RedactsSecretsBeforeUpload(t *testi
 		"frontend-query-secret",
 		"https://private.example.test/video.mkv",
 		"abcDEF1234567890ghiJKL1234567890mnopQR",
+		"iptv-viewer",
+		"Old Network",
+		"Private Network",
 	} {
 		if strings.Contains(uploadedContent, secret) {
 			t.Fatalf("uploaded log package leaked %q in:\n%s", secret, uploadedContent)

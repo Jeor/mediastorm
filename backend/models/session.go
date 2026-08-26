@@ -24,6 +24,10 @@ type Session struct {
 // Used by one-time shareable playback links.
 const SessionScopeStream = "stream"
 
+// SessionScopeWatchParty grants an external guest access only to the watch room
+// identified by ScopeResource. It does not grant account or media access.
+const SessionScopeWatchParty = "watch_party"
+
 // SessionScopeResourcePlaceholder lets share-link playback pages refer to the
 // bound source without putting the real filename or URL in the browser address.
 const SessionScopeResourcePlaceholder = "__shared_source__"

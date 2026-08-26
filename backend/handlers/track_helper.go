@@ -3,26 +3,15 @@ package handlers
 import (
 	"log"
 	"strings"
+
+	"novastream/models"
 )
 
 // AudioStreamInfo contains audio stream metadata for track selection
-type AudioStreamInfo struct {
-	Index    int
-	Codec    string
-	Profile  string
-	Language string
-	Title    string
-}
+type AudioStreamInfo = models.AudioStreamInfo
 
 // SubtitleStreamInfo contains subtitle stream metadata for track selection
-type SubtitleStreamInfo struct {
-	Index     int
-	Codec     string // e.g., "subrip", "ass" - needed for sidecar VTT extraction
-	Language  string
-	Title     string
-	IsForced  bool
-	IsDefault bool
-}
+type SubtitleStreamInfo = models.SubtitleStreamInfo
 
 // CompatibleAudioCodecs lists codecs that can be played without transcoding
 var CompatibleAudioCodecs = map[string]bool{

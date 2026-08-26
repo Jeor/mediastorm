@@ -38,7 +38,10 @@ func (r *pgPrequeueRepo) GetByTitleUser(ctx context.Context, titleID, userID str
 }
 
 func (r *pgPrequeueRepo) List(ctx context.Context) ([][]byte, error) {
-	rows, err := r.pool.Query(ctx, `SELECT data FROM prequeue ORDER BY created_at`)
+	rows, err := r.pool.Query(ctx, `
+		SELECT data FROM prequeue
+		WHERE status = 'ready' AND expires_at >= $1
+		ORDER BY created_at`, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("list prequeue: %w", err)
 	}

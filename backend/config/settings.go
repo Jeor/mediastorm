@@ -56,8 +56,42 @@ type ServerSettings struct {
 	Host                       string   `json:"host"`
 	Port                       int      `json:"port"`
 	BasePath                   string   `json:"basePath,omitempty"`                   // URL path prefix for reverse proxy (e.g. "/mediastorm")
+	ExternalBackendURL         string   `json:"externalBackendUrl,omitempty"`         // Public backend URL used for external Watch Together invitations
 	HomepageAPIKey             string   `json:"homepageApiKey,omitempty"`             // API key for Homepage dashboard integration
 	AllowedPrivateMediaOrigins []string `json:"allowedPrivateMediaOrigins,omitempty"` // Explicit private origins permitted for server-side media requests
+}
+
+// NormalizeExternalBackendURL validates the optional public backend address.
+// A trailing /api is accepted because client backend URLs commonly include it;
+// Watch Together links target public web routes and therefore store the base
+// without that suffix.
+func (s *ServerSettings) NormalizeExternalBackendURL() error {
+	raw := strings.TrimSpace(s.ExternalBackendURL)
+	if raw == "" {
+		s.ExternalBackendURL = ""
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Hostname() == "" || !parsed.IsAbs() {
+		return fmt.Errorf("invalid external backend URL %q", raw)
+	}
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("invalid external backend URL %q: only http and https are permitted", raw)
+	}
+	if parsed.User != nil {
+		return fmt.Errorf("invalid external backend URL %q: credentials are not permitted", raw)
+	}
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("invalid external backend URL %q: query parameters and fragments are not permitted", raw)
+	}
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	if strings.HasSuffix(parsed.Path, "/api") {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/api")
+	}
+	parsed.RawPath = ""
+	s.ExternalBackendURL = strings.TrimRight(parsed.String(), "/")
+	return nil
 }
 
 // NormalizeAllowedPrivateMediaOrigins validates and reduces private media URL
@@ -349,12 +383,29 @@ type StreamingSettings struct {
 	MaxDownloadWorkers         int                      `json:"maxDownloadWorkers"`
 	MaxCacheSizeMB             int                      `json:"maxCacheSizeMB"`
 	ServiceMode                StreamingServiceMode     `json:"serviceMode"`
-	SearchMode                 SearchMode               `json:"searchMode"` // Fast (early return) vs Accurate (wait for all results)
+	ResolveFirstReadySource    bool                     `json:"resolveFirstReadySource"` // Resolve candidates from the first completed search source before all sources finish
+	SearchMode                 SearchMode               `json:"searchMode"`              // Fast (early return) vs Accurate (wait for all results)
 	DebridProviders            []DebridProviderSettings `json:"debridProviders,omitempty"`
 	UsenetResolutionTimeoutSec int                      `json:"usenetResolutionTimeoutSec"` // Timeout for usenet content resolution in seconds (0 = no limit)
-	IndexerTimeoutSec          float64                  `json:"indexerTimeoutSec"`          // Timeout for indexer/scraper searches in seconds (default: 5)
-	HealthCheckTimeoutSec      int                      `json:"healthCheckTimeoutSec"`      // Timeout for manual debrid/usenet health checks in seconds (default: 15)
-	MaxAlternateTitleSearches  int                      `json:"maxAlternateTitleSearches"`  // Max alternate/international titles to search per item (0 = unlimited)
+	UsenetPreflightProbeSec    int                      `json:"usenetPreflightProbeSec"`    // Per-candidate pre-download availability probe budget in seconds (default: 5, 0 = default)
+	// ResolutionSettleWindowMs gives already-running, better-ranked candidates a
+	// bounded grace period after another candidate validates. Zero disables the
+	// grace period, so the first valid candidate wins immediately when
+	// ResolutionEndRaceEarly is enabled. Positive values wait up to this many
+	// milliseconds for a better-ranked in-flight candidate. The setting is
+	// ignored when ResolutionEndRaceEarly is disabled because that mode always
+	// waits for every concurrent candidate to finish.
+	ResolutionSettleWindowMs int `json:"resolutionSettleWindowMs"`
+	// ResolutionEndRaceEarly, when true, adopts the first valid candidate unless
+	// ResolutionSettleWindowMs gives an already-running, better-ranked candidate
+	// a bounded grace period. When false, the race waits for every
+	// concurrent candidate, ignores the settle window, and selects the
+	// best-ranked valid result. This setting only applies when
+	// ResolveFirstReadySource is enabled.
+	ResolutionEndRaceEarly    bool    `json:"resolutionEndRaceEarly"`
+	IndexerTimeoutSec         float64 `json:"indexerTimeoutSec"`         // Timeout for indexer/scraper searches in seconds (default: 5)
+	HealthCheckTimeoutSec     int     `json:"healthCheckTimeoutSec"`     // Timeout for manual debrid/usenet health checks in seconds (default: 15)
+	MaxAlternateTitleSearches int     `json:"maxAlternateTitleSearches"` // Max alternate/international titles to search per item (0 = unlimited)
 }
 
 // SearchMode determines how scraper/indexer results are aggregated
@@ -400,6 +451,16 @@ type ImportSettings struct {
 	RarEnableMemoryPreload         bool `json:"rarEnableMemoryPreload"`
 	RarMaxMemoryGB                 int  `json:"rarMaxMemoryGB"`
 	VerifyPar2Completeness         bool `json:"verifyPar2Completeness"` // Reject structurally-incomplete releases via the PAR2 recovery-set manifest before RAR indexing
+	// UsenetMaxConcurrentFileParsers is the hard cap on how many NZB file
+	// parsers may fetch yEnc headers in parallel for a single title. It bounds
+	// the number of NNTP header round-trips a single resolve can issue, even
+	// when the pool has many free connections.
+	UsenetMaxConcurrentFileParsers int `json:"usenetMaxConcurrentFileParsers"`
+	// UsenetParserShareDivisor spreads the resolve's header fetches across a
+	// fraction of the pool's currently-free connections (1/N) so that several
+	// concurrent requests can each parallelize without one starving them. 0 or 1
+	// disables the sharing heuristic and uses the hard cap directly.
+	UsenetParserShareDivisor int `json:"usenetParserShareDivisor"`
 }
 
 // SABnzbdSettings defines SABnzbd fallback configuration
@@ -444,7 +505,7 @@ type PlaybackSettings struct {
 	RewindOnResumeFromPause       int                       `json:"rewindOnResumeFromPause"`             // Seconds to rewind when unpausing (default 0)
 	RewindOnPlaybackStart         int                       `json:"rewindOnPlaybackStart"`               // Seconds to rewind when resuming from saved progress (default 0)
 	DisablePrequeue               bool                      `json:"disablePrequeue"`                     // Disable automatic prequeue on page load (streams only resolve when Play is pressed)
-	PrerollMode                   string                    `json:"prerollMode,omitempty"`               // disabled, default, or custom
+	PrerollMode                   string                    `json:"prerollMode,omitempty"`               // disabled, artwork, default, or custom
 	PrerollAssetID                string                    `json:"prerollAssetId,omitempty"`            // Content hash used when prerollMode is custom
 	PrerollMediaScope             string                    `json:"prerollMediaScope,omitempty"`         // all, movies, or tv
 	PrerollSkipIfPrequeueReady    bool                      `json:"prerollSkipIfPrequeueReady"`          // Skip pre-roll when a prepared stream is already ready
@@ -490,7 +551,7 @@ func (p *PlaybackSettings) NormalizeAllowedTrackLanguages() {
 func (p *PlaybackSettings) NormalizePreroll() {
 	p.PrerollMode = strings.ToLower(strings.TrimSpace(p.PrerollMode))
 	switch p.PrerollMode {
-	case "default":
+	case "artwork", "default":
 		p.PrerollAssetID = ""
 	case "custom":
 		p.PrerollAssetID = strings.ToLower(strings.TrimSpace(p.PrerollAssetID))
@@ -733,6 +794,11 @@ type HomeShelvesSettings struct {
 	DisableTvLandscapeCardExpansion bool    `json:"disableTvLandscapeCardExpansion,omitempty"` // Keep TV shelf cards in portrait when focused
 	HomeShelfScale                  float64 `json:"homeShelfScale,omitempty"`                  // TV home shelf/card scale, 0.5-1.0 (default 1.0)
 	HomeHeroScale                   float64 `json:"homeHeroScale,omitempty"`                   // TV upper hero/art scale, 0.5-1.0 (default 1.0)
+}
+
+// DefaultSimpleModeHomeShelfIDs is the built-in M.O.M. Mode™ home shelf order.
+func DefaultSimpleModeHomeShelfIDs() []string {
+	return []string{"top-ten", "continue-watching", "watch-something", "trending-movies", "trending-tv"}
 }
 
 // DefaultHomeShelfConfigs returns the built-in home shelves in their default order.
@@ -1238,6 +1304,10 @@ type FilterSettings struct {
 	// AdaptiveTargetBufferFactor is the fraction of measured throughput a file's average
 	// bitrate may consume and still be considered comfortably streamable (0-1, default 0.7).
 	AdaptiveTargetBufferFactor float64 `json:"adaptiveTargetBufferFactor,omitempty"`
+	// RealDebridRestrictedTermsFilterEnabled skips Real-Debrid resolution for
+	// release titles matching the known restricted-file pattern. The candidate
+	// remains eligible for other debrid providers and Usenet.
+	RealDebridRestrictedTermsFilterEnabled bool `json:"realDebridRestrictedTermsFilterEnabled"`
 	// SplitByService enables Debrid/Usenet overrides for ranking/filtering fields.
 	SplitByService bool            `json:"splitByService,omitempty"`
 	Debrid         *FilterSettings `json:"debrid,omitempty"`
@@ -1293,6 +1363,8 @@ type DisplaySettings struct {
 	BypassFilteringForAIOStreamsOnly bool `json:"bypassFilteringForAioStreamsOnly"`
 	// ShowParsedBadges shows parsed metadata badges instead of raw titles in manual selection.
 	ShowParsedBadges bool `json:"showParsedBadges,omitempty"`
+	// ShowStreamSourceInfo displays stream service and debrid provider information in selection and playback UI.
+	ShowStreamSourceInfo bool `json:"showStreamSourceInfo"`
 	// CleanPosters hides text overlays and gradient backgrounds on poster cards.
 	CleanPosters bool `json:"cleanPosters,omitempty"`
 	// DisableMobileTopCarousel hides the top hero carousel on mobile home.
@@ -1307,6 +1379,8 @@ type DisplaySettings struct {
 	HideTVDrawerRail bool `json:"hideTvDrawerRail,omitempty"`
 	// SimpleMode reduces the frontend to essential browsing and playback choices.
 	SimpleMode bool `json:"simpleMode,omitempty"`
+	// SimpleModeHomeShelves is the ordered list of configured home shelf IDs shown in M.O.M. Mode™.
+	SimpleModeHomeShelves []string `json:"simpleModeHomeShelves,omitempty"`
 	// DisableTVHomeCardDimming keeps trailing home shelf cards fully visible on TV platforms.
 	DisableTVHomeCardDimming bool `json:"disableTvHomeCardDimming,omitempty"`
 	// EnableAnimations controls application UI motion such as animated scrolling and transitions.
@@ -1819,12 +1893,12 @@ func DefaultSettings() Settings {
 		Cache:     CacheSettings{Directory: "cache", MetadataTTLHours: 24},
 		WebDAV:    WebDAVSettings{Enabled: true, Prefix: "/webdav", Username: "novastream", Password: ""},
 		Database:  DatabaseSettings{Path: "cache/queue.db"},
-		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5},
-		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8},
+		Streaming: StreamingSettings{MaxDownloadWorkers: 15, MaxCacheSizeMB: 100, ServiceMode: StreamingServiceModeHybrid, ResolveFirstReadySource: false, SearchMode: SearchModeFast, DebridProviders: []DebridProviderSettings{}, UsenetResolutionTimeoutSec: 0, UsenetPreflightProbeSec: 5, IndexerTimeoutSec: 5, HealthCheckTimeoutSec: 15, MaxAlternateTitleSearches: 5, ResolutionSettleWindowMs: 250, ResolutionEndRaceEarly: true},
+		Import:    ImportSettings{QueueProcessingIntervalSeconds: 1, RarMaxWorkers: 40, RarMaxCacheSizeMB: 128, RarEnableMemoryPreload: false, RarMaxMemoryGB: 8, UsenetMaxConcurrentFileParsers: 16, UsenetParserShareDivisor: 4},
 		SABnzbd:   SABnzbdSettings{Enabled: &sabnzbdEnabled, FallbackHost: "", FallbackAPIKey: ""},
 		AltMount:  nil,
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
-		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: true, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
+		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: false, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "disabled", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
 		Live:      LiveSettings{Mode: "m3u", PlaylistURL: "", MaxStreams: 0, PlaylistCacheTTLHours: 24},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
@@ -1835,13 +1909,14 @@ func DefaultSettings() Settings {
 			HomeHeroScale:                1.0,
 		},
 		Filtering: FilterSettings{
-			MaxSizeMovieGB:             0,                       // 0 means no limit
-			MaxSizeEpisodeGB:           0,                       // 0 means no limit
-			HDRDVPolicy:                HDRDVPolicyIncludeHDRDV, // "hdr_dv" = allow all content (no HDR/DV filtering)
-			ServicePriority:            StreamingServicePriorityNone,
-			UnknownTrackPolicy:         UnknownTrackPolicyNone,
-			AdaptivePlaybackEnabled:    false, // opt-in
-			AdaptiveTargetBufferFactor: 0.7,
+			MaxSizeMovieGB:                         0,                       // 0 means no limit
+			MaxSizeEpisodeGB:                       0,                       // 0 means no limit
+			HDRDVPolicy:                            HDRDVPolicyIncludeHDRDV, // "hdr_dv" = allow all content (no HDR/DV filtering)
+			ServicePriority:                        StreamingServicePriorityNone,
+			UnknownTrackPolicy:                     UnknownTrackPolicyNone,
+			AdaptivePlaybackEnabled:                false, // opt-in
+			AdaptiveTargetBufferFactor:             0.7,
+			RealDebridRestrictedTermsFilterEnabled: true,
 		},
 		AnimeFiltering: AnimeFilteringSettings{},
 		UI: UISettings{
@@ -1859,10 +1934,12 @@ func DefaultSettings() Settings {
 			IncludeUnreleasedShowsInSearch:         true,
 			CleanPosters:                           true,
 			AlwaysShowProfileSelector:              true,
+			ShowStreamSourceInfo:                   true,
 			EnableAnimations:                       true,
 			EnableHeroArtPanning:                   true,
 			EnableHeroArtRotation:                  true,
 			DisableTVHomeCardDimming:               false,
+			SimpleModeHomeShelves:                  DefaultSimpleModeHomeShelfIDs(),
 			ShowSeriesBackdropForMissingEpisodeArt: false,
 			Appearance: AppearanceSettings{
 				FontScale:    floatPtr(1.0),
@@ -1984,6 +2061,8 @@ func (m *Manager) GetConfig() (*AltMountConfig, error) {
 			QueueProcessingIntervalSeconds: settings.Import.QueueProcessingIntervalSeconds,
 			RarMaxWorkers:                  settings.Import.RarMaxWorkers,
 			RarMaxCacheSizeMB:              settings.Import.RarMaxCacheSizeMB,
+			UsenetMaxConcurrentFileParsers: settings.Import.UsenetMaxConcurrentFileParsers,
+			UsenetParserShareDivisor:       settings.Import.UsenetParserShareDivisor,
 		},
 		SABnzbd: SABnzbdConfig{
 			Enabled:        settings.SABnzbd.Enabled,
@@ -2147,8 +2226,23 @@ func (m *Manager) Load() (Settings, error) {
 		}
 	}
 
+	// Backfill the resolution race policy defaults for installs that predate
+	// these fields. These child settings are inert while ResolveFirstReadySource
+	// is off, which remains the default. Preserve any explicitly stored values.
+	if streamingRaw, ok := raw["streaming"].(map[string]interface{}); ok {
+		if _, has := streamingRaw["resolutionSettleWindowMs"]; !has {
+			streamingRaw["resolutionSettleWindowMs"] = 250
+		}
+		if _, has := streamingRaw["resolutionEndRaceEarly"]; !has {
+			streamingRaw["resolutionEndRaceEarly"] = true
+		}
+	}
+
 	// Migrate excludeHdr (bool) to hdrDvPolicy (string enum)
 	if filteringRaw, ok := raw["filtering"].(map[string]interface{}); ok {
+		if _, exists := filteringRaw["realDebridRestrictedTermsFilterEnabled"]; !exists {
+			filteringRaw["realDebridRestrictedTermsFilterEnabled"] = true
+		}
 		// Only migrate if hdrDvPolicy is not already set
 		if _, hasPolicy := filteringRaw["hdrDvPolicy"]; !hasPolicy {
 			if excludeHdr, hasExclude := filteringRaw["excludeHdr"]; hasExclude {
@@ -2165,6 +2259,10 @@ func (m *Manager) Load() (Settings, error) {
 				}
 				delete(filteringRaw, "excludeHdr")
 			}
+		}
+	} else {
+		raw["filtering"] = map[string]interface{}{
+			"realDebridRestrictedTermsFilterEnabled": true,
 		}
 	}
 
@@ -2212,6 +2310,9 @@ func (m *Manager) Load() (Settings, error) {
 		if _, exists := displayMap["enableHeroArtRotation"]; !exists {
 			displayMap["enableHeroArtRotation"] = true
 		}
+		if _, exists := displayMap["showStreamSourceInfo"]; !exists {
+			displayMap["showStreamSourceInfo"] = true
+		}
 	} else {
 		raw["display"] = map[string]interface{}{
 			"alwaysShowProfileSelector":       true,
@@ -2222,6 +2323,7 @@ func (m *Manager) Load() (Settings, error) {
 			"enableAnimations":                true,
 			"enableHeroArtPanning":            true,
 			"enableHeroArtRotation":           true,
+			"showStreamSourceInfo":            true,
 		}
 	}
 
@@ -2294,7 +2396,7 @@ func (m *Manager) Load() (Settings, error) {
 			playbackRaw["subtitleBackgroundOpacity"] = 0.6
 		}
 		if _, exists := playbackRaw["subtitleUseCropDetectPosition"]; !exists {
-			playbackRaw["subtitleUseCropDetectPosition"] = true
+			playbackRaw["subtitleUseCropDetectPosition"] = false
 		}
 		thumbnailsRaw, _ := playbackRaw["thumbnails"].(map[string]interface{})
 		if thumbnailsRaw == nil {
@@ -2417,6 +2519,16 @@ func (m *Manager) Load() (Settings, error) {
 	if s.Streaming.HealthCheckTimeoutSec <= 0 {
 		s.Streaming.HealthCheckTimeoutSec = 15
 	}
+	// Backfill UsenetPreflightProbeSec if not set (0 means use the 5 second default)
+	if s.Streaming.UsenetPreflightProbeSec <= 0 {
+		s.Streaming.UsenetPreflightProbeSec = 5
+	}
+	// Normalize the legacy -1 sentinel to the single supported "no grace"
+	// representation. Missing child defaults are injected at the raw-map layer;
+	// explicit zero/false values remain unchanged.
+	if s.Streaming.ResolutionSettleWindowMs < 0 {
+		s.Streaming.ResolutionSettleWindowMs = 0
+	}
 
 	// Backfill Import settings
 	if s.Import.QueueProcessingIntervalSeconds == 0 {
@@ -2430,6 +2542,12 @@ func (m *Manager) Load() (Settings, error) {
 	}
 	if s.Import.RarMaxMemoryGB == 0 {
 		s.Import.RarMaxMemoryGB = 8
+	}
+	if s.Import.UsenetMaxConcurrentFileParsers == 0 {
+		s.Import.UsenetMaxConcurrentFileParsers = 16
+	}
+	if s.Import.UsenetParserShareDivisor == 0 {
+		s.Import.UsenetParserShareDivisor = 4
 	}
 
 	// Backfill SABnzbd settings
@@ -2556,6 +2674,9 @@ func (m *Manager) Load() (Settings, error) {
 	}
 	if s.Display.WatchStateIconStyle == "" {
 		s.Display.WatchStateIconStyle = "colored"
+	}
+	if len(s.Display.SimpleModeHomeShelves) == 0 {
+		s.Display.SimpleModeHomeShelves = DefaultSimpleModeHomeShelfIDs()
 	}
 	s.Display.CleanPosters = true
 
@@ -2815,6 +2936,9 @@ func (m *Manager) Save(s Settings) error {
 	s.Playback.NormalizeAllowedTrackLanguages()
 	s.Playback.NormalizePreroll()
 	if err := s.Server.NormalizeAllowedPrivateMediaOrigins(); err != nil {
+		return err
+	}
+	if err := s.Server.NormalizeExternalBackendURL(); err != nil {
 		return err
 	}
 	s.UsenetEngines = normalizeEnabledUsenetEngines(s.UsenetEngines)

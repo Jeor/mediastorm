@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -47,6 +48,103 @@ func TestApplyTVDBMovieExtendedMetadataCopiesGenresWithoutExternalIDs(t *testing
 	}
 	if title.CountryCode != "usa" {
 		t.Fatalf("CountryCode = %q, want provider country usa", title.CountryCode)
+	}
+}
+
+func TestEnrichTMDBEpisodeMetadataCachesMissingSeason(t *testing.T) {
+	var calls atomic.Int32
+	httpc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	cache := newFileCache(t.TempDir(), 24)
+	service := &Service{
+		tmdb:  newTMDBClient("test-key", "en", httpc, cache),
+		cache: cache,
+	}
+	details := models.SeriesDetails{Seasons: []models.SeriesSeason{{
+		Number:   0,
+		Name:     "Specials",
+		Episodes: []models.SeriesEpisode{{SeasonNumber: 0, EpisodeNumber: 1}},
+	}}}
+
+	for i := 0; i < 2; i++ {
+		changed, complete := service.enrichTMDBEpisodeMetadata(context.Background(), &details, 82782)
+		if changed || !complete {
+			t.Fatalf("enrichment pass %d = changed %v complete %v, want false/true", i+1, changed, complete)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("TMDB calls = %d, want one cached 404", got)
+	}
+}
+
+func TestCachedTMDBSeasonSingleflightsConcurrentMiss(t *testing.T) {
+	var calls atomic.Int32
+	httpc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		time.Sleep(20 * time.Millisecond)
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	cache := newFileCache(t.TempDir(), 24)
+	service := &Service{
+		tmdb:  newTMDBClient("test-key", "en", httpc, cache),
+		cache: cache,
+	}
+
+	const callers = 12
+	var wg sync.WaitGroup
+	wg.Add(callers)
+	for i := 0; i < callers; i++ {
+		go func() {
+			defer wg.Done()
+			_, found, err := service.cachedTMDBSeason(context.Background(), 82782, tmdbSeasonSummary{Number: 0})
+			if err != nil || found {
+				t.Errorf("cachedTMDBSeason = found %v err %v, want false/nil", found, err)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("TMDB calls = %d, want one singleflight request", got)
+	}
+}
+
+func TestResolveSeriesTVDBIDNegativeCachesMissingTMDBSeries(t *testing.T) {
+	var calls atomic.Int32
+	httpc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Status:     "404 Not Found",
+			Body:       io.NopCloser(strings.NewReader(`{"status_code":34}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	cache := newFileCache(t.TempDir(), 24)
+	service := &Service{
+		tmdb:  newTMDBClient("test-key", "en", httpc, cache),
+		cache: cache,
+	}
+	req := models.SeriesDetailsQuery{TMDBID: 327723}
+
+	for i := 0; i < 2; i++ {
+		if _, err := service.resolveSeriesTVDBIDActual(context.Background(), req); err == nil {
+			t.Fatalf("resolution pass %d unexpectedly succeeded", i+1)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("TMDB calls = %d, want one request followed by negative-cache hit", got)
 	}
 }
 
@@ -155,7 +253,7 @@ func TestGetMovieDetailsFromTMDBHydratesLogoOnServiceCacheHit(t *testing.T) {
 		t.Fatalf("seed details cache: %v", err)
 	}
 	logo := &models.Image{URL: "https://image.tmdb.org/t/p/w500/logo.png", Type: "logo"}
-	imagesCacheID := cacheKey("tmdb", "images", "v7", "en", "movie", strconv.FormatInt(tmdbID, 10))
+	imagesCacheID := cacheKey("tmdb", "images", "v9", "en", "movie", strconv.FormatInt(tmdbID, 10))
 	if err := cache.set(imagesCacheID, tmdbImagesResult{Logo: logo}); err != nil {
 		t.Fatalf("seed images cache: %v", err)
 	}
@@ -197,7 +295,7 @@ func TestGetMovieDetailsFromTMDBHydratesLogoOnFreshResponse(t *testing.T) {
 	}
 	logo := &models.Image{URL: "https://image.tmdb.org/t/p/w500/logo.png", Type: "logo"}
 	if err := cache.set(
-		cacheKey("tmdb", "images", "v7", "en", "movie", strconv.FormatInt(tmdbID, 10)),
+		cacheKey("tmdb", "images", "v9", "en", "movie", strconv.FormatInt(tmdbID, 10)),
 		tmdbImagesResult{Logo: logo},
 	); err != nil {
 		t.Fatalf("seed images cache: %v", err)
@@ -769,12 +867,12 @@ func TestGetCachedArtworkURLsUsesMetadataLanguageForTMDBImages(t *testing.T) {
 		cache:  cache,
 	}
 
-	if err := cache.set(cacheKey("tmdb", "images", "v7", "eng", "series", "71712"), tmdbImagesResult{
+	if err := cache.set(cacheKey("tmdb", "images", "v9", "eng", "series", "71712"), tmdbImagesResult{
 		TextPoster: &models.Image{URL: "https://example.test/english-poster.jpg", Type: "poster", Language: "en"},
 	}); err != nil {
 		t.Fatalf("set english images cache: %v", err)
 	}
-	if err := cache.set(cacheKey("tmdb", "images", "v7", "fra", "series", "71712"), tmdbImagesResult{
+	if err := cache.set(cacheKey("tmdb", "images", "v9", "fra", "series", "71712"), tmdbImagesResult{
 		TextPoster: &models.Image{URL: "https://example.test/french-poster.jpg", Type: "poster", Language: "fr"},
 	}); err != nil {
 		t.Fatalf("set french images cache: %v", err)
@@ -793,7 +891,7 @@ func TestEnrichShelfArtworkFromCacheAppliesArtworkPastFetchLimit(t *testing.T) {
 		cache:  cache,
 	}
 
-	if err := cache.set(cacheKey("tmdb", "images", "v7", "eng", "movie", "1674087"), tmdbImagesResult{
+	if err := cache.set(cacheKey("tmdb", "images", "v9", "eng", "movie", "1674087"), tmdbImagesResult{
 		TextlessPoster: &models.Image{URL: "https://image.example/poster.jpg", Type: "poster"},
 		TextPoster:     &models.Image{URL: "https://image.example/text-poster.jpg", Type: "poster"},
 	}); err != nil {
@@ -1255,7 +1353,7 @@ func TestSeriesDetailsLiteFallsBackToTMDBAndKeepsLogoOnCachedProviderMismatch(t 
 	}); err != nil {
 		t.Fatalf("seed mismatched lite cache: %v", err)
 	}
-	imagesCacheID := cacheKey("tmdb", "images", "v7", "eng", "series", "107124")
+	imagesCacheID := cacheKey("tmdb", "images", "v9", "eng", "series", "107124")
 	if err := cache.set(imagesCacheID, tmdbImagesResult{
 		Logo: &models.Image{
 			URL:      "https://image.tmdb.org/t/p/w500/animaniacs-logo.png",
@@ -2955,5 +3053,24 @@ func TestGetTopTenListSourceUsesSourceCache(t *testing.T) {
 	}
 	if len(items) != 1 || items[0].Title.Name != "Cached" {
 		t.Fatalf("unexpected cached items: %#v", items)
+	}
+}
+
+func TestIsDateBasedSeriesClassification(t *testing.T) {
+	tests := map[string]bool{
+		"talk_show":  true,
+		"Talk Show":  true,
+		"news":       true,
+		"game-show":  true,
+		"Soap":       true,
+		"soap_opera": true,
+		"Drama":      false,
+		"series":     false,
+	}
+
+	for classification, want := range tests {
+		if got := isDateBasedSeriesClassification(classification); got != want {
+			t.Errorf("isDateBasedSeriesClassification(%q) = %v, want %v", classification, got, want)
+		}
 	}
 }

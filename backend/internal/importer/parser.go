@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -24,7 +25,30 @@ import (
 	"novastream/internal/pool"
 )
 
-const maxConcurrentNZBFileParsers = 4
+// minConcurrentNZBFileParsers is the floor for yEnc header-fetch concurrency in
+// file parsers: a resolve always runs at least this many file parsers in
+// parallel. Combined with parallelYEncFetchesPerParser, that floors the number
+// of in-flight header fetches at the historical fixed width (4 file parsers x 1
+// fetch), so we never regress below it. The pool backpressures the actual
+// connection usage, so exceeding the floor is always safe.
+const minConcurrentNZBFileParsers = 2
+
+// parallelYEncFetchesPerParser is the worst-case number of concurrent yEnc
+// header fetches a single file parser may issue: parseFileWithContext fetches
+// the first and the final segment headers concurrently.
+const parallelYEncFetchesPerParser = 2
+
+// defaultMaxConcurrentNZBFileParsers is the hard cap on per-title yEnc header
+// file-parser concurrency when settings don't override it. It bounds how many
+// NNTP header round-trips a single resolve can issue at once, even when the pool
+// has many free connections.
+const defaultMaxConcurrentNZBFileParsers = 16
+
+// defaultParserShareDivisor spreads a resolve's yEnc header fetches across 1/N
+// of the pool's currently-free connections (1/4 by default) so that several
+// concurrent requests can each parallelize without any one of them filling the
+// pool.
+const defaultParserShareDivisor = 4
 
 // NzbType represents the type of NZB content
 type NzbType string
@@ -176,14 +200,36 @@ type Parser struct {
 	poolManager  pool.Manager  // Pool manager for dynamic pool access
 	log          *slog.Logger  // Logger for debug/error messages
 	deobfuscator *Deobfuscator // Filename deobfuscator
+
+	// maxConcurrentFileParsers caps how many file parsers fetch yEnc headers in
+	// parallel for a single title (0 = default). parserShareDivisor spreads them
+	// across 1/N of the pool's free connections; <=1 disables the sharing
+	// heuristic and uses the hard cap directly.
+	maxConcurrentFileParsers int
+	parserShareDivisor       int
 }
 
 // NewParser creates a new NZB parser
 func NewParser(poolManager pool.Manager) *Parser {
 	return &Parser{
-		poolManager:  poolManager,
-		log:          slog.Default().With("component", "nzb-parser"),
-		deobfuscator: NewDeobfuscator(poolManager),
+		poolManager:              poolManager,
+		log:                      slog.Default().With("component", "nzb-parser"),
+		deobfuscator:             NewDeobfuscator(poolManager),
+		maxConcurrentFileParsers: defaultMaxConcurrentNZBFileParsers,
+		parserShareDivisor:       defaultParserShareDivisor,
+	}
+}
+
+// SetConcurrency configures the per-title yEnc header-fetch parallelism.
+// hardCap bounds how many file parsers run concurrently (0 leaves the default);
+// shareDivisor spreads them across 1/N of the pool's free connections (<=1
+// disables spreading and uses the hard cap alone).
+func (p *Parser) SetConcurrency(hardCap, shareDivisor int) {
+	if hardCap > 0 {
+		p.maxConcurrentFileParsers = hardCap
+	}
+	if shareDivisor >= 0 {
+		p.parserShareDivisor = shareDivisor
 	}
 }
 
@@ -260,9 +306,11 @@ func (p *Parser) ParseFileWithContext(ctx context.Context, r io.Reader, nzbPath 
 	}
 
 	// Each file parser opens NNTP body readers to inspect the first and final
-	// yEnc headers. Bounding this independently of host CPU count prevents large,
-	// obfuscated multipart releases from multiplying connection buffers in RAM.
-	parsedFiles, err := runBoundedFileParsers(ctx, len(validFiles), func(parseCtx context.Context, i int) (*ParsedFile, error) {
+	// yEnc headers. The width is a fraction of the pool's free connections
+	// (bounded by the configured hard cap) so several concurrent resolves share
+	// the pool; the pool itself backpressures the actual connection usage, so
+	// this width only limits how many header round-trips run in parallel.
+	parsedFiles, err := runBoundedFileParsers(ctx, len(validFiles), p.fileParserLimit(), func(parseCtx context.Context, i int) (*ParsedFile, error) {
 		file := validFiles[i]
 		parsedFile, parseErr := p.parseFileWithContext(parseCtx, file, n.Meta, n.Files, parsed.Filename)
 		if parseErr != nil {
@@ -302,12 +350,43 @@ func (p *Parser) ParseFileWithContext(ctx context.Context, r io.Reader, nzbPath 
 	return parsed, nil
 }
 
+// fileParserLimit computes how many file parsers may run concurrently for a
+// single title. It takes the configured hard cap, then — when the pool-sharing
+// heuristic is enabled — narrows it so that the resulting in-flight yEnc header
+// fetches never exceed 1/N of the pool's currently-free connections (each file
+// parser can run first+last fetches in parallel, so the fetch budget is divided
+// by parallelYEncFetchesPerParser). Several concurrent resolves can therefore
+// each parallelize without one saturating the pool, and a constrained pool keeps
+// the same in-flight fetch footprint as the historical fixed width. It always
+// returns at least minConcurrentNZBFileParsers, even if the configured cap is
+// lower, so a resolve never regresses below the historical fixed width.
+func (p *Parser) fileParserLimit() int {
+	limit := p.maxConcurrentFileParsers
+	if limit <= 0 {
+		limit = defaultMaxConcurrentNZBFileParsers
+	}
+	if p.parserShareDivisor > 1 && p.poolManager != nil {
+		// Share 1/N of the connections that are free right now, expressed as an
+		// in-flight header fetch budget, then convert back to file parsers. A 0
+		// budget (pool saturated or absent) leaves the floor to apply below
+		// rather than using the full cap against a busy pool.
+		fetchBudget := p.poolManager.AvailableConnections() / p.parserShareDivisor
+		if share := (fetchBudget + parallelYEncFetchesPerParser - 1) / parallelYEncFetchesPerParser; share < limit {
+			limit = share
+		}
+	}
+	if limit < minConcurrentNZBFileParsers {
+		limit = minConcurrentNZBFileParsers
+	}
+	return limit
+}
+
 // runBoundedFileParsers preserves file order while canceling sibling probes as
 // soon as one volume proves the release cannot be parsed. This prevents a bad
 // multi-volume NZB from serially probing every remaining volume.
-func runBoundedFileParsers(ctx context.Context, count int, parse func(context.Context, int) (*ParsedFile, error)) ([]*ParsedFile, error) {
+func runBoundedFileParsers(ctx context.Context, count, limit int, parse func(context.Context, int) (*ParsedFile, error)) ([]*ParsedFile, error) {
 	group, parseCtx := errgroup.WithContext(ctx)
-	group.SetLimit(maxConcurrentNZBFileParsers)
+	group.SetLimit(limit)
 	results := make([]*ParsedFile, count)
 
 	for i := 0; i < count; i++ {
@@ -356,14 +435,24 @@ func (p *Parser) parseFileWithContext(ctx context.Context, file nzbparser.NzbFil
 	// to the NZB-declared segment sizes rather than aborting the entire import.
 	isRecovery := isRecoveryFile(file.Filename, file.Subject)
 
-	// Fetch yEnc headers from the first segment to get correct filename and file size, some nzbs have wrong filename in the segments
-	var yencFilename string
-	var yencFileSize int64
-	// firstPartSize is captured from the single first-segment yEnc fetch below so
-	// that normalizeSegmentSizesWithYenc can reuse it instead of re-fetching the
-	// same article (segment 0) a second time.
-	var firstPartSize int64
-	if p.poolManager != nil && p.poolManager.HasPool() && len(file.Segments) > 0 {
+	// Fetch yEnc headers from the first segment to get correct filename and file size,
+	// some nzbs have wrong filename in the segments. The first and (when sizing
+	// normalization is needed) last segment headers are independent round-trips, so
+	// they are fetched concurrently to halve this file's serialized header-fetch
+	// wall-clock. firstPartSize is reused by normalizeSegmentSizesWithYenc so that
+	// normalization need not re-fetch segment 0.
+	var (
+		yencFilename  string
+		yencFileSize  int64
+		firstPartSize int64
+		lastPartSize  int64
+		lastPartErr   error
+	)
+	usePool := p.poolManager != nil && p.poolManager.HasPool()
+	// needLast is true exactly when normalization will run, i.e. there are enough
+	// segments and this is not an optional recovery/parity volume.
+	needLast := usePool && len(file.Segments) >= 2 && !isRecovery
+	if usePool && len(file.Segments) > 0 {
 		// Check for context cancellation before network call
 		select {
 		case <-ctx.Done():
@@ -371,26 +460,44 @@ func (p *Parser) parseFileWithContext(ctx context.Context, file nzbparser.NzbFil
 		default:
 		}
 
-		firstPartHeaders, err := p.fetchYencHeaders(ctx, file.Segments[0], nil)
-		if err != nil {
+		var (
+			firstPartHeaders nntpcli.YencHeaders
+			firstErr         error
+			wg               sync.WaitGroup
+		)
+		if needLast {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				lastPartSize, lastPartErr = p.lastSegmentPartSize(ctx, file.Segments)
+			}()
+		}
+		firstPartHeaders, firstErr = p.fetchYencHeaders(ctx, file.Segments[0], nil)
+
+		if firstErr != nil {
+			// Terminal first-segment verdicts fail fast: the concurrent last-segment
+			// fetch is left to be cancelled by parseCtx when this file parser returns
+			// an error, so a dead volume is not held up waiting on its sibling probe.
 			if requiresEncryptedRarVolume(meta, file.Filename, file.Subject) {
 				p.log.Warn("required encrypted RAR volume is unavailable",
-					"filename", file.Filename, "error", err)
+					"filename", file.Filename, "error", firstErr)
 				return nil, NewNonRetryableError(
-					fmt.Sprintf("required encrypted RAR volume %s is incomplete", file.Filename), err)
+					fmt.Sprintf("required encrypted RAR volume %s is incomplete", file.Filename), firstErr)
 			}
-			if IsArticleUnavailable(err) && !isRecovery {
+			if IsArticleUnavailable(firstErr) && !isRecovery {
 				p.log.Warn("required content article is unavailable; rejecting NZB",
-					"filename", file.Filename, "error", err)
+					"filename", file.Filename, "error", firstErr)
 				return nil, NewNonRetryableError(
-					fmt.Sprintf("required content article for %s is unavailable", file.Filename), err)
+					fmt.Sprintf("required content article for %s is unavailable", file.Filename), firstErr)
 			}
 			// A transiently missing first article must not abort the import: the
 			// filename comes from the (now-repaired) subject and the uniform body
 			// size is recovered from another segment during normalization below.
+			wg.Wait()
 			p.log.Warn("first segment yEnc header unavailable; will recover sizing from other segments",
-				"filename", file.Filename, "recovery", isRecovery, "error", err)
+				"filename", file.Filename, "recovery", isRecovery, "error", firstErr)
 		} else {
+			wg.Wait()
 			yencFilename = firstPartHeaders.FileName
 			yencFileSize = int64(firstPartHeaders.FileSize)
 			firstPartSize = int64(firstPartHeaders.PartSize)
@@ -401,7 +508,7 @@ func (p *Parser) parseFileWithContext(ctx context.Context, file nzbparser.NzbFil
 	// This handles cases where NZB segment sizes include yEnc encoding overhead
 	// This is required for all file types including RAR/7z since archive analysis
 	// depends on accurate segment sizes for seeking within files
-	if p.poolManager != nil && p.poolManager.HasPool() && len(file.Segments) >= 2 && !isRecovery {
+	if needLast {
 		// Check for context cancellation before network call
 		select {
 		case <-ctx.Done():
@@ -409,9 +516,10 @@ func (p *Parser) parseFileWithContext(ctx context.Context, file nzbparser.NzbFil
 		default:
 		}
 
-		// Reuse the already-fetched segment-0 PartSize when available; normalization
-		// recovers the uniform body size from other segments if it was not.
-		err := p.normalizeSegmentSizesWithYenc(ctx, file.Segments, firstPartSize)
+		// Reuse the already-fetched segment-0 PartSize and final-segment PartSize
+		// (both resolved in parallel above); normalization recovers the uniform body
+		// size from other segments when the first fetch was unavailable.
+		err := p.normalizeSegmentSizesWithYenc(ctx, file.Segments, firstPartSize, lastPartSize, lastPartErr)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, err
@@ -587,10 +695,13 @@ func (p *Parser) fetchActualFileSizeFromYencHeader(file nzbparser.NzbFile) (int6
 	if err != nil {
 		return 0, fmt.Errorf("failed to get body reader: %w", err)
 	}
+	if r == nil {
+		return 0, fmt.Errorf("pool returned a nil body reader for segment %s", firstSegment.ID)
+	}
 	defer r.Close()
 
 	// Get yenc headers
-	h, err := r.GetYencHeaders()
+	h, err := getYencHeadersWithContext(ctx, r)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get yenc headers: %w", err)
 	}
@@ -631,14 +742,16 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 				}
 				return fmt.Errorf("failed to get body reader: %w", err)
 			}
+			if r == nil {
+				return fmt.Errorf("pool returned a nil body reader for segment %s", segment.ID)
+			}
 			defer r.Close()
 
-			if r == nil {
-				return fmt.Errorf("no connection pool available")
-			}
-
-			// Get yenc headers
-			h, err := r.GetYencHeaders()
+			// Get yenc headers. A sibling file parser may cancel this context
+			// while BodyReader is returning; some nntppool versions can then
+			// return a non-nil wrapper whose inner reader is nil, so the helper
+			// below checks cancellation before calling into it.
+			h, err := getYencHeadersWithContext(ctx, r)
 			if err != nil {
 				return fmt.Errorf("failed to get yenc headers: %w", err)
 			}
@@ -647,6 +760,7 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 			return nil
 		},
 		retry.Attempts(3),
+		retry.Context(ctx),
 		retry.Delay(1*time.Second),
 		retry.DelayType(retry.BackOffDelay),
 		retry.MaxDelay(5*time.Second),
@@ -672,13 +786,38 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 	return result, nil
 }
 
+// getYencHeadersWithContext contains failures from the external NNTP reader at
+// the importer boundary. In particular, nntppool may return a typed wrapper
+// around a nil reader when BodyReader races with context cancellation. Calling
+// GetYencHeaders on that wrapper panics instead of returning an error.
+func getYencHeadersWithContext(ctx context.Context, reader nntpcli.ArticleBodyReader) (headers nntpcli.YencHeaders, err error) {
+	if ctx != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nntpcli.YencHeaders{}, ctxErr
+		}
+	}
+	if reader == nil {
+		return nntpcli.YencHeaders{}, errors.New("NNTP body reader is nil")
+	}
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			headers = nntpcli.YencHeaders{}
+			err = fmt.Errorf("NNTP body reader panicked while reading yEnc headers: %v", recovered)
+		}
+	}()
+
+	return reader.GetYencHeaders()
+}
+
 // normalizeSegmentSizesWithYenc normalizes segment sizes using yEnc PartSize headers
 // This handles cases where NZB segment sizes include yEnc overhead
 // normalizeSegmentSizesWithYenc rewrites NZB segment byte counts to the actual
 // yEnc part sizes. firstPartSize is the segment-0 PartSize already obtained by the
-// caller; when it is > 0 we skip re-fetching segment 0 (a redundant whole-article
-// pull) and only fetch the last segment, whose size differs from the rest.
-func (p *Parser) normalizeSegmentSizesWithYenc(ctx context.Context, segments []nzbparser.NzbSegment, firstPartSize int64) error {
+// caller; lastPartSize/lastPartErr are the final segment's PartSize (and any error)
+// fetched concurrently by the caller. When firstPartSize is <= 0 we skip re-fetching
+// segment 0 and only recover the uniform body size from another leading segment.
+func (p *Parser) normalizeSegmentSizesWithYenc(ctx context.Context, segments []nzbparser.NzbSegment, firstPartSize, lastPartSize int64, lastPartErr error) error {
 	if len(segments) < 2 {
 		// Not enough segments to determine if normalization is needed
 		return nil
@@ -695,22 +834,32 @@ func (p *Parser) normalizeSegmentSizesWithYenc(ctx context.Context, segments []n
 		}
 	}
 
-	// Fetch PartSize from the last segment (its size differs from the uniform body
-	// parts). A confirmed all-provider miss makes the content incomplete and is
-	// terminal; transient header failures can still fall back to the declared size.
-	var lastPartSize int64
-	if lastPartHeaders, err := p.fetchYencHeaders(ctx, segments[len(segments)-1], nil); err != nil {
-		if IsArticleUnavailable(err) {
-			return err
+	// A confirmed all-provider miss on the last segment makes the content
+	// incomplete and is terminal; transient header failures keep the declared size.
+	if lastPartErr != nil {
+		if IsArticleUnavailable(lastPartErr) {
+			return lastPartErr
 		}
 		p.log.Warn("last segment yEnc header unavailable; keeping declared size for final segment",
-			"error", err, "segments", len(segments))
-	} else {
-		lastPartSize = int64(lastPartHeaders.PartSize)
+			"error", lastPartErr, "segments", len(segments))
 	}
 
 	applyNormalizedSizes(segments, firstPartSize, lastPartSize)
 	return nil
+}
+
+// lastSegmentPartSize fetches the yEnc PartSize of a file's final segment for
+// normalization. It runs concurrently with the first-segment fetch so that both
+// independent round-trips overlap, halving the per-file header-fetch wall-clock.
+func (p *Parser) lastSegmentPartSize(ctx context.Context, segments []nzbparser.NzbSegment) (int64, error) {
+	if len(segments) == 0 {
+		return 0, nil
+	}
+	h, err := p.fetchYencHeaders(ctx, segments[len(segments)-1], nil)
+	if err != nil {
+		return 0, err
+	}
+	return int64(h.PartSize), nil
 }
 
 // fetchUniformPartSize resolves the yEnc part size shared by a file's uniform body

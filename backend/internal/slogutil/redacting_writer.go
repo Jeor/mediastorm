@@ -18,11 +18,19 @@ var sensitiveLogPatterns = []struct {
 		replacement: []byte(`${1}[redacted]`),
 	},
 	{
-		pattern:     regexp.MustCompile(`(?i)("(?:token|api[_-]?key|key|auth|authorization|x-pin)"\s*:\s*")[^"]*`),
+		pattern:     regexp.MustCompile(`(?i)("(?:token|api[_-]?key|key|auth|authorization|x-pin|xtreamUsername|homeWifiSSID|currentSSID|ssid)"\s*:\s*")[^"]*`),
 		replacement: []byte(`${1}[redacted]`),
 	},
 	{
 		pattern:     regexp.MustCompile(`(?i)(authorization\s*[:=]\s*bearer\s+)[a-z0-9._~+/=-]+`),
+		replacement: []byte(`${1}[redacted]`),
+	},
+	{
+		pattern:     regexp.MustCompile(`(?i)("path"\s*:\s*"[^"]*homeWifiSSID"[^}\r\n]*"before"\s*:\s*")[^"]*`),
+		replacement: []byte(`${1}[redacted]`),
+	},
+	{
+		pattern:     regexp.MustCompile(`(?i)("path"\s*:\s*"[^"]*homeWifiSSID"[^}\r\n]*"after"\s*:\s*")[^"]*`),
 		replacement: []byte(`${1}[redacted]`),
 	},
 }

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -913,7 +914,7 @@ func TestListPlaybackProgressOverlaysActiveMovieProgress(t *testing.T) {
 	}
 }
 
-func TestUpdatePlaybackProgressNotifiesWatchStateChangedHook(t *testing.T) {
+func TestUpdatePlaybackProgressNotifiesWatchStateChangedHookOnlyForMeaningfulChanges(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
 	if err != nil {
@@ -938,6 +939,48 @@ func TestUpdatePlaybackProgressNotifiesWatchStateChangedHook(t *testing.T) {
 
 	if len(changedUsers) != 1 || changedUsers[0] != "secondary-profile" {
 		t.Fatalf("expected hook to be called for secondary-profile, got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:12345",
+		Position:  90,
+		Duration:  300,
+		MovieName: "Test Movie",
+		Year:      2024,
+	}); err != nil {
+		t.Fatalf("second UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 1 {
+		t.Fatalf("position-only heartbeat notified hook; got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:67890",
+		Position:  30,
+		Duration:  300,
+		MovieName: "Another Movie",
+		Year:      2025,
+	}); err != nil {
+		t.Fatalf("new-item UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 2 || changedUsers[1] != "secondary-profile" {
+		t.Fatalf("expected new item to notify hook; got %#v", changedUsers)
+	}
+
+	if _, err := svc.UpdatePlaybackProgress("secondary-profile", models.PlaybackProgressUpdate{
+		MediaType: "movie",
+		ItemID:    "tmdb:movie:12345",
+		Position:  275,
+		Duration:  300,
+		MovieName: "Test Movie",
+		Year:      2024,
+	}); err != nil {
+		t.Fatalf("threshold UpdatePlaybackProgress() error = %v", err)
+	}
+	if len(changedUsers) != 3 || changedUsers[2] != "secondary-profile" {
+		t.Fatalf("expected watched threshold to notify hook once; got %#v", changedUsers)
 	}
 }
 
@@ -2291,6 +2334,79 @@ func TestReconcileEquivalentEpisodeWatchHistoryNewestStateWins(t *testing.T) {
 	if perUser["episode:tmdb:tv:37854:s23e10"].Watched {
 		t.Fatalf("expected canonical row to keep newest unwatched state: %+v", perUser["episode:tmdb:tv:37854:s23e10"])
 	}
+}
+
+func TestReconcileEquivalentEpisodeWatchHistoryFindsLegacyAbsoluteAlias(t *testing.T) {
+	older := time.Date(2026, 6, 11, 1, 2, 55, 0, time.UTC)
+	newer := older.Add(time.Hour)
+	legacyKey := "episode:tvdb:series:81797:s23e1165"
+	canonicalKey := "episode:tmdb:tv:37854:s23e10"
+	perUser := map[string]models.WatchHistoryItem{
+		legacyKey: {
+			ID: legacyKey, MediaType: "episode", ItemID: "tvdb:series:81797:s23e1165",
+			SeriesID: "tvdb:series:81797", SeasonNumber: 23, EpisodeNumber: 1165,
+			Watched: false, WatchedAt: older, UpdatedAt: older,
+			ExternalIDs: map[string]string{"tmdb": "37854", "tvdb": "81797"},
+		},
+		canonicalKey: {
+			ID: canonicalKey, MediaType: "episode", ItemID: "tmdb:tv:37854:s23e10",
+			SeriesID: "tmdb:tv:37854", SeasonNumber: 23, EpisodeNumber: 10,
+			Watched: true, WatchedAt: newer, UpdatedAt: newer,
+			ExternalIDs: map[string]string{
+				"tmdb": "37854", "tvdb": "81797", "episodeTvdb": "11700062", "absoluteEpisode": "1165",
+			},
+		},
+	}
+
+	if !reconcileEquivalentEpisodeWatchHistoryLocked(perUser) {
+		t.Fatal("expected legacy absolute alias reconciliation to change history")
+	}
+	if got := perUser[legacyKey]; !got.Watched || !got.UpdatedAt.Equal(newer) {
+		t.Fatalf("legacy alias did not receive canonical state: %+v", got)
+	}
+}
+
+func TestReconcileEquivalentEpisodeWatchHistoryScalesToLargeHistory(t *testing.T) {
+	const (
+		seriesCount     = 70
+		episodesPerShow = 50
+	)
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	perUser := make(map[string]models.WatchHistoryItem, seriesCount*episodesPerShow*2)
+	for series := 1; series <= seriesCount; series++ {
+		for episode := 1; episode <= episodesPerShow; episode++ {
+			olderKey := fmt.Sprintf("episode:tvdb:series:%d:s01e%02d", series, episode)
+			newerKey := fmt.Sprintf("episode:tmdb:tv:%d:s01e%02d", series, episode)
+			externalIDs := map[string]string{
+				"tmdb":        strconv.Itoa(series),
+				"tvdb":        strconv.Itoa(series),
+				"episodeTvdb": fmt.Sprintf("%d-%d", series, episode),
+			}
+			perUser[olderKey] = models.WatchHistoryItem{
+				ID: olderKey, MediaType: "episode", ItemID: strings.TrimPrefix(olderKey, "episode:"),
+				SeriesID: fmt.Sprintf("tvdb:series:%d", series), SeasonNumber: 1, EpisodeNumber: episode,
+				Watched: false, UpdatedAt: base, ExternalIDs: maps.Clone(externalIDs),
+			}
+			perUser[newerKey] = models.WatchHistoryItem{
+				ID: newerKey, MediaType: "episode", ItemID: strings.TrimPrefix(newerKey, "episode:"),
+				SeriesID: fmt.Sprintf("tmdb:tv:%d", series), SeasonNumber: 1, EpisodeNumber: episode,
+				Watched: true, WatchedAt: base.Add(time.Hour), UpdatedAt: base.Add(time.Hour), ExternalIDs: maps.Clone(externalIDs),
+			}
+		}
+	}
+
+	started := time.Now()
+	if !reconcileEquivalentEpisodeWatchHistoryLocked(perUser) {
+		t.Fatal("expected large history reconciliation to update provider aliases")
+	}
+	elapsed := time.Since(started)
+	if elapsed > 5*time.Second {
+		t.Fatalf("indexed reconciliation took %s for %d rows", elapsed, len(perUser))
+	}
+	if got := perUser["episode:tvdb:series:1:s01e01"]; !got.Watched {
+		t.Fatalf("older provider alias was not reconciled: %+v", got)
+	}
+	t.Logf("reconciled %d history rows in %s", len(perUser), elapsed)
 }
 
 func TestSyncEquivalentEpisodeWatchHistoryPreservesNewerManualUnwatch(t *testing.T) {
@@ -4210,6 +4326,35 @@ func TestContinueWatchingNormalizesLegacyAbsoluteNextEpisode(t *testing.T) {
 	}
 }
 
+func TestFindNextUnwatchedEpisodeCanonicalizesAbsoluteHistoryRows(t *testing.T) {
+	svc := &Service{}
+	details := &models.SeriesDetails{
+		Title: models.Title{ID: "tmdb:tv:37854", Name: "One Piece", TMDBID: 37854},
+		Seasons: []models.SeriesSeason{{
+			Number: 23,
+			Episodes: []models.SeriesEpisode{
+				{ID: "ep-1173", Name: "A Nightmarish Game", SeasonNumber: 23, EpisodeNumber: 18, AbsoluteEpisodeNumber: 1173, AiredDate: "2020-08-16"},
+				{ID: "ep-1174", Name: "The Next Adventure", SeasonNumber: 23, EpisodeNumber: 19, AbsoluteEpisodeNumber: 1174, AiredDate: "2020-08-23"},
+			},
+		}},
+	}
+	watchedAt := time.Date(2026, 8, 11, 22, 21, 29, 0, time.UTC)
+	seasonal := models.WatchHistoryItem{
+		MediaType: "episode", SeriesName: "One Piece", Name: "A Nightmarish Game",
+		SeasonNumber: 23, EpisodeNumber: 18, Watched: true, WatchedAt: watchedAt,
+	}
+	absolute := seasonal
+	absolute.EpisodeNumber = 1173
+
+	next := svc.findNextUnwatchedEpisode(details, absolute, []models.WatchHistoryItem{seasonal, absolute})
+	if next == nil {
+		t.Fatal("expected an on-deck episode after an absolute-numbered latest history row")
+	}
+	if next.SeasonNumber != 23 || next.EpisodeNumber != 19 || next.AbsoluteEpisodeNumber != 1174 {
+		t.Fatalf("next episode = %+v, want S23E19 (absolute 1174)", next)
+	}
+}
+
 func TestContinueWatching_AbsoluteNumberedInProgressTreatedAsWatched(t *testing.T) {
 	// Regression for One Piece: an episode finished and recorded in watch history
 	// under its season-relative number (S23E08) still has a stale playback-progress
@@ -6044,6 +6189,138 @@ func TestImportWatchHistory_HighProgressMovieStaysInProgress(t *testing.T) {
 	}
 	if len(items) != 0 {
 		t.Fatalf("expected no watched history entry to be created, got %d entries", len(items))
+	}
+}
+
+func TestImportWatchHistory_NewerPausedEpisodeStaysInProgress(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	userID := "simkl-conflicting-import-regression"
+	seriesID := "tmdb:tv:37854"
+	itemID := seriesID + ":s23e19"
+	importedWatchedAt := time.Date(2026, 8, 24, 17, 19, 31, 0, time.UTC)
+	pausedAt := importedWatchedAt.Add(18 * time.Minute)
+
+	if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+		MediaType:      "episode",
+		ItemID:         itemID,
+		Position:       419.46,
+		Duration:       1415.829,
+		PercentWatched: 29.63,
+		Timestamp:      pausedAt,
+		IsPaused:       true,
+		SeriesID:       seriesID,
+		SeriesName:     "One Piece",
+		EpisodeName:    "Save the Children! The Elbaph Warriors Rise Up",
+		SeasonNumber:   23,
+		EpisodeNumber:  19,
+		ExternalIDs: map[string]string{
+			"imdb":            "tt0388629",
+			"tmdb":            "37854",
+			"tvdb":            "81797",
+			"simkl":           "38636",
+			"absoluteEpisode": "1174",
+		},
+	}); err != nil {
+		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+	}
+
+	watched := true
+	imported, err := svc.ImportWatchHistory(userID, []models.WatchHistoryUpdate{{
+		MediaType:     "episode",
+		ItemID:        itemID,
+		Name:          "Save the Children! The Elbaph Warriors Rise Up",
+		Watched:       &watched,
+		WatchedAt:     importedWatchedAt,
+		SeriesID:      seriesID,
+		SeriesName:    "One Piece",
+		SeasonNumber:  23,
+		EpisodeNumber: 19,
+		ExternalIDs: map[string]string{
+			"imdb":            "tt0388629",
+			"tmdb":            "37854",
+			"tvdb":            "81797",
+			"simkl":           "38636",
+			"absoluteEpisode": "1174",
+		},
+	}})
+	if err != nil {
+		t.Fatalf("ImportWatchHistory() error = %v", err)
+	}
+	if imported != 0 {
+		t.Fatalf("expected conflicting older Simkl import to be skipped, got imported=%d", imported)
+	}
+
+	progress, err := svc.ListPlaybackProgress(userID)
+	if err != nil {
+		t.Fatalf("ListPlaybackProgress() error = %v", err)
+	}
+	if len(progress) != 1 || !progress[0].IsPaused || progress[0].PercentWatched < 29.62 || progress[0].PercentWatched > 29.64 {
+		t.Fatalf("expected paused playback progress to remain, got %+v", progress)
+	}
+
+	items, err := svc.ListWatchHistory(userID)
+	if err != nil {
+		t.Fatalf("ListWatchHistory() error = %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("expected no watched history entry, got %+v", items)
+	}
+}
+
+func TestImportWatchHistory_NewerExternalCompletionOverridesPausedEpisode(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	userID := "newer-external-completion"
+	seriesID := "tmdb:tv:37854"
+	itemID := seriesID + ":s23e19"
+	pausedAt := time.Date(2026, 8, 24, 17, 37, 0, 0, time.UTC)
+	if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+		MediaType:      "episode",
+		ItemID:         itemID,
+		PercentWatched: 29.63,
+		Timestamp:      pausedAt,
+		IsPaused:       true,
+		SeriesID:       seriesID,
+		SeasonNumber:   23,
+		EpisodeNumber:  19,
+		ExternalIDs:    map[string]string{"tmdb": "37854", "tvdb": "81797"},
+	}); err != nil {
+		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+	}
+
+	watched := true
+	imported, err := svc.ImportWatchHistory(userID, []models.WatchHistoryUpdate{{
+		MediaType:     "episode",
+		ItemID:        itemID,
+		Watched:       &watched,
+		WatchedAt:     pausedAt.Add(time.Hour),
+		SeriesID:      seriesID,
+		SeasonNumber:  23,
+		EpisodeNumber: 19,
+		ExternalIDs:   map[string]string{"tmdb": "37854", "tvdb": "81797"},
+	}})
+	if err != nil {
+		t.Fatalf("ImportWatchHistory() error = %v", err)
+	}
+	if imported != 1 {
+		t.Fatalf("expected newer external completion to import, got imported=%d", imported)
+	}
+
+	progress, err := svc.ListPlaybackProgress(userID)
+	if err != nil {
+		t.Fatalf("ListPlaybackProgress() error = %v", err)
+	}
+	if len(progress) != 0 {
+		t.Fatalf("expected newer completion to clear progress, got %+v", progress)
 	}
 }
 

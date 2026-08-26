@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -1175,11 +1178,41 @@ type testStreamProvider struct {
 	statusCode  int
 	headers     http.Header
 	err         error
+	headErr     error
 	hadDeadline bool
+}
+
+type canceledDirectURLProvider struct {
+	streamCalls atomic.Int32
+}
+
+func (p *canceledDirectURLProvider) GetDirectURL(context.Context, string) (string, error) {
+	return "", context.Canceled
+}
+
+func (p *canceledDirectURLProvider) Stream(context.Context, streaming.Request) (*streaming.Response, error) {
+	p.streamCalls.Add(1)
+	return nil, errors.New("piped fallback should not run")
+}
+
+func TestRunFFProbeFromProviderDoesNotFallbackAfterCancellation(t *testing.T) {
+	provider := &canceledDirectURLProvider{}
+	handler := &VideoHandler{streamer: provider}
+
+	_, err := handler.runFFProbeFromProvider(context.Background(), "/movie.mkv")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("runFFProbeFromProvider() error = %v, want context.Canceled", err)
+	}
+	if calls := provider.streamCalls.Load(); calls != 0 {
+		t.Fatalf("piped fallback calls = %d, want 0 after cancellation", calls)
+	}
 }
 
 func (p *testStreamProvider) Stream(ctx context.Context, req streaming.Request) (*streaming.Response, error) {
 	_, p.hadDeadline = ctx.Deadline()
+	if req.Method == http.MethodHead && p.headErr != nil {
+		return nil, p.headErr
+	}
 	if p.err != nil {
 		return nil, p.err
 	}
@@ -1199,6 +1232,76 @@ func (p *testStreamProvider) Stream(ctx context.Context, req streaming.Request) 
 		Status:        status,
 		ContentLength: int64(len(p.data)),
 	}, nil
+}
+
+func TestProbeVideoRemoteLibraryFallsBackWhenHeadIsUnsupported(t *testing.T) {
+	ffprobePath := filepath.Join(t.TempDir(), "ffprobe")
+	ffprobeScript := `#!/bin/sh
+printf '%s\n' '{"streams":[{"index":0,"codec_type":"video","codec_name":"h264","width":1920,"height":1080},{"index":1,"codec_type":"audio","codec_name":"eac3","channels":6,"channel_layout":"5.1","tags":{"language":"eng"}}],"format":{"duration":"60.0","size":"1234","format_name":"matroska"}}'
+`
+	if err := os.WriteFile(ffprobePath, []byte(ffprobeScript), 0o755); err != nil {
+		t.Fatalf("write fake ffprobe: %v", err)
+	}
+
+	provider := &testStreamProvider{
+		data:    []byte("provider sample"),
+		headErr: streaming.ErrNotFound,
+	}
+	handler := NewVideoHandlerWithProvider(false, "", ffprobePath, t.TempDir(), provider)
+	req := httptest.NewRequest(http.MethodGet, "/video/metadata?path="+url.QueryEscape("plexmedia:item-123/Episode.mkv"), nil)
+	rec := httptest.NewRecorder()
+
+	handler.ProbeVideo(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	var response videoMetadataResponse
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(response.AudioStreams) != 1 {
+		t.Fatalf("audio streams = %d, want 1", len(response.AudioStreams))
+	}
+	if got := response.AudioStreams[0].CodecName; got != "eac3" {
+		t.Fatalf("audio codec = %q, want eac3", got)
+	}
+	if got := response.AudioStreams[0].ChannelLayout; got != "5.1" {
+		t.Fatalf("audio channel layout = %q, want 5.1", got)
+	}
+}
+
+func TestProbeVideoStillReturnsNotFoundForNonLibraryPath(t *testing.T) {
+	provider := &testStreamProvider{headErr: streaming.ErrNotFound}
+	handler := NewVideoHandlerWithProvider(false, "", "", t.TempDir(), provider)
+	req := httptest.NewRequest(http.MethodGet, "/video/metadata?path="+url.QueryEscape("/missing/movie.mkv"), nil)
+	rec := httptest.NewRecorder()
+
+	handler.ProbeVideo(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProbeVideoRemoteLibraryReturnsNotFoundWhenGetAlsoFails(t *testing.T) {
+	ffprobePath := filepath.Join(t.TempDir(), "ffprobe")
+	if err := os.WriteFile(ffprobePath, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatalf("write fake ffprobe: %v", err)
+	}
+	provider := &testStreamProvider{
+		headErr: streaming.ErrNotFound,
+		err:     streaming.ErrNotFound,
+	}
+	handler := NewVideoHandlerWithProvider(false, "", ffprobePath, t.TempDir(), provider)
+	req := httptest.NewRequest(http.MethodGet, "/video/metadata?path="+url.QueryEscape("plexmedia:missing/Episode.mkv"), nil)
+	rec := httptest.NewRecorder()
+
+	handler.ProbeVideo(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404; body=%s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestVideoHandler_StreamVideo_MissingPath(t *testing.T) {

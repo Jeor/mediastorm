@@ -128,7 +128,9 @@ func Register(
 	usersSvc *users.Service,
 	shareHandler *handlers.ShareHandler,
 	watchRoomsHandler *handlers.WatchRoomsHandler,
+	watchPartyHandler *handlers.WatchPartyHandler,
 	homepageAPIKey string,
+	latencyAdmin *handlers.PlaybackLatencyAdmin,
 ) {
 	api := r.PathPrefix("/api").Subrouter()
 
@@ -144,6 +146,7 @@ func Register(
 	probeLimiter := NewIPRateLimiter(rate.Every(6*time.Second), 10)    // 10/min per IP
 	hlsStartLimiter := NewIPRateLimiter(rate.Every(12*time.Second), 5) // 5/min per IP
 	watchRoomInviteLimiter := NewIPRateLimiter(rate.Every(6*time.Second), 10)
+	watchPartyJoinLimiter := NewIPRateLimiter(rate.Every(time.Second), 20)
 
 	// Auth routes (no authentication required)
 	authHandler := handlers.NewAuthHandler(accountsSvc, sessionsSvc)
@@ -169,6 +172,12 @@ func Register(
 	api.HandleFunc("/branding", handleOptions).Methods(http.MethodOptions)
 	api.HandleFunc("/debug/speed-test", handlers.ServeSpeedTest).Methods(http.MethodGet, http.MethodHead)
 	api.HandleFunc("/debug/speed-test", handleOptions).Methods(http.MethodOptions)
+	if watchPartyHandler != nil {
+		api.HandleFunc("/watch-party/room/{roomID}", RateLimitHandlerFunc(watchPartyJoinLimiter, watchPartyHandler.RoomSnapshot)).Methods(http.MethodGet)
+		api.HandleFunc("/watch-party/room/{roomID}/heartbeat", RateLimitHandlerFunc(watchPartyJoinLimiter, watchPartyHandler.Heartbeat)).Methods(http.MethodPost)
+		api.HandleFunc("/watch-party/room/{roomID}/ready", RateLimitHandlerFunc(watchPartyJoinLimiter, watchPartyHandler.Ready)).Methods(http.MethodPost)
+		api.HandleFunc("/watch-party/room/{roomID}/playback-grant", RateLimitHandlerFunc(watchPartyJoinLimiter, watchPartyHandler.PlaybackGrant)).Methods(http.MethodPost)
+	}
 	if videoHandler != nil {
 		api.Handle("/video/internal-stream", localhostOnlyMiddleware(http.HandlerFunc(videoHandler.StreamVideo))).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 	}
@@ -247,6 +256,11 @@ func Register(
 		protected.HandleFunc("/watch-room-account-invitations", watchRoomsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/watch-room-account-invitations/{inviteID}/decline", watchRoomsHandler.DeclineAccountInvitation).Methods(http.MethodPost)
 		protected.HandleFunc("/watch-room-account-invitations/{inviteID}/decline", watchRoomsHandler.Options).Methods(http.MethodOptions)
+	}
+	if watchPartyHandler != nil {
+		profileProtected.HandleFunc("/{userID}/watch-rooms/{roomID}/external-invite", RateLimitHandlerFunc(watchRoomInviteLimiter, watchPartyHandler.CreateInvitation)).Methods(http.MethodPost)
+		profileProtected.HandleFunc("/{userID}/watch-rooms/{roomID}/external-invite", watchPartyHandler.RevokeInvitation).Methods(http.MethodDelete)
+		profileProtected.HandleFunc("/{userID}/watch-rooms/{roomID}/external-source", watchPartyHandler.BindSource).Methods(http.MethodPost)
 	}
 
 	// Settings routes - GET for all authenticated, PUT/POST for master only
@@ -399,7 +413,7 @@ func Register(
 
 	protected.HandleFunc("/live/playlist", liveHandler.FetchPlaylist).Methods(http.MethodGet)
 	protected.HandleFunc("/live/playlist", handleOptions).Methods(http.MethodOptions)
-	protected.HandleFunc("/live/channels", liveHandler.GetChannels).Methods(http.MethodGet)
+	protected.HandleFunc("/live/channels", liveHandler.GetChannels).Methods(http.MethodGet, http.MethodPost)
 	protected.HandleFunc("/live/channels", handleOptions).Methods(http.MethodOptions)
 	protected.HandleFunc("/live/stremio/streams", liveHandler.GetStremioStreamOptions).Methods(http.MethodGet)
 	protected.HandleFunc("/live/stremio/streams", handleOptions).Methods(http.MethodOptions)

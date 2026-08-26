@@ -46,6 +46,14 @@ func NewPlaybackService(cfg *config.Manager, healthService *HealthService) *Play
 	}
 }
 
+// SetFullProber wires the shared full media prober into pre-resolved health checks.
+func (s *PlaybackService) SetFullProber(prober PreResolvedFullProber) {
+	if s == nil || s.healthService == nil {
+		return
+	}
+	s.healthService.SetFullProber(prober)
+}
+
 // Resolve checks if a debrid item is cached and returns playback information.
 // For debrid, we add the torrent, select files, and get the download link.
 func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
@@ -72,6 +80,7 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 		log.Printf("[debrid-playback] using pre-resolved stream URL: %s", safeURLForLog(streamURL))
 
 		// Verify the pre-resolved stream is actually cached (not a placeholder)
+		var mediaProbe *models.VideoFullResult
 		if s.healthService != nil {
 			healthCheck, err := s.healthService.CheckHealth(ctx, candidate, false)
 			if err != nil {
@@ -82,6 +91,7 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 				log.Printf("[debrid-playback] pre-resolved stream not cached: sourceCacheStatus=%q actualStatus=%q actualCached=%t error=%s", cacheHint, healthCheck.Status, healthCheck.Cached, healthCheck.ErrorMessage)
 				return nil, fmt.Errorf("stream not cached: %s", healthCheck.ErrorMessage)
 			}
+			mediaProbe = cloneVideoFullResult(healthCheck.MediaProbe)
 			log.Printf("[debrid-playback] pre-resolved stream verified as cached: sourceCacheStatus=%q actualStatus=%q actualCached=%t", cacheHint, healthCheck.Status, healthCheck.Cached)
 		}
 
@@ -100,6 +110,7 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 			DebridProvider: firstNonEmpty(candidate.Attributes["debridProvider"], candidate.Attributes["provider"]),
 			FileSize:       candidate.SizeBytes,
 			SourceNZBPath:  streamURL,
+			Probe:          mediaProbe,
 		}
 
 		log.Printf("[debrid-playback] TIMING: pre-resolved resolution complete (took: %v): url=%s filename=%s", time.Since(resolveStart), safeURLForLog(streamURL), filename)
@@ -438,6 +449,10 @@ func (s *PlaybackService) resolveSingleProvider(
 			return nil, fmt.Errorf("no debrid provider configured or enabled")
 		}
 		return nil, fmt.Errorf("provider %q not configured or not enabled", explicitProvider)
+	}
+	if err := realDebridRestrictionForCandidate(settings, *providerConfig, candidate); err != nil {
+		log.Printf("[debrid-playback] %s; title=%q", err, strings.TrimSpace(candidate.Title))
+		return nil, err
 	}
 
 	// Get provider from registry
@@ -862,17 +877,28 @@ func (s *PlaybackService) ResolveBatch(ctx context.Context, candidate models.NZB
 
 	explicitProvider := strings.TrimSpace(candidate.Attributes["provider"])
 	var providerConfig *config.DebridProviderSettings
+	var restrictedErr error
 	for i := range settings.Streaming.DebridProviders {
 		p := &settings.Streaming.DebridProviders[i]
 		if !p.Enabled || strings.TrimSpace(p.APIKey) == "" {
 			continue
 		}
 		if explicitProvider == "" || strings.EqualFold(p.Provider, explicitProvider) {
+			if err := realDebridRestrictionForCandidate(settings, *p, candidate); err != nil {
+				restrictedErr = err
+				if explicitProvider != "" {
+					return nil, err
+				}
+				continue
+			}
 			providerConfig = p
 			break
 		}
 	}
 	if providerConfig == nil {
+		if restrictedErr != nil {
+			return nil, restrictedErr
+		}
 		return nil, fmt.Errorf("no debrid provider configured or enabled")
 	}
 	client, ok := GetProvider(strings.ToLower(providerConfig.Provider), providerConfig.APIKey)

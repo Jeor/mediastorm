@@ -644,6 +644,43 @@ func TestHLSManager_ServePlaylist_WaitsForFirstSegment(t *testing.T) {
 	}
 }
 
+func TestHLSManager_ServePlaylist_FailsPromptlyWhenLiveTranscodeStopsBeforePlaylist(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewHLSManager(tmpDir, "", "", nil)
+	defer manager.Shutdown()
+
+	sessionID := "failed-live-playlist-session"
+	outputDir := filepath.Join(tmpDir, sessionID)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	session := &HLSSession{
+		ID:         sessionID,
+		OutputDir:  outputDir,
+		CreatedAt:  time.Now(),
+		LastAccess: time.Now(),
+		IsLive:     true,
+		Completed:  true,
+		FatalError: "Live stream failed before playback started",
+	}
+	manager.mu.Lock()
+	manager.sessions[sessionID] = session
+	manager.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/video/hls/%s/stream.m3u8", sessionID), nil)
+	rr := httptest.NewRecorder()
+	started := time.Now()
+	manager.ServePlaylist(rr, req, sessionID)
+
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("expected status %d, got %d (body: %s)", http.StatusBadGateway, rr.Code, rr.Body.String())
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("failed live playlist response took %s, want less than 1s", elapsed)
+	}
+}
+
 func TestHLSManager_ServeSegment_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager := NewHLSManager(tmpDir, "", "", nil)
@@ -1248,6 +1285,48 @@ func TestHLSManager_ServeSubtitlePlaylist(t *testing.T) {
 	}
 }
 
+func TestHLSManager_ServeSubtitleTrackReportsVideoTimestampBase(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewHLSManager(tmpDir, "", "", nil)
+	defer manager.Shutdown()
+
+	const sessionID = "subtitle-timestamp-base-test"
+	outputDir := filepath.Join(tmpDir, sessionID)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDir, "subtitles_11.vtt"), []byte("WEBVTT\n\n00:01.000 --> 00:02.000\nHello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	session := &HLSSession{
+		ID:                           sessionID,
+		OutputDir:                    outputDir,
+		CreatedAt:                    time.Now(),
+		LastAccess:                   time.Now(),
+		SubtitleTrackIndex:           -1,
+		SubtitleTimestampBaseSeconds: mpegtsDefaultPreloadSeconds,
+	}
+	session.setSubtitleExtractionOffset(11, 686.37)
+	manager.mu.Lock()
+	manager.sessions[sessionID] = session
+	manager.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodGet, "/video/hls/"+sessionID+"/subtitles-11.vtt", nil)
+	rr := httptest.NewRecorder()
+	manager.ServeSubtitleTrack(rr, req, sessionID, 11, false)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rr.Code)
+	}
+	if got := rr.Header().Get("X-Subtitle-Start-Offset"); got != "686.370" {
+		t.Fatalf("subtitle start offset = %q, want 686.370", got)
+	}
+	if got := rr.Header().Get("X-Subtitle-Timestamp-Base"); got != "1.400" {
+		t.Fatalf("subtitle timestamp base = %q, want 1.400", got)
+	}
+}
+
 func TestHLSManager_Seek_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager := NewHLSManager(tmpDir, "", "", nil)
@@ -1469,6 +1548,21 @@ func TestInputLooksLikeHLS(t *testing.T) {
 		if got := inputLooksLikeHLS(c.url); got != c.want {
 			t.Errorf("inputLooksLikeHLS(%q) = %v, want %v", c.url, got, c.want)
 		}
+	}
+}
+
+func TestStremioStreamLooksLikeHLSExtensionless(t *testing.T) {
+	stream := stremioStream{Name: "M3U8", URL: "https://sports.example/live/signed-token"}
+	if !stremioStreamLooksLikeHLS(stream, stream.URL) {
+		t.Fatal("M3U8 stream hint should identify extensionless Stremio URL as HLS")
+	}
+	stream = stremioStream{URL: "https://worker.example/?action=stream&ext=.m3u8"}
+	if !stremioStreamLooksLikeHLS(stream, stream.URL) {
+		t.Fatal("ext=.m3u8 query hint should identify extensionless Stremio URL as HLS")
+	}
+	stream = stremioStream{Name: "MPEG-TS", URL: "https://sports.example/live/channel.ts"}
+	if stremioStreamLooksLikeHLS(stream, stream.URL) {
+		t.Fatal("direct MPEG-TS stream should not be forced through HLS demuxer options")
 	}
 }
 

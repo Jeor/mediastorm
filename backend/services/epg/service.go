@@ -38,10 +38,11 @@ type Service struct {
 	storageDir string
 	client     *http.Client
 
-	mu         sync.RWMutex
-	schedule   *models.EPGSchedule
-	refreshing bool
-	lastError  string
+	mu          sync.RWMutex
+	schedule    *models.EPGSchedule
+	refreshing  bool
+	lastError   string
+	restoreDone chan struct{}
 }
 
 type epgXMLTVSource struct {
@@ -58,16 +59,18 @@ type epgXtreamSource struct {
 
 // NewService creates a new EPG service.
 func NewService(storageDir string, cfgManager *config.Manager) *Service {
+	initialSchedule := &models.EPGSchedule{
+		Channels: make(map[string]models.EPGChannel),
+		Programs: make(map[string][]models.EPGProgram),
+	}
 	s := &Service{
 		cfgManager: cfgManager,
 		storageDir: storageDir,
 		client: apiusage.TrackClient(&http.Client{
 			Timeout: defaultHTTPTimeout,
 		}, "Live TV", "EPG fetch"),
-		schedule: &models.EPGSchedule{
-			Channels: make(map[string]models.EPGChannel),
-			Programs: make(map[string][]models.EPGProgram),
-		},
+		schedule:    initialSchedule,
+		restoreDone: make(chan struct{}),
 	}
 
 	// Ensure cache directory exists
@@ -76,15 +79,38 @@ func NewService(storageDir string, cfgManager *config.Manager) *Service {
 		log.Printf("[epg] failed to create cache directory: %v", err)
 	}
 
-	// Load cached EPG data on startup
-	if err := s.loadFromDisk(); err != nil {
-		log.Printf("[epg] no cached EPG data found or error loading: %v", err)
-	} else {
-		log.Printf("[epg] loaded cached EPG data: %d channels, %d programs",
-			len(s.schedule.Channels), s.countPrograms())
-	}
+	// A large guide cache can take close to a second to decode. Restore it in
+	// the background so backend health does not depend on guide size. Only
+	// install the cache if a concurrent refresh has not already replaced the
+	// initial empty schedule.
+	go func() {
+		defer close(s.restoreDone)
+		started := time.Now()
+		schedule, err := s.readFromDisk()
+		if err != nil {
+			log.Printf("[epg] no cached EPG data found or error loading: %v", err)
+			return
+		}
+
+		if !s.installRestoredSchedule(initialSchedule, schedule) {
+			log.Printf("[epg] skipped stale cached EPG data after concurrent refresh")
+			return
+		}
+		log.Printf("[epg] loaded cached EPG data: %d channels, %d programs in %s",
+			len(schedule.Channels), countSchedulePrograms(schedule), time.Since(started))
+	}()
 
 	return s
+}
+
+func (s *Service) installRestoredSchedule(initial, restored *models.EPGSchedule) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.schedule != initial {
+		return false
+	}
+	s.schedule = restored
+	return true
 }
 
 // countPrograms returns total number of programs across all channels.
@@ -1049,25 +1075,20 @@ func (s *Service) saveToDisk() error {
 	return nil
 }
 
-// loadFromDisk loads the EPG data from disk.
-func (s *Service) loadFromDisk() error {
+// readFromDisk loads EPG data without mutating the active schedule.
+func (s *Service) readFromDisk() (*models.EPGSchedule, error) {
 	cachePath := filepath.Join(s.storageDir, "epg", epgCacheFile)
 
 	data, err := os.ReadFile(cachePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var schedule models.EPGSchedule
 	if err := json.Unmarshal(data, &schedule); err != nil {
-		return fmt.Errorf("unmarshal EPG data: %w", err)
+		return nil, fmt.Errorf("unmarshal EPG data: %w", err)
 	}
-
-	s.mu.Lock()
-	s.schedule = &schedule
-	s.mu.Unlock()
-
-	return nil
+	return &schedule, nil
 }
 
 // IsEnabled returns whether EPG is enabled in settings.

@@ -123,6 +123,8 @@ type DisplaySettings struct {
 	IncludeUnreleasedShowsInSearch *bool `json:"includeUnreleasedShowsInSearch,omitempty"`
 	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only enabled scraper.
 	BypassFilteringForAIOStreamsOnly *bool `json:"bypassFilteringForAioStreamsOnly,omitempty"`
+	// ShowStreamSourceInfo displays stream service and debrid provider information in selection and playback UI.
+	ShowStreamSourceInfo *bool `json:"showStreamSourceInfo,omitempty"`
 	// DisableMobileTopCarousel hides the top hero carousel on mobile home.
 	DisableMobileTopCarousel *bool `json:"disableMobileTopCarousel,omitempty"`
 	// HideContinueWatchingHeroMetadata hides year and overview text from the TV home hero for Continue Watching.
@@ -135,6 +137,8 @@ type DisplaySettings struct {
 	HideTVDrawerRail *bool `json:"hideTvDrawerRail,omitempty"`
 	// SimpleMode reduces the frontend to essential browsing and playback choices.
 	SimpleMode *bool `json:"simpleMode,omitempty"`
+	// SimpleModeHomeShelves is the ordered list of configured home shelf IDs shown in M.O.M. Mode™.
+	SimpleModeHomeShelves *[]string `json:"simpleModeHomeShelves,omitempty"`
 	// DisableTVHomeCardDimming keeps trailing home shelf cards fully visible on TV platforms.
 	DisableTVHomeCardDimming *bool `json:"disableTvHomeCardDimming,omitempty"`
 	// EnableAnimations controls application UI motion such as animated scrolling and transitions.
@@ -426,7 +430,7 @@ type PlaybackSettings struct {
 	RewindOnResumeFromPause       *int      `json:"rewindOnResumeFromPause,omitempty"`             // Seconds to rewind when unpausing (default 0)
 	RewindOnPlaybackStart         *int      `json:"rewindOnPlaybackStart,omitempty"`               // Seconds to rewind when resuming from saved progress (default 0)
 	DisablePrequeue               *bool     `json:"disablePrequeue,omitempty"`                     // Disable automatic stream pre-loading
-	PrerollMode                   string    `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, default, or custom override
+	PrerollMode                   string    `json:"prerollMode,omitempty"`                         // Empty inherits; disabled, artwork, default, or custom override
 	PrerollAssetID                string    `json:"prerollAssetId,omitempty"`                      // Content hash used when prerollMode is custom
 	PrerollMediaScope             string    `json:"prerollMediaScope,omitempty"`                   // Empty inherits; all, movies, or tv
 	PrerollSkipIfPrequeueReady    *bool     `json:"prerollSkipIfPrequeueReady,omitempty"`          // Skip pre-roll when a prepared stream is already ready
@@ -526,6 +530,11 @@ type HomeShelvesSettings struct {
 	DisableTvLandscapeCardExpansion *bool         `json:"disableTvLandscapeCardExpansion,omitempty"` // Keep TV shelf cards in portrait when focused
 	HomeShelfScale                  *float64      `json:"homeShelfScale,omitempty"`                  // TV home shelf/card scale, 0.5-1.0 (default 1.0)
 	HomeHeroScale                   *float64      `json:"homeHeroScale,omitempty"`                   // TV upper hero/art scale, 0.5-1.0 (default 1.0)
+}
+
+// DefaultSimpleModeHomeShelfIDs is the built-in M.O.M. Mode™ home shelf order.
+func DefaultSimpleModeHomeShelfIDs() []string {
+	return []string{"top-ten", "continue-watching", "watch-something", "trending-movies", "trending-tv"}
 }
 
 // DefaultHomeShelfConfigs returns the built-in home shelves in their default order.
@@ -988,23 +997,24 @@ const (
 // FilterSettings controls content filtering preferences.
 // Pointer types with omitempty allow distinguishing between "not set" (nil) and "set to zero/false".
 type FilterSettings struct {
-	MaxSizeMovieGB             *float64        `json:"maxSizeMovieGb,omitempty"`
-	MaxSizeEpisodeGB           *float64        `json:"maxSizeEpisodeGb,omitempty"`
-	MaxResolution              *string         `json:"maxResolution,omitempty"` // Maximum resolution (e.g., "720p", "1080p", "2160p", empty = no limit)
-	HDRDVPolicy                HDRDVPolicy     `json:"hdrDvPolicy,omitempty"`   // HDR/DV inclusion policy: "none" (no exclusion), "hdr" (include HDR + DV 7/8), "hdr_dv" (include all HDR/DV)
-	RequiredTerms              []string        `json:"requiredTerms"`           // Terms where at least one must match for a result to be kept. Non-nil empty slice explicitly clears the inherited value.
-	FilterOutTerms             []string        `json:"filterOutTerms"`          // Terms to filter out from results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
-	PreferredTerms             []string        `json:"preferredTerms"`          // Terms to prioritize in results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
-	NonPreferredTerms          []string        `json:"nonPreferredTerms"`       // Terms to derank in results (case-insensitive match in title, ranked lower but not removed). Non-nil empty slice explicitly clears the inherited value.
-	DownloadPreferredTerms     []string        `json:"downloadPreferredTerms"`  // Terms to strongly prioritize only for download/prequeue selection. Non-nil empty slice explicitly clears the inherited value.
-	PreferredScraper           *string         `json:"preferredScraper,omitempty"`
-	ServicePriority            *string         `json:"servicePriority,omitempty"`
-	UnknownTrackPolicy         string          `json:"unknownTrackPolicy,omitempty"`
-	AdaptivePlaybackEnabled    *bool           `json:"adaptivePlaybackEnabled,omitempty"`
-	AdaptiveTargetBufferFactor *float64        `json:"adaptiveTargetBufferFactor,omitempty"`
-	SplitByService             *bool           `json:"splitByService,omitempty"`
-	Debrid                     *FilterSettings `json:"debrid,omitempty"`
-	Usenet                     *FilterSettings `json:"usenet,omitempty"`
+	MaxSizeMovieGB                         *float64        `json:"maxSizeMovieGb,omitempty"`
+	MaxSizeEpisodeGB                       *float64        `json:"maxSizeEpisodeGb,omitempty"`
+	MaxResolution                          *string         `json:"maxResolution,omitempty"` // Maximum resolution (e.g., "720p", "1080p", "2160p", empty = no limit)
+	HDRDVPolicy                            HDRDVPolicy     `json:"hdrDvPolicy,omitempty"`   // HDR/DV inclusion policy: "none" (no exclusion), "hdr" (include HDR + DV 7/8), "hdr_dv" (include all HDR/DV)
+	RequiredTerms                          []string        `json:"requiredTerms"`           // Terms where at least one must match for a result to be kept. Non-nil empty slice explicitly clears the inherited value.
+	FilterOutTerms                         []string        `json:"filterOutTerms"`          // Terms to filter out from results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
+	PreferredTerms                         []string        `json:"preferredTerms"`          // Terms to prioritize in results (case-insensitive match in title). Non-nil empty slice explicitly clears the inherited value.
+	NonPreferredTerms                      []string        `json:"nonPreferredTerms"`       // Terms to derank in results (case-insensitive match in title, ranked lower but not removed). Non-nil empty slice explicitly clears the inherited value.
+	DownloadPreferredTerms                 []string        `json:"downloadPreferredTerms"`  // Terms to strongly prioritize only for download/prequeue selection. Non-nil empty slice explicitly clears the inherited value.
+	PreferredScraper                       *string         `json:"preferredScraper,omitempty"`
+	ServicePriority                        *string         `json:"servicePriority,omitempty"`
+	UnknownTrackPolicy                     string          `json:"unknownTrackPolicy,omitempty"`
+	AdaptivePlaybackEnabled                *bool           `json:"adaptivePlaybackEnabled,omitempty"`
+	AdaptiveTargetBufferFactor             *float64        `json:"adaptiveTargetBufferFactor,omitempty"`
+	RealDebridRestrictedTermsFilterEnabled *bool           `json:"realDebridRestrictedTermsFilterEnabled,omitempty"`
+	SplitByService                         *bool           `json:"splitByService,omitempty"`
+	Debrid                                 *FilterSettings `json:"debrid,omitempty"`
+	Usenet                                 *FilterSettings `json:"usenet,omitempty"`
 }
 
 // AnimeFilteringSettings controls anime-specific language preferences (per-user overrides).
@@ -1022,7 +1032,7 @@ func DefaultUserSettings() UserSettings {
 			PauseWhenAppInactive:          BoolPtr(false),
 			UseLoadingScreen:              BoolPtr(false),
 			SubtitleSize:                  1.0,
-			SubtitleUseCropDetectPosition: BoolPtr(true),
+			SubtitleUseCropDetectPosition: BoolPtr(false),
 			SubtitleColor:                 "#FFFFFF",
 			SubtitleOpacity:               FloatPtr(1.0),
 			SubtitleBold:                  BoolPtr(false),
@@ -1043,7 +1053,7 @@ func DefaultUserSettings() UserSettings {
 			CreditsAutoSkip:               BoolPtr(false),
 			StreamMigrationEnabled:        BoolPtr(true),
 			IgnoreDVCompatibilityCheck:    BoolPtr(false),
-			CreditsDetectionEnabled:       BoolPtr(true),
+			CreditsDetectionEnabled:       BoolPtr(false),
 			MatchFrameRate:                BoolPtr(false),
 			LiveClosedCaptionExtraction:   BoolPtr(true),
 		},
@@ -1077,11 +1087,13 @@ func DefaultUserSettings() UserSettings {
 			IncludeUnreleasedMoviesInSearch:           BoolPtr(true),
 			IncludeUnreleasedShowsInSearch:            BoolPtr(true),
 			DisableMobileTopCarousel:                  BoolPtr(false),
+			ShowStreamSourceInfo:                      BoolPtr(true),
 			HideContinueWatchingHeroMetadata:          BoolPtr(false),
 			MoveDetailsRatingsToMetadata:              BoolPtr(false),
 			HideDetailsPoster:                         BoolPtr(false),
 			HideTVDrawerRail:                          BoolPtr(false),
 			SimpleMode:                                BoolPtr(false),
+			SimpleModeHomeShelves:                     StringSlicePtr(DefaultSimpleModeHomeShelfIDs()),
 			DisableTVHomeCardDimming:                  BoolPtr(false),
 			EnableAnimations:                          BoolPtr(true),
 			EnableHeroArtPanning:                      BoolPtr(true),

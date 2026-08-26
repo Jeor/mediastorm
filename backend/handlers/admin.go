@@ -721,6 +721,46 @@ func (h *AdminHandler) ActiveStreams() StreamsResponse {
 	return response
 }
 
+// IsPlaybackActive exposes the dashboard's canonical active-stream decision to
+// the realtime scrobble cleanup worker.
+func (h *AdminHandler) IsPlaybackActive(userID string, update models.PlaybackProgressUpdate) bool {
+	for _, stream := range h.ActiveStreams().Streams {
+		profileMatch := stream.ProfileID == userID
+		for _, profileID := range stream.ProfileIDs {
+			if profileID == userID {
+				profileMatch = true
+				break
+			}
+		}
+		mediaTypeMatch := strings.EqualFold(stream.MediaType, update.MediaType) ||
+			(strings.EqualFold(update.MediaType, "episode") && strings.EqualFold(stream.MediaType, "series"))
+		if !profileMatch || !mediaTypeMatch {
+			continue
+		}
+		if stream.ItemID != "" && strings.EqualFold(stream.ItemID, update.ItemID) {
+			return true
+		}
+		if update.MediaType == "episode" && stream.SeasonNumber == update.SeasonNumber &&
+			stream.EpisodeNumber == update.EpisodeNumber && realtimeStreamIDsOverlap(stream.ExternalIDs, update.ExternalIDs) {
+			return true
+		}
+		if update.MediaType == "movie" && realtimeStreamIDsOverlap(stream.ExternalIDs, update.ExternalIDs) {
+			return true
+		}
+	}
+	return false
+}
+
+func realtimeStreamIDsOverlap(streamIDs, updateIDs map[string]string) bool {
+	for _, key := range []string{"tmdb", "tvdb", "imdb", "episodeTmdb", "episodeTvdb"} {
+		left, right := strings.TrimSpace(streamIDs[key]), strings.TrimSpace(updateIDs[key])
+		if left != "" && right != "" && strings.EqualFold(left, right) {
+			return true
+		}
+	}
+	return false
+}
+
 // cleanFilenameForMatch removes common filename artifacts for matching against media titles
 func cleanFilenameForMatch(name string) string {
 	if name == "" {

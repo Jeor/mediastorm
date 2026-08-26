@@ -133,9 +133,10 @@ func (r *pgWatchRoomRepo) SetReady(ctx context.Context, roomID, profileID string
 	_, err := r.pool.Exec(ctx, `WITH member_update AS (
 		UPDATE watch_room_members SET ready=$3,last_seen_at=$4 WHERE room_id=$1 AND profile_id=$2
 	), release AS (
-		SELECT $3 AND NOT EXISTS (
-			SELECT 1 FROM watch_room_members WHERE room_id=$1 AND profile_id<>$2 AND NOT ready
-		) AS all_ready
+		SELECT $3
+			AND NOT EXISTS (SELECT 1 FROM watch_room_members WHERE room_id=$1 AND profile_id<>$2 AND NOT ready)
+			AND NOT EXISTS (SELECT 1 FROM watch_room_guest_members WHERE room_id=$1 AND NOT ready)
+			AS all_ready
 	)
 	UPDATE watch_rooms SET waiting_for_ready=false,status='playing',revision=revision+1,updated_by=$2,anchor_updated_at=$4
 	WHERE id=$1 AND waiting_for_ready AND (SELECT all_ready FROM release)`, roomID, profileID, ready, now)
@@ -158,6 +159,9 @@ func (r *pgWatchRoomRepo) UpdateState(ctx context.Context, roomID, profileID, st
 	), reset_ready AS (
 		UPDATE watch_room_members m SET ready=false
 		FROM room_update WHERE room_update.starting AND m.room_id=room_update.id
+	), reset_guest_ready AS (
+		UPDATE watch_room_guest_members g SET ready=false
+		FROM room_update WHERE room_update.starting AND g.room_id=room_update.id
 	)
 	SELECT EXISTS(SELECT 1 FROM room_update)`, roomID, profileID, status, position, duration, now, expectedRevision).Scan(&updated)
 	return updated, err
@@ -316,6 +320,132 @@ func (r *pgWatchRoomRepo) RevokeAccountInvite(ctx context.Context, inviteID, roo
 	return err == nil && tag.RowsAffected() > 0, err
 }
 
+func (r *pgWatchRoomRepo) ReplaceExternalInvite(ctx context.Context, invite *models.WatchRoomExternalInvite) error {
+	_, err := r.pool.Exec(ctx, `INSERT INTO watch_room_external_invites
+		(room_id,token_hash,short_code,active,created_at,expires_at)
+		VALUES ($1,$2,$3,true,$4,$5)
+		ON CONFLICT (room_id) DO UPDATE SET token_hash=EXCLUDED.token_hash,
+			short_code=EXCLUDED.short_code,active=true,created_at=EXCLUDED.created_at,
+			expires_at=EXCLUDED.expires_at`, invite.RoomID, invite.TokenHash, invite.ShortCode, invite.CreatedAt, invite.ExpiresAt)
+	return err
+}
+
+func (r *pgWatchRoomRepo) RevokeExternalInvite(ctx context.Context, roomID, creatorProfileID string) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `UPDATE watch_room_external_invites i SET active=false
+		FROM watch_rooms r WHERE i.room_id=$1 AND r.id=i.room_id AND r.creator_profile_id=$2 AND i.active`, roomID, creatorProfileID)
+	return err == nil && tag.RowsAffected() > 0, err
+}
+
+func (r *pgWatchRoomRepo) GetExternalInviteByTokenHash(ctx context.Context, tokenHash string, now time.Time) (*models.WatchRoomExternalInvite, error) {
+	return r.getExternalInvite(ctx, `i.token_hash=$1`, tokenHash, now)
+}
+
+func (r *pgWatchRoomRepo) GetExternalInviteByCode(ctx context.Context, shortCode string, now time.Time) (*models.WatchRoomExternalInvite, error) {
+	return r.getExternalInvite(ctx, `i.short_code=$1`, shortCode, now)
+}
+
+func (r *pgWatchRoomRepo) getExternalInvite(ctx context.Context, predicate string, value string, now time.Time) (*models.WatchRoomExternalInvite, error) {
+	row := r.pool.QueryRow(ctx, `SELECT i.room_id,u.account_id,i.token_hash,i.short_code,i.active,i.created_at,i.expires_at
+		FROM watch_room_external_invites i
+		JOIN watch_rooms r ON r.id=i.room_id
+		JOIN users u ON u.id=r.creator_profile_id
+		WHERE `+predicate+` AND i.active AND i.expires_at>$2 AND r.status<>'ended' AND r.expires_at>$2`, value, now)
+	var invite models.WatchRoomExternalInvite
+	if err := row.Scan(&invite.RoomID, &invite.AccountID, &invite.TokenHash, &invite.ShortCode, &invite.Active, &invite.CreatedAt, &invite.ExpiresAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &invite, nil
+}
+
+func (r *pgWatchRoomRepo) JoinExternalGuest(ctx context.Context, roomID, guestID, name, clientID string, capabilities models.WatchRoomClientCapabilities, now time.Time) error {
+	capabilitiesJSON, err := json.Marshal(capabilities)
+	if err != nil {
+		return fmt.Errorf("marshal external guest capabilities: %w", err)
+	}
+	_, err = r.pool.Exec(ctx, `INSERT INTO watch_room_guest_members
+		(room_id,guest_id,name,client_id,joined_at,last_seen_at,capabilities)
+		VALUES ($1,$2,$3,$4,$5,$5,$6)
+		ON CONFLICT (room_id,guest_id) DO UPDATE SET name=EXCLUDED.name,client_id=EXCLUDED.client_id,
+			last_seen_at=EXCLUDED.last_seen_at,capabilities=EXCLUDED.capabilities`, roomID, guestID, name, clientID, now, capabilitiesJSON)
+	return err
+}
+
+func (r *pgWatchRoomRepo) IsExternalGuest(ctx context.Context, roomID, guestID string) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(
+		SELECT 1 FROM watch_room_guest_members g
+		JOIN watch_room_external_invites i ON i.room_id=g.room_id
+		JOIN watch_rooms r ON r.id=g.room_id
+		WHERE g.room_id=$1 AND g.guest_id=$2 AND i.active AND i.expires_at>now()
+			AND r.status<>'ended' AND r.expires_at>now())`, roomID, guestID).Scan(&exists)
+	return exists, err
+}
+
+func (r *pgWatchRoomRepo) HeartbeatExternalGuest(ctx context.Context, roomID, guestID, clientID string, buffering bool, now time.Time) error {
+	_, err := r.pool.Exec(ctx, `UPDATE watch_room_guest_members SET client_id=$3,buffering=$4,last_seen_at=$5
+		WHERE room_id=$1 AND guest_id=$2`, roomID, guestID, clientID, buffering, now)
+	return err
+}
+
+func (r *pgWatchRoomRepo) LeaveExternalGuest(ctx context.Context, roomID, guestID string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM watch_room_guest_members WHERE room_id=$1 AND guest_id=$2`, roomID, guestID)
+	return err
+}
+
+func (r *pgWatchRoomRepo) SetExternalGuestReady(ctx context.Context, roomID, guestID string, ready bool, now time.Time) error {
+	_, err := r.pool.Exec(ctx, `WITH member_update AS (
+		UPDATE watch_room_guest_members SET ready=$3,last_seen_at=$4 WHERE room_id=$1 AND guest_id=$2
+	), release AS (
+		SELECT $3
+			AND NOT EXISTS (SELECT 1 FROM watch_room_members WHERE room_id=$1 AND NOT ready)
+			AND NOT EXISTS (SELECT 1 FROM watch_room_guest_members WHERE room_id=$1 AND guest_id<>$2 AND NOT ready)
+			AS all_ready
+	)
+	UPDATE watch_rooms SET waiting_for_ready=false,status='playing',revision=revision+1,
+		updated_by='guest:'||$2,anchor_updated_at=$4
+	WHERE id=$1 AND waiting_for_ready AND (SELECT all_ready FROM release)`, roomID, guestID, ready, now)
+	return err
+}
+
+func (r *pgWatchRoomRepo) BindExternalSource(ctx context.Context, roomID, creatorProfileID, resource string, params map[string]string, now time.Time) (bool, error) {
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		return false, fmt.Errorf("marshal external watch source params: %w", err)
+	}
+	tag, err := r.pool.Exec(ctx, `INSERT INTO watch_room_external_sources (room_id,resource,params,bound_at)
+		SELECT r.id,$3,$4,$5 FROM watch_rooms r
+		JOIN watch_room_external_invites i ON i.room_id=r.id
+		WHERE r.id=$1 AND r.creator_profile_id=$2 AND r.status<>'ended' AND i.active AND i.expires_at>$5
+		ON CONFLICT (room_id) DO NOTHING`, roomID, creatorProfileID, resource, paramsJSON, now)
+	if err != nil {
+		return false, err
+	}
+	if tag.RowsAffected() > 0 {
+		return true, nil
+	}
+	existing, err := r.GetExternalSource(ctx, roomID)
+	return err == nil && existing != nil && existing.Resource == resource, err
+}
+
+func (r *pgWatchRoomRepo) GetExternalSource(ctx context.Context, roomID string) (*models.WatchRoomExternalSource, error) {
+	row := r.pool.QueryRow(ctx, `SELECT room_id,resource,params,bound_at FROM watch_room_external_sources WHERE room_id=$1`, roomID)
+	var source models.WatchRoomExternalSource
+	var params []byte
+	if err := row.Scan(&source.RoomID, &source.Resource, &params, &source.BoundAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if err := json.Unmarshal(params, &source.Params); err != nil {
+		return nil, err
+	}
+	return &source, nil
+}
+
 func (r *pgWatchRoomRepo) listMembers(ctx context.Context, roomID string) ([]models.WatchRoomMember, error) {
 	rows, err := r.pool.Query(ctx, `WITH people AS (
 			SELECT creator_profile_id AS profile_id FROM watch_rooms WHERE id=$1
@@ -347,7 +477,31 @@ func (r *pgWatchRoomRepo) listMembers(ctx context.Context, roomID string) ([]mod
 		}
 		members = append(members, m)
 	}
-	return members, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	guestRows, err := r.pool.Query(ctx, `SELECT guest_id,name,client_id,ready,buffering,joined_at,last_seen_at,capabilities
+		FROM watch_room_guest_members WHERE room_id=$1 ORDER BY joined_at,name`, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer guestRows.Close()
+	for guestRows.Next() {
+		var m models.WatchRoomMember
+		var guestID string
+		var capabilities []byte
+		if err := guestRows.Scan(&guestID, &m.Name, &m.ClientID, &m.Ready, &m.Buffering, &m.JoinedAt, &m.LastSeenAt, &capabilities); err != nil {
+			return nil, err
+		}
+		m.ProfileID = "guest:" + guestID
+		m.IsGuest = true
+		m.Joined = true
+		if err := json.Unmarshal(capabilities, &m.Capabilities); err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+	return members, guestRows.Err()
 }
 
 func scanWatchRoom(row pgx.Row) (*models.WatchRoom, error) {

@@ -312,13 +312,18 @@ func TestStartLiveHLSSessionResolvesStremioStreamResource(t *testing.T) {
 	}
 
 	var body struct {
-		SessionID string `json:"sessionId"`
+		SessionID            string `json:"sessionId"`
+		StremioStreamIndex   int    `json:"stremioStreamIndex"`
+		StremioStreamIndexes []int  `json:"stremioStreamIndexes"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
 	if body.SessionID == "" {
 		t.Fatal("expected sessionId")
+	}
+	if body.StremioStreamIndex != 0 || len(body.StremioStreamIndexes) != 1 || body.StremioStreamIndexes[0] != 0 {
+		t.Fatalf("stremio source response = index %d available %v", body.StremioStreamIndex, body.StremioStreamIndexes)
 	}
 
 	handler.hlsManager.mu.RLock()

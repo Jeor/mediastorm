@@ -2830,6 +2830,8 @@ func dashboardDebridProvider(sourceServiceType, explicitProvider string, paths .
 			return "alldebrid"
 		case "premiumize":
 			return "premiumize"
+		case "torrin":
+			return "torrin"
 		default:
 			return provider
 		}
@@ -3662,6 +3664,19 @@ func (h *AdminUIHandler) GetDebridStatus(w http.ResponseWriter, r *http.Request)
 				client := debrid.NewPremiumizeClient(p.APIKey)
 				if info, err := client.GetAccountInfo(ctx); err == nil {
 					status.Username = info.Username
+					status.PremiumActive = info.PremiumActive
+					if info.ExpiresAt != nil {
+						status.ExpiresAt = info.ExpiresAt.Format("2006-01-02")
+						status.DaysRemaining = info.DaysRemaining
+					}
+				} else {
+					status.Error = err.Error()
+				}
+			case "torrin":
+				client := debrid.NewTorrinClient(p.APIKey)
+				if info, err := client.GetAccountInfo(ctx); err == nil {
+					status.Username = info.Username
+					status.Email = info.Email
 					status.PremiumActive = info.PremiumActive
 					if info.ExpiresAt != nil {
 						status.ExpiresAt = info.ExpiresAt.Format("2006-01-02")
@@ -10431,6 +10446,28 @@ func (h *AdminUIHandler) TestDebridProvider(w http.ResponseWriter, r *http.Reque
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": fmt.Sprintf("Connected as customer %s (%s)", info.Username, accountType),
+		})
+
+	case "torrin":
+		torrinClient := debrid.NewTorrinClient(req.APIKey)
+		info, err := torrinClient.GetAccountInfo(r.Context())
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		accountType := "Free"
+		if info.PremiumActive {
+			accountType = "Premium"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Connected as %s (%s)", info.Username, accountType),
 		})
 
 	default:

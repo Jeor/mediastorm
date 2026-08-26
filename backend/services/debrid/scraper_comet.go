@@ -451,6 +451,8 @@ func normalizeCometDebridProvider(value string) string {
 		return "premiumize"
 	case "tb", "torbox":
 		return "torbox"
+	case "tr", "torrin":
+		return "torrin"
 	case "dl", "debridlink":
 		return "debridlink"
 	case "st", "stremthru":

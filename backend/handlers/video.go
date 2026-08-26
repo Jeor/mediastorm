@@ -2582,8 +2582,9 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 	preferredAudioLang := r.URL.Query().Get("audioLang")
 
 	var (
-		fileSize int64
-		notes    []string
+		fileSize              int64
+		notes                 []string
+		remoteHeadUnavailable bool
 	)
 
 	// Check if this is an external URL (e.g., from AIOStreams)
@@ -2673,17 +2674,25 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			if errors.Is(err, streaming.ErrNotFound) {
-				videoTracef("[video] ProbeVideo: stream not found for path=%q", cleanPath)
-				http.Error(w, "stream not found", http.StatusNotFound)
-				return
-			}
-			if errors.Is(err, streaming.ErrStaleTorrent) {
+				// Plex and Jellyfin media endpoints can reject HEAD even when the
+				// same item is available through GET. Treat HEAD as advisory for
+				// those providers and let the ranged ffprobe request verify the item.
+				if !isRemoteMediaProviderPath(cleanPath) {
+					videoTracef("[video] ProbeVideo: stream not found for path=%q", cleanPath)
+					http.Error(w, "stream not found", http.StatusNotFound)
+					return
+				}
+				videoTracef("[video] ProbeVideo: remote library HEAD unavailable for path=%q; falling back to ranged probe", cleanPath)
+				remoteHeadUnavailable = true
+				notes = append(notes, "provider HEAD unavailable; metadata derived from ranged stream")
+			} else if errors.Is(err, streaming.ErrStaleTorrent) {
 				videoTracef("[video] ProbeVideo: stale torrent for path=%q", cleanPath)
 				http.Error(w, "debrid torrent expired or deleted — please re-resolve", http.StatusGone)
 				return
+			} else {
+				log.Printf("[video] metadata provider head failed for %q: %v", cleanPath, err)
+				notes = append(notes, "stream metadata unavailable")
 			}
-			log.Printf("[video] metadata provider head failed for %q: %v", cleanPath, err)
-			notes = append(notes, "stream metadata unavailable")
 		} else if resp != nil {
 			defer resp.Close()
 			fileSize = providerResponseTotalSize(resp)
@@ -2718,6 +2727,11 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 			if m, err := h.runFFProbeFromProvider(r.Context(), cleanPath); err == nil && m != nil {
 				meta = m
 			} else if err != nil && !errors.Is(err, context.Canceled) {
+				if remoteHeadUnavailable && errors.Is(err, streaming.ErrNotFound) {
+					videoTracef("[video] ProbeVideo: ranged remote library probe confirmed stream not found for path=%q", cleanPath)
+					http.Error(w, "stream not found", http.StatusNotFound)
+					return
+				}
 				log.Printf("[video] metadata provider ffprobe failed for %q: %v", cleanPath, err)
 			}
 		}

@@ -579,7 +579,7 @@
     padding-top: 0.7rem;
     border-top: 1px solid var(--border);
 }
-.settings-level-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
+.settings-level-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
 .settings-level-btn:disabled {
     cursor: not-allowed;
     opacity: 0.42;
@@ -855,19 +855,22 @@
 }
 
 .settings-command-bar .settings-level-switch {
-    display: flex;
-    width: 220px;
+    display: grid;
+    width: 180px;
+    height: 48px;
     padding: 0.2rem;
 }
 
 .settings-command-bar .settings-level-btn {
-    min-height: 44px;
-    flex: 1;
+    min-height: 0;
+    height: 100%;
 }
+
+.settings-command-bar .settings-context-trigger-desktop { min-height: 48px; }
 
 .settings-save-state {
     display: inline-flex;
-    min-height: 44px;
+    min-height: 48px;
     align-items: center;
     justify-self: end;
     gap: 0.55rem;
@@ -1258,6 +1261,28 @@
 #settingsContainer .form-group { margin-bottom: 0.75rem; }
 #settingsContainer .form-hint { margin-top: 0.3rem; font-size: 0.74rem; line-height: 1.35; }
 #settingsContainer .field-subgroup { margin: 0.25rem 0 0.75rem; padding: 0.8rem; }
+.appearance-setting-group {
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+.appearance-setting-group .field-subgroup-title {
+    margin: 0;
+    padding: 0.9rem 1rem 0.15rem;
+    color: var(--accent-hover);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.appearance-setting-group .field-subgroup-description {
+    margin: 0;
+    padding: 0 1rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+.appearance-setting-group .field-subgroup-fields { padding: 1rem; }
+.appearance-theme-presets { grid-column: 1 / -1; }
+.appearance-theme-presets > div { margin-bottom: 0 !important; }
 .advanced-setting-badge {
     display: inline-flex;
     margin-left: 0.45rem;
@@ -1915,7 +1940,6 @@
         <div class="settings-level-switch" aria-label="Settings detail level">
             <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
-            <button id="settingsEssentialsBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Watch Essentials</button>
         </div>
         <button class="settings-context-trigger settings-context-trigger-desktop" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsScopePanel" onclick="openSettingsContextSheet()">
             <span><span class="settings-context-label">Current scope</span><span class="settings-context-summary" data-settings-context-summary>Server defaults</span></span>
@@ -1978,7 +2002,6 @@
         <div class="settings-level-switch" aria-label="Mobile settings detail level">
             <button id="settingsMobileBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsMobileAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
-            <button id="settingsMobileEssentialsBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Watch Essentials</button>
         </div>
     </div>
     <div id="settingsLevelHelp" hidden aria-hidden="true"></div>
@@ -2299,7 +2322,7 @@
         mdblist: 'MDBList integration and lists',
         subtitles: 'OpenSubtitles and subtitle preferences',
         homeShelves: 'Dashboard layout and widgets',
-        display: 'Theme, colors, and custom branding',
+        display: 'Interface, theme, accessibility, and custom branding',
         server: 'Base URL and port configuration',
         network: 'Local and remote access URLs'
     };
@@ -2307,7 +2330,8 @@
         { id: 'sources', label: 'Sources' },
         { id: 'search', label: 'Search & Quality' },
         { id: 'playback', label: 'Playback & Subtitles' },
-        { id: 'interface', label: 'Home & Appearance' },
+        { id: 'interface', label: 'Home' },
+        { id: 'appearance', label: 'Appearance & Branding' },
         { id: 'metadata', label: 'Metadata' },
         { id: 'server', label: 'Server & Network' }
     ];
@@ -2315,7 +2339,8 @@
         { id: 'sources', label: 'Sources', description: 'Indexers, torrent scrapers, Usenet, debrid, and media sources.' },
         { id: 'search', label: 'Search & Quality', description: 'Search behavior, filtering, quality, release terms, and ordering.' },
         { id: 'playback', label: 'Playback & Subtitles', description: 'Playback, streams, transcoding, subtitles, and Live TV.' },
-        { id: 'interface', label: 'Home & Appearance', description: 'Shelves, discovery, display, branding, and visibility.' },
+        { id: 'interface', label: 'Home', description: 'Home screen shelves, discovery layout, and featured content.' },
+        { id: 'appearance', label: 'Appearance & Branding', description: 'Interface visibility, presentation, theme, accessibility, and branding images.' },
         { id: 'metadata', label: 'Metadata', description: 'Movie and show information, languages, ratings, artwork, and metadata providers.' },
         { id: 'server', label: 'Server & Network', description: 'Server, storage, WebDAV, networking, and maintenance.' }
     ];
@@ -2548,22 +2573,16 @@
         }
         const basicButton = document.getElementById('settingsBasicBtn');
         const advancedButton = document.getElementById('settingsAdvancedBtn');
-        const essentialsButton = document.getElementById('settingsEssentialsBtn');
         const mobileBasicButton = document.getElementById('settingsMobileBasicBtn');
         const mobileAdvancedButton = document.getElementById('settingsMobileAdvancedBtn');
-        const mobileEssentialsButton = document.getElementById('settingsMobileEssentialsBtn');
         basicButton?.classList.toggle('active', settingsLevel === 'basic');
         advancedButton?.classList.toggle('active', settingsLevel === 'advanced');
-        essentialsButton?.classList.toggle('active', settingsLevel === 'essentials');
         mobileBasicButton?.classList.toggle('active', settingsLevel === 'basic');
         mobileAdvancedButton?.classList.toggle('active', settingsLevel === 'advanced');
-        mobileEssentialsButton?.classList.toggle('active', settingsLevel === 'essentials');
         basicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
         advancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
-        essentialsButton?.setAttribute('aria-pressed', String(settingsLevel === 'essentials'));
         mobileBasicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
         mobileAdvancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
-        mobileEssentialsButton?.setAttribute('aria-pressed', String(settingsLevel === 'essentials'));
         const help = document.getElementById('settingsLevelHelp');
         if (help) help.textContent = settingsLevel === 'basic'
             ? 'Showing common settings. Switch to Advanced or search to find everything else.'
@@ -2610,7 +2629,8 @@
         if (['streaming', 'filtering', 'animeFiltering', 'ranking'].includes(sectionKey)) return 'search';
         if (['playback', 'transmux', 'subtitles'].includes(sectionKey)) return 'playback';
         if (['metadata', 'mdblist'].includes(sectionKey)) return 'metadata';
-        if (['homeShelves', 'display'].includes(sectionKey)) return 'interface';
+        if (sectionKey === 'homeShelves') return 'interface';
+        if (sectionKey === 'display') return 'appearance';
         if (['server', 'network'].includes(sectionKey)) return 'server';
         return {
             providers: 'sources',
@@ -12485,6 +12505,34 @@
     ];
     const playbackFieldLayout = new Map(playbackFieldGroups.flatMap((group, groupIndex) => group.fields.map((field, fieldIndex) => [field, { ...group, groupIndex, fieldIndex }])));
 
+    const displayFieldGroups = [
+        {
+            id: 'interfaceContent',
+            label: 'Interface & Content',
+            description: 'Navigation, badges, content visibility, language, and information shown throughout the app.',
+            fields: ['badgeVisibility', 'navigationTabVisibility', 'watchStateIconStyle', 'hideWatched', 'alwaysShowProfileSelector', 'includeUnreleasedMoviesInLists', 'includeUnreleasedShowsInLists', 'includeUnreleasedMoviesInSearch', 'includeUnreleasedShowsInSearch', 'bypassFilteringForAioStreamsOnly', 'showParsedBadges', 'showStreamSourceInfo', 'appLanguage'],
+        },
+        {
+            id: 'motionTv',
+            label: 'Motion & TV Presentation',
+            description: 'Animation, hero artwork, TV layouts, simplified browsing, and spoiler presentation.',
+            fields: ['enableAnimations', 'enableHeroArtPanning', 'enableHeroArtRotation', 'hideContinueWatchingHeroMetadata', 'moveDetailsRatingsToMetadata', 'hideDetailsPoster', 'hideTvDrawerRail', 'simpleMode', 'simpleModeHomeShelves', 'disableTvHomeCardDimming', 'showSeriesBackdropForMissingEpisodeArt', 'blurUnwatchedEpisodeThumbnails', 'blurUnwatchedEpisodeThumbnailsIncludeCurrent', 'blurUnwatchedEpisodeOverviews', 'blurUnwatchedEpisodeOverviewsIncludeCurrent'],
+        },
+        {
+            id: 'theme',
+            label: 'Theme & Accessibility',
+            description: 'Text scale, color palette, buttons, contrast, and overlay treatment.',
+            fields: ['appearance.fontScale', 'appearance.accentColor', 'appearance.textColor', 'appearance.secondaryTextColor', 'appearance.backgroundColor', 'appearance.modalBackgroundColor', 'appearance.buttonStyle', 'appearance.buttonRadius', 'appearance.highContrast', 'appearance.reduceOverlays'],
+        },
+        {
+            id: 'branding',
+            label: 'Branding Images',
+            description: 'Upload and manage the images used across TV, mobile, loading, and web surfaces.',
+            fields: ['branding.wizard', 'branding.homeTvImageUrl', 'branding.homeTvImageUpload', 'branding.homeMobileLogoUrl', 'branding.homeMobileLogoUpload', 'branding.settingsTvImageUrl', 'branding.settingsTvImageUpload', 'branding.webIconUrl', 'branding.webIconUpload', 'branding.loadingLogoUrl', 'branding.loadingLogoUpload'],
+        },
+    ];
+    const displayFieldLayout = new Map(displayFieldGroups.flatMap((group, groupIndex) => group.fields.map((field, fieldIndex) => [field, { ...group, groupIndex, fieldIndex }])));
+
     function renderObjectSection(sectionKey, sectionDef) {
         // Use getValue for proper three-tier cascade (global → profile → client)
         // Get section data for showWhen conditions
@@ -12495,9 +12543,10 @@
 
         const fieldEntries = Object.entries(sectionDef.fields)
             .sort((a, b) => {
-                if (sectionKey === 'playback') {
-                    const aLayout = playbackFieldLayout.get(a[0]);
-                    const bLayout = playbackFieldLayout.get(b[0]);
+                if (sectionKey === 'playback' || sectionKey === 'display') {
+                    const fieldLayout = sectionKey === 'playback' ? playbackFieldLayout : displayFieldLayout;
+                    const aLayout = fieldLayout.get(a[0]);
+                    const bLayout = fieldLayout.get(b[0]);
                     const aRank = aLayout ? aLayout.groupIndex * 100 + aLayout.fieldIndex : 9999 + (a[1].order || 0);
                     const bRank = bLayout ? bLayout.groupIndex * 100 + bLayout.fieldIndex : 9999 + (b[1].order || 0);
                     return aRank - bRank;
@@ -12558,11 +12607,13 @@
                 const requiredForBadge = fieldDef.requiredFor
                     ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required for ' + escapeHtml(fieldDef.requiredFor) + '</span>'
                     : '';
-                const playbackLayout = sectionKey === 'playback' ? playbackFieldLayout.get(fieldKey) : null;
+                const sectionLayout = sectionKey === 'playback'
+                    ? playbackFieldLayout.get(fieldKey)
+                    : (sectionKey === 'display' ? displayFieldLayout.get(fieldKey) : null);
                 return {
-                    group: playbackLayout?.id || fieldDef.group || '',
-                    groupLabel: playbackLayout?.label || fieldDef.groupLabel || '',
-                    groupDescription: playbackLayout?.description || fieldDef.groupDescription || '',
+                    group: sectionLayout?.id || fieldDef.group || '',
+                    groupLabel: sectionLayout?.label || fieldDef.groupLabel || '',
+                    groupDescription: sectionLayout?.description || fieldDef.groupDescription || '',
                     html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+requiredForBadge+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
@@ -12591,13 +12642,17 @@
                         '</details>'
                     );
                 } else if (currentGroup) {
-                fieldHtmlParts.push(
-                    '<div class="field-subgroup">' +
-                        '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
-                        (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
-                        '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
-                    '</div>'
-                );
+                    const appearanceGroupClass = sectionKey === 'display' ? ' appearance-setting-group' : '';
+                    const appearancePresetHtml = sectionKey === 'display' && currentGroup === 'theme'
+                        ? '<div class="appearance-theme-presets">' + renderThemeQuickSelect() + '</div>'
+                        : '';
+                    fieldHtmlParts.push(
+                        '<div class="field-subgroup'+appearanceGroupClass+'">' +
+                            '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
+                            (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
+                            '<div class="field-subgroup-fields">' + appearancePresetHtml + groupedFields.join('') + '</div>' +
+                        '</div>'
+                    );
             } else {
                 fieldHtmlParts.push(...groupedFields);
             }
@@ -12621,9 +12676,6 @@
         if (sectionKey === 'streaming') {
             customHtml = renderProviderPriorityUI();
         }
-        if (sectionKey === 'display') {
-            customHtml = renderThemeQuickSelect();
-        }
 
         // Add test button for testable object sections
         let testHtml = '';
@@ -12633,7 +12685,7 @@
                 '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test Connection</button>'+
                 '<span id="test-result-'+sectionKey+'" class="test-result"></span></div>';
         }
-        return (sectionKey === 'display' ? customHtml + fieldsHtml : fieldsHtml + customHtml) + testHtml;
+        return fieldsHtml + customHtml + testHtml;
     }
 
     function sectionShowWhenMatches(sectionDef) {
@@ -13677,12 +13729,12 @@
             if (groupSections.length === 0) continue;
 
             totalMatchingSections += groupSections.length;
-            html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+groupSections.map(([key, def]) => renderSection(key, def, isEssentials)).join('')+'</div></div>';
+            html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+groupSections.map(([key, def]) => renderSection(key, def, isEssentials || (activeSettingsGroup === 'appearance' && key === 'display'))).join('')+'</div></div>';
         }
 
         // Show "no results" message if search found nothing
         if (searchTerm && totalMatchingSections === 0) {
-            html += '<div role="status" style="text-align: center; padding: 3rem; color: var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="margin: 0;">No settings found for "<strong>' + escapeHtml(searchTerm) + '</strong>"</p><p style="margin: 0.5rem 0 1rem; font-size: 0.875rem;">Search includes Basic, Advanced, and Watch Essentials.</p><button class="btn btn-secondary btn-sm" type="button" onclick="clearSettingsSearch()">Clear search</button></div>';
+            html += '<div role="status" style="text-align: center; padding: 3rem; color: var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="margin: 0;">No settings found for "<strong>' + escapeHtml(searchTerm) + '</strong>"</p><p style="margin: 0.5rem 0 1rem; font-size: 0.875rem;">Search includes Basic and Advanced settings.</p><button class="btn btn-secondary btn-sm" type="button" onclick="clearSettingsSearch()">Clear search</button></div>';
         }
 
         container.innerHTML = html;

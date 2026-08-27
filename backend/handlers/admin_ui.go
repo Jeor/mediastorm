@@ -317,6 +317,14 @@ var SettingsSchema = map[string]interface{}{
 				"label":       "Max Alternate Title Searches",
 				"description": "Maximum alternate/international titles to search per item (0 = unlimited). Titles matching your metadata language are prioritized.",
 			},
+			"maxDailyUsenetQueries": map[string]interface{}{
+				"type":        "number",
+				"label":       "Max Daily-show Usenet Queries",
+				"description": "Maximum tiered query attempts per Usenet indexer for a daily episode (default: 5). Successful formats are tried first on later episodes.",
+				"min":         1,
+				"max":         10,
+				"step":        1,
+			},
 			"resolutionSettleWindowMs": map[string]interface{}{
 				"type":        "number",
 				"label":       "Better-ranked Candidate Grace (ms)",

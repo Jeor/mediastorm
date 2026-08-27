@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -1451,6 +1452,39 @@ func TestSearchWithScoringSplitCacheHitStillEmitsScoredUsenet(t *testing.T) {
 	}
 }
 
+func TestEmitSplitSourceBatchAddsDailyShowIdentity(t *testing.T) {
+	usenetOut := make(chan ScoredSplitSearchResult, 1)
+	debridOut := make(chan ScoredSplitSearchResult, 1)
+	svc := &Service{}
+
+	svc.emitSplitSourceBatch(usenetOut, debridOut, config.Settings{}, SearchOptions{
+		IsDaily:       true,
+		TargetAirDate: "2026-08-17",
+	}, searchSplitOutcome{
+		source: "debrid",
+		scored: []models.ScoredNZBResult{{
+			NZBResult: models.NZBResult{Title: "Coronation street 17th Aug 2026 1080"},
+		}},
+	})
+
+	result := <-debridOut
+	if len(result.Scored) != 1 {
+		t.Fatalf("scored result count = %d, want 1", len(result.Scored))
+	}
+	attrs := result.Scored[0].Attributes
+	if attrs["isDaily"] != "true" {
+		t.Fatalf("isDaily = %q, want true", attrs["isDaily"])
+	}
+	if attrs["targetAirDate"] != "2026-08-17" {
+		t.Fatalf("targetAirDate = %q, want 2026-08-17", attrs["targetAirDate"])
+	}
+	select {
+	case <-usenetOut:
+		t.Fatal("daily debrid batch was emitted to the usenet channel")
+	default:
+	}
+}
+
 func TestSearchWithScoringBypassesFilteringAndRankingForAIOStreamsOnlyDebridMode(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "settings.json")
 	mgr := config.NewManager(cfgPath)
@@ -1571,6 +1605,127 @@ func TestBuildSearchQueries_DateBasedSoapEpisode(t *testing.T) {
 		if !found {
 			t.Errorf("expected query %q in %v", expected, queries)
 		}
+	}
+}
+
+func TestDailyUsenetSearchUsesBoundedTiersAndRemembersSuccessfulSeasonEpisodeFormat(t *testing.T) {
+	var mu sync.Mutex
+	var requests []url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests = append(requests, r.URL.Query())
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/xml")
+		query := r.URL.Query().Get("q")
+		if query == "Coronation Street S67E150" || query == "Coronation Street S67E151" {
+			_, _ = fmt.Fprintf(w, `<rss><channel><item><title>%s.1080p.WEB-DL</title><guid>%s</guid><link>https://example.test/%s.nzb</link></item></channel></rss>`,
+				strings.ReplaceAll(query, " ", "."), query, query)
+			return
+		}
+		_, _ = w.Write([]byte(`<rss><channel></channel></rss>`))
+	}))
+	defer server.Close()
+
+	settings := config.Settings{
+		Indexers: []config.IndexerConfig{{Name: "Prowlarr", URL: server.URL, Type: "newznab", Enabled: true}},
+		Streaming: config.StreamingSettings{
+			MaxDailyUsenetQueries: 5,
+		},
+	}
+	svc := &Service{httpc: server.Client(), providerBreaker: providerbreaker.New()}
+	search := func(episode int, airDate string) []models.NZBResult {
+		opts := SearchOptions{
+			Query:           fmt.Sprintf("Coronation Street S67E%d", episode),
+			MediaType:       "series",
+			TVDBID:          2521,
+			IsDaily:         true,
+			TargetAirDate:   airDate,
+			EpisodeReleased: true,
+		}
+		parsed := debrid.ParseQuery(opts.Query)
+		results, err := svc.searchUsenetWithFilter(context.Background(), settings, opts, parsed, []string{"Corrie"}, nil, models.FilterSettings{})
+		if err != nil {
+			t.Fatalf("daily search: %v", err)
+		}
+		return results
+	}
+
+	if results := search(150, "2026-08-17"); len(results) != 1 {
+		t.Fatalf("first daily search results = %d, want 1", len(results))
+	}
+
+	mu.Lock()
+	firstRequests := append([]url.Values(nil), requests...)
+	mu.Unlock()
+	if len(firstRequests) != 3 {
+		t.Fatalf("first daily search requests = %d, want 3: %v", len(firstRequests), firstRequests)
+	}
+	if got := firstRequests[0].Get("t"); got != "tvsearch" {
+		t.Fatalf("first request type = %q, want tvsearch", got)
+	}
+	if got := firstRequests[0].Get("tvdbid"); got != "2521" {
+		t.Fatalf("first request tvdbid = %q, want 2521", got)
+	}
+	if got := firstRequests[0].Get("season"); got != "2026" {
+		t.Fatalf("first request season = %q, want 2026", got)
+	}
+	if got := firstRequests[0].Get("ep"); got != "08/17" {
+		t.Fatalf("first request ep = %q, want 08/17", got)
+	}
+	if got := firstRequests[1].Get("q"); got != "Coronation Street" {
+		t.Fatalf("second request q = %q, want canonical title", got)
+	}
+	if got := firstRequests[2].Get("q"); got != "Coronation Street S67E150" {
+		t.Fatalf("third request q = %q, want season/episode fallback", got)
+	}
+
+	if results := search(151, "2026-08-18"); len(results) != 1 {
+		t.Fatalf("second daily search results = %d, want 1", len(results))
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(requests) != 4 {
+		t.Fatalf("total requests after learned search = %d, want 4", len(requests))
+	}
+	if got := requests[3].Get("q"); got != "Coronation Street S67E151" {
+		t.Fatalf("learned first request q = %q, want season/episode format", got)
+	}
+}
+
+func TestDailyUsenetSearchHonorsAttemptCap(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write([]byte(`<rss><channel></channel></rss>`))
+	}))
+	defer server.Close()
+
+	settings := config.Settings{
+		Indexers: []config.IndexerConfig{{Name: "NZBGeek", URL: server.URL, Type: "newznab", Enabled: true}},
+		Streaming: config.StreamingSettings{
+			MaxDailyUsenetQueries: 3,
+		},
+	}
+	svc := &Service{httpc: server.Client(), providerBreaker: providerbreaker.New()}
+	opts := SearchOptions{
+		Query:         "Coronation Street S67E150",
+		MediaType:     "series",
+		TVDBID:        2521,
+		IsDaily:       true,
+		TargetAirDate: "2026-08-17",
+	}
+	parsed := debrid.ParseQuery(opts.Query)
+	results, err := svc.searchUsenetWithFilter(context.Background(), settings, opts, parsed, []string{"Corrie"}, nil, models.FilterSettings{})
+	if err != nil {
+		t.Fatalf("daily search: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("results = %d, want 0", len(results))
+	}
+	if got := requests.Load(); got != 3 {
+		t.Fatalf("requests = %d, want configured cap 3", got)
 	}
 }
 

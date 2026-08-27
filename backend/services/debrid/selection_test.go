@@ -116,3 +116,23 @@ func TestSelectMediaFilesUsesExplicitTargetEpisode(t *testing.T) {
 		t.Fatalf("expected reason to mention explicit target")
 	}
 }
+
+func TestSelectMediaFilesSingleDailyFileMatchesCompactDate(t *testing.T) {
+	files := []File{{ID: 1, Path: "/Coronation Street_20260817_20302100.mp4", Bytes: 400_000_000}}
+	selection := selectMediaFiles(files, mediaresolve.SelectionHints{
+		TargetSeason:  67,
+		TargetEpisode: 150,
+		IsDaily:       true,
+		TargetAirDate: "2026-08-17",
+	})
+
+	if selection == nil {
+		t.Fatal("selectMediaFiles returned nil")
+	}
+	if selection.RejectionReason != "" {
+		t.Fatalf("selection rejected compact daily filename: %s", selection.RejectionReason)
+	}
+	if selection.PreferredID != "1" {
+		t.Fatalf("PreferredID = %q, want 1", selection.PreferredID)
+	}
+}

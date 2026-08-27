@@ -1,18 +1,45 @@
 {{template "base" .}}
 
-{{define "title"}}Search Test - mediastorm Admin{{end}}
+{{define "title"}}Search - mediastorm Admin{{end}}
+
+{{define "styles"}}
+<style>
+.search-diagnostics-card { margin-bottom: 1.5rem; scroll-margin-top: 1rem; }
+.search-diagnostics-copy { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.8rem; }
+.search-diagnostics-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.search-diagnostics-controls { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) 96px 110px 110px; gap: 0.65rem; align-items: end; }
+.search-diagnostics-controls label { display: flex; flex-direction: column; gap: 0.3rem; color: var(--text-secondary); font-size: 0.75rem; }
+.search-diagnostics-controls input, .search-diagnostics-controls select { width: 100%; min-height: 40px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); padding: 0.45rem 0.55rem; font: inherit; }
+.search-diagnostics-summary { min-height: 20px; margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem; }
+.search-timeout-recommendation { display: none; align-items: center; gap: 0.65rem; margin-top: 0.65rem; flex-wrap: wrap; font-size: 0.8rem; }
+.search-timeout-recommendation.active { display: flex; }
+.search-diagnostics-table-wrap { overflow-x: auto; margin-top: 0.85rem; }
+.search-diagnostics-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.search-diagnostics-table th, .search-diagnostics-table td { padding: 0.55rem 0.5rem; border-top: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.search-diagnostics-table th { color: var(--text-secondary); font-weight: 600; }
+.search-diagnostics-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.search-diagnostics-table .empty-row { color: var(--text-muted); text-align: center; }
+.diag-status-pass { color: var(--success, #4caf50); }
+.diag-status-warn { color: var(--warning, #ff9800); }
+.diag-status-fail { max-width: 360px; overflow: hidden; color: var(--error, #f44336); text-overflow: ellipsis; }
+@media (max-width: 760px) {
+    .search-diagnostics-controls { grid-template-columns: 1fr 1fr; }
+    .search-diagnostics-controls label:first-child { grid-column: 1 / -1; }
+}
+</style>
+{{end}}
 
 {{define "content"}}
 <div class="page-header" id="pageTop" data-page-group="Configuration &amp; operations">
     <div class="page-header-copy">
         <div class="page-kicker">Configuration &amp; operations</div>
-        <h1>Search test</h1>
-        <p>Run a real content search and inspect source, filtering, and scraping results.</p>
+        <h1>Search</h1>
+        <p>Find content or diagnose how enabled sources respond.</p>
     </div>
 </div>
 
 <!-- Search Section -->
-<div class="card" style="margin-bottom: 1.5rem;">
+<div class="card" id="content-search" style="margin-bottom: 1.5rem; scroll-margin-top: 1rem;">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -49,6 +76,36 @@
         </div>
     </div>
 </div>
+
+<section id="searchDiagnostics" class="card search-diagnostics-card" aria-labelledby="searchDiagnosticsHeading">
+    <div class="card-header">
+        <div>
+            <h2 id="searchDiagnosticsHeading">Search Diagnostics</h2>
+            <p class="search-diagnostics-copy">Compare enabled indexers and torrent sources, then tune the search timeout.</p>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="search-diagnostics-actions">
+            <button class="btn btn-secondary" id="save-timeout-btn" type="button" onclick="saveSearchTimeout()">Save Timeout</button>
+            <button class="btn btn-primary" id="run-search-diagnostics-btn" type="button" onclick="runSearchDiagnostics()">Run Search Test</button>
+        </div>
+        <div class="search-diagnostics-controls">
+            <label><span>Query</span><input type="text" id="diag-query" value="The Matrix" autocomplete="off"></label>
+            <label><span>IMDb ID</span><input type="text" id="diag-imdb" value="tt0133093" autocomplete="off"></label>
+            <label><span>Year</span><input type="number" id="diag-year" value="1999" min="1900" max="2100"></label>
+            <label><span>Type</span><select id="diag-media-type"><option value="movie" selected>Movie</option><option value="series">Series</option></select></label>
+            <label><span>Timeout</span><input type="number" id="diag-timeout" min="0.1" max="120" step="0.1" value="{{.Settings.Streaming.IndexerTimeoutSec}}"></label>
+        </div>
+        <div id="search-diagnostics-summary" class="search-diagnostics-summary" role="status" aria-live="polite">Not run yet.</div>
+        <div id="search-timeout-recommendation" class="search-timeout-recommendation"></div>
+        <div class="search-diagnostics-table-wrap">
+            <table class="search-diagnostics-table">
+                <thead><tr><th>Source</th><th>Kind</th><th>Results</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody id="search-diagnostics-results"><tr><td colspan="5" class="empty-row">Run a search test to compare enabled sources.</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
 <!-- Selected Content Section -->
 <div id="selectedContent" class="card" style="margin-bottom: 1.5rem; display: none;">
@@ -168,6 +225,7 @@
 {{define "scripts"}}
 <script>
     let selectedContent = null;
+    let latestSearchDiagnostics = null;
 
     function escAttr(s) {
         if (!s) return '';
@@ -176,8 +234,121 @@
     let seriesDetails = null;
     let allScrapeResults = [];
 
+    function diagnosticEscapeHtml(value) {
+        return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function diagnosticDuration(durationMs) {
+        if (durationMs == null || Number.isNaN(durationMs)) return '';
+        if (durationMs < 1000) return `${Math.round(durationMs)} ms`;
+        return `${(durationMs / 1000).toFixed(durationMs >= 10000 ? 0 : 1)} s`;
+    }
+
+    function diagnosticTimeoutProjection(timeoutSec) {
+        const sources = Array.isArray(latestSearchDiagnostics?.sources) ? latestSearchDiagnostics.sources : [];
+        const included = sources.filter(source => source.success && Number(source.durationMs || 0) <= timeoutSec * 1000);
+        return { sourceCount: included.length, totalSources: sources.length, resultCount: included.reduce((sum, source) => sum + Number(source.count || 0), 0) };
+    }
+
+    function recommendedSearchTimeout() {
+        const sources = (Array.isArray(latestSearchDiagnostics?.sources) ? latestSearchDiagnostics.sources : [])
+            .filter(source => source.success && Number(source.count || 0) > 0)
+            .map(source => ({ count: Number(source.count || 0), durationMs: Math.max(1, Number(source.durationMs || 0)) }))
+            .sort((a, b) => a.durationMs - b.durationMs);
+        const totalResults = sources.reduce((sum, source) => sum + source.count, 0);
+        if (!totalResults) return null;
+        const target = Math.ceil(totalResults / 2);
+        let running = 0;
+        for (const source of sources) {
+            running += source.count;
+            if (running >= target) return { timeoutSec: Math.max(0.1, Math.ceil(source.durationMs / 100) / 10), resultCount: running, totalResults };
+        }
+        return null;
+    }
+
+    function renderSearchTimeoutRecommendation() {
+        const target = document.getElementById('search-timeout-recommendation');
+        if (!target) return;
+        const recommendation = recommendedSearchTimeout();
+        target.classList.toggle('active', Boolean(recommendation));
+        target.innerHTML = recommendation
+            ? `<span>Suggested timeout: <strong>${recommendation.timeoutSec.toFixed(1)}s</strong> captures at least half this run (${recommendation.resultCount}/${recommendation.totalResults} results).</span><button class="btn btn-secondary btn-sm" type="button" onclick="applyRecommendedSearchTimeout(${recommendation.timeoutSec})">Use ${recommendation.timeoutSec}s</button>`
+            : '';
+    }
+
+    function applyRecommendedSearchTimeout(timeoutSec) {
+        const input = document.getElementById('diag-timeout');
+        if (input) input.value = timeoutSec;
+        updateSearchTimeoutProjection();
+    }
+
+    function updateSearchTimeoutProjection() {
+        if (!latestSearchDiagnostics) return;
+        const timeoutSec = Number(document.getElementById('diag-timeout')?.value || 0);
+        if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) return;
+        const projection = diagnosticTimeoutProjection(timeoutSec);
+        const cap = latestSearchDiagnostics.diagnosticTimeoutSec || 10;
+        document.getElementById('search-diagnostics-summary').textContent = `At ${timeoutSec.toFixed(1)}s, this run would have returned ${projection.resultCount} result${projection.resultCount === 1 ? '' : 's'} from ${projection.sourceCount}/${projection.totalSources} sources. Observed with a ${cap}s diagnostic cap.`;
+    }
+
+    async function searchDiagnosticPost(endpoint, payload) {
+        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        return response.json();
+    }
+
+    async function runSearchDiagnostics() {
+        const button = document.getElementById('run-search-diagnostics-btn');
+        const summary = document.getElementById('search-diagnostics-summary');
+        const resultsBody = document.getElementById('search-diagnostics-results');
+        button.disabled = true;
+        summary.textContent = 'Searching enabled sources…';
+        resultsBody.innerHTML = '<tr><td colspan="5" class="empty-row">Searching…</td></tr>';
+        const startedAt = performance.now();
+        try {
+            const result = await searchDiagnosticPost(basePath + '/api/connections/search-diagnostics', {
+                query: document.getElementById('diag-query').value.trim(), imdbId: document.getElementById('diag-imdb').value.trim(),
+                year: Number(document.getElementById('diag-year').value) || 0, mediaType: document.getElementById('diag-media-type').value
+            });
+            if (result.error) throw new Error(result.error);
+            const sources = Array.isArray(result.sources) ? result.sources : [];
+            latestSearchDiagnostics = result;
+            document.getElementById('diag-timeout').value = result.timeoutSec || 5;
+            summary.textContent = `${result.totalResults || 0} total results across ${sources.length} sources in ${diagnosticDuration(result.durationMs ?? (performance.now() - startedAt))}.`;
+            resultsBody.innerHTML = sources.length ? sources.slice().sort((a, b) => (b.count || 0) - (a.count || 0)).map(source => `<tr><td>${diagnosticEscapeHtml(source.name || 'Source')}</td><td>${diagnosticEscapeHtml((source.group || '') + (source.type ? ' / ' + source.type : ''))}</td><td class="num">${Number(source.count || 0).toLocaleString()}</td><td class="num">${diagnosticDuration(source.durationMs || 0)}</td><td class="${!source.success ? 'diag-status-fail' : (source.count > 0 ? 'diag-status-pass' : 'diag-status-warn')}">${!source.success ? diagnosticEscapeHtml(source.error || 'Failed') : (source.count > 0 ? 'OK' : 'Reachable, 0 results')}</td></tr>`).join('') : '<tr><td colspan="5" class="empty-row">No enabled search sources found.</td></tr>';
+            renderSearchTimeoutRecommendation();
+            updateSearchTimeoutProjection();
+        } catch (error) {
+            latestSearchDiagnostics = null;
+            renderSearchTimeoutRecommendation();
+            summary.textContent = 'Search diagnostics failed: ' + error.message;
+            resultsBody.innerHTML = '<tr><td colspan="5" class="empty-row">Search diagnostics failed.</td></tr>';
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    async function saveSearchTimeout() {
+        const button = document.getElementById('save-timeout-btn');
+        const summary = document.getElementById('search-diagnostics-summary');
+        const timeoutSec = Number(document.getElementById('diag-timeout').value);
+        if (!Number.isFinite(timeoutSec) || timeoutSec < 0.1 || timeoutSec > 120) { summary.textContent = 'Timeout must be between 0.1 and 120 seconds.'; return; }
+        button.disabled = true;
+        try {
+            const result = await searchDiagnosticPost(basePath + '/api/connections/search-timeout', { timeoutSec });
+            if (!result.success) throw new Error(result.error || 'Failed to save timeout');
+            summary.textContent = `Search timeout saved at ${result.timeoutSec}s.`;
+        } catch (error) {
+            summary.textContent = 'Failed to save timeout: ' + error.message;
+        } finally {
+            button.disabled = false;
+        }
+    }
+
     // Load users on page load
-    document.addEventListener('DOMContentLoaded', loadUsers);
+    document.addEventListener('DOMContentLoaded', () => {
+        loadUsers();
+        document.getElementById('diag-timeout')?.addEventListener('input', updateSearchTimeoutProjection);
+    });
 
     async function loadUsers() {
         try {

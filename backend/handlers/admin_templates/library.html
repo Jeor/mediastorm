@@ -13,7 +13,7 @@
     </div>
 </div>
 
-<div class="grid grid-2" style="align-items: start;">
+<div>
     <div class="card">
         <div class="card-header">
             <div>
@@ -22,6 +22,10 @@
             </div>
         </div>
         <div class="card-body">
+            <aside style="margin-bottom: 1rem; padding: 0.8rem 0.9rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-secondary); font-size: 0.82rem; line-height: 1.45;">
+                <strong style="display: block; margin-bottom: 0.25rem; color: var(--text-primary);">How library scanning works</strong>
+                Movie and show libraries match filenames to metadata automatically. Other libraries are still indexed and inspected with <code>ffprobe</code>, but skipped for metadata matching. Low-confidence items remain visible for manual cleanup, and manual fixes are preserved until a later scan re-evaluates the file. File details use <code>ffprobe</code> from the configured transmux settings.
+            </aside>
             <form id="libraryForm" style="display: grid; gap: 0.875rem;">
                 <div class="form-group">
                     <label class="form-label" for="librarySource">Source</label>
@@ -89,7 +93,7 @@
                 </div>
                 <details class="form-disclosure local-library-field">
                     <summary>Advanced scan options</summary>
-                    <div class="form-disclosure-content">
+                    <div class="form-disclosure-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
                         <div class="form-group">
                             <label class="form-label" for="libraryFilterOutTerms">Filter out terms</label>
                             <textarea id="libraryFilterOutTerms" class="form-input" rows="4" placeholder="Trailer&#10;Featurette&#10;Sample"></textarea>
@@ -110,14 +114,6 @@
         </div>
     </div>
 
-    <details class="card disclosure-card">
-        <summary>How library scanning works</summary>
-        <div class="card-body" style="display: grid; gap: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">
-            <p>Movie and show libraries try to match filenames to metadata automatically. Other libraries are still ffprobed and indexed, but skipped for metadata matching.</p>
-            <p>Low-confidence items stay visible for manual cleanup. Manual fixes are preserved until the next scan re-evaluates the file.</p>
-            <p>File details come from `ffprobe`, so the server needs `ffprobe` available in the configured transmux settings.</p>
-        </div>
-    </details>
 </div>
 
 <div class="card" style="margin-top: 1.25rem;">

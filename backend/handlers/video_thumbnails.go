@@ -139,13 +139,15 @@ type thumbnailRateLimitCooldown struct {
 }
 
 func NewThumbnailManager(baseDir, ffmpegPath string) *ThumbnailManager {
-	return &ThumbnailManager{
+	manager := &ThumbnailManager{
 		baseDir:      baseDir,
 		ffmpegPath:   ffmpegPath,
 		sourceBridge: newThumbnailSourceBridge(),
 		inFlight:     make(map[string]struct{}),
 		prewarmed:    make(map[string]time.Time),
 	}
+	manager.pruneSharedSourceCache(time.Now())
+	return manager
 }
 
 func thumbnailKey(cleanPath string) string {
@@ -579,6 +581,8 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 	}
 	m.inFlight[key] = struct{}{}
 	m.mu.Unlock()
+	m.removeSharedSourceCache(key)
+	m.pruneSharedSourceCache(time.Now())
 
 	go func() {
 		defer func() {
@@ -593,6 +597,7 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 }
 
 func (m *ThumbnailManager) generate(key, cleanPath, sourceURL, authHeader string, durationSec float64, requestedInterval int, workerCount int, toneMapMode thumbnailToneMapMode, dvProfile string, chapterTimes []float64) {
+	defer m.removeSharedSourceCache(key)
 	interval, targets := thumbnailGenerationTargets(durationSec, requestedInterval, chapterTimes)
 	workerCount = thumbnailWorkerCountFromSetting(workerCount)
 	manifest := &thumbnailManifest{

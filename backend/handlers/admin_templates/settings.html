@@ -18,6 +18,147 @@
     background: transparent;
 }
 
+.usenet-server-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.usenet-server-card {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-tertiary);
+}
+
+.usenet-server-card-header {
+    display: flex;
+    min-height: 58px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.usenet-server-identity,
+.usenet-server-toggles,
+.usenet-server-actions,
+.usenet-server-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.usenet-server-identity {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 0.65rem;
+}
+
+.usenet-server-name {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usenet-server-badge {
+    display: inline-flex;
+    min-width: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0.12rem 0.42rem;
+    border: 1px solid rgba(99, 102, 241, 0.65);
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-hover);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.usenet-server-toggles,
+.usenet-server-actions {
+    gap: 0.65rem;
+}
+
+.usenet-server-toggles {
+    margin-left: 0.6rem;
+}
+
+.usenet-server-toggle {
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.usenet-server-toggle .toggle {
+    flex: 0 0 auto;
+}
+
+.usenet-server-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem 1rem;
+    padding: 0.85rem;
+}
+
+.usenet-server-fields .form-group {
+    min-width: 0;
+    margin: 0;
+}
+
+.usenet-server-fields .form-label {
+    margin-bottom: 0.35rem;
+}
+
+.usenet-server-fields .form-hint {
+    margin-top: 0.3rem;
+}
+
+.usenet-server-actions .btn {
+    min-height: 36px;
+}
+
+@media (max-width: 1100px) {
+    .usenet-server-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .usenet-server-card-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .usenet-server-identity {
+        flex: 1 1 100%;
+    }
+
+    .usenet-server-toggles {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .usenet-server-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .usenet-server-actions {
+        width: 100%;
+    }
+
+    .usenet-server-actions .btn-secondary {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
 .field-subgroup {
     grid-column: 1 / -1;
     margin: 0.5rem 0 1rem;
@@ -1948,7 +2089,7 @@
         torrentScrapers: 'Torrent indexers and streaming providers',
         'live.sources': 'IPTV and live television sources',
         'liveTV.sources': 'IPTV and live television sources',
-        usenet: 'Usenet server connections',
+        usenet: 'Manage and benchmark parallel provider slots',
         usenetEngines: 'SABnzbd, NZBGet configuration',
         streaming: 'Search behavior and source priority',
         filtering: 'Resolution, codec, and quality preferences',
@@ -8158,6 +8299,51 @@
             '<button type="button" class="section-save-btn" onclick="saveSection(\'indexers\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
     }
 
+    function renderUsenetServerSection(sectionDef, items, basePath) {
+        const fieldOrder = ['name', 'host', 'port', 'username', 'password', 'connections'];
+        const renderUsenetField = (item, index, fieldKey) => {
+            const fieldDef = sectionDef.fields[fieldKey];
+            if (!fieldDef) return '';
+            const fieldValue = item[fieldKey];
+            const isRequired = fieldDef.required === true;
+            const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+            const requiredBadge = isMissingRequired ? '<span style="margin-left:0.4rem;color:var(--warning);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Required</span>' : '';
+            const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+            const fieldInputId = (basePath+'.'+index+'_'+fieldKey).replace(/\./g, '_');
+            return '<div class="form-group'+(isMissingRequired ? ' required-missing' : '')+'">' +
+                '<label class="form-label" for="'+fieldInputId+'">'+escapeHtml(fieldDef.label)+requiredBadge+'</label>' +
+                renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, 'usenet') +
+                (fieldDef.description ? '<p class="form-hint">'+escapeHtml(fieldDef.description)+'</p>' : '') +
+                requiredHint + renderAdditionalFieldHint('usenet', fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+            '</div>';
+        };
+        const renderHeaderToggle = (item, index, fieldKey) => {
+            const fieldDef = sectionDef.fields[fieldKey];
+            if (!fieldDef) return '';
+            const fieldInputId = (basePath+'.'+index+'_'+fieldKey).replace(/\./g, '_');
+            return '<div class="usenet-server-toggle">' +
+                renderInput(fieldKey, fieldDef, item[fieldKey], basePath+'.'+index, 'usenet') +
+                '<label for="'+fieldInputId+'">'+escapeHtml(fieldDef.label)+'</label>' +
+            '</div>';
+        };
+        const cardsHtml = items.map((item, index) => {
+            const displayName = item.name || item.host || 'New Usenet server';
+            const displayNameAttribute = escapeHtml(displayName).replace(/"/g, '&quot;');
+            return '<div class="usenet-server-card" data-usenet-index="'+index+'">' +
+                '<div class="usenet-server-card-header">' +
+                    '<div class="usenet-server-identity"><span class="usenet-server-name">'+escapeHtml(displayName)+'</span><span class="usenet-server-badge">USN</span><div class="usenet-server-toggles">'+renderHeaderToggle(item, index, 'enabled')+renderHeaderToggle(item, index, 'ssl')+'</div></div>' +
+                    '<div class="usenet-server-actions">' +
+                        '<button id="test-btn-usenet-'+index+'" class="btn btn-sm btn-secondary" type="button" onclick="testProvider(\'usenet\', '+index+')">'+getIcon('check')+' Test Connection</button>' +
+                        '<button class="btn btn-sm btn-danger" type="button" aria-label="Remove '+displayNameAttribute+'" title="Remove Usenet server" onclick="removeArrayItem(\'usenet\', '+index+')">'+getIcon('trash')+'</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="usenet-server-fields">'+fieldOrder.map(fieldKey => renderUsenetField(item, index, fieldKey)).join('')+'</div>' +
+            '</div>';
+        }).join('');
+        const addButton = '<button class="add-item-btn usenet-add-server" type="button" onclick="addArrayItem(\'usenet\')">'+getIcon('plus')+' Add Usenet Server</button>';
+        return '<div class="usenet-server-list">'+cardsHtml+addButton+'</div>';
+    }
+
     function renderArraySection(sectionKey, sectionDef) {
         let items, basePath;
         const parentKey = sectionDef.parent;
@@ -8184,6 +8370,7 @@
         }
         const isTestable = testableSections.includes(sectionKey);
         if (sectionKey === 'indexers') return renderIndexerTableSection(sectionDef, items, basePath);
+        if (sectionKey === 'usenet') return renderUsenetServerSection(sectionDef, items, basePath);
         if (sectionKey === 'debridProviders') {
             return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
                 itemFallback: 'Debrid service',
@@ -8231,9 +8418,6 @@
                     typeBadgesHtml =
                         '<span style="' + badgeStyle + 'background:rgba(245,158,11,0.16);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);">TOR</span>';
                 }
-            } else if (sectionKey === 'usenet') {
-                typeBadgesHtml =
-                    '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:0.125rem 0.45rem;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;background:rgba(59,130,246,0.16);color:#60a5fa;border:1px solid rgba(96,165,250,0.35);">USN</span>';
             } else if (sectionKey === 'usenetEngines') {
                 typeBadgesHtml =
                     '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:0.125rem 0.45rem;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;background:rgba(34,197,94,0.16);color:#22c55e;border:1px solid rgba(34,197,94,0.35);">ENG</span>';

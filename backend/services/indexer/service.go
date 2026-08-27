@@ -3052,13 +3052,16 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 
 	type alternateTitleCandidate struct {
 		value                     string
+		language                  string
 		languageMatch             bool
 		releaseReady              bool
 		asciiReleaseReady         bool
 		romanizedOriginalLanguage bool
+		providerAlias             bool
 	}
 
 	seen := make(map[string]struct{})
+	candidateIndexes := make(map[string]int)
 	// The canonical/query titles are already searched and should not consume an
 	// alternate-title slot when an aliases endpoint returns them again.
 	seen[strings.ToLower(query)] = struct{}{}
@@ -3067,28 +3070,45 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 	}
 
 	var candidates []alternateTitleCandidate
-	add := func(value string, languageMatch, originalLanguage bool) {
+	add := func(value, language string, languageMatch, originalLanguage, providerAlias bool) {
 		trimmed := strings.TrimSpace(value)
 		if trimmed == "" {
 			return
 		}
 		lowered := strings.ToLower(trimmed)
 		if _, exists := seen[lowered]; exists {
+			// Search translations frequently arrive without language metadata and
+			// are repeated by the aliases endpoint with a useful language tag.
+			// Enrich the existing candidate instead of losing that information to
+			// deduplication, so daily-query filtering can make the right decision.
+			if index, ok := candidateIndexes[lowered]; ok {
+				normalizedLanguage := strings.ToLower(strings.TrimSpace(language))
+				if candidates[index].language == "" && normalizedLanguage != "" {
+					candidates[index].language = normalizedLanguage
+				}
+				candidates[index].languageMatch = candidates[index].languageMatch || languageMatch
+				candidates[index].romanizedOriginalLanguage = candidates[index].romanizedOriginalLanguage ||
+					(opts.IsAnime && originalLanguage && candidates[index].releaseReady)
+				candidates[index].providerAlias = candidates[index].providerAlias || providerAlias
+			}
 			return
 		}
 		seen[lowered] = struct{}{}
 		releaseReady := isReleaseFriendlyTitle(trimmed)
+		candidateIndexes[lowered] = len(candidates)
 		candidates = append(candidates, alternateTitleCandidate{
 			value:                     trimmed,
+			language:                  strings.ToLower(strings.TrimSpace(language)),
 			languageMatch:             languageMatch,
 			releaseReady:              releaseReady,
 			asciiReleaseReady:         releaseReady && isASCIIString(trimmed),
 			romanizedOriginalLanguage: opts.IsAnime && originalLanguage && releaseReady,
+			providerAlias:             providerAlias,
 		})
 	}
-	add(chosen.OriginalName, false, true)
+	add(chosen.OriginalName, chosen.Language, false, true, false)
 	for _, alt := range chosen.AlternateTitles {
-		add(alt, false, false)
+		add(alt, "", false, false, false)
 	}
 
 	// Fetch full TVDB aliases (international titles) if the metadata service
@@ -3110,11 +3130,39 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 			}
 		}
 		for _, a := range langMatched {
-			add(a, true, originalLang != "" && aliasLanguages[strings.ToLower(strings.TrimSpace(a))] == originalLang)
+			aliasLang := aliasLanguages[strings.ToLower(strings.TrimSpace(a))]
+			add(a, aliasLang, true, originalLang != "" && aliasLang == originalLang, true)
 		}
 		for _, a := range others {
-			add(a, false, originalLang != "" && aliasLanguages[strings.ToLower(strings.TrimSpace(a))] == originalLang)
+			aliasLang := aliasLanguages[strings.ToLower(strings.TrimSpace(a))]
+			add(a, aliasLang, false, originalLang != "" && aliasLang == originalLang, true)
 		}
+	}
+
+	// Daily searches have a deliberately small query budget. Do not spend it on
+	// translated aliases in unrelated, explicitly tagged languages when the
+	// canonical title is already release-friendly. Dedicated provider aliases
+	// without a language tag are retained only when ASCII-safe; untagged search
+	// translations are display names and are not useful release queries.
+	if opts.IsDaily && isReleaseFriendlyTitle(chosen.Name) {
+		metadataLanguage := strings.ToLower(strings.TrimSpace(metadataLang))
+		originalLanguage := strings.ToLower(strings.TrimSpace(chosen.Language))
+		filtered := candidates[:0]
+		for _, candidate := range candidates {
+			if candidate.language == "" {
+				// Untagged search translations are usually arbitrary localized
+				// display names. Only retain an untagged alias from the dedicated
+				// aliases endpoint when it is ASCII-safe for release searches.
+				if candidate.providerAlias && candidate.asciiReleaseReady {
+					filtered = append(filtered, candidate)
+				}
+				continue
+			}
+			if candidate.language == metadataLanguage || candidate.language == originalLanguage || candidate.romanizedOriginalLanguage {
+				filtered = append(filtered, candidate)
+			}
+		}
+		candidates = filtered
 	}
 
 	// Alias APIs often return a native-script original before a provider-supplied

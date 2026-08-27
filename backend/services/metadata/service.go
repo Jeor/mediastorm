@@ -3899,15 +3899,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		// Date-based release detection depends on genres, so run after parallel block.
-		if !cached.Title.IsDaily && len(cached.Title.Genres) > 0 {
-			for _, genre := range cached.Title.Genres {
-				if isDateBasedSeriesClassification(genre) {
-					cached.Title.IsDaily = true
-					log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
-					cacheUpdated = true
-					break
-				}
-			}
+		if changed, genre := applyDateBasedSeriesClassification(&cached.Title); changed {
+			log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
+			cacheUpdated = true
 		}
 
 		if cacheUpdated {
@@ -4416,14 +4410,8 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			log.Printf("[metadata] fetched %d genres for series tmdbId=%d", len(genres), tmdbIDForEnrichment)
 
 			// Also check for genres that commonly use date-based episode naming.
-			if !seriesTitle.IsDaily {
-				for _, genre := range genres {
-					if isDateBasedSeriesClassification(genre) {
-						seriesTitle.IsDaily = true
-						log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
-						break
-					}
-				}
+			if changed, genre := applyDateBasedSeriesClassification(&seriesTitle); changed {
+				log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
 			}
 			details.Title = seriesTitle
 		} else if err != nil {
@@ -4441,6 +4429,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 
 	populateAiredDateTimeUTC(&details)
 	seriesTitle.Status = models.SeriesReleaseStatusFromSeasons(details.Seasons)
+	if changed, genre := applyDateBasedSeriesClassification(&seriesTitle); changed {
+		log.Printf("[metadata] series marked for date-based episode matching from final genres tvdbId=%d genre=%q", tvdbID, genre)
+	}
 	details.Title = seriesTitle
 
 	// If we fell back to a parent series (e.g. "Company Retreat" → "Jury Duty"),
@@ -4897,6 +4888,10 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	applyAirTimeFromTVDB(&seriesTitle, extended.AirsTime, extended.OriginalNetwork.Name, extended.OriginalNetwork.Country)
 	if extended.Status.Name != "" {
 		seriesTitle.LifecycleStatus = extended.Status.Name
+	}
+	if isDateBasedSeriesClassification(extended.Type) {
+		seriesTitle.IsDaily = true
+		log.Printf("[metadata] lite series marked for date-based episode matching based on TVDB type tvdbId=%d type=%q", tvdbID, extended.Type)
 	}
 
 	// Artwork: poster + backdrop
@@ -10765,4 +10760,17 @@ func isDateBasedSeriesClassification(value string) bool {
 	default:
 		return false
 	}
+}
+
+func applyDateBasedSeriesClassification(title *models.Title) (bool, string) {
+	if title == nil || title.IsDaily {
+		return false, ""
+	}
+	for _, genre := range title.Genres {
+		if isDateBasedSeriesClassification(genre) {
+			title.IsDaily = true
+			return true, genre
+		}
+	}
+	return false, ""
 }

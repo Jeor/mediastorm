@@ -2130,6 +2130,31 @@ func TestResolveAlternateTitles_LanguagePriorityWithCap(t *testing.T) {
 	}
 }
 
+func TestResolveAlternateTitles_DailySkipsUnrelatedLanguageAliases(t *testing.T) {
+	mock := &mockMetadataWithAliases{
+		results: []models.SearchResult{{Title: models.Title{
+			Name: "EastEnders", Language: "eng", TVDBID: 70484, MediaType: "series",
+			AlternateTitles: []string{"Østkantfolk", "Horton-sagaen"},
+		}}},
+		langAliases: map[int64][]models.LanguageAlias{
+			70484: {
+				{Name: "East Enders", Language: "eng"},
+				{Name: "Østkantfolk", Language: "nor"},
+				{Name: "Жители Ист-Энда", Language: "rus"},
+			},
+		},
+	}
+
+	svc := &Service{metadata: mock}
+	aliases := svc.resolveAlternateTitles(context.Background(), SearchOptions{
+		Query: "EastEnders S42E136", MediaType: "series", IsDaily: true,
+	}, "eng", 5)
+
+	if len(aliases) != 1 || aliases[0] != "East Enders" {
+		t.Fatalf("daily aliases = %v, want only release-language alias", aliases)
+	}
+}
+
 func TestResolveAlternateTitles_PrefersRomanizedReleaseTitleBeforeCap(t *testing.T) {
 	mock := &mockMetadataSearchOnly{
 		results: []models.SearchResult{

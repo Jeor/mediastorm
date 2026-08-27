@@ -3074,3 +3074,11 @@ func TestIsDateBasedSeriesClassification(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyDateBasedSeriesClassificationFromFinalGenres(t *testing.T) {
+	title := models.Title{Genres: []string{"Reality", "Game Show", "Family"}}
+	changed, genre := applyDateBasedSeriesClassification(&title)
+	if !changed || !title.IsDaily || genre != "Game Show" {
+		t.Fatalf("classification = changed:%v daily:%v genre:%q", changed, title.IsDaily, genre)
+	}
+}

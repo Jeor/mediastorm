@@ -7,7 +7,7 @@
     <div class="page-header-copy">
         <div class="page-kicker">Configuration &amp; operations</div>
         <h1>Connections</h1>
-        <p>Check configured services, investigate search timing, and review outbound API use.</p>
+        <p>Check configured services and review outbound API use.</p>
     </div>
     <div class="page-header-actions">
         <button class="btn btn-primary" id="retest-all-btn" onclick="runAllTests()">
@@ -19,62 +19,11 @@
 
 <div class="search-diagnostics">
     <button class="collapsible-panel-toggle" type="button" aria-expanded="false" aria-controls="search-diagnostics-content" onclick="toggleConnectionsPanel(this)">
-        <div>
-            <h2>Search Diagnostics</h2>
-            <p>Run a real search against enabled indexers and torrent sources to tune search timeout.</p>
-        </div>
-        <svg class="collapsible-panel-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        <div><h2>Search Diagnostics</h2><p>Search testing and timeout tuning now live together on the Search page.</p></div>
+        <svg class="collapsible-panel-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <div id="search-diagnostics-content" class="collapsible-panel-content" hidden>
-        <div class="search-diagnostics-actions">
-            <button class="btn btn-secondary" id="save-timeout-btn" onclick="saveSearchTimeout()">Save Timeout</button>
-            <button class="btn btn-primary" id="run-search-diagnostics-btn" onclick="runSearchDiagnostics()">Run Search Test</button>
-        </div>
-        <div class="search-diagnostics-controls">
-            <label>
-                <span>Query</span>
-                <input type="text" id="diag-query" value="The Matrix" autocomplete="off">
-            </label>
-            <label>
-                <span>IMDb ID</span>
-                <input type="text" id="diag-imdb" value="tt0133093" autocomplete="off">
-            </label>
-            <label>
-                <span>Year</span>
-                <input type="number" id="diag-year" value="1999" min="1900" max="2100">
-            </label>
-            <label>
-                <span>Type</span>
-                <select id="diag-media-type">
-                    <option value="movie" selected>Movie</option>
-                    <option value="series">Series</option>
-                </select>
-            </label>
-            <label>
-                <span>Timeout</span>
-                <input type="number" id="diag-timeout" min="0.1" max="120" step="0.1" value="{{.Settings.Streaming.IndexerTimeoutSec}}">
-            </label>
-        </div>
-        <div id="search-diagnostics-summary" class="search-diagnostics-summary">Not run yet.</div>
-        <div id="search-timeout-recommendation" class="search-timeout-recommendation"></div>
-        <div class="search-diagnostics-table-wrap">
-            <table class="search-diagnostics-table">
-                <thead>
-                    <tr>
-                        <th>Source</th>
-                        <th>Kind</th>
-                        <th>Results</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="search-diagnostics-results">
-                    <tr><td colspan="5" class="empty-row">Run a search test to compare enabled sources.</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <div class="search-diagnostics-actions"><a class="btn btn-secondary" href="{{.BasePath}}/search#searchDiagnostics">Open Search Diagnostics</a></div>
     </div>
 </div>
 

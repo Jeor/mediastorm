@@ -1266,9 +1266,30 @@
     overflow: hidden;
     background: var(--bg-secondary);
 }
+.appearance-setting-group > summary {
+    display: flex;
+    min-height: 58px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    list-style: none;
+}
+.appearance-setting-group > summary::-webkit-details-marker { display: none; }
+.appearance-setting-group > summary::after {
+    content: 'Show';
+    flex: 0 0 auto;
+    color: var(--accent-hover);
+    font-size: 0.75rem;
+    font-weight: 650;
+}
+.appearance-setting-group[open] > summary::after { content: 'Hide'; }
+.appearance-setting-group > summary:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: -2px; }
+.appearance-setting-group-copy { min-width: 0; }
 .appearance-setting-group .field-subgroup-title {
     margin: 0;
-    padding: 0.9rem 1rem 0.15rem;
+    padding: 0;
     color: var(--accent-hover);
     font-size: 0.72rem;
     font-weight: 750;
@@ -1276,11 +1297,11 @@
     text-transform: uppercase;
 }
 .appearance-setting-group .field-subgroup-description {
-    margin: 0;
-    padding: 0 1rem 0.9rem;
-    border-bottom: 1px solid var(--border);
+    margin: 0.18rem 0 0;
+    padding: 0;
+    border: 0;
 }
-.appearance-setting-group .field-subgroup-fields { padding: 1rem; }
+.appearance-setting-group .field-subgroup-fields { padding: 1rem; border-top: 1px solid var(--border); }
 .appearance-theme-presets { grid-column: 1 / -1; }
 .appearance-theme-presets > div { margin-bottom: 0 !important; }
 .advanced-setting-badge {
@@ -1495,7 +1516,8 @@
     }
 }
 
-@media (min-width: 761px) and (max-width: 1024px) {
+@media (min-width: 761px) and (max-width: 1024px),
+       (min-width: 761px) and (max-width: 1366px) and (any-pointer: coarse) {
     .settings-context-scrim {
         position: fixed;
         inset: 0;
@@ -2500,6 +2522,25 @@
         }
     }
 
+    function settingsUsesSheetContext() {
+        return window.matchMedia('(max-width: 1024px)').matches ||
+            window.matchMedia('(max-width: 1366px) and (any-pointer: coarse)').matches;
+    }
+
+    function positionSettingsScopePanel(panel, trigger = settingsContextReturnFocus) {
+        if (!panel) return;
+        if (settingsUsesSheetContext()) {
+            panel.style.left = '';
+            panel.style.top = '';
+            return;
+        }
+        const triggerRect = trigger?.getBoundingClientRect?.();
+        const panelWidth = Math.min(520, window.innerWidth - 32);
+        const preferredLeft = triggerRect ? triggerRect.right - panelWidth : window.innerWidth - panelWidth - 16;
+        panel.style.left = Math.max(16, Math.min(preferredLeft, window.innerWidth - panelWidth - 16)) + 'px';
+        panel.style.top = Math.min((triggerRect?.bottom || 80) + 8, window.innerHeight - 240) + 'px';
+    }
+
     function openSettingsContextSheet() {
         const panel = document.getElementById('settingsScopePanel');
         const scrim = document.getElementById('settingsContextScrim');
@@ -2510,17 +2551,8 @@
         if (!isAdmin || households.length === 1) expandedSettingsHouseholds.add(households[0]?.id || '__household__');
         if (selectedUserId) expandedSettingsPeople.add(selectedUserId);
         renderSettingsScopeTree();
-        const isMobileContext = window.matchMedia('(max-width: 1024px)').matches;
-        if (!isMobileContext) {
-            const triggerRect = settingsContextReturnFocus?.getBoundingClientRect?.();
-            const panelWidth = Math.min(520, window.innerWidth - 32);
-            const preferredLeft = triggerRect ? triggerRect.right - panelWidth : window.innerWidth - panelWidth - 16;
-            panel.style.left = Math.max(16, Math.min(preferredLeft, window.innerWidth - panelWidth - 16)) + 'px';
-            panel.style.top = Math.min((triggerRect?.bottom || 80) + 8, window.innerHeight - 240) + 'px';
-        } else {
-            panel.style.left = '';
-            panel.style.top = '';
-        }
+        const isMobileContext = settingsUsesSheetContext();
+        positionSettingsScopePanel(panel);
         panel.classList.add('open');
         scrim?.classList.add('open');
         panel.setAttribute('role', 'dialog');
@@ -12533,6 +12565,23 @@
     ];
     const displayFieldLayout = new Map(displayFieldGroups.flatMap((group, groupIndex) => group.fields.map((field, fieldIndex) => [field, { ...group, groupIndex, fieldIndex }])));
 
+    function handleSettingsSubsectionActivation(summary) {
+        const details = summary?.closest('details[data-settings-accordion]');
+        if (!details) return;
+        requestAnimationFrame(() => {
+            if (!details.open) return;
+            const accordion = details.dataset.settingsAccordion;
+            document.querySelectorAll('details[data-settings-accordion]').forEach(other => {
+                if (other !== details && other.dataset.settingsAccordion === accordion) other.open = false;
+            });
+            summary.focus({ preventScroll: true });
+            details.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'start',
+            });
+        });
+    }
+
     function renderObjectSection(sectionKey, sectionDef) {
         // Use getValue for proper three-tier cascade (global → profile → client)
         // Get section data for showWhen conditions
@@ -12635,24 +12684,33 @@
                 } else if (currentGroup && sectionKey === 'playback') {
                     const groupOpen = currentGroup === 'player' || Boolean(searchTerm);
                     fieldHtmlParts.push(
-                        '<details class="playback-setting-group"' + (groupOpen ? ' open' : '') + '>' +
-                            '<summary><span class="playback-setting-group-copy"><span class="playback-setting-group-title">' + currentGroupLabel + '</span>' +
+                        '<details class="playback-setting-group" data-settings-accordion="playback"' + (groupOpen ? ' open' : '') + '>' +
+                            '<summary onclick="handleSettingsSubsectionActivation(this)"><span class="playback-setting-group-copy"><span class="playback-setting-group-title">' + currentGroupLabel + '</span>' +
                             (currentGroupDescription ? '<span class="playback-setting-group-description">' + currentGroupDescription + '</span>' : '') + '</span></summary>' +
                             '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
                         '</details>'
                     );
                 } else if (currentGroup) {
-                    const appearanceGroupClass = sectionKey === 'display' ? ' appearance-setting-group' : '';
                     const appearancePresetHtml = sectionKey === 'display' && currentGroup === 'theme'
                         ? '<div class="appearance-theme-presets">' + renderThemeQuickSelect() + '</div>'
                         : '';
-                    fieldHtmlParts.push(
-                        '<div class="field-subgroup'+appearanceGroupClass+'">' +
-                            '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
-                            (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
-                            '<div class="field-subgroup-fields">' + appearancePresetHtml + groupedFields.join('') + '</div>' +
-                        '</div>'
-                    );
+                    if (sectionKey === 'display') {
+                        fieldHtmlParts.push(
+                            '<details class="field-subgroup appearance-setting-group"' + (searchTerm ? ' open' : '') + '>' +
+                                '<summary><span class="appearance-setting-group-copy"><span class="field-subgroup-title">' + currentGroupLabel + '</span>' +
+                                (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') + '</span></summary>' +
+                                '<div class="field-subgroup-fields">' + appearancePresetHtml + groupedFields.join('') + '</div>' +
+                            '</details>'
+                        );
+                    } else {
+                        fieldHtmlParts.push(
+                            '<div class="field-subgroup">' +
+                                '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
+                                (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
+                                '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
+                            '</div>'
+                        );
+                    }
             } else {
                 fieldHtmlParts.push(...groupedFields);
             }
@@ -14033,7 +14091,8 @@
         }
     });
     window.addEventListener('resize', () => {
-        if (!window.matchMedia('(max-width: 760px)').matches) closeSettingsContextSheet();
+        const panel = document.getElementById('settingsScopePanel');
+        if (panel?.classList.contains('open')) positionSettingsScopePanel(panel);
     });
     window.addEventListener('beforeunload', event => {
         if (!settingsHasUnsavedChanges()) return;

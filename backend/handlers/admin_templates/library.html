@@ -14,13 +14,13 @@
 </div>
 
 <div>
-    <div class="card">
-        <div class="card-header">
+    <details id="libraryFormDisclosure" class="card library-form-disclosure">
+        <summary class="card-header library-form-summary">
             <div>
                 <h2 id="libraryFormTitle">Add Library</h2>
                 <div id="libraryFormSubtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Create a new library root and scan profile.</div>
             </div>
-        </div>
+        </summary>
         <div class="card-body">
             <aside style="margin-bottom: 1rem; padding: 0.8rem 0.9rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-secondary); font-size: 0.82rem; line-height: 1.45;">
                 <strong style="display: block; margin-bottom: 0.25rem; color: var(--text-primary);">How library scanning works</strong>
@@ -112,7 +112,7 @@
                 </div>
             </form>
         </div>
-    </div>
+    </details>
 
 </div>
 
@@ -285,6 +285,33 @@
 </div>
 
 <style>
+.library-form-disclosure {
+    overflow: hidden;
+}
+
+.library-form-summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.library-form-summary::-webkit-details-marker { display: none; }
+.library-form-summary::after {
+    content: 'Show';
+    color: var(--accent-hover);
+    font-size: 0.75rem;
+    font-weight: 650;
+}
+.library-form-disclosure[open] > .library-form-summary::after { content: 'Hide'; }
+
+.library-form-summary:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: -2px;
+}
+
+.library-form-disclosure[open] > .library-form-summary {
+    border-bottom: 1px solid var(--border);
+}
+
 .path-picker-row {
     display: flex;
     gap: 0.5rem;
@@ -1412,7 +1439,9 @@ function editLibrary(id) {
   document.querySelector('.form-disclosure.local-library-field').open =
     (Array.isArray(library.filterOutTerms) && library.filterOutTerms.length > 0) || Number(library.minFileSizeBytes) > 0;
   syncLibraryFormSettings();
-  document.getElementById('libraryForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const disclosure = document.getElementById('libraryFormDisclosure');
+  if (disclosure) disclosure.open = true;
+  disclosure?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function loadItems(libraryId) {
@@ -2468,6 +2497,8 @@ function resetLibraryForm() {
   document.getElementById('librarySource').value = 'local';
   onLibrarySourceChange();
   syncLibraryFormSettings();
+  const disclosure = document.getElementById('libraryFormDisclosure');
+  if (disclosure) disclosure.open = false;
 }
 
 function syncLibraryFormSettings() {

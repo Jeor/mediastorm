@@ -890,7 +890,7 @@
 
 .settings-scope-panel {
     position: fixed;
-    z-index: 70;
+    z-index: 310;
     display: none;
     width: min(520px, calc(100vw - 2rem));
     max-height: min(680px, calc(100vh - 2rem));
@@ -1355,7 +1355,7 @@
 .settings-context-trigger-desktop .settings-context-summary { display: block; overflow: hidden; max-width: 220px; margin-top: 0.1rem; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; font-weight: 650; }
 .settings-context-trigger-desktop:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
 .settings-scope-tree-storage { display: flex; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
-.settings-context-scrim.open { display: block; position: fixed; inset: 0; z-index: 69; border: 0; background: rgba(0, 0, 0, 0.35); }
+.settings-context-scrim.open { display: block; position: fixed; inset: 0; z-index: 309; border: 0; background: rgba(0, 0, 0, 0.35); }
 #settingsContainer .section { scroll-margin-top: 7rem; }
 #settingsContainer.settings-essentials-view .section {
     border-color: var(--border);
@@ -1521,7 +1521,7 @@
     .settings-context-scrim {
         position: fixed;
         inset: 0;
-        z-index: 69;
+        z-index: 309;
         border: 0;
         background: rgba(0, 0, 0, 0.62);
         opacity: 0;
@@ -1541,7 +1541,7 @@
         right: 0;
         bottom: 0;
         left: 0 !important;
-        z-index: 70;
+        z-index: 310;
         display: block;
         width: auto;
         max-height: min(82vh, 720px);
@@ -1767,7 +1767,7 @@
     .settings-context-scrim {
         position: fixed;
         inset: 0;
-        z-index: 69;
+        z-index: 309;
         border: 0;
         background: rgba(0, 0, 0, 0.62);
         opacity: 0;
@@ -1786,7 +1786,7 @@
         right: 0;
         bottom: 0;
         left: 0;
-        z-index: 70;
+        z-index: 310;
         display: block;
         max-height: min(82vh, 720px);
         margin: 0;
@@ -2545,6 +2545,8 @@
         const panel = document.getElementById('settingsScopePanel');
         const scrim = document.getElementById('settingsContextScrim');
         if (!panel) return;
+        if (scrim?.parentElement !== document.body) document.body.appendChild(scrim);
+        if (panel.parentElement !== document.body) document.body.appendChild(panel);
         settingsContextReturnFocus = document.activeElement;
         settingsScopeServerExpanded = true;
         const households = settingsScopeHouseholds();

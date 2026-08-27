@@ -3056,6 +3056,155 @@ func TestGetTopTenListSourceUsesSourceCache(t *testing.T) {
 	}
 }
 
+func TestTMDBTrendingDailyFiltersVideosAndAdultTitles(t *testing.T) {
+	var requestedPath string
+	httpc := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requestedPath = req.URL.Path
+		body := `{"results":[
+			{"id":1,"title":"Movie One","original_title":"Original One","release_date":"2026-08-20","original_language":"en","genre_ids":[28],"popularity":12.5,"vote_count":44,"poster_path":"/poster.jpg","backdrop_path":"/backdrop.jpg","adult":false,"video":false},
+			{"id":2,"title":"Promotional Video","release_date":"2026-08-21","adult":false,"video":true},
+			{"id":3,"title":"Adult Movie","release_date":"2026-08-22","adult":true,"video":false}
+		]}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	client := newTMDBClient("test-key", "eng", httpc, nil)
+
+	items, err := client.trendingDaily(context.Background(), "movie")
+	if err != nil {
+		t.Fatalf("trendingDaily: %v", err)
+	}
+	if requestedPath != "/3/trending/movie/day" {
+		t.Fatalf("requested path = %q, want TMDB daily movie chart", requestedPath)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items = %d, want only the eligible movie: %#v", len(items), items)
+	}
+	item := items[0]
+	if item.Rank != 1 || item.Title.ID != "tmdb:movie:1" || item.Title.Name != "Movie One" || item.Title.OriginalName != "Original One" {
+		t.Fatalf("unexpected mapped item: %#v", item)
+	}
+	if item.Title.Year != 2026 || item.Title.Status != models.MovieReleaseStatusTheatrical || item.Title.Popularity != 12.5 || item.Title.VoteCount != 44 {
+		t.Fatalf("unexpected mapped metadata: %#v", item.Title)
+	}
+	if len(item.Title.Genres) != 1 || item.Title.Genres[0] != "Action" || item.Title.Poster == nil || item.Title.Backdrop == nil {
+		t.Fatalf("expected genres and artwork, got %#v", item.Title)
+	}
+}
+
+func TestSelectDailyTopTenInterleavesFiveMoviesAndFiveShows(t *testing.T) {
+	items := make([]models.TrendingItem, 0, 14)
+	for i := 1; i <= 7; i++ {
+		items = append(items,
+			models.TrendingItem{Title: models.Title{Name: fmt.Sprintf("Movie %d", i), MediaType: "movie"}},
+			models.TrendingItem{Title: models.Title{Name: fmt.Sprintf("Show %d", i), MediaType: "series"}},
+		)
+	}
+
+	selected := selectDailyTopTen(items, "all")
+	if len(selected) != 10 {
+		t.Fatalf("selected = %d items, want 10", len(selected))
+	}
+	for i, item := range selected {
+		position := i/2 + 1
+		wantName := fmt.Sprintf("Movie %d", position)
+		if i%2 == 1 {
+			wantName = fmt.Sprintf("Show %d", position)
+		}
+		if item.Title.Name != wantName || item.Rank != i+1 {
+			t.Fatalf("selected[%d] = name %q rank %d, want name %q rank %d", i, item.Title.Name, item.Rank, wantName, i+1)
+		}
+	}
+}
+
+func TestFilterReleasedDailyTrendingMoviesRequiresReleasedHomeWindow(t *testing.T) {
+	past := time.Now().AddDate(0, 0, -2).UTC().Format(time.RFC3339)
+	future := time.Now().AddDate(0, 0, 2).UTC().Format(time.RFC3339)
+	httpc := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		parts := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
+		movieID := parts[len(parts)-2]
+		releaseType := 4
+		releaseDate := past
+		switch movieID {
+		case "2":
+			releaseType = 3
+		case "3":
+			releaseDate = future
+		}
+		body := fmt.Sprintf(`{"results":[{"iso_3166_1":"US","release_dates":[{"type":%d,"release_date":%q}]}]}`, releaseType, releaseDate)
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	svc := &Service{
+		tmdb:  newTMDBClient("test-key", "eng", httpc, nil),
+		cache: newFileCache(t.TempDir(), 24),
+	}
+	items := []models.TrendingItem{
+		{Title: models.Title{TMDBID: 1, Name: "Released Digital", MediaType: "movie"}},
+		{Title: models.Title{TMDBID: 2, Name: "Theatrical Only", MediaType: "movie"}},
+		{Title: models.Title{TMDBID: 3, Name: "Future Digital", MediaType: "movie"}},
+	}
+
+	released := svc.filterReleasedDailyTrendingMovies(context.Background(), items)
+	if len(released) != 1 || released[0].Title.Name != "Released Digital" || released[0].Title.Status != models.MovieReleaseStatusReleased {
+		t.Fatalf("released items = %#v, want only the completed digital release", released)
+	}
+}
+
+func TestGetTopTenUsesCachedTMDBDailyCandidates(t *testing.T) {
+	var movieRequests, tvRequests int
+	httpc := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(req.URL.Path, "/release_dates") {
+			body := `{"results":[{"iso_3166_1":"US","release_dates":[{"type":4,"release_date":"2020-01-02T00:00:00Z"}]}]}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}
+		mediaType := "movie"
+		name := "Movie"
+		dateField := "release_date"
+		if strings.Contains(req.URL.Path, "/tv/") {
+			mediaType = "tv"
+			name = "Show"
+			dateField = "first_air_date"
+			tvRequests++
+		} else {
+			movieRequests++
+		}
+		results := make([]map[string]any, 20)
+		for i := range results {
+			entry := map[string]any{
+				"id":                i + 1,
+				"original_language": "en",
+				dateField:           "2020-01-01",
+			}
+			if mediaType == "movie" {
+				entry["title"] = fmt.Sprintf("%s %d", name, i+1)
+			} else {
+				entry["name"] = fmt.Sprintf("%s %d", name, i+1)
+			}
+			results[i] = entry
+		}
+		body, _ := json.Marshal(map[string]any{"results": results})
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	tmdb := newTMDBClient("test-key", "eng", httpc, nil)
+	svc := &Service{
+		client: &tvdbClient{language: "eng"},
+		tmdb:   tmdb,
+		cache:  newFileCache(t.TempDir(), 24),
+	}
+
+	for call := 0; call < 2; call++ {
+		items, err := svc.GetTopTen(context.Background(), "all", nil)
+		if err != nil {
+			t.Fatalf("GetTopTen call %d: %v", call+1, err)
+		}
+		if len(items) != 10 || items[0].Title.Name != "Movie 1" || items[1].Title.Name != "Show 1" || items[9].Title.Name != "Show 5" {
+			t.Fatalf("unexpected daily top ten: %#v", items)
+		}
+	}
+	if movieRequests != 1 || tvRequests != 1 {
+		t.Fatalf("TMDB requests = movies %d tv %d, want one request per chart after cache hit", movieRequests, tvRequests)
+	}
+}
+
 func TestIsDateBasedSeriesClassification(t *testing.T) {
 	tests := map[string]bool{
 		"talk_show":  true,

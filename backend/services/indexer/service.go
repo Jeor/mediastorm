@@ -1495,6 +1495,28 @@ func cloneNZBResults(results []models.NZBResult) []models.NZBResult {
 	return out
 }
 
+// annotateDailySearchResults carries request-specific daily-show identity into
+// playback resolution. This must be applied consistently to standard, combined
+// IncludeFiltered, and split searches because cached torrent contents may use a
+// broadcast date instead of S##E## naming.
+func annotateDailySearchResults(results []models.NZBResult, opts SearchOptions) bool {
+	if !opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) == "" {
+		return false
+	}
+	for i := range results {
+		if results[i].Attributes == nil {
+			results[i].Attributes = make(map[string]string)
+		}
+		if opts.IsDaily {
+			results[i].Attributes["isDaily"] = "true"
+		}
+		if opts.TargetAirDate != "" {
+			results[i].Attributes["targetAirDate"] = opts.TargetAirDate
+		}
+	}
+	return true
+}
+
 func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBResult, error) {
 	searchStart := time.Now()
 	callNum := s.searchCount.Add(1)
@@ -1739,19 +1761,8 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		aggregated = aggregated[:opts.MaxResults]
 	}
 
-	// Add daily show attributes to all results for file matching
-	if opts.IsDaily || opts.TargetAirDate != "" {
-		for i := range aggregated {
-			if aggregated[i].Attributes == nil {
-				aggregated[i].Attributes = make(map[string]string)
-			}
-			if opts.IsDaily {
-				aggregated[i].Attributes["isDaily"] = "true"
-			}
-			if opts.TargetAirDate != "" {
-				aggregated[i].Attributes["targetAirDate"] = opts.TargetAirDate
-			}
-		}
+	// Add daily show attributes to all results for file matching.
+	if annotateDailySearchResults(aggregated, opts) {
 		log.Printf("[indexer] Added daily show attributes to %d results: isDaily=%v, airDate=%q", len(aggregated), opts.IsDaily, opts.TargetAirDate)
 	}
 
@@ -1794,6 +1805,10 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 	if err != nil {
 		return nil, err
 	}
+	// The IncludeFiltered path is also used by the default, combined prequeue
+	// search. Preserve the same date identity as Search and the split search so
+	// playback can select a date-named file inside a daily-show torrent.
+	annotateDailySearchResults(rawResults, opts)
 
 	// Build filter options from effective settings
 	settings, err := s.cfg.Load()
@@ -3625,6 +3640,21 @@ func dailyUsenetCandidates(opts SearchOptions, parsed debrid.ParsedQuery, altern
 			title:       canonical,
 			season:      season,
 			episode:     episode,
+		})
+		// Some indexers tokenize human broadcast dates differently from numeric
+		// Newznab TV parameters. Keep both common forms inside the bounded tier
+		// budget, and remember whichever one succeeds for later episodes.
+		add(dailyUsenetCandidate{
+			key:         "text-ordinal-date:" + strings.ToLower(canonical),
+			description: "canonical title + ordinal human date",
+			query:       fmt.Sprintf("%s %s %s %d", canonical, ordinalDay(airDate.Day()), airDate.Format("Jan"), airDate.Year()),
+			searchType:  "search",
+		})
+		add(dailyUsenetCandidate{
+			key:         "text-human-date:" + strings.ToLower(canonical),
+			description: "canonical title + human date",
+			query:       fmt.Sprintf("%s %d %s %d", canonical, airDate.Day(), airDate.Format("Jan"), airDate.Year()),
+			searchType:  "search",
 		})
 		add(dailyUsenetCandidate{
 			key:         "text-season-episode:" + strings.ToLower(canonical),

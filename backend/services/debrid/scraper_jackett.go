@@ -272,28 +272,48 @@ func (j *JackettScraper) searchTVSeason(ctx context.Context, title string, seaso
 // searchDailyTV performs a date-based search for daily shows (talk shows, news, etc.)
 // Uses generic text search with date format since scene releases use "Title.YYYY.MM.DD" naming.
 func (j *JackettScraper) searchDailyTV(ctx context.Context, title string, airDate string) ([]ScrapeResult, error) {
-	// Parse the air date (YYYY-MM-DD format)
-	dateParts := strings.Split(airDate, "-")
-	if len(dateParts) != 3 {
+	parsedDate, err := time.Parse("2006-01-02", strings.TrimSpace(airDate))
+	if err != nil {
 		log.Printf("[jackett] Invalid air date format %q, falling back to generic search", airDate)
 		return j.searchGeneric(ctx, title)
 	}
 
-	year := dateParts[0]
-	month := dateParts[1]
-	day := dateParts[2]
+	queries := []string{
+		fmt.Sprintf("%s %s", title, parsedDate.Format("2006.01.02")),
+		fmt.Sprintf("%s %s %s %d", title, ordinalDay(parsedDate.Day()), parsedDate.Format("Jan"), parsedDate.Year()),
+		fmt.Sprintf("%s %d %s %d", title, parsedDate.Day(), parsedDate.Format("Jan"), parsedDate.Year()),
+	}
 
-	// Scene releases use format: "Title.YYYY.MM.DD" (dot-separated)
-	// Search with dot-separated date format
-	query := fmt.Sprintf("%s %s.%s.%s", title, year, month, day)
+	var merged []ScrapeResult
+	for _, query := range queries {
+		params := url.Values{}
+		params.Set("apikey", j.apiKey)
+		params.Set("t", "search") // Date releases need generic text search, not tvsearch.
+		params.Set("q", query)
 
-	params := url.Values{}
-	params.Set("apikey", j.apiKey)
-	params.Set("t", "search") // Use generic search, not tvsearch
-	params.Set("q", query)
+		log.Printf("[jackett] Daily TV search: q=%q (airDate=%s)", query, airDate)
+		results, fetchErr := j.fetchResults(ctx, params)
+		if fetchErr != nil {
+			return merged, fetchErr
+		}
+		merged = mergeScrapeResults(merged, results)
+	}
+	return merged, nil
+}
 
-	log.Printf("[jackett] Daily TV search: q=%q (airDate=%s)", query, airDate)
-	return j.fetchResults(ctx, params)
+func ordinalDay(day int) string {
+	suffix := "th"
+	if day%100 < 11 || day%100 > 13 {
+		switch day % 10 {
+		case 1:
+			suffix = "st"
+		case 2:
+			suffix = "nd"
+		case 3:
+			suffix = "rd"
+		}
+	}
+	return fmt.Sprintf("%d%s", day, suffix)
 }
 
 // searchGeneric performs a basic text search.

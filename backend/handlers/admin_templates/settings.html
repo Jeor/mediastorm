@@ -186,6 +186,290 @@
     gap: 1rem;
 }
 
+.live-source-card {
+    padding: 0;
+    overflow: visible;
+    background: var(--bg-secondary);
+}
+
+.live-source-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 72px;
+    padding: 0.8rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.live-source-card-identity,
+.live-source-card-meta,
+.live-source-card-actions {
+    display: flex;
+    align-items: center;
+}
+
+.live-source-card-identity {
+    min-width: 0;
+    flex: 1;
+    gap: 1rem;
+}
+
+.live-source-card-name {
+    min-width: 140px;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-source-card-meta {
+    min-width: 0;
+    gap: 0.7rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.live-source-card-meta > span + span {
+    padding-left: 0.7rem;
+    border-left: 1px solid var(--border);
+}
+
+.live-source-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.live-source-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.live-source-status.enabled .live-source-status-dot {
+    background: #22c55e;
+}
+
+.live-source-type-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 0.18rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.live-source-endpoint {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-source-card-actions {
+    flex: 0 0 auto;
+    gap: 0.5rem;
+}
+
+.live-source-action-menu {
+    position: relative;
+}
+
+.live-source-action-menu > summary {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 32px;
+    padding: 0;
+    list-style: none;
+}
+
+.live-source-action-menu > summary::-webkit-details-marker,
+.live-source-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.live-source-action-menu > summary svg {
+    width: 16px;
+    height: 16px;
+}
+
+.live-source-action-menu-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 150px;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-secondary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.live-source-action-menu-panel button {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.live-source-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.75rem;
+}
+
+.live-source-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.live-source-group > summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(180px, auto);
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 48px;
+    padding: 0.62rem 0.75rem;
+    list-style: none;
+    cursor: pointer;
+}
+
+.live-source-group > summary:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: -2px;
+}
+
+.live-source-group-chevron {
+    display: grid;
+    place-items: center;
+    color: var(--text-secondary);
+    transition: transform 0.15s ease;
+}
+
+.live-source-group-chevron svg {
+    width: 15px;
+    height: 15px;
+}
+
+.live-source-group[open] .live-source-group-chevron {
+    transform: rotate(180deg);
+}
+
+.live-source-group-heading {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 0.65rem;
+}
+
+.live-source-group-title {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.live-source-group-description,
+.live-source-group-summary {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-source-group-summary {
+    text-align: right;
+}
+
+.live-source-group[open] .live-source-group-summary {
+    visibility: hidden;
+}
+
+.live-source-group-body {
+    padding: 0.2rem 0.75rem 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.live-source-group-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0.9rem;
+    padding-top: 0.75rem;
+}
+
+.live-source-group.source .live-source-group-fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.live-source-group .form-group {
+    min-width: 0;
+}
+
+.live-source-group .form-group-toggle {
+    align-self: start;
+}
+
+@media (max-width: 1100px) {
+    .live-source-card-header,
+    .live-source-card-identity {
+        align-items: flex-start;
+    }
+    .live-source-card-header,
+    .live-source-card-identity,
+    .live-source-card-meta {
+        flex-wrap: wrap;
+    }
+    .live-source-card-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .live-source-group.source .live-source-group-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .live-source-card-identity,
+    .live-source-card-actions {
+        width: 100%;
+    }
+    .live-source-card-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    .live-source-card-name {
+        min-width: 100%;
+    }
+    .live-source-group > summary {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+    .live-source-group-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+    .live-source-group-summary {
+        display: none;
+    }
+    .live-source-group-fields,
+    .live-source-group.source .live-source-group-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Shared drag-to-reorder row primitive, used by provider priority, home shelves,
    and ranking criteria lists. Rules common to all three live here once so their
    per-widget <style> blocks only carry what's actually different between them. */
@@ -2389,6 +2673,7 @@
     let settingsLastSectionViewport = null;
     let selectedSettingsHouseholdId = '';
     let expandedIndexerEditIndex = -1;
+    const liveSourceGroupOpenState = new Map();
     const expandedProviderEditIndexes = {
         debridProviders: -1,
         torrentScrapers: -1,
@@ -5346,6 +5631,8 @@
         'unlock': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>',
         'edit': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
         'trash': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+        'chevron-down': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>',
+        'more-horizontal': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
         'plus': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
         'check': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
         'x': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
@@ -8703,6 +8990,140 @@
         return '<div class="usenet-server-list">'+cardsHtml+addButton+'</div>';
     }
 
+    function isLiveSourceSection(sectionKey) {
+        return sectionKey === 'live.sources' || sectionKey === 'liveTV.sources';
+    }
+
+    function setLiveSourceGroupOpen(sectionKey, index, groupKey, isOpen) {
+        liveSourceGroupOpenState.set(sectionKey + ':' + index + ':' + groupKey, isOpen);
+    }
+
+    function liveSourceGroupIsOpen(sectionKey, index, groupKey) {
+        const stateKey = sectionKey + ':' + index + ':' + groupKey;
+        if (liveSourceGroupOpenState.has(stateKey)) return liveSourceGroupOpenState.get(stateKey);
+        return groupKey === 'source' || groupKey === 'connection';
+    }
+
+    function liveSourceOptionLabel(fieldDef, value, fallback) {
+        const option = (fieldDef?.options || []).find(candidate => {
+            const optionValue = typeof candidate === 'object' ? candidate.value : candidate;
+            return optionValue === value;
+        });
+        if (!option) return fallback || String(value || 'Not set');
+        return typeof option === 'object' ? option.label : option;
+    }
+
+    function liveSourceTypeLabel(sectionDef, item) {
+        return liveSourceOptionLabel(sectionDef.fields?.mode, item.mode, 'Type not set');
+    }
+
+    function liveSourceEndpointSummary(item) {
+        const rawEndpoint = item.mode === 'xtream'
+            ? item.xtreamHost
+            : item.mode === 'stremio'
+                ? item.manifestUrl
+                : item.playlistUrl;
+        if (!rawEndpoint) return 'Server not set';
+        try {
+            return new URL(rawEndpoint).host || 'Server configured';
+        } catch (_) {
+            const sanitized = String(rawEndpoint).replace(/^.*@/, '').replace(/^\w+:\/\//, '').split('/')[0];
+            return sanitized || 'Server configured';
+        }
+    }
+
+    function liveSourceGroupSummary(groupKey, sectionDef, item) {
+        if (groupKey === 'source') {
+            return liveSourceTypeLabel(sectionDef, item) + ' · ' + (item.enabled ? 'Enabled' : 'Disabled');
+        }
+        if (groupKey === 'connection') return liveSourceEndpointSummary(item);
+        if (groupKey === 'playback') {
+            const streams = Number(item.maxStreams || 0);
+            const streamLabel = streams === 0 ? 'Unlimited streams' : streams + ' max stream' + (streams === 1 ? '' : 's');
+            const format = liveSourceOptionLabel(sectionDef.fields?.streamFormat, item.streamFormat, 'Format not set');
+            const cacheTtl = item.playlistCacheTtlHours === undefined || item.playlistCacheTtlHours === null || item.playlistCacheTtlHours === ''
+                ? 'Default cache'
+                : item.playlistCacheTtlHours + 'h cache';
+            return streamLabel + ' · ' + format + ' · ' + cacheTtl + ' · Low latency ' + (item.lowLatency ? 'on' : 'off');
+        }
+        if (groupKey === 'channelFiltering') {
+            const categories = Array.isArray(item.filtering?.enabledCategories) ? item.filtering.enabledCategories : [];
+            const categoryLabel = categories.length === 0 ? 'All categories' : categories.length + ' categor' + (categories.length === 1 ? 'y' : 'ies');
+            const maxChannels = Number(item.filtering?.maxChannels || 0);
+            return categoryLabel + ' · ' + (maxChannels === 0 ? 'No channel limit' : maxChannels + ' channel limit');
+        }
+        if (groupKey === 'epg') {
+            if (!item.epg?.enabled) return 'Disabled';
+            const refresh = item.epg.refreshIntervalHours || 12;
+            const retention = item.epg.retentionDays || 7;
+            return 'Enabled · Refresh every ' + refresh + 'h · ' + retention + '-day retention';
+        }
+        return '';
+    }
+
+    function renderLiveSourceCard(sectionKey, sectionDef, item, index, fieldEntries, isTestable) {
+        const groupedEntries = [];
+        const groupsByKey = new Map();
+        for (const entry of fieldEntries) {
+            const groupKey = entry.group || 'source';
+            if (!groupsByKey.has(groupKey)) {
+                const group = {
+                    key: groupKey,
+                    label: entry.groupLabel || groupKey,
+                    description: entry.groupDescription || '',
+                    fields: [],
+                };
+                groupsByKey.set(groupKey, group);
+                groupedEntries.push(group);
+            }
+            groupsByKey.get(groupKey).fields.push(entry.html);
+        }
+
+        const groupsHtml = groupedEntries.map(group => {
+            const isOpen = liveSourceGroupIsOpen(sectionKey, index, group.key);
+            const safeGroupKey = escapeHtml(group.key).replace(/"/g, '&quot;');
+            return '<details class="live-source-group ' + safeGroupKey + '" ' + (isOpen ? 'open' : '') +
+                ' ontoggle="setLiveSourceGroupOpen(\'' + sectionKey + '\', ' + index + ', \'' + safeGroupKey + '\', this.open)">' +
+                    '<summary>' +
+                        '<span class="live-source-group-chevron" aria-hidden="true">' + getIcon('chevron-down') + '</span>' +
+                        '<span class="live-source-group-heading"><span class="live-source-group-title">' + escapeHtml(group.label) + '</span>' +
+                            (group.description ? '<span class="live-source-group-description">' + escapeHtml(group.description) + '</span>' : '') +
+                        '</span>' +
+                        '<span class="live-source-group-summary">' + escapeHtml(liveSourceGroupSummary(group.key, sectionDef, item)) + '</span>' +
+                    '</summary>' +
+                    '<div class="live-source-group-body"><div class="live-source-group-fields">' + group.fields.join('') + '</div></div>' +
+                '</details>';
+        }).join('');
+
+        const name = item.name || item.id || 'Live TV source ' + (index + 1);
+        const enabledLabel = item.enabled ? 'Enabled' : 'Disabled';
+        const endpoint = liveSourceEndpointSummary(item);
+        const testButton = isTestable
+            ? '<button id="test-btn-' + sectionKey + '-' + index + '" type="button" class="btn btn-sm btn-secondary" onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">' + getIcon('check') + ' Test</button>'
+            : '';
+        const hiddenChannelsButton = '<button type="button" class="btn btn-sm btn-secondary" onclick="openHiddenChannelsManagerForSource(\'' + sectionKey + '\', ' + index + ', event)">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M10.58 10.58A2 2 0 0 0 13.42 13.42"/><path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M6.61 6.61C3.98 8.38 2 12 2 12s3 8 10 8a10.9 10.9 0 0 0 5.39-1.39"/></svg> Manage Hidden Channels</button>';
+        const deleteMenu = '<details class="live-source-action-menu">' +
+            '<summary class="btn btn-sm btn-secondary" aria-label="More actions for ' + escapeHtml(name).replace(/"/g, '&quot;') + '">' + getIcon('more-horizontal') + '</summary>' +
+            '<div class="live-source-action-menu-panel"><button type="button" class="btn btn-sm btn-danger" onclick="event.preventDefault(); removeArrayItem(\'' + sectionKey + '\', ' + index + ')">' + getIcon('trash') + ' Delete</button></div>' +
+        '</details>';
+
+        return '<div class="array-item live-source-card">' +
+            '<div class="live-source-card-header">' +
+                '<div class="live-source-card-identity">' +
+                    '<div class="live-source-card-name" title="' + escapeHtml(name).replace(/"/g, '&quot;') + '">' + escapeHtml(name) + '</div>' +
+                    '<div class="live-source-card-meta">' +
+                        '<span class="live-source-status ' + (item.enabled ? 'enabled' : '') + '"><span class="live-source-status-dot"></span>' + enabledLabel + '</span>' +
+                        '<span class="live-source-type-badge">' + escapeHtml(liveSourceTypeLabel(sectionDef, item)) + '</span>' +
+                        '<span class="live-source-endpoint" title="' + escapeHtml(endpoint).replace(/"/g, '&quot;') + '">Server: ' + escapeHtml(endpoint) + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="live-source-card-actions">' + hiddenChannelsButton + testButton + deleteMenu + '</div>' +
+            '</div>' +
+            '<div class="live-source-groups">' + groupsHtml + '</div>' +
+        '</div>';
+    }
+
     function renderArraySection(sectionKey, sectionDef) {
         let items, basePath;
         const parentKey = sectionDef.parent;
@@ -8854,6 +9275,9 @@
                     html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+(isMissingRequired ? ' required-missing' : '')+'"><label class="form-label" for="'+fieldInputId+'">'+fieldDef.label+requiredBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+requiredHint+renderAdditionalFieldHint(sectionKey, fieldKey, item)+renderApiKeyFormatWarning(fieldKey, fieldValue)+'</div>',
                 };
             }).filter(Boolean);
+            if (isLiveSourceSection(sectionKey)) {
+                return renderLiveSourceCard(sectionKey, sectionDef, item, index, fieldEntries, isTestable);
+            }
             const fieldHtmlParts = [];
             let currentGroup = '';
             let groupedFields = [];

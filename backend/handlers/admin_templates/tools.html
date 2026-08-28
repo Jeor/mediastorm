@@ -2877,7 +2877,15 @@
     // ========== Section Toggle ==========
     function toggleSection(header) {
         const section = header.parentElement;
-        section.classList.toggle('open');
+        const shouldOpen = !section.classList.contains('open');
+
+        if (shouldOpen) {
+            document.querySelectorAll('.settings-group .section.open').forEach(openSection => {
+                if (openSection !== section) openSection.classList.remove('open');
+            });
+        }
+
+        section.classList.toggle('open', shouldOpen);
     }
 
     // ========== Clear Cache ==========

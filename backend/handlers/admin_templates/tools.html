@@ -12,7 +12,7 @@
     <p>Connect external media services and choose which profiles use them.</p>
     {{else}}
     <h1>Maintenance</h1>
-    <p>Manage integrations, internal data, diagnostics, and server maintenance.</p>
+    <p>Review records, diagnose issues, and keep MediaStorm running cleanly.</p>
     {{end}}
 </div>
 
@@ -20,6 +20,228 @@
 <div id="tasksPageHost"></div>
 {{else if hasSuffix .CurrentPath "/integrations"}}
 <div id="integrationsPageHost"></div>
+{{else}}
+<div class="maintenance-dashboard">
+    <div class="maintenance-status-strip" aria-label="Maintenance status">
+        <div class="maintenance-status-item maintenance-status-healthy">
+            <span class="maintenance-status-dot" aria-hidden="true"></span>
+            <span>Maintenance ready</span>
+        </div>
+        <div class="maintenance-status-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                <polyline points="21 3 21 9 15 9"/>
+            </svg>
+            <span id="maintenanceUpdateStatus">Checking releases...</span>
+        </div>
+        {{if .IsAdmin}}
+        <div class="maintenance-status-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"/>
+            </svg>
+            <span id="maintenanceWorkersStatus">Checking workers...</span>
+        </div>
+        {{end}}
+        <a class="maintenance-status-action" href="{{.BasePath}}/backup">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 16V4M7 9l5-5 5 5"/>
+                <path d="M5 13v7h14v-7"/>
+            </svg>
+            Backup
+        </a>
+    </div>
+
+    <section class="maintenance-dashboard-section" aria-labelledby="maintenanceRecordsTitle">
+        <h2 id="maintenanceRecordsTitle">Review records</h2>
+        <div class="maintenance-link-grid">
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/tools/hidden-items">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M3 3l18 18M10.5 10.7a2 2 0 0 0 2.8 2.8M9.5 5.3A10.8 10.8 0 0 1 12 5c5 0 9 7 9 7a15 15 0 0 1-2.1 2.7M6.2 6.2C4.2 7.6 3 12 3 12s4 7 9 7c1.2 0 2.4-.4 3.4-1"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy">
+                    <strong>Hidden Items</strong>
+                    <span>Review titles hidden from profiles and shelves.</span>
+                </span>
+                <span class="maintenance-row-meta">Manage</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+            {{if .IsAdmin}}
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/tools/resolved-nzbs">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h5M9 13h6M9 17h6"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy">
+                    <strong>Resolved NZBs</strong>
+                    <span>Inspect reusable Usenet resolution records.</span>
+                </span>
+                <span class="maintenance-row-meta">Review</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/tools/bad-streams">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy">
+                    <strong>Bad Streams</strong>
+                    <span>Review streams skipped during future playback.</span>
+                </span>
+                <span class="maintenance-row-meta">Inspect</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+            {{end}}
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/tools/share-links">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy">
+                    <strong>Share Links</strong>
+                    <span>Manage active playback links and expirations.</span>
+                </span>
+                <span class="maintenance-row-meta">Manage</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+        </div>
+    </section>
+
+    {{if .IsAdmin}}
+    <section class="maintenance-dashboard-section" aria-labelledby="maintenanceDiagnoseTitle">
+        <h2 id="maintenanceDiagnoseTitle">Diagnose &amp; inspect</h2>
+        <div class="maintenance-link-grid">
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/logs">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v5h5M9 13h6M9 17h6"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy"><strong>Logs</strong><span>Browse backend events and application output.</span></span>
+                <span class="maintenance-row-meta">Open</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/performance">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M3 12h4l2-6 4 12 2-6h6"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy"><strong>Performance</strong><span>Monitor resource use and service health.</span></span>
+                <span class="maintenance-row-meta">Open</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/connections">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy"><strong>Connections</strong><span>Inspect active services and client connections.</span></span>
+                <span class="maintenance-row-meta">Open</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+            <a class="maintenance-dashboard-row" href="{{.BasePath}}/prequeue">
+                <span class="maintenance-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                    </svg>
+                </span>
+                <span class="maintenance-row-copy"><strong>Prequeue</strong><span>View active prewarmed streams and resolution state.</span></span>
+                <span class="maintenance-row-meta">Open</span>
+                <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+            </a>
+        </div>
+    </section>
+    {{end}}
+
+    <section class="maintenance-dashboard-section" aria-labelledby="maintenanceSystemTitle">
+        <h2 id="maintenanceSystemTitle">Maintain system</h2>
+        <div class="maintenance-system-layout">
+            <div class="maintenance-system-list">
+                <a class="maintenance-dashboard-row" href="{{.BasePath}}/backup">
+                    <span class="maintenance-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 13v7h14v-7"/>
+                        </svg>
+                    </span>
+                    <span class="maintenance-row-copy"><strong>Backup</strong><span>Create, restore, and manage server backups.</span></span>
+                    <span class="maintenance-row-meta">Open</span>
+                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+                </a>
+                <button class="maintenance-dashboard-row" type="button" onclick="openMaintenanceTool('clearCacheSection')">
+                    <span class="maintenance-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>
+                        </svg>
+                    </span>
+                    <span class="maintenance-row-copy"><strong>Metadata Cache</strong><span>Clear cached metadata and poster artwork.</span></span>
+                    <span class="maintenance-row-meta">Manage</span>
+                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+                </button>
+                <button class="maintenance-dashboard-row" type="button" onclick="openMaintenanceTool('systemUpdatesSection')">
+                    <span class="maintenance-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/>
+                        </svg>
+                    </span>
+                    <span class="maintenance-row-copy"><strong>System Updates</strong><span>Check the running backend against the latest release.</span></span>
+                    <span class="maintenance-row-meta" id="maintenanceUpdateRowStatus">Check</span>
+                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+                </button>
+                {{if .IsAdmin}}
+                <button class="maintenance-dashboard-row maintenance-dashboard-row-danger" type="button" onclick="openMaintenanceTool('databaseDataSection')">
+                    <span class="maintenance-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>
+                        </svg>
+                    </span>
+                    <span class="maintenance-row-copy"><strong>Database Data</strong><span>Permanently remove profile records by category.</span></span>
+                    <span class="maintenance-row-meta">Review</span>
+                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+                </button>
+                <button class="maintenance-dashboard-row maintenance-dashboard-row-danger" type="button" onclick="openMaintenanceTool('restartBackendSection')">
+                    <span class="maintenance-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                    </span>
+                    <span class="maintenance-row-copy"><strong>Restart Backend</strong><span>Gracefully restart the backend process.</span></span>
+                    <span class="maintenance-row-meta">Review</span>
+                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
+                </button>
+                {{end}}
+            </div>
+
+            <aside class="maintenance-quick-tools" aria-labelledby="maintenanceQuickToolsTitle">
+                <h3 id="maintenanceQuickToolsTitle">On-page tools</h3>
+                <p>Select a tool to open its existing controls below.</p>
+                {{if .IsAdmin}}
+                <button type="button" onclick="openMaintenanceTool('profileMessageSection')">Profile messages <span aria-hidden="true">›</span></button>
+                <button type="button" onclick="openMaintenanceTool('prequeueManagementSection')">Prequeue cache <span aria-hidden="true">›</span></button>
+                <button type="button" onclick="openMaintenanceTool('backgroundWorkersSection')">Background workers <span aria-hidden="true">›</span></button>
+                {{end}}
+                <button type="button" onclick="openMaintenanceTool('troubleshootingSection')">Troubleshooting uploads <span aria-hidden="true">›</span></button>
+            </aside>
+        </div>
+    </section>
+</div>
+
+<details class="maintenance-tool-details" id="maintenanceToolDetails">
+    <summary>
+        <span>
+            <strong>Maintenance controls</strong>
+            <small>Open cache, update, worker, messaging, and troubleshooting tools.</small>
+        </span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+        </svg>
+    </summary>
+    <div class="maintenance-tool-details-body">
 {{end}}
 
 <!-- SYSTEM CATEGORY -->
@@ -1661,6 +1883,13 @@
     </div>
 </div>
 
+{{if hasSuffix .CurrentPath "/tasks"}}
+{{else if hasSuffix .CurrentPath "/integrations"}}
+{{else}}
+    </div>
+</details>
+{{end}}
+
 <style>
     {{if hasSuffix .CurrentPath "/tasks"}}
     .settings-group { display: none; }
@@ -1778,6 +2007,323 @@
     }
     a:hover {
         color: #d1d5db;
+    }
+    .maintenance-dashboard {
+        margin-bottom: 1.5rem;
+    }
+    .maintenance-status-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+        margin-bottom: 1.5rem;
+        border-block: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+    }
+    .maintenance-status-item,
+    .maintenance-status-action {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        min-height: 50px;
+        gap: 0.55rem;
+        padding: 0.7rem 1rem;
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        text-decoration: none;
+    }
+    .maintenance-status-item + .maintenance-status-item,
+    .maintenance-status-action {
+        border-left: 1px solid var(--border);
+    }
+    .maintenance-status-item svg,
+    .maintenance-status-action svg {
+        width: 17px;
+        height: 17px;
+        flex: 0 0 auto;
+        color: var(--text-muted);
+    }
+    .maintenance-status-item span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .maintenance-status-healthy {
+        color: var(--text-primary);
+    }
+    .maintenance-status-dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--success);
+    }
+    .maintenance-status-action,
+    .maintenance-status-action:visited {
+        justify-content: center;
+        color: var(--accent);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .maintenance-status-action:hover {
+        color: var(--text-primary);
+        background: var(--bg-hover);
+    }
+    .maintenance-dashboard-section {
+        margin-bottom: 1.65rem;
+    }
+    .maintenance-dashboard-section h2 {
+        margin: 0 0 0.55rem;
+        padding: 0 0.25rem 0.55rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .maintenance-link-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.35rem 0.75rem;
+    }
+    .maintenance-dashboard-row {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr) auto 14px;
+        align-items: center;
+        min-width: 0;
+        min-height: 64px;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+        color: var(--text-primary);
+        font: inherit;
+        text-align: left;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .maintenance-dashboard-row:visited {
+        color: var(--text-primary);
+    }
+    .maintenance-dashboard-row:hover {
+        border-color: color-mix(in srgb, var(--accent) 54%, var(--border));
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+    .maintenance-dashboard-row:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+    .maintenance-row-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+    }
+    .maintenance-row-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+    .maintenance-row-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.18rem;
+    }
+    .maintenance-row-copy strong {
+        overflow: hidden;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .maintenance-row-copy span {
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .maintenance-row-meta {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    .maintenance-row-chevron {
+        color: var(--text-muted);
+        font-size: 1.25rem;
+        line-height: 1;
+        transition: transform 0.15s, color 0.15s;
+    }
+    .maintenance-dashboard-row:hover .maintenance-row-chevron {
+        color: var(--accent);
+        transform: translateX(2px);
+    }
+    .maintenance-system-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(235px, 0.65fr);
+        gap: 1rem;
+    }
+    .maintenance-system-list {
+        display: grid;
+        gap: 0.35rem;
+    }
+    .maintenance-system-list .maintenance-dashboard-row {
+        min-height: 56px;
+        padding-block: 0.5rem;
+    }
+    .maintenance-dashboard-row-danger .maintenance-row-icon,
+    .maintenance-dashboard-row-danger .maintenance-row-meta {
+        color: var(--danger);
+    }
+    .maintenance-quick-tools {
+        min-width: 0;
+        padding: 0.85rem 0 0.85rem 1rem;
+        border-left: 1px solid var(--border);
+    }
+    .maintenance-quick-tools h3 {
+        margin: 0 0 0.25rem;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .maintenance-quick-tools p {
+        margin: 0 0 0.75rem;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+    .maintenance-quick-tools button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        min-height: 42px;
+        padding: 0.55rem 0.25rem;
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 0.8125rem;
+        text-align: left;
+        cursor: pointer;
+    }
+    .maintenance-quick-tools button:hover {
+        color: var(--text-primary);
+    }
+    .maintenance-quick-tools button span {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+    .maintenance-tool-details {
+        margin-bottom: 2rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-secondary);
+        overflow: hidden;
+    }
+    .maintenance-tool-details > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 58px;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        color: var(--text-primary);
+        cursor: pointer;
+        list-style: none;
+    }
+    .maintenance-tool-details > summary::-webkit-details-marker {
+        display: none;
+    }
+    .maintenance-tool-details > summary:hover {
+        background: var(--bg-hover);
+    }
+    .maintenance-tool-details > summary span {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .maintenance-tool-details > summary strong {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .maintenance-tool-details > summary small {
+        overflow: hidden;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .maintenance-tool-details > summary svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        color: var(--text-muted);
+        transition: transform 0.2s;
+    }
+    .maintenance-tool-details[open] > summary {
+        border-bottom: 1px solid var(--border);
+    }
+    .maintenance-tool-details[open] > summary svg {
+        transform: rotate(180deg);
+    }
+    .maintenance-tool-details-body {
+        padding: 1rem;
+    }
+    .maintenance-tool-details-body > .settings-group:last-child {
+        margin-bottom: 0;
+    }
+    @media (max-width: 980px) {
+        .maintenance-status-strip {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .maintenance-status-item:nth-child(3),
+        .maintenance-status-action {
+            border-top: 1px solid var(--border);
+        }
+        .maintenance-status-item:nth-child(3) {
+            border-left: 0;
+        }
+        .maintenance-system-layout {
+            grid-template-columns: 1fr;
+        }
+        .maintenance-quick-tools {
+            padding: 0.85rem 0 0;
+            border-top: 1px solid var(--border);
+            border-left: 0;
+        }
+    }
+    @media (max-width: 700px) {
+        .maintenance-link-grid {
+            grid-template-columns: 1fr;
+        }
+        .maintenance-status-strip {
+            grid-template-columns: 1fr;
+        }
+        .maintenance-status-item + .maintenance-status-item,
+        .maintenance-status-item:nth-child(3),
+        .maintenance-status-action {
+            border-top: 1px solid var(--border);
+            border-left: 0;
+        }
+        .maintenance-status-action {
+            justify-content: flex-start;
+        }
+    }
+    @media (max-width: 480px) {
+        .maintenance-dashboard-row {
+            grid-template-columns: 22px minmax(0, 1fr) 14px;
+            min-height: 62px;
+        }
+        .maintenance-row-meta {
+            display: none;
+        }
+        .maintenance-tool-details > summary small {
+            white-space: normal;
+        }
     }
     .settings-group {
         margin-bottom: 2rem;
@@ -2559,6 +3105,22 @@
     const isIntegrationsPage = {{if hasSuffix .CurrentPath "/integrations"}}true{{else}}false{{end}};
     const isAdmin = {{json .IsAdmin}};
     const requestedTaskProfileId = new URLSearchParams(window.location.search).get('profileId') || '';
+
+    function openMaintenanceTool(sectionId) {
+        const details = document.getElementById('maintenanceToolDetails');
+        const section = document.getElementById(sectionId);
+        if (!details || !section) return;
+
+        details.open = true;
+        if (!section.classList.contains('open')) {
+            const header = section.querySelector('.section-header');
+            if (header) toggleSection(header);
+        }
+
+        requestAnimationFrame(() => {
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
 
     // ========== Initialize ==========
     document.addEventListener('DOMContentLoaded', async function() {
@@ -4722,10 +5284,14 @@
             }
         } catch (err) {
             console.error('Failed to load update status:', err);
+            const dashboardStatus = document.getElementById('maintenanceUpdateStatus');
+            const dashboardRowStatus = document.getElementById('maintenanceUpdateRowStatus');
             if (badge) {
                 badge.textContent = 'Unavailable';
                 badge.className = 'status-badge warning';
             }
+            if (dashboardStatus) dashboardStatus.textContent = 'Release status unavailable';
+            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Unavailable';
             if (statusEl) {
                 statusEl.innerHTML = `<div style="color: var(--error);">Failed to check for updates: ${escapeHtml(err.message)}</div>`;
             }
@@ -4739,6 +5305,8 @@
         const backend = status?.backend || {};
         const statusEl = document.getElementById('systemUpdatesStatus');
         const badge = document.getElementById('systemUpdatesBadge');
+        const dashboardStatus = document.getElementById('maintenanceUpdateStatus');
+        const dashboardRowStatus = document.getElementById('maintenanceUpdateRowStatus');
         if (!statusEl || !badge) return;
 
         const current = backend.currentVersion
@@ -4752,12 +5320,18 @@
         if (backend.error) {
             badge.textContent = 'Unavailable';
             badge.className = 'status-badge warning';
+            if (dashboardStatus) dashboardStatus.textContent = 'Release status unavailable';
+            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Unavailable';
         } else if (backend.updateAvailable) {
             badge.textContent = 'Update Available';
             badge.className = 'status-badge warning';
+            if (dashboardStatus) dashboardStatus.textContent = `${latest} available`;
+            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Available';
         } else {
             badge.textContent = 'Up to Date';
             badge.className = 'status-badge connected';
+            if (dashboardStatus) dashboardStatus.textContent = 'Backend up to date';
+            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Current';
         }
 
         statusEl.innerHTML = `
@@ -6692,6 +7266,8 @@
         } catch (err) {
             const el = document.getElementById('workersList');
             if (el) el.innerHTML = '<p class="text-muted">Could not load worker status.</p>';
+            const dashboardStatus = document.getElementById('maintenanceWorkersStatus');
+            if (dashboardStatus) dashboardStatus.textContent = 'Worker status unavailable';
         }
         clearTimeout(workersPollTimer);
         workersPollTimer = setTimeout(loadWorkers, 15000);
@@ -6711,11 +7287,13 @@
         if (!el) return;
 
         let workerCount = 0;
+        let activeWorkerCount = 0;
         let html = '';
 
         // Metadata Cache Manager
         if (cm) {
             workerCount++;
+            if (cm.running) activeWorkerCount++;
             const { statusClass, label: statusLabel } = workerStatusBadge(cm.status, cm.running);
             const lastRefresh = cm.lastRefreshAt && cm.lastRefreshAt !== '0001-01-01T00:00:00Z'
                 ? formatRelativeTime(cm.lastRefreshAt) : 'Never';
@@ -6773,6 +7351,7 @@
         // API Top Ten Worker
         if (tt) {
             workerCount++;
+            if (tt.running) activeWorkerCount++;
             const { statusClass, label: statusLabel } = workerStatusBadge(tt.status, tt.running);
             const lastRefresh = tt.lastRefreshAt && tt.lastRefreshAt !== '0001-01-01T00:00:00Z'
                 ? formatRelativeTime(tt.lastRefreshAt) : 'Never';
@@ -6831,6 +7410,7 @@
         // Calendar Worker
         if (cal) {
             workerCount++;
+            if (cal.running) activeWorkerCount++;
             const { statusClass, label: statusLabel } = workerStatusBadge(cal.state, cal.running);
             const lastRefresh = cal.lastRefreshAt && cal.lastRefreshAt !== '0001-01-01T00:00:00Z'
                 ? formatRelativeTime(cal.lastRefreshAt) : 'Never';
@@ -6886,6 +7466,13 @@
 
         const badge = document.getElementById('workersCountBadge');
         if (badge) badge.textContent = workerCount;
+
+        const dashboardStatus = document.getElementById('maintenanceWorkersStatus');
+        if (dashboardStatus) {
+            dashboardStatus.textContent = workerCount > 0
+                ? `${activeWorkerCount} of ${workerCount} workers active`
+                : 'No workers available';
+        }
 
         el.innerHTML = html || '<p class="text-muted">No workers available.</p>';
     }

@@ -2780,7 +2780,6 @@
                     <summary data-walkthrough-target="settings"><span class="sidebar-group-summary-main"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.4V9.6h.1A1.7 1.7 0 0 0 4.2 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.66 3.8l.06.06A1.7 1.7 0 0 0 8.6 4.2a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.4h4v.1a1.7 1.7 0 0 0 1 1.7 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1Z"/></svg><span>Settings</span></span><span class="sidebar-group-chevron">›</span></summary>
                     <div class="sidebar-group-items">
                         <a href="{{.BasePath}}/settings?view=dashboard" class="sidebar-nav-link {{if hasSuffix .CurrentPath "/settings"}}active{{end}}" {{if hasSuffix .CurrentPath "/settings"}}aria-current="page"{{end}} data-settings-destination="home"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Settings dashboard</span></a>
-                        <a href="{{.BasePath}}/settings?view=essentials" class="sidebar-nav-link" data-settings-destination="essentials"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg><span>Watch essentials</span></a>
                         <a href="{{.BasePath}}/settings?category=sources" class="sidebar-nav-link" data-settings-destination="sources"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></svg><span>Sources</span></a>
                         <a href="{{.BasePath}}/settings?category=search" class="sidebar-nav-link" data-settings-destination="search"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5M17 4v4M15 6h4"/></svg><span>Search &amp; quality</span></a>
                         <a href="{{.BasePath}}/settings?category=playback" class="sidebar-nav-link" data-settings-destination="playback"><svg class="sidebar-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4ZM5 19h14"/></svg><span>Playback &amp; subtitles</span></a>
@@ -2960,11 +2959,7 @@
         function syncSettingsSidebarDestination(resolvedDestination = '') {
             if (!window.location.pathname.endsWith('/settings')) return;
             const settingsParams = new URLSearchParams(window.location.search);
-            const destination = resolvedDestination || (
-                settingsParams.get('view') === 'essentials' || (!settingsParams.has('view') && !settingsParams.has('category') && localStorage.getItem('mediastorm-settings-level') === 'essentials')
-                    ? 'essentials'
-                    : (settingsParams.get('category') || 'home')
-            );
+            const destination = resolvedDestination || settingsParams.get('category') || 'home';
             document.querySelectorAll('[data-settings-destination]').forEach(link => {
                 const isActive = link.dataset.settingsDestination === destination;
                 link.classList.toggle('active', isActive);

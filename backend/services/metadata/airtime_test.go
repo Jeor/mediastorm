@@ -7,10 +7,10 @@ import (
 
 func TestInferTimezoneFromNetwork(t *testing.T) {
 	tests := []struct {
-		name     string
-		network  string
-		country  string
-		wantTZ   string
+		name    string
+		network string
+		country string
+		wantTZ  string
 	}{
 		{"HBO direct match", "HBO", "", "America/New_York"},
 		{"BBC One direct match", "BBC One", "", "Europe/London"},
@@ -42,6 +42,24 @@ func TestApplyAirTimeFromTVDB(t *testing.T) {
 	}
 	if title.AirsTimezone != "America/New_York" {
 		t.Errorf("AirsTimezone = %q, want %q", title.AirsTimezone, "America/New_York")
+	}
+}
+
+func TestApplyAirTimeFromTVDB_InternationalNetflixOriginalUsesOriginCountry(t *testing.T) {
+	title := &models.Title{CountryCode: "kor"}
+	applyAirTimeFromTVDB(title, "16:00", "Netflix", "usa")
+
+	if title.AirsTimezone != "Asia/Seoul" {
+		t.Errorf("AirsTimezone = %q, want %q", title.AirsTimezone, "Asia/Seoul")
+	}
+}
+
+func TestApplyAirTimeFromTVDB_USNetflixOriginalUsesPacificTime(t *testing.T) {
+	title := &models.Title{CountryCode: "usa"}
+	applyAirTimeFromTVDB(title, "00:00", "Netflix", "usa")
+
+	if title.AirsTimezone != "America/Los_Angeles" {
+		t.Errorf("AirsTimezone = %q, want %q", title.AirsTimezone, "America/Los_Angeles")
 	}
 }
 

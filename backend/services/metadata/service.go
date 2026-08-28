@@ -1408,7 +1408,7 @@ func seriesDetailsCacheKey(lang string, tvdbID int64, seasonType string) string 
 	if st == "" {
 		st = "default"
 	}
-	return cacheKey("tvdb", "series", "details", "v16", lang, strconv.FormatInt(tvdbID, 10), st)
+	return cacheKey("tvdb", "series", "details", "v17", lang, strconv.FormatInt(tvdbID, 10), st)
 }
 
 func applyTVDBSeriesIdentity(title *models.Title, extended tvdbSeriesExtendedData) {
@@ -4726,7 +4726,7 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	if liteSeasonType == "" {
 		liteSeasonType = "default"
 	}
-	cacheID := cacheKey("tvdb", "series", "details", "v15-lite", s.client.language, strconv.FormatInt(tvdbID, 10), liteSeasonType)
+	cacheID := cacheKey("tvdb", "series", "details", "v16-lite", s.client.language, strconv.FormatInt(tvdbID, 10), liteSeasonType)
 	var cached models.SeriesDetails
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached.Seasons) > 0 {
 		normalizeSeriesDetailsReleaseStatus(&cached)

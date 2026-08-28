@@ -1340,7 +1340,7 @@ func TestSeriesDetailsLiteFallsBackToTMDBAndKeepsLogoOnCachedProviderMismatch(t 
 	if err := cache.set(seriesTVDBResolutionCacheKey(107124), int64(375642)); err != nil {
 		t.Fatalf("seed resolution cache: %v", err)
 	}
-	liteCacheID := cacheKey("tvdb", "series", "details", "v15-lite", "eng", "375642", "default")
+	liteCacheID := cacheKey("tvdb", "series", "details", "v16-lite", "eng", "375642", "default")
 	if err := cache.set(liteCacheID, models.SeriesDetails{
 		Title: models.Title{
 			ID:        "tvdb:series:375642",

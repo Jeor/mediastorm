@@ -176,26 +176,24 @@
                     <span class="maintenance-row-meta">Open</span>
                     <span class="maintenance-row-chevron" aria-hidden="true">›</span>
                 </a>
-                <button class="maintenance-dashboard-row" type="button" onclick="openMaintenanceTool('clearCacheSection')">
+                <div class="maintenance-dashboard-row maintenance-dashboard-row-static">
                     <span class="maintenance-row-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>
                         </svg>
                     </span>
                     <span class="maintenance-row-copy"><strong>Metadata Cache</strong><span>Clear cached metadata and poster artwork.</span></span>
-                    <span class="maintenance-row-meta">Manage</span>
-                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
-                </button>
-                <button class="maintenance-dashboard-row" type="button" onclick="openMaintenanceTool('systemUpdatesSection')">
+                    <button class="btn btn-secondary maintenance-row-action" type="button" id="clear-cache-dashboard-btn" onclick="clearMetadataCache()">Clear cache</button>
+                </div>
+                <div class="maintenance-dashboard-row maintenance-dashboard-row-static">
                     <span class="maintenance-row-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/>
                         </svg>
                     </span>
                     <span class="maintenance-row-copy"><strong>System Updates</strong><span>Check the running backend against the latest release.</span></span>
-                    <span class="maintenance-row-meta" id="maintenanceUpdateRowStatus">Check</span>
-                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
-                </button>
+                    <button class="btn btn-secondary maintenance-row-action" type="button" id="maintenanceCheckSystemUpdatesBtn" onclick="loadUpdateStatus(true)">Check now</button>
+                </div>
                 {{if .IsAdmin}}
                 <button class="maintenance-dashboard-row maintenance-dashboard-row-danger" type="button" onclick="openMaintenanceTool('databaseDataSection')">
                     <span class="maintenance-row-icon">
@@ -207,16 +205,15 @@
                     <span class="maintenance-row-meta">Review</span>
                     <span class="maintenance-row-chevron" aria-hidden="true">›</span>
                 </button>
-                <button class="maintenance-dashboard-row maintenance-dashboard-row-danger" type="button" onclick="openMaintenanceTool('restartBackendSection')">
+                <div class="maintenance-dashboard-row maintenance-dashboard-row-static maintenance-dashboard-row-danger">
                     <span class="maintenance-row-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                         </svg>
                     </span>
                     <span class="maintenance-row-copy"><strong>Restart Backend</strong><span>Gracefully restart the backend process.</span></span>
-                    <span class="maintenance-row-meta">Review</span>
-                    <span class="maintenance-row-chevron" aria-hidden="true">›</span>
-                </button>
+                    <button class="btn btn-secondary maintenance-row-action maintenance-row-action-danger" type="button" id="restart-backend-dashboard-btn" onclick="restartBackend()">Restart</button>
+                </div>
                 {{end}}
             </div>
 
@@ -1931,7 +1928,10 @@
     #hiddenItemsSection,
     #badStreamsSection,
     #resolvedNZBsSection,
-    #shareLinksSection { display: none; }
+    #shareLinksSection,
+    #systemUpdatesSection,
+    #clearCacheSection,
+    #restartBackendSection { display: none; }
     {{end}}
     .task-toolbar {
         display: grid;
@@ -2187,6 +2187,24 @@
         color: var(--accent);
         transform: translateX(2px);
     }
+    .maintenance-dashboard-row-static {
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        cursor: default;
+    }
+    .maintenance-dashboard-row-static:hover {
+        border-color: var(--border);
+        background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+    }
+    .maintenance-row-action {
+        min-width: 88px;
+        justify-content: center;
+        margin: 0;
+        white-space: nowrap;
+    }
+    .maintenance-row-action-danger {
+        border-color: var(--danger);
+        color: var(--danger);
+    }
     .maintenance-system-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.5fr) minmax(235px, 0.65fr);
@@ -2344,6 +2362,13 @@
         .maintenance-dashboard-row {
             grid-template-columns: 22px minmax(0, 1fr) 14px;
             min-height: 62px;
+        }
+        .maintenance-dashboard-row-static {
+            grid-template-columns: 22px minmax(0, 1fr);
+        }
+        .maintenance-dashboard-row-static .maintenance-row-action {
+            grid-column: 2;
+            width: 100%;
         }
         .maintenance-row-meta {
             display: none;
@@ -2857,7 +2882,7 @@
 
     // ========== Clear Cache ==========
     async function clearMetadataCache() {
-        const btn = document.getElementById('clear-cache-btn');
+        const btn = document.getElementById('clear-cache-dashboard-btn') || document.getElementById('clear-cache-btn');
         if (!btn) return;
 
         if (!confirm('Clear all cached metadata and posters? This will force fresh data to be fetched from TVDB/TMDB.')) {
@@ -2999,7 +3024,7 @@
     }
 
     async function restartBackend() {
-        const btn = document.getElementById('restart-backend-btn');
+        const btn = document.getElementById('restart-backend-dashboard-btn') || document.getElementById('restart-backend-btn');
         if (!btn) return;
 
         if (!confirm('Restart the backend now? Active streams will be interrupted. The backend will be unavailable for a few seconds while it restarts.')) {
@@ -5304,7 +5329,7 @@
     async function loadUpdateStatus(force) {
         const statusEl = document.getElementById('systemUpdatesStatus');
         const badge = document.getElementById('systemUpdatesBadge');
-        const btn = document.getElementById('checkSystemUpdatesBtn');
+        const btn = document.getElementById('maintenanceCheckSystemUpdatesBtn') || document.getElementById('checkSystemUpdatesBtn');
         if (btn) btn.disabled = true;
         if (force && statusEl) {
             statusEl.innerHTML = '<div class="text-muted">Checking for updates...</div>';
@@ -5321,13 +5346,11 @@
         } catch (err) {
             console.error('Failed to load update status:', err);
             const dashboardStatus = document.getElementById('maintenanceUpdateStatus');
-            const dashboardRowStatus = document.getElementById('maintenanceUpdateRowStatus');
             if (badge) {
                 badge.textContent = 'Unavailable';
                 badge.className = 'status-badge warning';
             }
             if (dashboardStatus) dashboardStatus.textContent = 'Release status unavailable';
-            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Unavailable';
             if (statusEl) {
                 statusEl.innerHTML = `<div style="color: var(--error);">Failed to check for updates: ${escapeHtml(err.message)}</div>`;
             }
@@ -5342,8 +5365,6 @@
         const statusEl = document.getElementById('systemUpdatesStatus');
         const badge = document.getElementById('systemUpdatesBadge');
         const dashboardStatus = document.getElementById('maintenanceUpdateStatus');
-        const dashboardRowStatus = document.getElementById('maintenanceUpdateRowStatus');
-        if (!statusEl || !badge) return;
 
         const current = backend.currentVersion
             ? `${backend.currentVersion}${backend.currentBuildId ? ` (${backend.currentBuildId})` : ''}`
@@ -5354,23 +5375,26 @@
         const checkedAt = status?.checkedAt ? new Date(status.checkedAt).toLocaleString() : 'Unknown';
 
         if (backend.error) {
-            badge.textContent = 'Unavailable';
-            badge.className = 'status-badge warning';
+            if (badge) {
+                badge.textContent = 'Unavailable';
+                badge.className = 'status-badge warning';
+            }
             if (dashboardStatus) dashboardStatus.textContent = 'Release status unavailable';
-            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Unavailable';
         } else if (backend.updateAvailable) {
-            badge.textContent = 'Update Available';
-            badge.className = 'status-badge warning';
+            if (badge) {
+                badge.textContent = 'Update Available';
+                badge.className = 'status-badge warning';
+            }
             if (dashboardStatus) dashboardStatus.textContent = `${latest} available`;
-            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Available';
         } else {
-            badge.textContent = 'Up to Date';
-            badge.className = 'status-badge connected';
+            if (badge) {
+                badge.textContent = 'Up to Date';
+                badge.className = 'status-badge connected';
+            }
             if (dashboardStatus) dashboardStatus.textContent = 'Backend up to date';
-            if (dashboardRowStatus) dashboardRowStatus.textContent = 'Current';
         }
 
-        statusEl.innerHTML = `
+        if (statusEl) statusEl.innerHTML = `
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
                 <div style="padding:0.75rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
                     <div class="text-muted" style="font-size:0.8rem;margin-bottom:0.25rem;">Current Backend</div>

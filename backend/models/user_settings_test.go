@@ -31,6 +31,23 @@ func TestDefaultUserSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsDisablesFrameSamplingFeatures(t *testing.T) {
+	settings := DefaultUserSettings()
+
+	options := map[string]*bool{
+		"crop-detect subtitle positioning": settings.Playback.SubtitleUseCropDetectPosition,
+		"credits detection":                settings.Playback.CreditsDetectionEnabled,
+	}
+	for name, option := range options {
+		if option == nil {
+			t.Fatalf("expected %s default to be set", name)
+		}
+		if *option {
+			t.Fatalf("expected %s to default to disabled", name)
+		}
+	}
+}
+
 func TestDefaultUserSettingsEnablesLiveClosedCaptionExtraction(t *testing.T) {
 	settings := DefaultUserSettings()
 
@@ -49,6 +66,13 @@ func TestDefaultUserSettingsEnablesApplicationAnimations(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsShowsStreamSourceInfo(t *testing.T) {
+	settings := DefaultUserSettings()
+	if settings.Display.ShowStreamSourceInfo == nil || !*settings.Display.ShowStreamSourceInfo {
+		t.Fatal("stream source information should be shown by default")
+	}
+}
+
 func TestDefaultUserSettingsKeepsTVDisplayOptionsDisabled(t *testing.T) {
 	settings := DefaultUserSettings()
 
@@ -63,6 +87,19 @@ func TestDefaultUserSettingsKeepsTVDisplayOptionsDisabled(t *testing.T) {
 	for name, option := range options {
 		if option == nil || *option {
 			t.Fatalf("%s should be explicitly disabled by default", name)
+		}
+	}
+	if settings.Display.SimpleModeHomeShelves == nil {
+		t.Fatal("simple mode home shelves should default to the built-in M.O.M. Mode™ list")
+	}
+	want := DefaultSimpleModeHomeShelfIDs()
+	got := *settings.Display.SimpleModeHomeShelves
+	if len(got) != len(want) {
+		t.Fatalf("simple mode home shelves = %#v, want %#v", got, want)
+	}
+	for i, id := range want {
+		if got[i] != id {
+			t.Fatalf("simple mode home shelves = %#v, want %#v", got, want)
 		}
 	}
 }

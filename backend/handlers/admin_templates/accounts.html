@@ -509,6 +509,7 @@ function renderHouseholds() {
                         <button class="btn btn-secondary btn-sm" onclick="showRenameAccountModal('${a.id}', '${escapeHtml(a.username)}')">Rename</button>
                         ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="showMaxStreamsModal('${a.id}', '${escapeHtml(a.username)}', ${a.maxStreams || 0})">Limits</button>` : ''}
                         <button class="btn btn-secondary btn-sm" onclick="showChangePasswordModal('${a.id}', '${escapeHtml(a.username)}')">Password</button>
+                        ${isAdmin && !a.isMaster ? `<button class="btn btn-secondary btn-sm" onclick="showTransferAdminModal('${encodeURIComponent(a.id)}', '${encodeURIComponent(a.username)}')">Make Admin</button>` : ''}
                         ${isAdmin && !a.isMaster ? `<button class="btn btn-danger btn-sm" onclick="deleteAccount('${a.id}', '${escapeHtml(a.username)}')">Delete</button>` : ''}
                     </div>
                 </div>
@@ -1334,7 +1335,7 @@ function showChangePasswordModal(accountId, username) {
     `);
 }
 
-async function changePassword(e, accountId) {
+async function changePassword(e, targetAccountId) {
     e.preventDefault();
     const form = e.target;
     if (form.password.value !== form.confirm.value) {
@@ -1342,15 +1343,22 @@ async function changePassword(e, accountId) {
         return;
     }
     try {
-        const res = await fetch(basePath + '/api/accounts/password?accountId=' + accountId, {
+        const res = await fetch(basePath + '/api/accounts/password?accountId=' + encodeURIComponent(targetAccountId), {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ newPassword: form.password.value })
         });
         if (!res.ok) throw new Error(await res.text());
         hideModal();
+        if (targetAccountId === accountId) {
+            showToast('Password changed. Sign in again with the new password.');
+            setTimeout(() => {
+                window.location.href = serverBasePath + '/admin/login';
+            }, 1000);
+            return;
+        }
         showToast('Password changed');
-        loadData();
+        await loadData();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
@@ -1363,6 +1371,57 @@ async function deleteAccount(accountId, username) {
         if (!res.ok) throw new Error(await res.text());
         showToast('Household deleted');
         loadData();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+function showTransferAdminModal(encodedAccountId, encodedUsername) {
+    const targetAccountId = decodeURIComponent(encodedAccountId);
+    const username = decodeURIComponent(encodedUsername);
+    showModal(`
+        <div class="card-header"><h2>Transfer Admin Status</h2></div>
+        <div class="card-body">
+            <p>Make <strong>${escapeHtml(username)}</strong> the server administrator?</p>
+            <div class="remote-access-warning" style="margin-top:1rem;">
+                Your account will lose admin access immediately. All sessions for both accounts will be signed out so permissions refresh safely.
+            </div>
+            <form onsubmit="transferAdmin(event, '${targetAccountId}')">
+                <div class="form-group" style="margin-top:1rem;">
+                    <label class="form-label">Type <strong>${escapeHtml(username)}</strong> to confirm</label>
+                    <input type="text" name="confirmation" class="form-input" autocomplete="off" required autofocus>
+                </div>
+                <input type="hidden" name="expected" value="${escapeHtml(username)}">
+                <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Transfer Admin Status</button>
+                </div>
+            </form>
+        </div>
+    `);
+}
+
+async function transferAdmin(event, targetAccountId) {
+    event.preventDefault();
+    const form = event.target;
+    if (form.confirmation.value.trim() !== form.expected.value) {
+        showToast('Enter the account name exactly to confirm', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(basePath + '/api/accounts/transfer-admin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({ accountId: targetAccountId })
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to transfer admin status');
+        }
+        hideModal();
+        showToast('Admin status transferred. Sign in again to continue.');
+        setTimeout(() => { window.location.href = serverBasePath + '/admin/login'; }, 800);
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }

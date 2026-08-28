@@ -252,6 +252,14 @@ func (s *Service) invalidateContinueWatchingLocked(userID string) {
 	s.notifyWatchStateChanged(userID)
 }
 
+// invalidateContinueWatchingCacheLocked refreshes position-sensitive Continue
+// Watching data without notifying broader consumers whose inputs did not
+// change. In particular, ordinary playback heartbeats do not change the set of
+// series used by the calendar.
+func (s *Service) invalidateContinueWatchingCacheLocked(userID string) {
+	delete(s.continueWatchingCache, userID)
+}
+
 func (s *Service) notifyWatchStateChanged(userID string) {
 	s.changeMu.RLock()
 	fn := s.watchStateChanged
@@ -2111,10 +2119,19 @@ func (s *Service) findNextUnwatchedEpisode(
 		return nil
 	}
 
+	// History can legitimately contain both season-relative and absolute-numbered
+	// rows for the same episode (for example One Piece S23E18 and S23E1173).
+	// Keep the source rows intact, but canonicalize their numbering for the
+	// derived on-deck calculation so an absolute-numbered latest row can still be
+	// located in season metadata.
+	numbering := newEpisodeNumberingIndex(seriesDetails)
+	lastWatchedSeason, lastWatchedEpisode := numbering.canonical(lastWatched.SeasonNumber, lastWatched.EpisodeNumber)
+
 	// Build set of watched episodes for O(1) lookup
 	watchedSet := make(map[string]bool)
 	for _, ep := range watchedEpisodes {
-		key := episodeKey(ep.SeasonNumber, ep.EpisodeNumber)
+		season, episode := numbering.canonical(ep.SeasonNumber, ep.EpisodeNumber)
+		key := episodeKey(season, episode)
 		watchedSet[key] = true
 	}
 
@@ -2152,7 +2169,7 @@ func (s *Service) findNextUnwatchedEpisode(
 	foundLast := false
 	var firstUnreleased *models.EpisodeReference
 	for _, ep := range allEpisodes {
-		if ep.season == lastWatched.SeasonNumber && ep.episode == lastWatched.EpisodeNumber {
+		if ep.season == lastWatchedSeason && ep.episode == lastWatchedEpisode {
 			foundLast = true
 			continue
 		}
@@ -3806,7 +3823,7 @@ func (s *Service) ImportWatchHistory(userID string, updates []models.WatchHistor
 				update.MediaType, update.Name, update.WatchedAt.Format(time.RFC3339), update.SeriesID)
 		}
 
-		if update.Watched != nil && *update.Watched && s.hasHighInProgressPlaybackLocked(userID, update) {
+		if update.Watched != nil && *update.Watched && s.hasConflictingInProgressPlaybackLocked(userID, update) {
 			log.Printf("[history] import: SKIP (preserve local in-progress) %s %q watchedAt=%s seriesID=%s",
 				update.MediaType, update.Name, update.WatchedAt.Format(time.RFC3339), update.SeriesID)
 			if crossProviderRekeyed || dedupedEquivalent {
@@ -3943,6 +3960,87 @@ func episodeScopedIndexKeys(externalIDs map[string]string) []string {
 	return keys
 }
 
+type watchHistoryReconcileIndexKey struct {
+	seriesToken string
+	season      int
+	number      int
+}
+
+type watchHistoryReconcileIndex struct {
+	byEpisode  map[watchHistoryReconcileIndexKey]map[string]struct{}
+	byAbsolute map[watchHistoryReconcileIndexKey]map[string]struct{}
+}
+
+func newWatchHistoryReconcileIndex(perUser map[string]models.WatchHistoryItem) *watchHistoryReconcileIndex {
+	idx := &watchHistoryReconcileIndex{
+		byEpisode:  make(map[watchHistoryReconcileIndexKey]map[string]struct{}),
+		byAbsolute: make(map[watchHistoryReconcileIndexKey]map[string]struct{}),
+	}
+	for key, item := range perUser {
+		idx.add(key, item)
+	}
+	return idx
+}
+
+func (idx *watchHistoryReconcileIndex) add(itemKey string, item models.WatchHistoryItem) {
+	if idx == nil || item.MediaType != "episode" || item.SeasonNumber <= 0 || item.EpisodeNumber <= 0 || len(item.ExternalIDs) == 0 {
+		return
+	}
+	seriesIDs := canonicalSeriesExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs)
+	absolute, hasAbsolute := positiveExternalIDInt(item.ExternalIDs, "absoluteEpisode")
+	for provider, id := range seriesIDs {
+		provider = strings.ToLower(strings.TrimSpace(provider))
+		id = strings.ToLower(strings.TrimSpace(id))
+		if provider == "" || id == "" {
+			continue
+		}
+		seriesToken := provider + "\x00" + id
+		idx.addKey(idx.byEpisode, watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: item.EpisodeNumber}, itemKey)
+		if hasAbsolute {
+			idx.addKey(idx.byAbsolute, watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: absolute}, itemKey)
+		}
+	}
+}
+
+func (idx *watchHistoryReconcileIndex) addKey(index map[watchHistoryReconcileIndexKey]map[string]struct{}, key watchHistoryReconcileIndexKey, itemKey string) {
+	items := index[key]
+	if items == nil {
+		items = make(map[string]struct{})
+		index[key] = items
+	}
+	items[itemKey] = struct{}{}
+}
+
+func (idx *watchHistoryReconcileIndex) candidates(item models.WatchHistoryItem) map[string]struct{} {
+	result := make(map[string]struct{})
+	if idx == nil {
+		return result
+	}
+	seriesIDs := canonicalSeriesExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs)
+	absolute, hasAbsolute := positiveExternalIDInt(item.ExternalIDs, "absoluteEpisode")
+	for provider, id := range seriesIDs {
+		provider = strings.ToLower(strings.TrimSpace(provider))
+		id = strings.ToLower(strings.TrimSpace(id))
+		if provider == "" || id == "" {
+			continue
+		}
+		seriesToken := provider + "\x00" + id
+		idx.addCandidates(result, idx.byEpisode[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: item.EpisodeNumber}])
+		idx.addCandidates(result, idx.byAbsolute[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: item.EpisodeNumber}])
+		if hasAbsolute {
+			idx.addCandidates(result, idx.byEpisode[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: absolute}])
+			idx.addCandidates(result, idx.byAbsolute[watchHistoryReconcileIndexKey{seriesToken: seriesToken, season: item.SeasonNumber, number: absolute}])
+		}
+	}
+	return result
+}
+
+func (idx *watchHistoryReconcileIndex) addCandidates(dst, src map[string]struct{}) {
+	for key := range src {
+		dst[key] = struct{}{}
+	}
+}
+
 func reconcileEquivalentEpisodeWatchHistoryLocked(perUser map[string]models.WatchHistoryItem) bool {
 	if len(perUser) < 2 {
 		return false
@@ -3963,19 +4061,31 @@ func reconcileEquivalentEpisodeWatchHistoryLocked(perUser map[string]models.Watc
 		return items[i].UpdatedAt.Before(items[j].UpdatedAt)
 	})
 
+	index := newWatchHistoryReconcileIndex(perUser)
 	changed := false
 	for _, item := range items {
-		before := make(map[string]models.WatchHistoryItem, len(perUser))
-		for key, candidate := range perUser {
-			before[key] = candidate
+		if previous, exists := perUser[item.ID]; !exists || watchHistoryItemsDiffer(previous, item) {
+			changed = true
 		}
 		perUser[item.ID] = item
-		syncEquivalentEpisodeWatchHistoryLocked(perUser, item.ID, item)
-		for key, candidate := range perUser {
-			if previous, ok := before[key]; !ok || watchHistoryItemsDiffer(previous, candidate) {
-				changed = true
-				break
+		index.add(item.ID, item)
+		for key := range index.candidates(item) {
+			if key == item.ID {
+				continue
 			}
+			candidate, exists := perUser[key]
+			if !exists || candidate.MediaType != "episode" || candidate.SeasonNumber != item.SeasonNumber ||
+				!watchHistorySeriesIdentitiesCompatible(candidate, item) ||
+				!watchHistoryEquivalentEpisodeIDsMatch(candidate, item) {
+				continue
+			}
+			updated, updatedCandidate := mergeEquivalentEpisodeWatchHistoryItem(item, candidate)
+			if !updatedCandidate {
+				continue
+			}
+			perUser[key] = updated
+			index.add(key, updated)
+			changed = true
 		}
 	}
 	return changed
@@ -4011,28 +4121,37 @@ func syncEquivalentEpisodeWatchHistoryLocked(perUser map[string]models.WatchHist
 			continue
 		}
 
-		if !preferEquivalentEpisodeWatchHistoryState(item, candidate) {
+		updated, changed := mergeEquivalentEpisodeWatchHistoryItem(item, candidate)
+		if !changed {
 			continue
 		}
-
-		candidate.Watched = item.Watched
-		if item.WatchedSeconds > candidate.WatchedSeconds {
-			candidate.WatchedSeconds = item.WatchedSeconds
-		}
-		candidate.UpdatedAt = item.UpdatedAt
-		if item.Watched {
-			candidate.WatchedAt = item.WatchedAt
-		}
-		if candidate.ExternalIDs == nil {
-			candidate.ExternalIDs = make(map[string]string)
-		}
-		for k, v := range item.ExternalIDs {
-			if v != "" {
-				candidate.ExternalIDs[k] = v
-			}
-		}
-		perUser[key] = candidate
+		perUser[key] = updated
 	}
+}
+
+func mergeEquivalentEpisodeWatchHistoryItem(source, target models.WatchHistoryItem) (models.WatchHistoryItem, bool) {
+	if !preferEquivalentEpisodeWatchHistoryState(source, target) {
+		return target, false
+	}
+	updated := target
+	updated.Watched = source.Watched
+	if source.WatchedSeconds > updated.WatchedSeconds {
+		updated.WatchedSeconds = source.WatchedSeconds
+	}
+	updated.UpdatedAt = source.UpdatedAt
+	if source.Watched {
+		updated.WatchedAt = source.WatchedAt
+	}
+	updated.ExternalIDs = make(map[string]string, len(target.ExternalIDs)+len(source.ExternalIDs))
+	for k, v := range target.ExternalIDs {
+		updated.ExternalIDs[k] = v
+	}
+	for k, v := range source.ExternalIDs {
+		if v != "" {
+			updated.ExternalIDs[k] = v
+		}
+	}
+	return updated, watchHistoryItemsDiffer(target, updated)
 }
 
 func preferEquivalentEpisodeWatchHistoryState(source, target models.WatchHistoryItem) bool {
@@ -4124,14 +4243,21 @@ func (s *Service) loadWatchHistory() error {
 	defer s.mu.Unlock()
 
 	if s.useDB() {
+		loadStarted := time.Now()
 		ctx := context.Background()
+		queryStarted := time.Now()
 		allItems, err := s.store.WatchHistory().ListAll(ctx)
 		if err != nil {
 			return fmt.Errorf("load watch history from db: %w", err)
 		}
+		queryDuration := time.Since(queryStarted)
+		processingStarted := time.Now()
 		s.watchHistory = make(map[string]map[string]models.WatchHistoryItem, len(allItems))
 		persisted := make(map[historyPersistenceKey][sha256.Size]byte)
+		rowCount := 0
+		var reconcileDuration time.Duration
 		for userID, items := range allItems {
+			rowCount += len(items)
 			perUser := make(map[string]models.WatchHistoryItem, len(items))
 			for _, item := range items {
 				fingerprint, err := watchHistoryPersistenceFingerprint(item)
@@ -4143,10 +4269,14 @@ func (s *Service) loadWatchHistory() error {
 				key := item.ID
 				perUser[key] = item
 			}
+			reconcileStarted := time.Now()
 			reconcileEquivalentEpisodeWatchHistoryLocked(perUser)
+			reconcileDuration += time.Since(reconcileStarted)
 			s.watchHistory[userID] = perUser
 		}
 		s.persistedWatchHistory = persisted
+		log.Printf("[history] Startup load completed table=watch_history rows=%d users=%d query=%s processing=%s reconcile=%s total=%s",
+			rowCount, len(allItems), queryDuration, time.Since(processingStarted), reconcileDuration, time.Since(loadStarted))
 		return nil
 	}
 
@@ -4832,6 +4962,8 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 	// Normalize itemID to lowercase for consistent key matching
 	normalizedItemID := update.ItemID
 	key := makeWatchKey(update.MediaType, normalizedItemID)
+	_, hadExistingProgress := findMatchingPlaybackProgress(perUser, key, update)
+	watchStateChanged := !hadExistingProgress
 
 	// Calculate percent watched
 	var percentWatched float64
@@ -4980,10 +5112,12 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 				}
 				if isSeriesLevelPlaybackMarker(existingProg) {
 					delete(perUser, existingKey)
+					watchStateChanged = true
 					continue
 				}
 				existingProg.HiddenFromContinueWatching = false
 				perUser[existingKey] = existingProg
+				watchStateChanged = true
 			}
 		}
 	}
@@ -4996,8 +5130,17 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 	persistDuration = time.Since(persistStartedAt)
 
 	if !excludeFromHistoryShelves {
-		// Invalidate continue watching cache for this user since VOD progress changed.
-		s.invalidateContinueWatchingLocked(userID)
+		// Continue Watching includes the current position, so refresh it on every
+		// heartbeat. Notify calendar and other broad watch-state consumers only
+		// when membership/visibility can change, not for position-only updates.
+		// A threshold-crossing update is followed by UpdateWatchHistory below,
+		// which performs the broad notification after it clears progress. Keep
+		// this stage cache-only so that transition emits one notification.
+		if watchStateChanged && percentWatched < 90 {
+			s.invalidateContinueWatchingLocked(userID)
+		} else {
+			s.invalidateContinueWatchingCacheLocked(userID)
+		}
 	}
 
 	// Grab real-time scrobbler reference while holding the lock
@@ -5346,6 +5489,21 @@ func findMatchingMeaningfulPlaybackProgress(perUser map[string]models.PlaybackPr
 	return best, found
 }
 
+func findMatchingPlaybackProgress(perUser map[string]models.PlaybackProgress, incomingKey string, update models.PlaybackProgressUpdate) (models.PlaybackProgress, bool) {
+	var best models.PlaybackProgress
+	found := false
+	for key, progress := range perUser {
+		if !playbackProgressMatchesUpdate(key, progress, incomingKey, update) {
+			continue
+		}
+		if !found || preferPlaybackProgress(progress, best) {
+			best = progress
+			found = true
+		}
+	}
+	return best, found
+}
+
 func playbackProgressMatchesUpdate(existingKey string, progress models.PlaybackProgress, incomingKey string, update models.PlaybackProgressUpdate) bool {
 	if strings.ToLower(progress.MediaType) != strings.ToLower(update.MediaType) {
 		return false
@@ -5457,14 +5615,20 @@ func (s *Service) loadPlaybackProgress() error {
 	defer s.mu.Unlock()
 
 	if s.useDB() {
+		loadStarted := time.Now()
 		ctx := context.Background()
+		queryStarted := time.Now()
 		allItems, err := s.store.PlaybackProgress().ListAll(ctx)
 		if err != nil {
 			return fmt.Errorf("load playback progress from db: %w", err)
 		}
+		queryDuration := time.Since(queryStarted)
+		processingStarted := time.Now()
 		s.playbackProgress = make(map[string]map[string]models.PlaybackProgress, len(allItems))
 		persisted := make(map[historyPersistenceKey][sha256.Size]byte)
+		rowCount := 0
 		for userID, items := range allItems {
+			rowCount += len(items)
 			perUser := make(map[string]models.PlaybackProgress, len(items))
 			for _, item := range items {
 				fingerprint, err := playbackProgressPersistenceFingerprint(item)
@@ -5479,6 +5643,8 @@ func (s *Service) loadPlaybackProgress() error {
 			s.playbackProgress[userID] = perUser
 		}
 		s.persistedPlaybackProgress = persisted
+		log.Printf("[history] Startup load completed table=playback_progress rows=%d users=%d query=%s processing=%s total=%s",
+			rowCount, len(allItems), queryDuration, time.Since(processingStarted), time.Since(loadStarted))
 		return nil
 	}
 
@@ -6630,7 +6796,7 @@ func preferContinueWatchingEntry(candidate, existing models.SeriesWatchState) bo
 	return candidate.PercentWatched > existing.PercentWatched
 }
 
-func (s *Service) hasHighInProgressPlaybackLocked(userID string, update models.WatchHistoryUpdate) bool {
+func (s *Service) hasConflictingInProgressPlaybackLocked(userID string, update models.WatchHistoryUpdate) bool {
 	perUser, ok := s.playbackProgress[userID]
 	if !ok {
 		return false
@@ -6640,6 +6806,22 @@ func (s *Service) hasHighInProgressPlaybackLocked(userID string, update models.W
 		if !isMatchingPlaybackForWatchUpdate(progress, update) {
 			continue
 		}
+		if progress.PercentWatched >= continueWatchingCompletionThreshold {
+			continue
+		}
+
+		// If local playback continued or was paused after an imported completion
+		// timestamp, the newer incomplete heartbeat is stronger evidence about
+		// this device's current state. Preserve it instead of clearing progress.
+		// The provider-side writer may be another client and cannot be inferred
+		// from the imported history record alone.
+		if strings.EqualFold(update.MediaType, "episode") &&
+			!update.WatchedAt.IsZero() && progress.UpdatedAt.After(update.WatchedAt) {
+			return true
+		}
+
+		// Preserve the existing threshold-conflict behavior for providers that
+		// consider an 80%-complete stop watched while local history requires 90%.
 		if progress.PercentWatched >= traktStopWatchThreshold && progress.PercentWatched < continueWatchingCompletionThreshold {
 			return true
 		}

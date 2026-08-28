@@ -40,6 +40,11 @@ type SearchCacheClearer interface {
 }
 
 func shouldClearPrequeueForGlobalSettingsChange(oldSettings, newSettings config.Settings) bool {
+	if oldSettings.Streaming.ResolveFirstReadySource != newSettings.Streaming.ResolveFirstReadySource ||
+		oldSettings.Streaming.ResolutionEndRaceEarly != newSettings.Streaming.ResolutionEndRaceEarly ||
+		oldSettings.Streaming.ResolutionSettleWindowMs != newSettings.Streaming.ResolutionSettleWindowMs {
+		return true
+	}
 	if oldSettings.Display.ShowParsedBadges != newSettings.Display.ShowParsedBadges {
 		return true
 	}
@@ -890,6 +895,12 @@ func (h *SettingsHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+	if err := s.Server.NormalizeExternalBackendURL(); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
 	if err := s.Transmux.NormalizeHardwareAcceleration(); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -921,10 +932,11 @@ func (h *SettingsHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Clear prequeue cache when ranking/filtering-affecting settings change.
+	// Clear prepared selections when resolution strategy, ranking, filtering, or
+	// other selection-affecting settings change.
 	if shouldClearPrequeueForGlobalSettingsChange(oldSettings, s) {
 		if h.PrequeueStore != nil {
-			log.Printf("[settings] ranking/filtering-related settings changed, clearing prequeue cache")
+			log.Printf("[settings] prequeue-affecting settings changed, clearing prequeue cache")
 			h.PrequeueStore.DeleteAll()
 		}
 		if h.SearchCache != nil {

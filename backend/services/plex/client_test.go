@@ -3,12 +3,19 @@ package plex
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
+
+type plexRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn plexRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
 
 func TestPlexLibraryItemAcceptsLegacyAndProviderGUIDs(t *testing.T) {
 	var item PlexLibraryItem
@@ -169,5 +176,89 @@ func TestGetServerLibrariesAtUsesSelectedAddress(t *testing.T) {
 	}
 	if len(libraries) != 3 || libraries[0].Title != "Movies" || libraries[1].Title != "Shows" || libraries[2].Title != "Music" {
 		t.Fatalf("libraries=%#v", libraries)
+	}
+}
+
+func TestGetServerLibraryItemsHydratesEpisodeParentIdentity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/library/sections/7/all" {
+			t.Fatalf("path=%q", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("includeGuids"); got != "1" {
+			t.Fatalf("includeGuids=%q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Query().Get("type") {
+		case "4":
+			_, _ = w.Write([]byte(`{"MediaContainer":{"totalSize":1,"Metadata":[{
+				"ratingKey":"episode-1","grandparentRatingKey":"show-1","grandparentTitle":"World War II with Tom Hanks",
+				"title":"The Beginning","type":"episode","year":2026,
+				"Guid":[{"id":"tmdb://7060577"},{"id":"tvdb://11564259"}]
+			}]}}`))
+		case "2":
+			_, _ = w.Write([]byte(`{"MediaContainer":{"totalSize":1,"Metadata":[{
+				"ratingKey":"show-1","title":"World War II with Tom Hanks","type":"show","year":2026,
+				"Guid":[{"id":"imdb://tt40385200"},{"id":"tmdb://316992"},{"id":"tvdb://472884"}]
+			}]}}`))
+		default:
+			t.Fatalf("type=%q", r.URL.Query().Get("type"))
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient("strmr-test")
+	resource := PlexResource{AccessToken: "server-token", Connections: []PlexConnection{{Protocol: "http", URI: server.URL, Local: true}}}
+	items, err := client.GetServerLibraryItems(resource, "7", "show")
+	if err != nil {
+		t.Fatalf("GetServerLibraryItems() error = %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items=%d, want 1", len(items))
+	}
+	if items[0].GrandparentYear != 2026 || len(items[0].GrandparentGuid) != 3 {
+		t.Fatalf("parent identity not hydrated: %#v", items[0])
+	}
+	if items[0].GrandparentGuid[1].ID != "tmdb://316992" {
+		t.Fatalf("parent GUIDs=%#v", items[0].GrandparentGuid)
+	}
+}
+
+func TestGetWatchHistoryForServerUsesSelectedServerAndAddress(t *testing.T) {
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = plexRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var body string
+		switch {
+		case req.URL.Host == "plex.tv" && req.URL.Path == "/api/v2/resources":
+			body = `[
+				{"name":"Wrong","clientIdentifier":"server-wrong","owned":true,"provides":"server","presence":true,"accessToken":"wrong-token","connections":[{"protocol":"https","uri":"https://wrong.example"}]},
+				{"name":"Chosen","clientIdentifier":"server-chosen","owned":true,"provides":"server","presence":true,"accessToken":"chosen-token","connections":[{"protocol":"https","uri":"https://automatic.example"}]}
+			]`
+		case req.URL.Host == "selected.example" && req.URL.Path == "/status/sessions/history/all":
+			if got := req.Header.Get("X-Plex-Token"); got != "chosen-token" {
+				t.Fatalf("history token = %q", got)
+			}
+			body = `{"MediaContainer":{"Metadata":[{"ratingKey":"42","title":"Selected Movie","type":"movie"}]}}`
+		case req.URL.Host == "selected.example" && req.URL.Path == "/library/metadata/42":
+			body = `{"MediaContainer":{"Metadata":[{"ratingKey":"42","title":"Selected Movie","type":"movie","Guid":[{"id":"tmdb://123"}]}]}}`
+		default:
+			t.Fatalf("unexpected Plex request: %s", req.URL.String())
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Request:    req,
+		}, nil
+	})
+	defer func() { http.DefaultTransport = originalTransport }()
+
+	client := NewClient("strmr-test")
+	history, err := client.GetWatchHistoryForServer("account-token", "server-chosen", "https://selected.example", 100, 0)
+	if err != nil {
+		t.Fatalf("GetWatchHistoryForServer() error = %v", err)
+	}
+	if len(history) != 1 || history[0].Title != "Selected Movie" || history[0].ExternalIDs["tmdb"] != "123" {
+		t.Fatalf("history = %#v", history)
 	}
 }

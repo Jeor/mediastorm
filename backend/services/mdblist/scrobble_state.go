@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"novastream/models"
+	"novastream/services/realtimesessions"
 )
 
 type scrobbleState int
@@ -38,6 +39,11 @@ type ScrobbleStateTracker struct {
 	scrobbler       *Scrobbler
 	refreshInterval time.Duration
 	staleTimeout    time.Duration
+	registry        *realtimesessions.Registry
+}
+
+func (t *ScrobbleStateTracker) SetSessionRegistry(registry *realtimesessions.Registry) {
+	t.registry = registry
 }
 
 // NewScrobbleStateTracker creates a new tracker.
@@ -105,6 +111,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 			} else {
 				sess.state = statePaused
 				sess.lastAPICall = now
+				t.registry.Record("mdblist", userID, "paused", "", update, percentWatched)
 			}
 		}
 		return
@@ -122,6 +129,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 		} else {
 			sess.state = stateWatching
 			sess.lastAPICall = now
+			t.registry.Record("mdblist", userID, "playing", "", update, percentWatched)
 		}
 	case stateWatching:
 		if now.Sub(sess.lastAPICall) >= t.refreshInterval {
@@ -132,6 +140,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 				}
 			} else {
 				sess.lastAPICall = now
+				t.registry.Record("mdblist", userID, "playing", "", update, percentWatched)
 			}
 		}
 	}
@@ -165,7 +174,19 @@ func (t *ScrobbleStateTracker) StopSession(userID string, update models.Playback
 	req := BuildScrobbleRequest(update, percentWatched)
 	if err := t.scrobbleWithHybridFallback("stop", update, percentWatched, req); err != nil {
 		log.Printf("[mdblist-scrobble] stop failed for %s: %v", key, err)
+		return
 	}
+	t.registry.Remove("mdblist", userID, update)
+}
+
+func (t *ScrobbleStateTracker) CleanupRealtimeSession(_ context.Context, session models.RealtimeScrobbleSession) error {
+	account := t.scrobbler.getAccountForUser(session.UserID)
+	if account == nil || account.APIKey == "" {
+		return fmt.Errorf("no MDBList API key for user %s", session.UserID)
+	}
+	t.client.UpdateAPIKey(account.APIKey)
+	req := BuildScrobbleRequest(session.Update, session.PercentWatched)
+	return t.scrobbleWithHybridFallback("stop", session.Update, session.PercentWatched, req)
 }
 
 // scrobbleWithHybridFallback tries pure seasonal first, then seasonal season +

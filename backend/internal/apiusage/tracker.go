@@ -91,6 +91,13 @@ func ConfigureStorage(cacheDir string) {
 	GetTracker().ConfigureStorage(cacheDir)
 }
 
+// ConfigureStorageAsync restores persisted outbound usage without blocking
+// server readiness. Events recorded while the restore is in flight are merged
+// into the restored state before persistence is activated.
+func ConfigureStorageAsync(cacheDir string) {
+	GetTracker().configureStorageAsync(cacheDir)
+}
+
 func TrackClient(client *http.Client, provider, operation string) *http.Client {
 	if client == nil {
 		client = http.DefaultClient
@@ -154,6 +161,72 @@ func (t *Tracker) ConfigureStorage(cacheDir string) {
 	if err := t.pruneOutboundFiles(time.Now()); err != nil {
 		log.Printf("[apiusage] warning: failed to prune usage cache: %v", err)
 	}
+}
+
+func (t *Tracker) configureStorageAsync(cacheDir string) <-chan struct{} {
+	done := make(chan struct{})
+	cacheDir = strings.TrimSpace(cacheDir)
+	if cacheDir == "" {
+		cacheDir = "cache"
+	}
+	storageDir := filepath.Join(cacheDir, "api-usage")
+	if err := os.MkdirAll(storageDir, 0o755); err != nil {
+		log.Printf("[apiusage] warning: failed to create usage cache dir %s: %v", storageDir, err)
+		close(done)
+		return done
+	}
+
+	go func() {
+		defer close(done)
+		now := time.Now()
+		loaded := &Tracker{
+			outbound:   make(map[string]OutboundUsage),
+			storageDir: storageDir,
+		}
+		if err := loaded.loadOutboundEvents(now); err != nil {
+			log.Printf("[apiusage] warning: failed to load usage cache: %v", err)
+		}
+
+		loaded.mu.RLock()
+		loadedOutbound := loaded.outbound
+		loadedEvents := loaded.outboundEvents
+		loaded.mu.RUnlock()
+		if loadedOutbound == nil {
+			loadedOutbound = make(map[string]OutboundUsage)
+		}
+
+		// storageDir remains unset on the live tracker until the historical load
+		// finishes, so currentEvents cannot already be present in the files that
+		// were just read and can be merged without double counting.
+		t.mu.Lock()
+		currentEvents := append([]outboundEvent(nil), t.outboundEvents...)
+		for _, event := range currentEvents {
+			recordLoadedOutboundUsage(loadedOutbound, event)
+		}
+		loadedEvents = append(loadedEvents, currentEvents...)
+		sort.Slice(loadedEvents, func(i, j int) bool {
+			return loadedEvents[i].At.Before(loadedEvents[j].At)
+		})
+		t.outbound = loadedOutbound
+		t.outboundEvents = loadedEvents
+		t.storageDir = storageDir
+		t.mu.Unlock()
+
+		// Persist the small number of events recorded during restore now that
+		// storage is active. New events serialize behind these writes.
+		t.storageMu.Lock()
+		for _, event := range currentEvents {
+			if err := appendOutboundEvent(storageDir, event); err != nil {
+				log.Printf("[apiusage] warning: failed to persist startup usage event: %v", err)
+			}
+		}
+		t.storageMu.Unlock()
+
+		if err := t.pruneOutboundFiles(now); err != nil {
+			log.Printf("[apiusage] warning: failed to prune usage cache: %v", err)
+		}
+	}()
+	return done
 }
 
 func (t *Tracker) Record(key, label, group, method, path string, status int, duration time.Duration) {

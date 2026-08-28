@@ -90,6 +90,20 @@ type movieDetailsCacheEntry struct {
 	done   chan struct{}
 }
 
+type tmdbHTTPError struct {
+	StatusCode int
+	Status     string
+}
+
+func (e *tmdbHTTPError) Error() string {
+	return "tmdb request failed: " + e.Status
+}
+
+func isTMDBNotFound(err error) bool {
+	var httpErr *tmdbHTTPError
+	return errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound
+}
+
 type tmdbClient struct {
 	apiKey   string
 	language string
@@ -97,13 +111,74 @@ type tmdbClient struct {
 	cache    *fileCache // Optional cache for expensive lookups
 
 	// Rate limiting
-	throttleMu  sync.Mutex
-	lastRequest time.Time
-	minInterval time.Duration
+	throttleMu    sync.Mutex
+	lastRequest   time.Time
+	minInterval   time.Duration
+	cooldownUntil time.Time
 
 	// In-flight singleflight map for movieDetails — holds only requests
 	// currently being fetched (bounded), not a process-lifetime cache.
 	movieCache sync.Map
+}
+
+func (c *tmdbClient) waitForRequestSlot(ctx context.Context) error {
+	for {
+		now := time.Now()
+		c.throttleMu.Lock()
+		if now.Before(c.cooldownUntil) {
+			wait := time.Until(c.cooldownUntil)
+			c.throttleMu.Unlock()
+			if err := sleepWithContext(ctx, wait); err != nil {
+				return err
+			}
+			continue
+		}
+		availableAt := c.lastRequest.Add(c.minInterval)
+		if availableAt.Before(now) {
+			availableAt = now
+		}
+		c.lastRequest = availableAt
+		c.throttleMu.Unlock()
+
+		if err := sleepWithContext(ctx, time.Until(availableAt)); err != nil {
+			return err
+		}
+
+		c.throttleMu.Lock()
+		coolingDown := time.Now().Before(c.cooldownUntil)
+		c.throttleMu.Unlock()
+		if !coolingDown {
+			return nil
+		}
+	}
+}
+
+func tmdbRetryDelay(resp *http.Response, fallback time.Duration) time.Duration {
+	if resp != nil {
+		if raw := strings.TrimSpace(resp.Header.Get("Retry-After")); raw != "" {
+			if seconds, err := strconv.Atoi(raw); err == nil && seconds > 0 {
+				return time.Duration(seconds) * time.Second
+			}
+			if retryAt, err := http.ParseTime(raw); err == nil {
+				if delay := time.Until(retryAt); delay > 0 {
+					return delay
+				}
+			}
+		}
+	}
+	return fallback
+}
+
+func (c *tmdbClient) beginSharedCooldown(delay time.Duration) {
+	if delay <= 0 {
+		return
+	}
+	until := time.Now().Add(delay)
+	c.throttleMu.Lock()
+	if until.After(c.cooldownUntil) {
+		c.cooldownUntil = until
+	}
+	c.throttleMu.Unlock()
 }
 
 func newTMDBClient(apiKey, language string, httpc *http.Client, cache *fileCache) *tmdbClient {
@@ -130,20 +205,8 @@ func (c *tmdbClient) doGET(ctx context.Context, endpoint string, v any) error {
 			return err
 		}
 
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait) // reserve slot
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			if err := sleepWithContext(ctx, wait); err != nil {
-				return err
-			}
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -167,27 +230,23 @@ func (c *tmdbClient) doGET(ctx context.Context, endpoint string, v any) error {
 
 		// Handle rate limiting and server errors
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] rate limited or server error (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb request failed: %s", resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					if err := sleepWithContext(ctx, time.Duration(secs)*time.Second); err != nil {
-						return err
-					}
-				}
-			} else {
-				if err := sleepWithContext(ctx, backoff); err != nil {
-					return err
-				}
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return fmt.Errorf("tmdb request failed: %s", resp.Status)
+			return &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		err = json.NewDecoder(resp.Body).Decode(v)
@@ -373,6 +432,7 @@ type tmdbImagesResult struct {
 	Logo             *models.Image
 	TextlessPoster   *models.Image
 	TextPoster       *models.Image // Best poster with title text (has language tag)
+	Posters          []models.Image
 	TextlessBackdrop *models.Image
 	TextBackdrop     *models.Image // Best backdrop with language tag when available
 	Backdrops        []models.Image
@@ -508,9 +568,57 @@ func (c *tmdbClient) fetchImages(ctx context.Context, mediaType string, tmdbID i
 				result.TextPoster.IsFallbackLanguage = withText[0].ISO6391 != preferredLang
 			}
 		}
+		result.Posters = rankAlternatePosters(payload.Posters, result.TextlessPoster, preferredLang)
 	}
 
 	return result, nil
+}
+
+func rankAlternatePosters(items []tmdbImageItem, primary *models.Image, preferredLang string) []models.Image {
+	const maxAlternatePosters = 7
+	primaryKey := ""
+	if primary != nil {
+		primaryKey = comparableTMDBImageURL(primary.URL)
+	}
+
+	usable := make([]tmdbImageItem, 0, len(items))
+	for _, item := range items {
+		if logoLanguageRank(item, preferredLang) >= 0 {
+			usable = append(usable, item)
+		}
+	}
+	sort.SliceStable(usable, func(i, j int) bool {
+		iRank := logoLanguageRank(usable[i], preferredLang)
+		jRank := logoLanguageRank(usable[j], preferredLang)
+		if iRank != jRank {
+			return iRank < jRank
+		}
+		return usable[i].VoteAverage > usable[j].VoteAverage
+	})
+	seen := make(map[string]struct{})
+	result := make([]models.Image, 0, maxAlternatePosters)
+	for _, item := range usable {
+		img := buildTMDBImage(item.FilePath, tmdbPosterSize, "poster")
+		if img == nil {
+			continue
+		}
+		key := comparableTMDBImageURL(img.URL)
+		if key == "" || key == primaryKey {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		img.Language = item.ISO6391
+		img.IsTextless = item.ISO6391 == ""
+		img.IsFallbackLanguage = item.ISO6391 != "" && item.ISO6391 != preferredLang
+		result = append(result, *img)
+		if len(result) == maxAlternatePosters {
+			break
+		}
+	}
+	return result
 }
 
 func (c *tmdbClient) selectLogoCandidate(ctx context.Context, logos []tmdbImageItem, preferredLang string) (tmdbImageItem, bool) {
@@ -2413,18 +2521,8 @@ func (c *tmdbClient) fetchExternalID(ctx context.Context, mediaType string, tmdb
 	backoff := 300 * time.Millisecond
 
 	for attempt := 0; attempt < 3; attempt++ {
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait)
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			time.Sleep(wait)
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return "", err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -2443,23 +2541,23 @@ func (c *tmdbClient) fetchExternalID(ctx context.Context, mediaType string, tmdb
 
 		// Handle rate limiting and server errors with retry
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] fetchExternalID rate limited (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb external_ids for %s/%d failed: %s", apiMediaType, tmdbID, resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					time.Sleep(time.Duration(secs) * time.Second)
-				}
-			} else {
-				time.Sleep(backoff)
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return "", err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return "", fmt.Errorf("tmdb external_ids for %s/%d failed: %s", apiMediaType, tmdbID, resp.Status)
+			return "", &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		err = json.NewDecoder(resp.Body).Decode(&payload)
@@ -2498,18 +2596,8 @@ func (c *tmdbClient) findMovieByIMDBID(ctx context.Context, imdbID string) (int6
 			return 0, ctx.Err()
 		}
 
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait)
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			time.Sleep(wait)
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return 0, err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -2530,23 +2618,23 @@ func (c *tmdbClient) findMovieByIMDBID(ctx context.Context, imdbID string) (int6
 		}
 
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] findMovieByIMDBID rate limited (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb find %s failed: %s", imdbID, resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					time.Sleep(time.Duration(secs) * time.Second)
-				}
-			} else {
-				time.Sleep(backoff)
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return 0, err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return 0, fmt.Errorf("tmdb find %s failed: %s", imdbID, resp.Status)
+			return 0, &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		var result struct {
@@ -2591,18 +2679,8 @@ func (c *tmdbClient) findTVByIMDBID(ctx context.Context, imdbID string) (int64, 
 			return 0, ctx.Err()
 		}
 
-		// Rate limiting — compute wait outside the lock to avoid blocking other goroutines
-		c.throttleMu.Lock()
-		wait := c.minInterval - time.Since(c.lastRequest)
-		if wait > 0 {
-			c.lastRequest = time.Now().Add(wait)
-		} else {
-			c.lastRequest = time.Now()
-			wait = 0
-		}
-		c.throttleMu.Unlock()
-		if wait > 0 {
-			time.Sleep(wait)
+		if err := c.waitForRequestSlot(ctx); err != nil {
+			return 0, err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -2623,23 +2701,23 @@ func (c *tmdbClient) findTVByIMDBID(ctx context.Context, imdbID string) (int64, 
 		}
 
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			retryDelay := tmdbRetryDelay(resp, backoff)
 			resp.Body.Close()
 			log.Printf("[tmdb] findTVByIMDBID rate limited (attempt %d/3): status %d", attempt+1, resp.StatusCode)
-			lastErr = fmt.Errorf("tmdb find TV %s failed: %s", imdbID, resp.Status)
-			if ra := resp.Header.Get("Retry-After"); ra != "" {
-				if secs, err := strconv.Atoi(ra); err == nil {
-					time.Sleep(time.Duration(secs) * time.Second)
-				}
-			} else {
-				time.Sleep(backoff)
-				backoff *= 2
+			lastErr = &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				c.beginSharedCooldown(retryDelay)
 			}
+			if err := sleepWithContext(ctx, retryDelay); err != nil {
+				return 0, err
+			}
+			backoff *= 2
 			continue
 		}
 
 		if resp.StatusCode >= 400 {
 			resp.Body.Close()
-			return 0, fmt.Errorf("tmdb find TV %s failed: %s", imdbID, resp.Status)
+			return 0, &tmdbHTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 		}
 
 		var result struct {
@@ -2696,6 +2774,108 @@ type tmdbSimilarResponse struct {
 		FirstAirDate     string  `json:"first_air_date"`
 		ReleaseDate      string  `json:"release_date"`
 	} `json:"results"`
+}
+
+type tmdbDailyTrendingResponse struct {
+	Results []struct {
+		ID               int64   `json:"id"`
+		Name             string  `json:"name"`
+		Title            string  `json:"title"`
+		OriginalName     string  `json:"original_name"`
+		OriginalTitle    string  `json:"original_title"`
+		Overview         string  `json:"overview"`
+		OriginalLanguage string  `json:"original_language"`
+		PosterPath       string  `json:"poster_path"`
+		BackdropPath     string  `json:"backdrop_path"`
+		Popularity       float64 `json:"popularity"`
+		VoteCount        int     `json:"vote_count"`
+		FirstAirDate     string  `json:"first_air_date"`
+		ReleaseDate      string  `json:"release_date"`
+		GenreIDs         []int   `json:"genre_ids"`
+		Adult            bool    `json:"adult"`
+		Video            bool    `json:"video"`
+	} `json:"results"`
+}
+
+// trendingDaily returns TMDB's ordered daily trending chart for one media type.
+// Adult entries and movie results classified as videos are excluded before the
+// service chooses the first eligible titles for Top 10 Today.
+func (c *tmdbClient) trendingDaily(ctx context.Context, mediaType string) ([]models.TrendingItem, error) {
+	return c.trendingDailyPage(ctx, mediaType, 1)
+}
+
+func (c *tmdbClient) trendingDailyPage(ctx context.Context, mediaType string, page int) ([]models.TrendingItem, error) {
+	if !c.isConfigured() {
+		return nil, errors.New("tmdb api key not configured")
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	apiMediaType := strings.ToLower(strings.TrimSpace(mediaType))
+	if apiMediaType != "movie" {
+		apiMediaType = "tv"
+	}
+	endpoint, err := url.JoinPath(tmdbBaseURL, "trending", apiMediaType, "day")
+	if err != nil {
+		return nil, err
+	}
+	query := url.Values{"api_key": {c.apiKey}, "page": {strconv.Itoa(page)}}
+	if lang := strings.TrimSpace(c.language); lang != "" {
+		query.Set("language", normalizeLanguage(lang))
+	}
+	endpoint += "?" + query.Encode()
+
+	var payload tmdbDailyTrendingResponse
+	if err := c.doGET(ctx, endpoint, &payload); err != nil {
+		return nil, fmt.Errorf("tmdb daily trending %s failed: %w", apiMediaType, err)
+	}
+
+	resultMediaType := "movie"
+	if apiMediaType == "tv" {
+		resultMediaType = "series"
+	}
+	items := make([]models.TrendingItem, 0, len(payload.Results))
+	for _, result := range payload.Results {
+		if result.ID <= 0 || result.Adult || (apiMediaType == "movie" && result.Video) {
+			continue
+		}
+		name := strings.TrimSpace(pickTMDBName(apiMediaType, result.Name, result.Title))
+		if name == "" {
+			continue
+		}
+		originalName := strings.TrimSpace(result.OriginalTitle)
+		if apiMediaType == "tv" {
+			originalName = strings.TrimSpace(result.OriginalName)
+		}
+		if strings.EqualFold(originalName, name) {
+			originalName = ""
+		}
+
+		title := models.Title{
+			ID:           fmt.Sprintf("tmdb:%s:%d", apiMediaType, result.ID),
+			Name:         name,
+			OriginalName: originalName,
+			Overview:     strings.TrimSpace(result.Overview),
+			Language:     strings.TrimSpace(result.OriginalLanguage),
+			MediaType:    resultMediaType,
+			TMDBID:       result.ID,
+			Popularity:   result.Popularity,
+			VoteCount:    result.VoteCount,
+			Genres:       resolveGenreIDs(result.GenreIDs, apiMediaType),
+			Adult:        result.Adult,
+		}
+		title.Year = parseTMDBYear(result.ReleaseDate, result.FirstAirDate)
+		if apiMediaType == "movie" {
+			title.Status = models.MovieReleaseStatusFromReleaseDate(result.ReleaseDate)
+		} else {
+			title.Status = models.SeriesReleaseStatusFromDate(result.FirstAirDate)
+		}
+		title.Poster = buildTMDBImage(result.PosterPath, tmdbPosterSize, "poster")
+		title.Backdrop = buildTMDBImage(result.BackdropPath, tmdbBackdropSize, "backdrop")
+		items = append(items, models.TrendingItem{Rank: (page-1)*20 + len(items) + 1, Title: title})
+	}
+	return items, nil
 }
 
 // fetchPersonDetails retrieves detailed information about a person from TMDB

@@ -203,6 +203,25 @@ func TestAdminSettingsSensitiveFieldsAllowOnlyOneReveal(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsMediaLibraryOptionsDisambiguateServersAndPreserveMissingSelections(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"library.sourceServerName || library.serverName",
+		"function getMediaLibraryOptionsHTML(selectedValue)",
+		"selectedValue && !mediaLibrariesData.some",
+		"Missing library · ${libraryId}",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing media-library option behavior %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsInheritedTermListsShowEffectiveValuesAndReplacementSemantics(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {
@@ -632,6 +651,24 @@ func TestAdminMaintenanceLinksAllSubpages(t *testing.T) {
 	}
 }
 
+func TestDatabaseSnapshotUploadKeepsShareLinkVisible(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/tools.html")
+	if err != nil {
+		t.Fatalf("read tools template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`const status = document.getElementById('troubleshooting-upload-status');`,
+		`status.textContent = 'Uploading de-identified database snapshot...'`,
+		`status.innerHTML = ` + "`Shared database snapshot: <a",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("database snapshot upload missing persistent status marker %q", marker)
+		}
+	}
+}
+
 func TestClearDatabaseDataRequiresExactConfirmation(t *testing.T) {
 	maintenance := &fakeDatabaseMaintenance{}
 	handler := &AdminUIHandler{databaseMaintenance: maintenance}
@@ -786,6 +823,17 @@ func TestAdminSettingsScopeOptionsKeepDarkThemeContrast(t *testing.T) {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing scope-option contrast marker %q", marker)
 		}
+	}
+}
+
+func TestAdminSettingsShowWhenSupportsAndConditions(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+	if count := strings.Count(source, "showWhen.operator === 'and'"); count != 4 {
+		t.Fatalf("settings template AND showWhen evaluators = %d, want 4", count)
 	}
 }
 
@@ -953,6 +1001,24 @@ func TestProfileActivityPrivacyCopyIncludesDashboardShelf(t *testing.T) {
 			if !strings.Contains(source, marker) {
 				t.Fatalf("%s profile template missing activity privacy marker %q", name, marker)
 			}
+		}
+	}
+}
+
+func TestAdminAccountPasswordChangeRedirectsAfterCurrentSessionRevoked(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/accounts.html")
+	if err != nil {
+		t.Fatalf("read admin accounts template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"async function changePassword(e, targetAccountId)",
+		"if (targetAccountId === accountId)",
+		"window.location.href = serverBasePath + '/admin/login'",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("admin password change is missing revoked-session handling marker %q", marker)
 		}
 	}
 }

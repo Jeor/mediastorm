@@ -1097,10 +1097,20 @@
                     <div id="plexHistorySyncConfig" style="display: none;">
                         <div class="form-group">
                             <label class="form-label">Plex Account</label>
-                            <select id="newTaskPlexHistoryAccount" class="form-select">
+                            <select id="newTaskPlexHistoryAccount" class="form-select" onchange="loadPlexHistoryServers('new')">
                                 <!-- Populated by JavaScript -->
                             </select>
                             <small class="text-muted">Select a connected Plex account</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Plex Server</label>
+                            <select id="newTaskPlexHistoryServer" class="form-select" onchange="populatePlexHistoryServerUrls('new')"></select>
+                            <small class="text-muted">Only history from this server will be imported</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Server URL</label>
+                            <select id="newTaskPlexHistoryServerUrl" class="form-select"></select>
+                            <small class="text-muted">Choose the connection address this task should use</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Import to Profile</label>
@@ -1490,9 +1500,19 @@
                     <div id="editPlexHistorySyncConfig" style="display: none;">
                         <div class="form-group">
                             <label class="form-label">Plex Account</label>
-                            <select id="editTaskPlexHistoryAccount" class="form-select">
+                            <select id="editTaskPlexHistoryAccount" class="form-select" onchange="loadPlexHistoryServers('edit')">
                                 <!-- Populated by JavaScript -->
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Plex Server</label>
+                            <select id="editTaskPlexHistoryServer" class="form-select" onchange="populatePlexHistoryServerUrls('edit')"></select>
+                            <small class="text-muted">Only history from this server will be imported</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Server URL</label>
+                            <select id="editTaskPlexHistoryServerUrl" class="form-select"></select>
+                            <small class="text-muted">Choose the connection address this task should use</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Import to Profile</label>
@@ -2926,6 +2946,7 @@
 
     async function uploadDatabaseSnapshot() {
         const btn = document.getElementById('upload-database-snapshot-btn');
+        const status = document.getElementById('troubleshooting-upload-status');
         if (!btn) return;
 
         if (!confirm('Upload a de-identified database snapshot for debugging?')) {
@@ -2935,6 +2956,7 @@
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-small"></span> Uploading...';
+        if (status) status.textContent = 'Uploading de-identified database snapshot...';
 
         try {
             const response = await fetch(basePath + '/api/logs/database', {
@@ -2945,17 +2967,24 @@
             });
             const result = await response.json();
             if (response.ok && result.url) {
+                if (status) {
+                    status.innerHTML = `Shared database snapshot: <a href="${result.url}" target="_blank" rel="noopener noreferrer">${result.url}</a>`;
+                }
                 try {
                     await navigator.clipboard.writeText(result.url);
                     showToast('Database snapshot uploaded. Link copied to clipboard.');
                 } catch (_) {
-                    showToast('Database snapshot uploaded: ' + result.url);
+                    showToast('Database snapshot uploaded successfully.');
                 }
             } else {
-                showToast(result.error || 'Failed to upload database snapshot', 'error');
+                const message = result.error || 'Failed to upload database snapshot';
+                if (status) status.textContent = message;
+                showToast(message, 'error');
             }
         } catch (e) {
-            showToast('Error uploading database snapshot: ' + e.message, 'error');
+            const message = 'Error uploading database snapshot: ' + e.message;
+            if (status) status.textContent = message;
+            showToast(message, 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
@@ -6345,7 +6374,60 @@
         document.body.style.overflow = '';
     }
 
-    function onTaskTypeChange() {
+    const plexHistoryServers = { new: [], edit: [] };
+
+    function populatePlexHistoryServerUrls(mode, selectedUrl = '') {
+        const serverSelect = document.getElementById(`${mode}TaskPlexHistoryServer`);
+        const urlSelect = document.getElementById(`${mode}TaskPlexHistoryServerUrl`);
+        const server = plexHistoryServers[mode].find(item => item.id === serverSelect.value);
+        const connections = server?.connections || [];
+        urlSelect.innerHTML = connections.map(connection => {
+            const location = connection.relay ? 'Relay' : (connection.local ? 'Local' : 'Remote');
+            return `<option value="${escapeHtml(connection.uri)}">${escapeHtml(connection.uri)} (${location})</option>`;
+        }).join('');
+        if (selectedUrl && !connections.some(connection => connection.uri === selectedUrl)) {
+            urlSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(selectedUrl)}">${escapeHtml(selectedUrl)} (saved)</option>`);
+        }
+        if (selectedUrl) urlSelect.value = selectedUrl;
+        if (!urlSelect.value && urlSelect.options.length > 0) urlSelect.selectedIndex = 0;
+        if (urlSelect.options.length === 0) {
+            urlSelect.innerHTML = '<option value="">No connection URLs available</option>';
+        }
+    }
+
+    async function loadPlexHistoryServers(mode, selectedServerId = '', selectedUrl = '') {
+        const accountId = document.getElementById(`${mode}TaskPlexHistoryAccount`).value;
+        const serverSelect = document.getElementById(`${mode}TaskPlexHistoryServer`);
+        const urlSelect = document.getElementById(`${mode}TaskPlexHistoryServerUrl`);
+        plexHistoryServers[mode] = [];
+        serverSelect.innerHTML = '<option value="">Loading servers…</option>';
+        urlSelect.innerHTML = '<option value="">Select a server first</option>';
+        if (!accountId) {
+            serverSelect.innerHTML = '<option value="">Select a Plex account first</option>';
+            return;
+        }
+        try {
+            const response = await fetch(`${basePath}/api/plex/accounts/${encodeURIComponent(accountId)}/servers`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to load Plex servers');
+            plexHistoryServers[mode] = data.servers || [];
+            serverSelect.innerHTML = plexHistoryServers[mode].map(server =>
+                `<option value="${escapeHtml(server.id)}">${escapeHtml(server.name || 'Plex Server')}${server.platform ? ` (${escapeHtml(server.platform)})` : ''}</option>`
+            ).join('');
+            if (selectedServerId) serverSelect.value = selectedServerId;
+            if (!serverSelect.value && serverSelect.options.length > 0) serverSelect.selectedIndex = 0;
+            if (serverSelect.options.length === 0) {
+                serverSelect.innerHTML = '<option value="">No online owned servers found</option>';
+            }
+            populatePlexHistoryServerUrls(mode, selectedUrl);
+        } catch (err) {
+            serverSelect.innerHTML = '<option value="">Unable to load servers</option>';
+            urlSelect.innerHTML = '<option value="">Unable to load connection URLs</option>';
+            showToast(err.message, 'error');
+        }
+    }
+
+    async function onTaskTypeChange() {
         const taskType = document.getElementById('newTaskType').value;
         const plexConfig = document.getElementById('plexWatchlistSyncConfig');
         const traktConfig = document.getElementById('traktListSyncConfig');
@@ -6424,6 +6506,7 @@
             plexHistSelect.innerHTML = connectedPlexAccounts.map(account =>
                 `<option value="${account.id}">${escapeHtml(account.name || account.username || 'Plex Account')}</option>`
             ).join('');
+            await loadPlexHistoryServers('new');
         }
 
         // Populate Jellyfin accounts
@@ -6636,10 +6719,12 @@
             }
         } else if (taskType === 'plex_history_sync') {
             config.plexAccountId = document.getElementById('newTaskPlexHistoryAccount').value;
+            config.plexServerId = document.getElementById('newTaskPlexHistoryServer').value;
+            config.plexServerUrl = document.getElementById('newTaskPlexHistoryServerUrl').value;
             config.profileId = document.getElementById('newTaskPlexHistoryProfile').value;
 
-            if (!config.plexAccountId || !config.profileId) {
-                showToast('Please select a Plex account and profile', 'error');
+            if (!config.plexAccountId || !config.plexServerId || !config.plexServerUrl || !config.profileId) {
+                showToast('Please select a Plex account, server, server URL, and profile', 'error');
                 return;
             }
         } else if (taskType === 'jellyfin_favorites_sync') {
@@ -6936,6 +7021,7 @@
                 `<option value="${account.id}">${escapeHtml(account.name || account.username || 'Plex Account')}</option>`
             ).join('');
             plexHistSelect.value = task.config.plexAccountId || '';
+            await loadPlexHistoryServers('edit', task.config.plexServerId || '', task.config.plexServerUrl || '');
             document.getElementById('editTaskPlexHistoryProfile').value = task.config.profileId || '';
         }
 
@@ -7167,10 +7253,12 @@
             }
         } else if (taskType === 'plex_history_sync') {
             config.plexAccountId = document.getElementById('editTaskPlexHistoryAccount').value;
+            config.plexServerId = document.getElementById('editTaskPlexHistoryServer').value;
+            config.plexServerUrl = document.getElementById('editTaskPlexHistoryServerUrl').value;
             config.profileId = document.getElementById('editTaskPlexHistoryProfile').value;
 
-            if (!config.plexAccountId || !config.profileId) {
-                showToast('Please select a Plex account and profile', 'error');
+            if (!config.plexAccountId || !config.plexServerId || !config.plexServerUrl || !config.profileId) {
+                showToast('Please select a Plex account, server, server URL, and profile', 'error');
                 return;
             }
         } else if (taskType === 'jellyfin_favorites_sync') {

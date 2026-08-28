@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1854,6 +1855,54 @@ func TestMetadataHandler_GetPersonalizedRecommendations_CachesUnchangedWatchStat
 	}
 }
 
+func TestMetadataHandler_GetPersonalizedRecommendations_DoesNotCacheEmptyResultWithEligibleSeed(t *testing.T) {
+	now := time.Now().UTC()
+	fake := &fakeMetadataService{}
+	handler := NewMetadataHandler(fake, testConfigManager(t))
+	handler.HistoryService = &fakeMetadataHistoryService{progress: []models.PlaybackProgress{{
+		ID:             "episode:tmdb:tv:233629:s01e08",
+		MediaType:      "episode",
+		ItemID:         "tmdb:tv:233629:s01e08",
+		SeriesID:       "tmdb:tv:233629",
+		SeriesName:     "Seed Series",
+		PercentWatched: 41.6,
+		UpdatedAt:      now.Add(-10 * 24 * time.Hour),
+		ExternalIDs:    map[string]string{"tmdb": "233629"},
+	}}}
+
+	request := func() PersonalizedRecommendationsResponse {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/api/recommendations/personalized?userId=user1&limitPerType=1", nil)
+		handler.GetPersonalizedRecommendations(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var payload PersonalizedRecommendationsResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		return payload
+	}
+
+	first := request()
+	if first.SeedCount != 1 || len(first.Items) != 0 {
+		t.Fatalf("first response seeds=%d items=%d, want one seed and no candidates", first.SeedCount, len(first.Items))
+	}
+
+	fake.similarByKey = map[string][]models.Title{
+		"series:233629": {{
+			ID:        "tmdb:tv:999",
+			Name:      "Recovered Recommendation",
+			MediaType: "series",
+			TMDBID:    999,
+		}},
+	}
+	second := request()
+	if len(second.Items) != 1 || second.Items[0].Title.TMDBID != 999 {
+		t.Fatalf("second response should rebuild after transient empty result, got %+v", second.Items)
+	}
+}
+
 func TestPersonalizedRecommendationsCacheKeyChangesWithProgress(t *testing.T) {
 	now := time.Now().UTC()
 	progress := []models.PlaybackProgress{{
@@ -1869,6 +1918,25 @@ func TestPersonalizedRecommendationsCacheKeyChangesWithProgress(t *testing.T) {
 	second := personalizedRecommendationsCacheKey("user1", 14, 20, nil, progress)
 	if first == second {
 		t.Fatalf("cache key did not change after progress update: %q", first)
+	}
+}
+
+func TestPersonalizedRecommendationsCacheKeyChangesWithExternalIDs(t *testing.T) {
+	now := time.Now().UTC()
+	progress := []models.PlaybackProgress{{
+		ID:             "episode:tvdb:series:417257:s01e08",
+		MediaType:      "episode",
+		ItemID:         "tvdb:series:417257:s01e08",
+		SeriesID:       "tvdb:series:417257",
+		PercentWatched: 41.6,
+		UpdatedAt:      now,
+		ExternalIDs:    map[string]string{"tvdb": "417257"},
+	}}
+	first := personalizedRecommendationsCacheKey("user1", 14, 20, nil, progress)
+	progress[0].ExternalIDs["tmdb"] = "233629"
+	second := personalizedRecommendationsCacheKey("user1", 14, 20, nil, progress)
+	if first == second {
+		t.Fatalf("cache key did not change after TMDB enrichment: %q", first)
 	}
 }
 
@@ -2177,6 +2245,57 @@ func TestMetadataHandler_TopTenFiltersUnreleasedByListPolicy(t *testing.T) {
 	}
 	if resp.Items[0].Title.Name != "Toy Story 2" || resp.Items[1].Title.Name != "Released Show" {
 		t.Fatalf("unexpected top-ten items: %+v", resp.Items)
+	}
+}
+
+func TestMetadataHandler_TopTenBackfillsAfterVisibilityFiltering(t *testing.T) {
+	cfg := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	settings := config.DefaultSettings()
+	settings.Display.IncludeUnreleasedMoviesInLists = false
+	settings.Display.IncludeUnreleasedShowsInLists = false
+	if err := cfg.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	items := []models.TrendingItem{
+		{Title: models.Title{Name: "Future Movie", MediaType: "movie", Status: models.MovieReleaseStatusUpcoming}},
+		{Title: models.Title{Name: "Movie 1", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 2", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 3", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 4", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 5", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Future Show", MediaType: "series", Status: models.SeriesReleaseStatusUnreleased}},
+		{Title: models.Title{Name: "Show 1", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 2", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 3", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 4", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 5", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+	}
+	handler := NewMetadataHandler(&fakeMetadataService{trendingResp: items}, cfg)
+	req := httptest.NewRequest(http.MethodGet, "/api/discover/top-ten?type=all", nil)
+	rec := httptest.NewRecorder()
+
+	handler.TopTen(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp TopTenResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Items) != 10 {
+		t.Fatalf("items = %d, want ten backfilled results: %#v", len(resp.Items), resp.Items)
+	}
+	for i, item := range resp.Items {
+		position := i/2 + 1
+		wantName := fmt.Sprintf("Movie %d", position)
+		if i%2 == 1 {
+			wantName = fmt.Sprintf("Show %d", position)
+		}
+		if item.Title.Name != wantName || item.Rank != i+1 {
+			t.Fatalf("items[%d] = name %q rank %d, want name %q rank %d", i, item.Title.Name, item.Rank, wantName, i+1)
+		}
 	}
 }
 

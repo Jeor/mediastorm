@@ -3,6 +3,7 @@ package apiusage
 import (
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -131,6 +132,41 @@ func TestTrackerStoragePersistsAndLoadsOutboundEvents(t *testing.T) {
 	}
 	if entries[0].LastPath != "/stream/movie/tt0133093.json" {
 		t.Fatalf("last path = %q, want sanitized path", entries[0].LastPath)
+	}
+}
+
+func TestConfigureStorageAsyncMergesEventsRecordedBeforeActivation(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now().UTC()
+	historical := outboundEvent{
+		Key:        "torrentio|stream search|GET|torrentio.strem.fun",
+		Provider:   "Torrentio",
+		Operation:  "Stream search",
+		Method:     http.MethodGet,
+		Host:       "torrentio.strem.fun",
+		Path:       "/stream/movie/tt1111111.json",
+		Status:     http.StatusOK,
+		DurationMS: 10,
+		At:         now.Add(-time.Hour),
+	}
+	storageDir := filepath.Join(dir, "api-usage")
+	if err := appendOutboundEvent(storageDir, historical); err != nil {
+		t.Fatal(err)
+	}
+
+	tracker := &Tracker{endpoints: make(map[string]EndpointUsage), outbound: make(map[string]OutboundUsage)}
+	tracker.recordOutboundAt(now, "Torrentio", "Stream search", http.MethodGet, "https://torrentio.strem.fun/stream/movie/tt2222222.json", http.StatusOK, 20*time.Millisecond, true)
+	<-tracker.configureStorageAsync(dir)
+
+	entries := tracker.snapshotOutboundAt(now)
+	if len(entries) != 1 {
+		t.Fatalf("entries = %d, want 1", len(entries))
+	}
+	if entries[0].Count != 2 || entries[0].Last24HourCount != 2 {
+		t.Fatalf("counts = total %d day %d, want 2/2", entries[0].Count, entries[0].Last24HourCount)
+	}
+	if entries[0].LastPath != "/stream/movie/tt2222222.json" {
+		t.Fatalf("last path = %q, want startup event", entries[0].LastPath)
 	}
 }
 

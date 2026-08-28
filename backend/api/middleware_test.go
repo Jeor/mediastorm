@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"novastream/models"
+	"novastream/services/sessions"
 )
 
 func TestIsStreamScopedRequestAllowed(t *testing.T) {
@@ -43,6 +45,29 @@ func TestIsStreamScopedRequestAllowed(t *testing.T) {
 		if isStreamScopedRequestAllowed(req, session) {
 			t.Errorf("expected %q to be denied for stream-scoped session", target)
 		}
+	}
+}
+
+func TestWatchPartySessionCannotReachProtectedAccountAPI(t *testing.T) {
+	sessionsService, err := sessions.NewService("", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := sessionsService.CreateScopedWithResource("account-1", false, "test", "127.0.0.1", time.Hour, models.SessionScopeWatchParty, "room-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	handler := AccountAuthMiddleware(sessionsService, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/api/settings", nil)
+	req.Header.Set("Authorization", "Bearer "+session.Token)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusForbidden || called {
+		t.Fatalf("watch-party session status=%d called=%v, want 403 and no protected handler", recorder.Code, called)
 	}
 }
 

@@ -228,11 +228,20 @@ var SettingsSchema = map[string]interface{}{
 			"host":     map[string]interface{}{"type": "text", "label": "Host", "description": "Server bind address (leave empty to bind all interfaces)", "order": 0},
 			"port":     map[string]interface{}{"type": "number", "label": "Port", "description": "Server port (default: 7777)", "order": 1},
 			"basePath": map[string]interface{}{"type": "text", "label": "Base Path", "description": "URL path prefix for reverse proxy (e.g. /mediastorm). Requires restart.", "placeholder": "/mediastorm", "order": 2},
+			"externalBackendUrl": map[string]interface{}{
+				"type":        "text",
+				"label":       "External Backend URL",
+				"description": "Publicly reachable backend URL used in external Watch Together invitations. Required only for external guest access; include the configured base path. A trailing /api is accepted.",
+				"placeholder": "https://watch.example.com/mediastorm/api",
+				"globalOnly":  true,
+				"requiredFor": "External Watch Together access",
+				"order":       3,
+			},
 			"allowedPrivateMediaOrigins": map[string]interface{}{
 				"type":        "tags",
 				"label":       "Allowed Private Media Origins (Advanced)",
 				"description": "Allow server-side playback requests to specific private or loopback media origins, for example http://localhost:8080. Add only origins you trust; paths and query parameters are ignored.",
-				"order":       3,
+				"order":       4,
 			},
 		},
 	},
@@ -274,7 +283,14 @@ var SettingsSchema = map[string]interface{}{
 			"maxDownloadWorkers": map[string]interface{}{"type": "number", "label": "Max Download Workers", "description": "Maximum concurrent download workers", "hidden": true},
 			"maxCacheSizeMB":     map[string]interface{}{"type": "number", "label": "Max Cache Size (MB)", "description": "Maximum cache size in megabytes", "hidden": true},
 			"serviceMode":        map[string]interface{}{"type": "select", "label": "Service Mode", "options": []string{"usenet", "debrid", "hybrid"}, "description": "Streaming service mode"},
-			"searchMode":         map[string]interface{}{"type": "select", "label": "Search Mode", "hidden": true},
+			"resolveFirstReadySource": map[string]interface{}{
+				"type":        "boolean",
+				"label":       "Resolve candidates early",
+				"description": "Off resolves the combined, globally ranked candidates one at a time. On starts a concurrent resolution race as soon as either Usenet or debrid search finishes, reducing startup time at the cost of strict ranked selection.",
+				"globalOnly":  true,
+				"order":       1,
+			},
+			"searchMode": map[string]interface{}{"type": "select", "label": "Search Mode", "hidden": true},
 			"usenetResolutionTimeoutSec": map[string]interface{}{
 				"type":        "number",
 				"label":       "Usenet Resolution Timeout (seconds)",
@@ -301,6 +317,42 @@ var SettingsSchema = map[string]interface{}{
 				"label":       "Max Alternate Title Searches",
 				"description": "Maximum alternate/international titles to search per item (0 = unlimited). Titles matching your metadata language are prioritized.",
 			},
+			"maxDailyUsenetQueries": map[string]interface{}{
+				"type":        "number",
+				"label":       "Max Daily-show Usenet Queries",
+				"description": "Maximum tiered query attempts per Usenet indexer for a daily episode (default: 5). Successful formats are tried first on later episodes.",
+				"min":         1,
+				"max":         10,
+				"step":        1,
+			},
+			"resolutionSettleWindowMs": map[string]interface{}{
+				"type":        "number",
+				"label":       "Better-ranked Candidate Grace (ms)",
+				"description": "After a candidate validates, wait up to this long only when a better-ranked candidate is already resolving. The default is 250 ms. Set 0 for no grace, so the first valid candidate wins immediately. Turn End the Race Early off to wait for all concurrent candidates.",
+				"min":         0,
+				"step":        50,
+				"order":       3,
+				"showWhen": map[string]interface{}{
+					"operator": "and",
+					"conditions": []map[string]interface{}{
+						{"field": "resolveFirstReadySource", "value": true},
+						{"field": "resolutionEndRaceEarly", "value": true},
+					},
+				},
+				"group":            "earlyResolution",
+				"groupLabel":       "Early Resolution Race",
+				"groupDescription": "Controls how the concurrent candidate race chooses its winner.",
+			},
+			"resolutionEndRaceEarly": map[string]interface{}{
+				"type":             "boolean",
+				"label":            "End the Race Early",
+				"description":      "On (default) stops the concurrent race when a winner is chosen; the grace setting below briefly waits for an already-running, better-ranked candidate. Off waits for every concurrent candidate, then selects the best-ranked valid result. This has no effect while Resolve candidates early is off.",
+				"order":            2,
+				"showWhen":         map[string]interface{}{"field": "resolveFirstReadySource", "value": true},
+				"group":            "earlyResolution",
+				"groupLabel":       "Early Resolution Race",
+				"groupDescription": "Controls how the concurrent candidate race chooses its winner.",
+			},
 		},
 	},
 	"debridProviders": map[string]interface{}{
@@ -313,7 +365,7 @@ var SettingsSchema = map[string]interface{}{
 		"key":      "debridProviders",
 		"fields": map[string]interface{}{
 			"name":     map[string]interface{}{"type": "text", "label": "Name", "description": "Provider display name", "order": 1},
-			"provider": map[string]interface{}{"type": "select", "label": "Provider", "options": []string{"realdebrid", "torbox", "alldebrid", "premiumize"}, "description": "Provider type", "order": 2},
+			"provider": map[string]interface{}{"type": "select", "label": "Provider", "options": []string{"realdebrid", "torbox", "alldebrid", "premiumize", "torrin"}, "description": "Provider type", "order": 2},
 			"apiKey":   map[string]interface{}{"type": "password", "label": "API Key", "description": "Provider API key", "order": 3},
 			"enabled":  map[string]interface{}{"type": "boolean", "label": "Enabled", "description": "Enable this provider", "order": 4},
 			"config.autoClearQueue": map[string]interface{}{
@@ -415,6 +467,12 @@ var SettingsSchema = map[string]interface{}{
 				"max":         1.0,
 				"step":        0.05,
 				"order":       11,
+			},
+			"realDebridRestrictedTermsFilterEnabled": map[string]interface{}{
+				"type":        "boolean",
+				"label":       "Skip Real-Debrid Restricted Releases",
+				"description": "Skip Real-Debrid resolution for release names matching its commonly restricted WEB/encode patterns. Matching results remain available to all other providers.",
+				"order":       12,
 			},
 			"requiredTerms":          map[string]interface{}{"type": "tags", "label": "Required Terms", "description": "At least one of these terms must match for a result to be kept."},
 			"filterOutTerms":         map[string]interface{}{"type": "tags", "label": "Filter Out Terms", "description": "Terms that exclude matching results."},
@@ -677,7 +735,7 @@ var SettingsSchema = map[string]interface{}{
 			"options":                  map[string]interface{}{"type": "text", "label": "Options", "description": `Torrentio URL path options, not a full addon URL. Use the <a href="https://torrentio.strem.fun/configure" target="_blank" rel="noopener noreferrer">Torrentio configurator</a>, then copy only the options segment before /stream (for example: sort=qualitysize|qualityfilter=480p,scr,cam).`, "showWhen": map[string]interface{}{"field": "type", "value": "torrentio"}, "order": 2, "placeholder": "sort=qualitysize|qualityfilter=480p,scr,cam"},
 			"url":                      map[string]interface{}{"type": "text", "label": "URL", "description": "API URL. For Prowlarr, use the Prowlarr base URL and the backend will add each enabled torrent indexer on save. For AIOStreams/Comet/MediaFusion, use the full Stremio addon URL. For Torrentio, this can replace https://torrentio.strem.fun. For Internet Archive, leave blank unless testing another archive.org-compatible host.", "showWhen": map[string]interface{}{"operator": "or", "conditions": []map[string]interface{}{{"field": "type", "value": "prowlarr"}, {"field": "type", "value": "jackett"}, {"field": "type", "value": "zilean"}, {"field": "type", "value": "aiostreams"}, {"field": "type", "value": "comet"}, {"field": "type", "value": "mediafusion"}, {"field": "type", "value": "internetarchive"}, {"field": "type", "value": "torrentio"}}}, "order": 3, "placeholder": "http://prowlarr:9696"},
 			"apiKey":                   map[string]interface{}{"type": "password", "label": "API Key", "description": "Prowlarr or Jackett API key", "showWhen": map[string]interface{}{"operator": "or", "conditions": []map[string]interface{}{{"field": "type", "value": "prowlarr"}, {"field": "type", "value": "jackett"}}}, "order": 4},
-			"config.passthroughFormat": map[string]interface{}{"type": "boolean", "label": "Passthrough Format", "description": "Show raw AIOStreams format in manual selection (emoji-formatted details)", "showWhen": map[string]interface{}{"field": "type", "value": "aiostreams"}, "order": 5},
+			"config.passthroughFormat": map[string]interface{}{"type": "boolean", "label": "Passthrough Format", "description": "Show AIOStreams' raw provider-formatted name and details in manual selection. This does not change MediaStorm filtering or result ordering.", "showWhen": map[string]interface{}{"field": "type", "value": "aiostreams"}, "order": 5},
 			"config.category":          map[string]interface{}{"type": "select", "label": "Category", "options": []string{"1_0", "1_2", "1_3", "1_4"}, "description": "Nyaa category (1_0=All Anime, 1_2=English-translated, 1_3=Non-English, 1_4=Raw)", "showWhen": map[string]interface{}{"field": "type", "value": "nyaa"}, "order": 6},
 			"config.filter":            map[string]interface{}{"type": "select", "label": "Filter", "options": []string{"0", "1", "2"}, "description": "Nyaa filter (0=All, 1=No remakes, 2=Trusted only)", "showWhen": map[string]interface{}{"field": "type", "value": "nyaa"}, "order": 7},
 			"enabled":                  map[string]interface{}{"type": "boolean", "label": "Enabled", "description": "Enable this scraper", "order": 8},
@@ -723,7 +781,7 @@ var SettingsSchema = map[string]interface{}{
 			"rewindOnResumeFromPause":     map[string]interface{}{"type": "number", "label": "Rewind on Unpause", "description": "Seconds to rewind when resuming from pause (default 0)", "step": 1, "min": 0, "max": 30},
 			"rewindOnPlaybackStart":       map[string]interface{}{"type": "number", "label": "Rewind on Resume", "description": "Seconds to rewind when resuming from saved progress (default 0)", "step": 1, "min": 0, "max": 60},
 			"disablePrequeue":             map[string]interface{}{"type": "boolean", "label": "Disable Prequeue", "description": "Disable automatic stream pre-loading when opening a details page. Streams will only be resolved when you press Play. Useful to reduce unnecessary backend load or API calls.", "order": 101},
-			"prerollMode":                 map[string]interface{}{"type": "select", "label": "Pre-roll", "options": []map[string]string{{"value": "disabled", "label": "Disabled"}, {"value": "default", "label": "Server Default"}, {"value": "custom", "label": "Custom Upload"}}, "description": "Play the complete pre-roll while user-initiated native playback is prepared.", "order": 101.1},
+			"prerollMode":                 map[string]interface{}{"type": "select", "label": "Pre-roll", "options": []map[string]string{{"value": "disabled", "label": "Disabled"}, {"value": "artwork", "label": "Artwork Rotation"}, {"value": "default", "label": "Server Default"}, {"value": "custom", "label": "Custom Upload"}}, "description": "Show rotating textless artwork until playback starts, or play a video pre-roll while native playback is prepared.", "order": 101.1},
 			"prerollAssetId":              map[string]interface{}{"type": "text", "label": "Pre-roll Asset ID", "description": "Content hash returned by the pre-roll upload endpoint. Used only for Custom Upload.", "order": 101.2},
 			"prerollMediaScope":           map[string]interface{}{"type": "select", "label": "Pre-roll Content", "options": []map[string]string{{"value": "all", "label": "All"}, {"value": "movies", "label": "Movies Only"}, {"value": "tv", "label": "TV Shows Only"}}, "description": "Choose which content types show the pre-roll.", "order": 101.3},
 			"prerollSkipIfPrequeueReady":  map[string]interface{}{"type": "boolean", "label": "Skip Pre-roll When Ready", "description": "Skip the pre-roll when the selected stream is already prepared at playback start.", "order": 101.4},
@@ -884,20 +942,28 @@ var SettingsSchema = map[string]interface{}{
 				"description": "Show the profile selector when the app is opened or returns from background",
 				"order":       4,
 			},
-			"includeUnreleasedMoviesInLists":               map[string]interface{}{"type": "boolean", "label": "Include Unreleased Movies in Lists", "description": "Show upcoming and unreleased movies in shelves, watchlist/list responses, and discovery list results.", "order": 5},
-			"includeUnreleasedShowsInLists":                map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Lists", "description": "Show shows with no aired episodes in shelves, watchlist/list responses, and discovery list results.", "order": 6},
-			"includeUnreleasedMoviesInSearch":              map[string]interface{}{"type": "boolean", "label": "Include Unreleased Movies in Search", "description": "Show upcoming and unreleased movies in metadata search results.", "order": 7},
-			"includeUnreleasedShowsInSearch":               map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Search", "description": "Show shows with no aired episodes in metadata search results.", "order": 8},
-			"bypassFilteringForAioStreamsOnly":             map[string]interface{}{"type": "boolean", "label": "Bypass Filtering for AIOStreams Only", "description": "Skip mediastorm filtering/ranking when AIOStreams is the only enabled scraper in debrid-only mode (use AIOStreams' own ranking). Does not apply in hybrid mode with usenet.", "order": 9},
-			"showParsedBadges":                             map[string]interface{}{"type": "boolean", "label": "Show Parsed Metadata Badges", "description": "Show parsed quality badges (resolution, codec, HDR, audio) instead of raw release titles in manual source selection", "order": 10},
-			"enableAnimations":                             map[string]interface{}{"type": "boolean", "label": "Enable Application Animations", "description": "Animate application scrolling, transitions, and interface motion. Hero art panning remains controlled separately.", "order": 17},
-			"enableHeroArtPanning":                         map[string]interface{}{"type": "boolean", "label": "Enable Hero Art Panning", "description": "Animate hero artwork with a slow pan and zoom effect on TV platforms.", "order": 18},
-			"enableHeroArtRotation":                        map[string]interface{}{"type": "boolean", "label": "Enable Hero Art Rotation", "description": "Cycle through alternate hero artwork on TV platforms.", "order": 19},
-			"hideContinueWatchingHeroMetadata":             map[string]interface{}{"type": "boolean", "label": "Hide Continue Watching Hero Details", "description": "Keep the logo but hide year and overview text in the Continue Watching hero on TV platforms.", "order": 20},
-			"moveDetailsRatingsToMetadata":                 map[string]interface{}{"type": "boolean", "label": "Move Details Ratings Up", "description": "Move ratings from beneath the poster back to the title and genre metadata area on TV platforms. Ratings also move up automatically when the poster is hidden.", "order": 21},
-			"hideDetailsPoster":                            map[string]interface{}{"type": "boolean", "label": "Hide Details Poster", "description": "Hide the bottom-right poster on the Details page on TV platforms. Ratings automatically move to the title metadata area.", "order": 22},
-			"hideTvDrawerRail":                             map[string]interface{}{"type": "boolean", "label": "Hide TV Drawer Rail", "description": "Fully hide the collapsed left navigation rail on TV platforms instead of leaving its icons peeking out. The drawer still opens normally.", "order": 23},
-			"simpleMode":                                   map[string]interface{}{"type": "boolean", "label": "M.O.M. Mode™", "description": "Minimal Options for MediaStorm: reduce the frontend to essential browsing, watchlist, Live TV, profile, and playback choices.", "order": 24},
+			"includeUnreleasedMoviesInLists":   map[string]interface{}{"type": "boolean", "label": "Include Unreleased Movies in Lists", "description": "Show upcoming and unreleased movies in shelves, watchlist/list responses, and discovery list results.", "order": 5},
+			"includeUnreleasedShowsInLists":    map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Lists", "description": "Show shows with no aired episodes in shelves, watchlist/list responses, and discovery list results.", "order": 6},
+			"includeUnreleasedMoviesInSearch":  map[string]interface{}{"type": "boolean", "label": "Include Unreleased Movies in Search", "description": "Show upcoming and unreleased movies in metadata search results.", "order": 7},
+			"includeUnreleasedShowsInSearch":   map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Search", "description": "Show shows with no aired episodes in metadata search results.", "order": 8},
+			"bypassFilteringForAioStreamsOnly": map[string]interface{}{"type": "boolean", "label": "Bypass Filtering for AIOStreams Only", "description": "Skip mediastorm filtering/ranking when AIOStreams is the only enabled scraper in debrid-only mode (use AIOStreams' own ranking). Does not apply in hybrid mode with usenet.", "order": 9},
+			"showParsedBadges":                 map[string]interface{}{"type": "boolean", "label": "Show Parsed Metadata Badges", "description": "Show parsed quality badges (resolution, codec, HDR, audio) instead of raw release titles in manual source selection", "order": 10},
+			"showStreamSourceInfo":             map[string]interface{}{"type": "boolean", "label": "Show Stream Source Information", "description": "Show source service and debrid provider information on details, manual selection, and player information surfaces.", "order": 10.1},
+			"enableAnimations":                 map[string]interface{}{"type": "boolean", "label": "Enable Application Animations", "description": "Animate application scrolling, transitions, and interface motion. Hero art panning remains controlled separately.", "order": 17},
+			"enableHeroArtPanning":             map[string]interface{}{"type": "boolean", "label": "Enable Hero Art Panning", "description": "Animate hero artwork with a slow pan and zoom effect on TV platforms.", "order": 18},
+			"enableHeroArtRotation":            map[string]interface{}{"type": "boolean", "label": "Enable Hero Art Rotation", "description": "Cycle through alternate hero artwork on TV platforms.", "order": 19},
+			"hideContinueWatchingHeroMetadata": map[string]interface{}{"type": "boolean", "label": "Hide Continue Watching Hero Details", "description": "Keep the logo but hide year and overview text in the Continue Watching hero on TV platforms.", "order": 20},
+			"moveDetailsRatingsToMetadata":     map[string]interface{}{"type": "boolean", "label": "Move Details Ratings Up", "description": "Move ratings from beneath the poster back to the title and genre metadata area on TV platforms. Ratings also move up automatically when the poster is hidden.", "order": 21},
+			"hideDetailsPoster":                map[string]interface{}{"type": "boolean", "label": "Hide Details Poster", "description": "Hide the bottom-right poster on the Details page on TV platforms. Ratings automatically move to the title metadata area.", "order": 22},
+			"hideTvDrawerRail":                 map[string]interface{}{"type": "boolean", "label": "Hide TV Drawer Rail", "description": "Fully hide the collapsed left navigation rail on TV platforms instead of leaving its icons peeking out. The drawer still opens normally.", "order": 23},
+			"simpleMode":                       map[string]interface{}{"type": "boolean", "label": "M.O.M. Mode™", "description": "Minimal Options for MediaStorm: reduce the frontend to essential browsing, watchlist, Live TV, profile, and playback choices.", "order": 24},
+			"simpleModeHomeShelves": map[string]interface{}{
+				"type":        "ordered-multiselect",
+				"label":       "M.O.M. Mode™ Home Shelves",
+				"description": "Choose which configured home shelves appear in M.O.M. Mode™ and the order they are shown. Only shelves already present in Home Screen configuration can be selected.",
+				"order":       24.1,
+				"optionsFrom": "homeShelves",
+			},
 			"disableTvHomeCardDimming":                     map[string]interface{}{"type": "boolean", "label": "Keep TV Home Cards Visible", "description": "Keep cards after the focused card fully visible instead of dimming them on TV home shelves.", "order": 25},
 			"showSeriesBackdropForMissingEpisodeArt":       map[string]interface{}{"type": "boolean", "label": "Show Series Art for Missing Episode Art", "description": "Use dimmed landscape art from the show when an episode has no thumbnail, including episodes that have not aired yet.", "order": 26},
 			"blurUnwatchedEpisodeThumbnails":               map[string]interface{}{"type": "boolean", "label": "Blur Unwatched Episode Thumbnails", "description": "Blur episode thumbnails on the Details page until the episode has been watched.", "order": 27},
@@ -2781,6 +2847,8 @@ func dashboardDebridProvider(sourceServiceType, explicitProvider string, paths .
 			return "alldebrid"
 		case "premiumize":
 			return "premiumize"
+		case "torrin":
+			return "torrin"
 		default:
 			return provider
 		}
@@ -3621,6 +3689,19 @@ func (h *AdminUIHandler) GetDebridStatus(w http.ResponseWriter, r *http.Request)
 				} else {
 					status.Error = err.Error()
 				}
+			case "torrin":
+				client := debrid.NewTorrinClient(p.APIKey)
+				if info, err := client.GetAccountInfo(ctx); err == nil {
+					status.Username = info.Username
+					status.Email = info.Email
+					status.PremiumActive = info.PremiumActive
+					if info.ExpiresAt != nil {
+						status.ExpiresAt = info.ExpiresAt.Format("2006-01-02")
+						status.DaysRemaining = info.DaysRemaining
+					}
+				} else {
+					status.Error = err.Error()
+				}
 			}
 		}
 
@@ -3726,19 +3807,20 @@ func (h *AdminUIHandler) GetUserSettings(w http.ResponseWriter, r *http.Request)
 			HomeHeroScale:                   models.FloatPtr(globalSettings.HomeShelves.HomeHeroScale),
 		},
 		Filtering: models.FilterSettings{
-			MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-			MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-			HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-			RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-			FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-			PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-			NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-			PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-			ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-			UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
-			AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-			AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+			MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+			MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+			MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+			HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+			RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+			FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+			PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+			NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+			PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+			ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+			UnknownTrackPolicy:                     string(globalSettings.Filtering.UnknownTrackPolicy),
+			AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+			AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+			RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 		},
 		LiveTV: models.LiveTVSettings{
 			HiddenChannels:     []string{},
@@ -3755,12 +3837,14 @@ func (h *AdminUIHandler) GetUserSettings(w http.ResponseWriter, r *http.Request)
 			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
 			IncludeUnreleasedShowsInSearch:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
 			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                   models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
 			DisableMobileTopCarousel:               models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
 			HideContinueWatchingHeroMetadata:       models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
 			MoveDetailsRatingsToMetadata:           models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),
 			HideDetailsPoster:                      models.BoolPtr(globalSettings.Display.HideDetailsPoster),
 			HideTVDrawerRail:                       models.BoolPtr(globalSettings.Display.HideTVDrawerRail),
 			SimpleMode:                             models.BoolPtr(globalSettings.Display.SimpleMode),
+			SimpleModeHomeShelves:                  models.StringSlicePtr(globalSettings.Display.SimpleModeHomeShelves),
 			DisableTVHomeCardDimming:               models.BoolPtr(globalSettings.Display.DisableTVHomeCardDimming),
 			EnableAnimations:                       models.BoolPtr(globalSettings.Display.EnableAnimations),
 			EnableHeroArtPanning:                   models.BoolPtr(globalSettings.Display.EnableHeroArtPanning),
@@ -3873,19 +3957,20 @@ func (h *AdminUIHandler) PropagateSettings(w http.ResponseWriter, r *http.Reques
 
 	// Build the filtering settings from global
 	globalFilterSettings := models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-		UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+		PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		UnknownTrackPolicy:                     string(globalSettings.Filtering.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 	}
 
 	var propagatedProfiles, propagatedClients int
@@ -7182,6 +7267,10 @@ func (h *AdminUIHandler) CreateProfile(w http.ResponseWriter, r *http.Request) {
 		user, err = h.usersService.SetKidsProfile(user.ID, true)
 		if err != nil {
 			log.Printf("[admin] failed to set kids profile for new profile %s: %v", user.ID, err)
+		} else if h.userSettingsService != nil {
+			if _, settingsErr := h.userSettingsService.ApplyKidsProfileDefaults(user.ID); settingsErr != nil {
+				log.Printf("[admin] failed to apply kids profile defaults for %s: %v", user.ID, settingsErr)
+			}
 		}
 	}
 
@@ -7393,6 +7482,11 @@ func (h *AdminUIHandler) SetKidsProfile(w http.ResponseWriter, r *http.Request) 
 		}
 		http.Error(w, err.Error(), status)
 		return
+	}
+	if req.IsKidsProfile && h.userSettingsService != nil {
+		if _, err := h.userSettingsService.ApplyKidsProfileDefaults(profileID); err != nil {
+			log.Printf("[admin] failed to apply kids profile defaults for %s: %v", profileID, err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -7944,6 +8038,61 @@ func (h *AdminUIHandler) SetAccountMaxStreams(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "max streams updated"})
+}
+
+// TransferAdmin moves administrator status to another account and invalidates
+// sessions for both accounts so cached session roles cannot outlive the change.
+func (h *AdminUIHandler) TransferAdmin(w http.ResponseWriter, r *http.Request) {
+	if h.accountsService == nil {
+		http.Error(w, "Accounts service not available", http.StatusInternalServerError)
+		return
+	}
+	if !h.requireAdminScope(w, r) {
+		return
+	}
+
+	var req struct {
+		AccountID string `json:"accountId"`
+	}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, sourceID, _, _ := h.getPageRoleInfo(r)
+	targetID := strings.TrimSpace(req.AccountID)
+	if targetID == "" {
+		http.Error(w, "accountId is required", http.StatusBadRequest)
+		return
+	}
+	if err := h.accountsService.TransferMaster(sourceID, targetID); err != nil {
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, accounts.ErrAccountNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, accounts.ErrAlreadyMaster), errors.Is(err, accounts.ErrAccountExpired):
+			status = http.StatusBadRequest
+		case errors.Is(err, accounts.ErrMasterChanged):
+			status = http.StatusForbidden
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if h.sessionsService != nil {
+		h.sessionsService.RevokeAllForAccount(sourceID)
+		h.sessionsService.RevokeAllForAccount(targetID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status":  "admin transferred",
+		"adminId": targetID,
+	})
 }
 
 // SetProfileAllowShareLinks grants or revokes a profile's permission to create
@@ -10314,6 +10463,28 @@ func (h *AdminUIHandler) TestDebridProvider(w http.ResponseWriter, r *http.Reque
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": fmt.Sprintf("Connected as customer %s (%s)", info.Username, accountType),
+		})
+
+	case "torrin":
+		torrinClient := debrid.NewTorrinClient(req.APIKey)
+		info, err := torrinClient.GetAccountInfo(r.Context())
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		accountType := "Free"
+		if info.PremiumActive {
+			accountType = "Premium"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Connected as %s (%s)", info.Username, accountType),
 		})
 
 	default:

@@ -208,7 +208,7 @@ func (d *Deobfuscator) extractFromYencHeaders(file nzbparser.NzbFile) string {
 	defer r.Close()
 
 	// Get yenc headers
-	h, err := r.GetYencHeaders()
+	h, err := getYencHeadersWithContext(ctx, r)
 	if err != nil {
 		d.log.Debug("Failed to get yEnc headers", "error", err)
 		return ""

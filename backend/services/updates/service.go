@@ -14,6 +14,7 @@ import (
 )
 
 const defaultGitHubRepo = "godver3/mediastorm"
+const incompleteReleaseTTL = time.Minute
 
 var releaseTagPattern = regexp.MustCompile(`^v?(\d+\.\d+\.\d+)(?:-(\d{8}))?$`)
 
@@ -58,12 +59,14 @@ type ComponentStatus struct {
 }
 
 type githubRelease struct {
-	TagName string `json:"tag_name"`
-	HTMLURL string `json:"html_url"`
-	Assets  []struct {
-		Name               string `json:"name"`
-		BrowserDownloadURL string `json:"browser_download_url"`
-	} `json:"assets"`
+	TagName string               `json:"tag_name"`
+	HTMLURL string               `json:"html_url"`
+	Assets  []githubReleaseAsset `json:"assets"`
+}
+
+type githubReleaseAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
 func NewService() *Service {
@@ -80,7 +83,8 @@ func NewService() *Service {
 
 func (s *Service) Status(ctx context.Context, req StatusRequest) StatusResponse {
 	checkedAt := time.Now().UTC()
-	release, err := s.latestRelease(ctx, req.ForceRefresh)
+	apkPrefix := apkAssetPrefix(req)
+	release, err := s.latestRelease(ctx, req.ForceRefresh, apkPrefix)
 
 	resp := StatusResponse{
 		Backend: ComponentStatus{
@@ -111,14 +115,14 @@ func (s *Service) Status(ctx context.Context, req StatusRequest) StatusResponse 
 	latestVersion, latestBuildID := ParseReleaseTag(release.TagName)
 	resp.Backend = fillLatest(resp.Backend, release, latestVersion, latestBuildID, "")
 	if resp.Frontend != nil {
-		resp.Frontend = ptr(fillLatest(*resp.Frontend, release, latestVersion, latestBuildID, apkAssetPrefix(req)))
+		resp.Frontend = ptr(fillLatest(*resp.Frontend, release, latestVersion, latestBuildID, apkPrefix))
 	}
 	return resp
 }
 
-func (s *Service) latestRelease(ctx context.Context, force bool) (*githubRelease, error) {
+func (s *Service) latestRelease(ctx context.Context, force bool, apkPrefix string) (*githubRelease, error) {
 	s.mu.Lock()
-	if !force && s.cached != nil && time.Since(s.checked) < s.ttl {
+	if !force && s.cached != nil && time.Since(s.checked) < s.cacheTTL(s.cached, apkPrefix) {
 		cached := *s.cached
 		s.mu.Unlock()
 		return &cached, nil
@@ -157,6 +161,13 @@ func (s *Service) latestRelease(ctx context.Context, force bool) (*githubRelease
 	return &release, nil
 }
 
+func (s *Service) cacheTTL(release *githubRelease, apkPrefix string) time.Duration {
+	if apkPrefix != "" && apkDownloadURL(release, apkPrefix) == "" && incompleteReleaseTTL < s.ttl {
+		return incompleteReleaseTTL
+	}
+	return s.ttl
+}
+
 func fillLatest(status ComponentStatus, release *githubRelease, latestVersion, latestBuildID, apkPrefix string) ComponentStatus {
 	status.LatestVersion = latestVersion
 	status.LatestBuildID = latestBuildID
@@ -164,14 +175,19 @@ func fillLatest(status ComponentStatus, release *githubRelease, latestVersion, l
 	status.ReleaseURL = release.HTMLURL
 	status.UpdateAvailable = IsNewer(status.CurrentVersion, status.CurrentBuildID, latestVersion, latestBuildID)
 	if apkPrefix != "" {
-		for _, asset := range release.Assets {
-			if strings.HasPrefix(asset.Name, apkPrefix) && strings.HasSuffix(asset.Name, ".apk") {
-				status.APKDownloadURL = asset.BrowserDownloadURL
-				break
-			}
-		}
+		status.APKDownloadURL = apkDownloadURL(release, apkPrefix)
+		status.UpdateAvailable = status.UpdateAvailable && status.APKDownloadURL != ""
 	}
 	return status
+}
+
+func apkDownloadURL(release *githubRelease, apkPrefix string) string {
+	for _, asset := range release.Assets {
+		if strings.HasPrefix(asset.Name, apkPrefix) && strings.HasSuffix(asset.Name, ".apk") {
+			return asset.BrowserDownloadURL
+		}
+	}
+	return ""
 }
 
 func ParseReleaseTag(tag string) (string, string) {

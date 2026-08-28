@@ -42,6 +42,10 @@ func TestAdminUsersPageExplainsAndRendersAccessHierarchy(t *testing.T) {
 		`onclick="showRenameClientModal('${client.id}')"`,
 		`${orphaned ? '<option value="" selected disabled>Move to person…</option>' : ''}`,
 		`onchange="if (this.value) reassignClient(`,
+		`onclick="showTransferAdminModal('${encodeURIComponent(a.id)}', '${encodeURIComponent(a.username)}')"`,
+		`function transferAdmin(event, targetAccountId)`,
+		`/api/accounts/transfer-admin`,
+		`Your account will lose admin access immediately`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("accounts template missing hierarchy marker %q", marker)

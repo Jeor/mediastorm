@@ -138,9 +138,13 @@ Available on TestFlight:
 
 #### Android / Android TV
 
-Download the latest APK: [Releases](https://github.com/godver3/mediastorm/releases)
+Download the latest APK:
 
-**Updates:** Incremental updates are delivered automatically via OTA. Larger updates require manually downloading the new APK from [GitHub Releases](https://github.com/godver3/mediastorm/releases) or using Downloader (code listed with each release).
+- Android Mobile: [APK](https://github.com/godver3/mediastorm/releases/download/android-latest/mediastorm-mobile.apk) — Downloader code [`3364803`](https://aftv.news/3364803)
+- Android TV: [APK](https://github.com/godver3/mediastorm/releases/download/android-latest/mediastorm-tv.apk) — Downloader code [`7856845`](https://aftv.news/7856845)
+- [Versioned release history](https://github.com/godver3/mediastorm/releases)
+
+**Updates:** Incremental updates are delivered automatically via OTA. Larger updates require manually downloading the latest APK or entering the permanent code for your device in Downloader.
 
 ## Configuration
 

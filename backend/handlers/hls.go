@@ -231,7 +231,7 @@ func (p *throttlingProxy) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	// Log upstream response status for debugging
 	if resp.StatusCode >= 400 {
-		log.Printf("[hls] session %s: proxy upstream returned %d %s for host: %s", p.session.ID, resp.StatusCode, resp.Status, requestsecurity.URLForLog(p.targetURL))
+		log.Printf("[hls] session %s: proxy upstream returned %d %s for target: %s (requestPath=%q fromClient=%q)", p.session.ID, resp.StatusCode, resp.Status, requestsecurity.URLForLog(encodedURL), req.URL.Path, r.URL.Path)
 	}
 
 	// Copy response headers
@@ -400,11 +400,17 @@ type HLSSession struct {
 	UsesSubtitleRendition bool
 
 	// Performance tracking
-	StreamStartTime  time.Time
-	FirstSegmentTime time.Time
-	BytesStreamed    int64
-	SegmentsCreated  int
-	FFmpegCPUStart   float64
+	StreamStartTime    time.Time
+	FirstSegmentTime   time.Time
+	FirstSegmentSentAt time.Time // t4: first playback segment response began streaming
+	BytesStreamed      int64
+	SegmentsCreated    int
+	FFmpegCPUStart     float64
+
+	// Latency correlation back to the prequeue request that spawned this session.
+	PrequeueID      string // prequeueId ("" when the session is ad-hoc / live)
+	ServiceType     string // "usenet" | "debrid" when known
+	ServiceProvider string // indexer / debrid provider when known
 	// Rolling throughput sample state (bits/sec), updated atomically.
 	throughputLastBytes  int64
 	throughputLastNanos  int64
@@ -426,6 +432,15 @@ type HLSSession struct {
 	// SegmentExt is the extension the transcode plan actually chose (".ts" or ".m4s"), recorded
 	// so nothing has to reconstruct it from flags. Empty until the plan runs.
 	SegmentExt string
+
+	// SubtitleTimestampBaseSeconds is where this session's MPEG-TS timeline starts, which is not
+	// where its sidecar WebVTT starts. FFmpeg's TS muxer preloads by 1.4s unless told otherwise,
+	// while an extracted VTT is always 0-based, so a player that maps WebVTT 0 onto TS 0 shows
+	// every cue 1.4s early. The web path avoids it by pinning the video to a zero origin
+	// (`-muxpreload 0`); a cast cannot, because a stable receiver timeline needs
+	// `-output_ts_offset`. Recorded here so the subtitle response can state the offset
+	// explicitly, rather than have anything reconstruct it from ffmpeg flags.
+	SubtitleTimestampBaseSeconds float64
 
 	// Input error recovery (for usenet disconnections)
 	InputErrorDetected bool // Set to true when FFmpeg input stream fails (usenet disconnect)
@@ -515,6 +530,10 @@ type LiveTuningSettings struct {
 	AnalyzeDurationSec int
 	LowLatency         bool
 	RequestHeaders     map[string]string
+	// ForceHLSInput applies HLS-demuxer options when a provider identifies an
+	// extensionless URL as HLS. URL-only detection cannot recognize every signed
+	// Stremio sports playlist.
+	ForceHLSInput bool
 	// ProxyURL, when set, routes the upstream live fetch through this proxy.
 	// SOCKS5 proxies (which ffmpeg cannot use natively) are honored by fetching
 	// the stream with the Go HTTP client and piping it into ffmpeg's stdin.
@@ -562,8 +581,12 @@ const (
 
 	// Matroska-specific tuning for pipe-based seeks
 	matroskaHeaderPrefixBytes int64 = 2 * 1024 * 1024 // copy 2MB of header metadata
-	matroskaSeekBackoffBytes  int64 = 8 * 1024 * 1024 // request a little earlier to land on cluster boundary
-	matroskaMaxClusterScan    int64 = 32 * 1024 * 1024
+	// mpegtsDefaultPreloadSeconds is where FFmpeg's MPEG-TS muxer starts its clock when nothing
+	// overrides it: 1.4s, i.e. a first PTS of 126000 at 90kHz. Verified against a produced
+	// segment (`audio start_pts=126000`), not assumed.
+	mpegtsDefaultPreloadSeconds       = 1.4
+	matroskaSeekBackoffBytes    int64 = 8 * 1024 * 1024 // request a little earlier to land on cluster boundary
+	matroskaMaxClusterScan      int64 = 32 * 1024 * 1024
 
 	// Maximum number of input error recovery attempts before giving up
 	// This prevents infinite restart loops for persistently broken streams
@@ -1314,6 +1337,8 @@ type HLSManager struct {
 	localWebDAVPrefix  string
 	configManager      ConfigProvider
 	playbackObserver   PlaybackActivityObserver
+	// Click→first-frame latency instrumentation (optional; nil in reduced setups)
+	latencyTracker *PlaybackLatencyTracker
 	// Global probe cache - shared between prequeue (ProbeVideoFull) and HLS (probeAllMetadata)
 	probeCache   map[string]*cachedProbeEntry
 	probeCacheMu sync.RWMutex
@@ -1339,6 +1364,38 @@ func (m *HLSManager) AddPlaybackActivityObserver(observer PlaybackActivityObserv
 	m.mu.Lock()
 	m.playbackObserver = addPlaybackObserver(m.playbackObserver, observer)
 	m.mu.Unlock()
+}
+
+// SetPlaybackLatencyTracker wires the click→first-frame sample sink.
+// Safe to call once at startup; nil disables instrumentation.
+func (m *HLSManager) SetPlaybackLatencyTracker(t *PlaybackLatencyTracker) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	m.latencyTracker = t
+	m.mu.Unlock()
+}
+
+// SetSessionPrequeue links an HLS session back to the prequeue request that
+// produced it so first-frame latency can be measured end to end.
+func (m *HLSManager) SetSessionPrequeue(sessionID, prequeueID, serviceType, serviceProvider string) {
+	if m == nil || prequeueID == "" {
+		return
+	}
+	session, ok := m.GetSession(sessionID)
+	if !ok {
+		return
+	}
+	session.mu.Lock()
+	session.PrequeueID = prequeueID
+	if serviceType != "" {
+		session.ServiceType = serviceType
+	}
+	if serviceProvider != "" {
+		session.ServiceProvider = serviceProvider
+	}
+	session.mu.Unlock()
 }
 
 // UpdateSharePlaybackProgress records live dashboard-only progress for
@@ -1733,12 +1790,26 @@ func (m *HLSManager) buildLocalWebDAVURL(session *HLSSession) (string, bool) {
 	}
 
 	if !strings.HasPrefix(original, prefix) {
+		log.Printf("[hls] buildLocalWebDAVURL: original %q does not start with prefix %q (base=%s) — dropping to other paths",
+			original, prefix, requestsecurity.URLForLog(base))
 		return "", false
 	}
 
 	full := strings.TrimRight(base, "/") + original
-	log.Printf("[hls] using local WebDAV direct URL for session %s: %s", session.ID, requestsecurity.URLForLog(full))
+	log.Printf("[hls] buildLocalWebDAVURL: resolved to %s (original=%q)", logWebDAVURL(full), original)
 	return full, true
+}
+
+// logWebDAVURL logs a WebDAV URL with any embedded credentials masked but the
+// path retained, so latency/diagnostic logs show exactly which file is targeted
+// without leaking the username/password.
+func logWebDAVURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	parsed.User = nil
+	return parsed.String()
 }
 
 // buildLocalWebDAVURLFromPath builds a WebDAV URL from just a path (no session required).
@@ -2399,6 +2470,10 @@ func (m *HLSManager) CreateLiveSession(ctx context.Context, liveURL, provider, b
 			log.Printf("[hls] live session %s transcoding failed: %v", sessionID, err)
 			session.mu.Lock()
 			session.Completed = true
+			if session.SegmentsCreated == 0 && session.FatalError == "" {
+				session.FatalError = "Live stream failed before playback started"
+				session.FatalErrorTime = time.Now()
+			}
 			session.mu.Unlock()
 		}
 	}()
@@ -2568,7 +2643,7 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		// HLS demuxer rejects by default. Only apply them for actual .m3u8 inputs —
 		// for a direct MPEG-TS (.ts) input the mpegts demuxer is selected and these
 		// options abort the command ("Option ... not found").
-		if inputLooksLikeHLS(session.Path) {
+		if session.LiveTuning.ForceHLSInput || inputLooksLikeHLS(session.Path) {
 			args = append(args,
 				"-allowed_extensions", "ALL",
 				"-allowed_segment_extensions", "ALL",
@@ -3648,6 +3723,21 @@ func (m *HLSManager) startTranscoding(ctx context.Context, session *HLSSession, 
 	if webSubtitleRendition {
 		args = append(args, "-muxpreload", "0", "-muxdelay", "0")
 	}
+
+	// Whatever the flags above settled on, state the resulting TS origin once. `-muxpreload 0`
+	// pins it to zero; otherwise the muxer preloads by its default 1.4s, and a stable cast
+	// timeline adds the `-output_ts_offset` applied earlier. A sidecar VTT is 0-based either way,
+	// so this is exactly the correction its response has to carry.
+	subtitleTimestampBase := mpegtsDefaultPreloadSeconds
+	if webSubtitleRendition {
+		subtitleTimestampBase = 0
+	}
+	if stableCastMode && castSegmentStartNumber > 0 {
+		subtitleTimestampBase += float64(castSegmentStartNumber) * hlsSegmentDuration
+	}
+	session.mu.Lock()
+	session.SubtitleTimestampBaseSeconds = subtitleTimestampBase
+	session.mu.Unlock()
 
 	// Subtitle handling: All subtitles are served via sidecar VTT files for consistent overlay rendering.
 	// - fMP4 (Dolby Vision/HDR): Extract ALL text-based tracks upfront as additional ffmpeg outputs
@@ -5219,6 +5309,11 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		if _, statErr := os.Stat(playlistPath); statErr == nil {
 			break
 		} else if os.IsNotExist(statErr) {
+			if livePlaylistStartupFailed(session) {
+				log.Printf("[hls] live playlist failed before becoming ready for session %s", sessionID)
+				http.Error(w, "live stream failed", http.StatusBadGateway)
+				return
+			}
 			if time.Now().After(deadline) {
 				log.Printf("[hls] playlist still not ready for session %s after 60s", sessionID)
 				http.Error(w, "playlist not ready", http.StatusGatewayTimeout)
@@ -5248,6 +5343,11 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		}
 		if playlistHasMediaSegment(content) {
 			break
+		}
+		if livePlaylistStartupFailed(session) {
+			log.Printf("[hls] live playlist completed without media segments for session %s", sessionID)
+			http.Error(w, "live stream failed", http.StatusBadGateway)
+			return
 		}
 		if time.Now().After(deadline) {
 			log.Printf("[hls] playlist has no media segments for session %s after 60s", sessionID)
@@ -5396,6 +5496,15 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		videoRange = "PQ"
 	}
 	log.Printf("[hls] served playlist for session %s, VIDEO-RANGE=%s, auth token=%v", sessionID, videoRange, authToken != "")
+}
+
+func livePlaylistStartupFailed(session *HLSSession) bool {
+	if session == nil {
+		return false
+	}
+	session.mu.RLock()
+	defer session.mu.RUnlock()
+	return session.IsLive && session.Completed
 }
 
 func playlistHasMediaSegment(content []byte) bool {
@@ -5752,7 +5861,9 @@ func (m *HLSManager) ServeSegment(w http.ResponseWriter, r *http.Request, sessio
 
 	// Parse segment number from filename (e.g., "segment123.ts" -> 123)
 	var segmentNum int
+	parsedSegmentOK := false
 	if _, err := fmt.Sscanf(segmentName, "segment%d.", &segmentNum); err == nil {
+		parsedSegmentOK = true
 		// Update tracking for this segment request
 		session.mu.Lock()
 		if session.MinSegmentRequested < 0 || segmentNum < session.MinSegmentRequested {
@@ -5881,6 +5992,42 @@ func (m *HLSManager) ServeSegment(w http.ResponseWriter, r *http.Request, sessio
 	session.mu.Lock()
 	session.BytesStreamed += segmentSize
 	session.mu.Unlock()
+
+	// First playback frame: when the first media segment response is about to
+	// be written, snapshot t4 and emit the click→first-frame sample. Only
+	// actual segment requests (segmentN.ext) count — init.mp4 / captions / VTT
+	// playlist fetches do not constitute a playback frame. Emits exactly once
+	// per session (FirstSegmentSentAt transitions zero → set).
+	emitLatency := false
+	if parsedSegmentOK {
+		session.mu.Lock()
+		if session.FirstSegmentSentAt.IsZero() {
+			session.FirstSegmentSentAt = time.Now()
+			emitLatency = true
+		}
+		sentAt := session.FirstSegmentSentAt
+		readyAt := session.FirstSegmentTime
+		createdAt := session.StreamStartTime
+		sessionID := session.ID
+		prequeueID := session.PrequeueID
+		serviceType := session.ServiceType
+		serviceProvider := session.ServiceProvider
+		session.mu.Unlock()
+		if emitLatency && prequeueID != "" && m.latencyTracker != nil && !sentAt.IsZero() {
+			requestedAt, prequeueReadyAt := m.latencyTracker.PrequeueTimes(prequeueID)
+			m.latencyTracker.Record(PlaybackLatencySample{
+				PrequeueID:          prequeueID,
+				SessionID:           sessionID,
+				ServiceType:         serviceType,
+				ServiceProvider:     serviceProvider,
+				ClientRequestedAt:   requestedAt,
+				PrequeueReadyAt:     prequeueReadyAt,
+				HLSSessionCreatedAt: createdAt,
+				FirstSegmentReadyAt: readyAt,
+				FirstSegmentSentAt:  sentAt,
+			})
+		}
+	}
 
 	serveStart := time.Now()
 	http.ServeFile(w, r, segmentPath)
@@ -6040,6 +6187,7 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("X-Subtitle-Timestamp-Base", fmt.Sprintf("%.3f", session.subtitleTimestampBase()))
 		if session.subtitleExtractionInProgress(requestedTrack) || syncedSamePass {
 			// For synced same-pass subtitles the transcode is still writing the file; signal
 			// "extracting" so the overlay polls quickly instead of waiting the long interval.
@@ -6077,11 +6225,12 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Post-process VTT to merge karaoke character cues (from ASS conversion)
-	processedContent := mergeKaraokeCues(string(content))
+	processedContent := withWebVTTTimestampMap(mergeKaraokeCues(string(content)), session.subtitleTimestampBase())
 
 	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache") // Don't cache since file is growing
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("X-Subtitle-Timestamp-Base", fmt.Sprintf("%.3f", session.subtitleTimestampBase()))
 	if session.subtitleExtractionInProgress(requestedTrack) || syncedSamePassWriting {
 		w.Header().Set("X-Subtitle-Extracting", "true")
 	}
@@ -6094,6 +6243,37 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 
 	w.Write([]byte(processedContent))
 	log.Printf("[hls] served subtitles for session %s track %d, size=%d bytes", sessionID, requestedTrack, len(processedContent))
+}
+
+// subtitleTimestampBase reports where this session's MPEG-TS clock starts, in seconds.
+func (s *HLSSession) subtitleTimestampBase() float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.SubtitleTimestampBaseSeconds
+}
+
+// withWebVTTTimestampMap states the WebVTT-to-MPEG-TS alignment inside the cue file, which is the
+// only way an HLS client can learn it.
+//
+// Our own overlay is told the same thing out of band, through `X-Subtitle-Start-Offset`, but a
+// Cast receiver never sees our headers: it reads the playlist and the VTT and nothing else. With
+// no `X-TIMESTAMP-MAP` it assumes WebVTT zero is TS zero, and since the muxer's clock starts at
+// 1.4s every cue lands 1.4s early — visible on screen, and worse on a stable cast timeline where
+// the offset is a whole run of segments.
+//
+// Left alone when the file already carries a map, or when it has no header to attach one to.
+func withWebVTTTimestampMap(content string, baseSeconds float64) string {
+	if baseSeconds <= 0 || strings.Contains(content, "X-TIMESTAMP-MAP") {
+		return content
+	}
+	trimmed := strings.TrimLeft(content, "\ufeff")
+	if !strings.HasPrefix(trimmed, "WEBVTT") {
+		return content
+	}
+	rest := trimmed[len("WEBVTT"):]
+	// 90kHz is the MPEG-TS clock WebVTT maps onto, fixed by the container.
+	mapping := fmt.Sprintf("\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:%d", int64(math.Round(baseSeconds*90000)))
+	return "WEBVTT" + mapping + rest
 }
 
 func (s *HLSSession) subtitleExtractionOffset(track int) (float64, bool) {

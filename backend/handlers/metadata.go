@@ -427,7 +427,7 @@ func (h *MetadataHandler) DiscoverNew(w http.ResponseWriter, r *http.Request) {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichTrendingItems(items, idx)
+			enrichTrendingItems(items, idx, service, strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true"))
 		}
 	}
 
@@ -515,6 +515,18 @@ func (h *MetadataHandler) Search(w http.ResponseWriter, r *http.Request) {
 				tvRating = user.KidsMaxRating
 			}
 			results = kids.FilterSearchByRatings(results, movieRating, tvRating)
+		}
+	}
+
+	// Search is intentionally cache-only: expose counts already learned from
+	// user-owned shelves without turning each debounced query into provider work.
+	if userID != "" && h.HistoryService != nil &&
+		(mediaType == "series" || mediaType == "tv" || mediaType == "show") {
+		wh, whErr := h.HistoryService.ListWatchHistory(userID)
+		if whErr == nil {
+			cw, _ := h.HistoryService.ListSeriesStates(userID)
+			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
+			enrichSearchResultsWithCachedEpisodeCounts(results, buildWatchStateIndex(wh, cw, pp), service)
 		}
 	}
 
@@ -1275,7 +1287,8 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		if whErr == nil {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
-			enrichTrendingItems(items, buildWatchStateIndex(wh, cw, pp))
+			idx := buildWatchStateIndex(wh, cw, pp)
+			enrichTrendingItems(items, idx, service, strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true"))
 		}
 	}
 
@@ -1988,7 +2001,7 @@ func (h *MetadataHandler) CuratedList(w http.ResponseWriter, r *http.Request) {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichTrendingItems(items, idx)
+			enrichTrendingItems(items, idx, service, strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true"))
 		}
 	}
 	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)

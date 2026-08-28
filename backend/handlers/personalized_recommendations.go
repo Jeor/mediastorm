@@ -155,7 +155,7 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 	cacheKey := personalizedRecommendationsCacheKey(userID, days, limitPerType, history, progress)
 	if response, ok := h.cachedPersonalizedRecommendations(cacheKey); ok {
 		log.Printf("[metadata] personalized recommendations cache hit user=%s seeds=%d items=%d", userID, response.SeedCount, len(response.Items))
-		h.writePersonalizedRecommendations(w, r, userID, response)
+		h.writePersonalizedRecommendations(w, r, userID, response, history, progress)
 		return
 	}
 	build, leader := h.beginPersonalizedRecommendationsBuild(cacheKey)
@@ -165,7 +165,7 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 			return
 		case <-build.done:
 			log.Printf("[metadata] personalized recommendations shared in-flight result user=%s seeds=%d items=%d", userID, build.response.SeedCount, len(build.response.Items))
-			h.writePersonalizedRecommendations(w, r, userID, build.response)
+			h.writePersonalizedRecommendations(w, r, userID, build.response, history, progress)
 			return
 		}
 	}
@@ -191,23 +191,31 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 	if len(resp.Series) > 0 {
 		enrichTrendingRatings(resp.Series, service)
 	}
-	if len(resp.Items) > 0 {
-		cw, _ := h.HistoryService.ListSeriesStates(userID)
-		idx := buildWatchStateIndex(history, cw, progress)
-		enrichTrendingItems(resp.Items, idx)
-		enrichTrendingItems(resp.Movies, idx)
-		enrichTrendingItems(resp.Series, idx)
-	}
-
 	cacheResponse := r.Context().Err() == nil && (resp.SeedCount == 0 || len(resp.Items) > 0)
 	if !cacheResponse && r.Context().Err() == nil {
 		log.Printf("[metadata] personalized recommendations empty result not cached user=%s seeds=%d", userID, resp.SeedCount)
 	}
 	h.finishPersonalizedRecommendationsBuild(cacheKey, build, resp, cacheResponse)
-	h.writePersonalizedRecommendations(w, r, userID, resp)
+	h.writePersonalizedRecommendations(w, r, userID, resp, history, progress)
 }
 
-func (h *MetadataHandler) writePersonalizedRecommendations(w http.ResponseWriter, r *http.Request, userID string, response PersonalizedRecommendationsResponse) {
+func (h *MetadataHandler) writePersonalizedRecommendations(
+	w http.ResponseWriter,
+	r *http.Request,
+	userID string,
+	response PersonalizedRecommendationsResponse,
+	history []models.WatchHistoryItem,
+	progress []models.PlaybackProgress,
+) {
+	service := h.serviceForUser(userID)
+	if len(response.Items) > 0 {
+		cw, _ := h.HistoryService.ListSeriesStates(userID)
+		idx := buildWatchStateIndex(history, cw, progress)
+		warmEpisodeCounts := strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true")
+		enrichTrendingItems(response.Items, idx, service, warmEpisodeCounts)
+		enrichTrendingItems(response.Movies, idx, service, warmEpisodeCounts)
+		enrichTrendingItems(response.Series, idx, service, warmEpisodeCounts)
+	}
 	policy := resolveUnreleasedVisibilityPolicy(
 		h.CfgManager,
 		h.UserSettings,
@@ -217,7 +225,7 @@ func (h *MetadataHandler) writePersonalizedRecommendations(w http.ResponseWriter
 		unreleasedVisibilityLists,
 	)
 	if !policy.IncludeMovies {
-		enrichTrendingMovieReleaseVisibility(r.Context(), response.Items, h.serviceForUser(userID))
+		enrichTrendingMovieReleaseVisibility(r.Context(), response.Items, service)
 		movieReleases := make(map[int64]models.Title, len(response.Items))
 		for i := range response.Items {
 			if response.Items[i].Title.TMDBID > 0 && strings.EqualFold(response.Items[i].Title.MediaType, "movie") {

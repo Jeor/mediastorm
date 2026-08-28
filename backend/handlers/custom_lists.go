@@ -189,18 +189,18 @@ func (h *CustomListsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metadataSvc := h.metadataForUser(userID)
 	if h.HistoryService != nil {
 		wh, whErr := h.HistoryService.ListWatchHistory(userID)
 		cw, _ := h.HistoryService.ListSeriesStates(userID)
 		pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 		if whErr == nil {
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichWatchlistItems(items, idx)
+			enrichWatchlistItems(items, idx, metadataSvc, false)
 		}
 	}
 
 	// Enrich with MDBList ratings for sort-by-rating support
-	metadataSvc := h.metadataForUser(userID)
 	enrichWatchlistRatings(r.Context(), items, metadataSvc)
 
 	// Enrich with artwork URLs from metadata cache

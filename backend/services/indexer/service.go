@@ -1564,6 +1564,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	if len(alternateTitles) > 0 {
 		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
 	}
@@ -1604,7 +1605,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		go func() {
 			defer wg.Done()
 			usenetStart := time.Now()
-			usenetResults, err := s.searchUsenetWithFilter(ctx, settings, sourceOpts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+			usenetResults, err := s.searchUsenetWithFilter(ctx, settings, sourceOpts, parsedQuery, filterTitles, searchQueries, filterBundle.Usenet)
 			if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
 				fallbackQueries := buildEnglishFallbackQueries(sourceOpts, parsedQuery, englishFallbackTitles)
 				log.Printf("[indexer/usenet] localized search returned no results; trying English fallback queries: %v", fallbackQueries)
@@ -1644,7 +1645,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
-				AlternateTitles:       append([]string{}, alternateTitles...),
+				AlternateTitles:       append([]string{}, filterTitles...),
 				UserID:                opts.UserID,
 				ClientID:              opts.ClientID,
 				TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
@@ -1820,6 +1821,10 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
 	filterSettings := filterBundle.Default
 	rankingBundle := s.getEffectiveRankingBundle(opts.UserID, opts.ClientID, settings)
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	if shouldBypassAIOStreamsRanking(settings, filterOverrides, shouldUseUsenet(settings.Streaming.ServiceMode)) {
 		log.Printf("[indexer] Bypassing mediastorm filtering/ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
 		scored := make([]models.ScoredNZBResult, len(rawResults))
@@ -1851,9 +1856,9 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		}
 	}
 	filterOptsByService := map[models.ContentServiceType]filter.Options{
-		models.ServiceTypeDebrid:  s.buildFilterOptions(rawOpts, filterBundle.Debrid),
-		models.ServiceTypeUsenet:  s.buildFilterOptions(rawOpts, filterBundle.Usenet),
-		models.ServiceTypeUnknown: s.buildFilterOptions(rawOpts, filterBundle.Default),
+		models.ServiceTypeDebrid:  s.buildFilterOptions(rawOpts, filterBundle.Debrid, filterTitles),
+		models.ServiceTypeUsenet:  s.buildFilterOptions(rawOpts, filterBundle.Usenet, filterTitles),
+		models.ServiceTypeUnknown: s.buildFilterOptions(rawOpts, filterBundle.Default, filterTitles),
 	}
 	detailed := make([]filter.FilteredResult, 0, len(rawResults))
 	for _, raw := range rawResults {
@@ -2055,6 +2060,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	if len(alternateTitles) > 0 {
 		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
 	}
@@ -2085,9 +2091,9 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 				out.scored = bypassScoredResults(out.raw, rankingBundle.NewestReleaseFirst)
 				out.filtered = 0
 			} else {
-				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet)
+				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet, filterTitles)
 				if out.source == "debrid" {
-					filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid)
+					filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid, filterTitles)
 				}
 				out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, out.raw, filterOpts, filterBundle, animeSettings, filterOverrides, rankingBundle)
 			}
@@ -2284,7 +2290,8 @@ func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Setting
 	}
 	out.raw = raw
 	out.incomplete = incomplete
-	out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Usenet), filterBundle, animeSettings, filterOverrides, rankingBundle)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
+	out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Usenet, filterTitles), filterBundle, animeSettings, filterOverrides, rankingBundle)
 	log.Printf("[indexer] TIMING: split usenet search complete (took: %v, raw=%d, passed=%d)", time.Since(usenetStart), len(raw), len(out.scored))
 	return out
 }
@@ -2354,7 +2361,8 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		out.scored = bypassScoredResults(raw, rankingBundle.NewestReleaseFirst)
 		out.filtered = 0
 	} else {
-		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid), filterBundle, animeSettings, filterOverrides, rankingBundle)
+		filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
+		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid, filterTitles), filterBundle, animeSettings, filterOverrides, rankingBundle)
 	}
 	log.Printf("[indexer] TIMING: split debrid search complete (took: %v, raw=%d, passed=%d)", time.Since(debridStart), len(raw), len(out.scored))
 	return out
@@ -2521,6 +2529,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
@@ -2572,7 +2581,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				}
 				resultsChan <- searchResult{results: usenetResults, source: "usenet"}
 			} else {
-				usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+				usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, filterTitles, searchQueries, filterBundle.Usenet)
 				if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
 					fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
 					filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
@@ -2608,7 +2617,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
-				AlternateTitles:       append([]string{}, alternateTitles...),
+				AlternateTitles:       append([]string{}, filterTitles...),
 				UserID:                opts.UserID,
 				ClientID:              opts.ClientID,
 				TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
@@ -2765,7 +2774,7 @@ func (s *Service) fetchUsenetResultsAllQueries(ctx context.Context, settings con
 }
 
 // buildFilterOptions constructs filter.Options from SearchOptions and FilterSettings.
-func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.FilterSettings) filter.Options {
+func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.FilterSettings, resolvedTitles ...[]string) filter.Options {
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	expectedTitle := strings.TrimSpace(parsedQuery.Title)
 	if expectedTitle == "" {
@@ -2779,7 +2788,12 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 
 	isMovie := strings.ToLower(opts.MediaType) == "movie"
 
-	alternateTitles := s.resolveAlternateTitles(context.Background(), opts, "", 0)
+	var alternateTitles []string
+	if len(resolvedTitles) > 0 {
+		alternateTitles = combineFilterTitles(resolvedTitles...)
+	} else {
+		alternateTitles = s.resolveAlternateTitles(context.Background(), opts, "", 0)
+	}
 
 	return filter.Options{
 		ExpectedTitle:         expectedTitle,
@@ -2868,6 +2882,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 
@@ -2925,7 +2940,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 			IMDBID:                opts.IMDBID,
 			MediaType:             opts.MediaType,
 			Year:                  opts.Year,
-			AlternateTitles:       append([]string{}, alternateTitles...),
+			AlternateTitles:       append([]string{}, filterTitles...),
 			UserID:                opts.UserID,
 			ClientID:              opts.ClientID,
 			TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
@@ -2980,7 +2995,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		usenetStart := time.Now()
 		log.Printf("[indexer] TIMING: split usenet search starting (query=%q)", opts.Query)
 
-		usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+		usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, filterTitles, searchQueries, filterBundle.Usenet)
 		if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
 			fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
 			filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
@@ -3340,6 +3355,30 @@ func excludeFallbackTitles(titles, fallbackTitles []string) []string {
 		}
 	}
 	return filtered
+}
+
+// combineFilterTitles keeps English fallback titles available to identity
+// filtering even when the localized query returned raw candidates. Fallback
+// titles remain separate from normal search queries so they do not consume the
+// configured alternate-query budget.
+func combineFilterTitles(titleLists ...[]string) []string {
+	seen := make(map[string]struct{})
+	var combined []string
+	for _, titles := range titleLists {
+		for _, title := range titles {
+			trimmed := strings.TrimSpace(title)
+			if trimmed == "" {
+				continue
+			}
+			key := strings.ToLower(trimmed)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			combined = append(combined, trimmed)
+		}
+	}
+	return combined
 }
 
 func isReleaseFriendlyTitle(value string) bool {

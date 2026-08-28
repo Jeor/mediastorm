@@ -129,12 +129,14 @@ type countingDebridSearchService struct {
 type queryRecordingDebridSearchService struct {
 	mu                 sync.Mutex
 	queries            []string
+	alternateTitleSets [][]string
 	localizedHasResult bool
 }
 
 func (s *queryRecordingDebridSearchService) Search(_ context.Context, opts debrid.SearchOptions) ([]models.NZBResult, error) {
 	s.mu.Lock()
 	s.queries = append(s.queries, opts.Query)
+	s.alternateTitleSets = append(s.alternateTitleSets, append([]string(nil), opts.AlternateTitles...))
 	s.mu.Unlock()
 	if s.localizedHasResult || strings.Contains(opts.Query, "The Mire") {
 		return []models.NZBResult{{Title: "The.Mire.S01E01.1080p.WEB-DL", ServiceType: models.ServiceTypeDebrid}}, nil
@@ -639,6 +641,9 @@ func TestSearchDoesNotUseEnglishFallbackWhenLocalizedSearchSucceeds(t *testing.T
 	}
 	if got, want := debridSvc.queries, []string{"Rojst S01E01"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("queries = %v, want %v", got, want)
+	}
+	if got := debridSvc.alternateTitleSets; len(got) != 1 || !reflect.DeepEqual(got[0], []string{"The Mire"}) {
+		t.Fatalf("filter alternate titles = %v, want English fallback title even without a fallback query", got)
 	}
 }
 

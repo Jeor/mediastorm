@@ -29,6 +29,31 @@ type mockSearchCacheClearer struct {
 	called atomic.Int32
 }
 
+func TestResolutionStrategyChangesClearPrequeues(t *testing.T) {
+	base := config.DefaultSettings()
+	tests := map[string]func(*config.Settings){
+		"resolve candidates early": func(s *config.Settings) {
+			s.Streaming.ResolveFirstReadySource = !s.Streaming.ResolveFirstReadySource
+		},
+		"end race early": func(s *config.Settings) {
+			s.Streaming.ResolutionEndRaceEarly = !s.Streaming.ResolutionEndRaceEarly
+		},
+		"settle window": func(s *config.Settings) {
+			s.Streaming.ResolutionSettleWindowMs++
+		},
+	}
+
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			changed := base
+			mutate(&changed)
+			if !shouldClearPrequeueForGlobalSettingsChange(base, changed) {
+				t.Fatal("resolution strategy change did not invalidate prepared prequeues")
+			}
+		})
+	}
+}
+
 func (m *mockSearchCacheClearer) ClearSearchCache() {
 	m.called.Add(1)
 }

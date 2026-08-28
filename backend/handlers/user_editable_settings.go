@@ -33,7 +33,7 @@ var userEditableFields = map[string]map[string]struct{}{
 		"maxSizeMovieGb", "maxSizeEpisodeGb", "maxResolution", "hdrDvPolicy", "requiredTerms",
 		"filterOutTerms", "preferredTerms", "nonPreferredTerms", "downloadPreferredTerms",
 		"unknownTrackPolicy", "preferredScraper", "servicePriority", "adaptivePlaybackEnabled",
-		"adaptiveTargetBufferFactor", "splitByService",
+		"adaptiveTargetBufferFactor", "realDebridRestrictedTermsFilterEnabled", "splitByService",
 	),
 	"filtering.debrid": nil,
 	"filtering.usenet": nil,
@@ -57,7 +57,7 @@ var userEditableFields = map[string]map[string]struct{}{
 		"includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists",
 		"includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "enableAnimations",
 		"enableHeroArtPanning", "enableHeroArtRotation", "hideContinueWatchingHeroMetadata",
-		"moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "simpleMode", "disableTvHomeCardDimming", "bypassFilteringForAioStreamsOnly",
+		"moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "simpleMode", "simpleModeHomeShelves", "disableTvHomeCardDimming", "bypassFilteringForAioStreamsOnly", "showStreamSourceInfo",
 		"disableMobileTopCarousel", "showSeriesBackdropForMissingEpisodeArt", "blurUnwatchedEpisodeThumbnails",
 		"blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews",
 		"blurUnwatchedEpisodeOverviewsIncludeCurrent", "appLanguage",
@@ -69,14 +69,14 @@ var deviceEditableFields = map[string]map[string]struct{}{
 	"filtering": fieldSet(
 		"maxSizeMovieGb", "maxSizeEpisodeGb", "maxResolution", "hdrDvPolicy", "requiredTerms",
 		"filterOutTerms", "preferredTerms", "nonPreferredTerms", "downloadPreferredTerms",
-		"unknownTrackPolicy", "splitByService",
+		"unknownTrackPolicy", "realDebridRestrictedTermsFilterEnabled", "splitByService",
 	),
 	"filtering.debrid": userEditableFields["filtering.debrid"],
 	"filtering.usenet": userEditableFields["filtering.usenet"],
 	"animeFiltering":   userEditableFields["animeFiltering"],
 	"ranking":          fieldSet("newestReleaseFirst"),
 	"playback":         fieldSet("preferredPlayer", "preferredAudioLanguage", "preferredSubtitleLanguage", "allowedTrackLanguages", "preferredSubtitleMode", "pauseWhenAppInactive", "useLoadingScreen", "subtitleSize", "subtitleUseCropDetectPosition", "subtitleColor", "subtitleOpacity", "subtitleFont", "subtitleBold", "subtitleOutlineEnabled", "subtitleOutlineColor", "subtitleOutlineWeight", "subtitleBackgroundEnabled", "subtitleBackgroundColor", "subtitleBackgroundOpacity", "seekForwardSeconds", "seekBackwardSeconds", "forceAacTranscoding", "autoPlayTrailersTV", "rewindOnResumeFromPause", "rewindOnPlaybackStart", "disablePrequeue", "prerollMode", "prerollAssetId", "prerollMediaScope", "prerollSkipIfPrequeueReady", "ignoreDolbyVisionCompatibilityCheck", "streamMigrationEnabled", "creditsDetectionEnabled", "creditsAutoSkip", "matchFrameRate", "liveClosedCaptionExtraction", "maxResultsPerResolution"),
-	"display":          fieldSet("navigationTabVisibility", "includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists", "includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "bypassFilteringForAioStreamsOnly", "disableMobileTopCarousel", "hideContinueWatchingHeroMetadata", "moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "simpleMode", "disableTvHomeCardDimming", "enableAnimations", "enableHeroArtPanning", "enableHeroArtRotation", "showSeriesBackdropForMissingEpisodeArt", "blurUnwatchedEpisodeThumbnails", "blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews", "blurUnwatchedEpisodeOverviewsIncludeCurrent"),
+	"display":          fieldSet("navigationTabVisibility", "includeUnreleasedMoviesInLists", "includeUnreleasedShowsInLists", "includeUnreleasedMoviesInSearch", "includeUnreleasedShowsInSearch", "bypassFilteringForAioStreamsOnly", "showStreamSourceInfo", "disableMobileTopCarousel", "hideContinueWatchingHeroMetadata", "moveDetailsRatingsToMetadata", "hideDetailsPoster", "hideTvDrawerRail", "simpleMode", "simpleModeHomeShelves", "disableTvHomeCardDimming", "enableAnimations", "enableHeroArtPanning", "enableHeroArtRotation", "showSeriesBackdropForMissingEpisodeArt", "blurUnwatchedEpisodeThumbnails", "blurUnwatchedEpisodeThumbnailsIncludeCurrent", "blurUnwatchedEpisodeOverviews", "blurUnwatchedEpisodeOverviewsIncludeCurrent"),
 	"network":          nil,
 }
 
@@ -205,30 +205,56 @@ func userEditableSettingsSchema(paths []string) map[string]UserEditableSettingSc
 
 func userEditableSettingsSchemaForSettings(paths []string, settings config.Settings) map[string]UserEditableSettingSchema {
 	result := userEditableSettingsSchema(paths)
-	preferredScraper, ok := result["filtering.preferredScraper"]
-	if !ok {
-		return result
+	if preferredScraper, ok := result["filtering.preferredScraper"]; ok {
+		seen := make(map[string]struct{})
+		options := make([]map[string]string, 0, len(settings.TorrentScrapers))
+		for _, scraper := range settings.TorrentScrapers {
+			name := strings.TrimSpace(scraper.Name)
+			if name == "" {
+				name = strings.TrimSpace(scraper.Type)
+			}
+			if name == "" {
+				continue
+			}
+			key := strings.ToLower(name)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			options = append(options, map[string]string{"value": name, "label": name})
+		}
+		preferredScraper.Options = options
+		result["filtering.preferredScraper"] = preferredScraper
 	}
-	seen := make(map[string]struct{})
-	options := make([]map[string]string, 0, len(settings.TorrentScrapers))
-	for _, scraper := range settings.TorrentScrapers {
-		name := strings.TrimSpace(scraper.Name)
-		if name == "" {
-			name = strings.TrimSpace(scraper.Type)
-		}
-		if name == "" {
-			continue
-		}
-		key := strings.ToLower(name)
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		options = append(options, map[string]string{"value": name, "label": name})
+	if simpleModeShelves, ok := result["display.simpleModeHomeShelves"]; ok {
+		simpleModeShelves.Options = simpleModeHomeShelfOptions(settings.HomeShelves.Shelves)
+		result["display.simpleModeHomeShelves"] = simpleModeShelves
 	}
-	preferredScraper.Options = options
-	result["filtering.preferredScraper"] = preferredScraper
 	return result
+}
+
+func simpleModeHomeShelfOptions(shelves []config.ShelfConfig) []map[string]string {
+	if len(shelves) == 0 {
+		shelves = config.DefaultHomeShelfConfigs()
+	}
+	options := make([]map[string]string, 0, len(shelves))
+	seen := make(map[string]struct{}, len(shelves))
+	for _, shelf := range shelves {
+		id := strings.TrimSpace(shelf.ID)
+		if id == "" || id == "tonight" {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		label := strings.TrimSpace(shelf.Name)
+		if label == "" {
+			label = id
+		}
+		options = append(options, map[string]string{"value": id, "label": label})
+	}
+	return options
 }
 
 func editableSchemaField(path string) (string, string, map[string]interface{}) {
@@ -278,7 +304,7 @@ func validateUserEditableSettingValue(path string, raw json.RawMessage) error {
 		if max, ok := numericSchemaValue(schema.Max); ok && value > max {
 			return fmt.Errorf("%s must be at most %v", schema.Label, max)
 		}
-	case "tags", "weighted-tags", "checkboxes", "multiselect":
+	case "tags", "weighted-tags", "checkboxes", "multiselect", "ordered-multiselect":
 		var value []string
 		if err := json.Unmarshal(raw, &value); err != nil {
 			return fmt.Errorf("%s must be a list of text values", schema.Label)

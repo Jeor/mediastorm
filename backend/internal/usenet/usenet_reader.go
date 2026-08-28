@@ -30,6 +30,38 @@ var (
 const defaultDownloadWorkers = 15
 const segmentFetchAttempts = 3
 
+// Once an ordered segment is required by the reader, a fetch that yields no
+// bytes for this long is retried. Look-ahead downloads are not timed out: only
+// the segment currently capable of blocking playback is watched.
+const requiredSegmentNoProgressTimeout = 3 * time.Second
+
+var errRequiredSegmentNoProgress = errors.New("required usenet segment made no progress")
+
+type progressWriter struct {
+	writer         io.Writer
+	lastProgressAt atomic.Int64
+	written        atomic.Int64
+}
+
+func newProgressWriter(writer io.Writer) *progressWriter {
+	w := &progressWriter{writer: writer}
+	w.lastProgressAt.Store(time.Now().UnixNano())
+	return w
+}
+
+func (w *progressWriter) Write(p []byte) (int, error) {
+	n, err := w.writer.Write(p)
+	if n > 0 {
+		w.written.Add(int64(n))
+		w.lastProgressAt.Store(time.Now().UnixNano())
+	}
+	return n, err
+}
+
+func (w *progressWriter) bytesWritten() int64 {
+	return w.written.Load()
+}
+
 // ActiveReaders returns the current number of active usenet readers.
 func ActiveReaders() int64 {
 	return atomic.LoadInt64(&activeReaders)
@@ -288,12 +320,13 @@ func (b *usenetReader) Read(p []byte) (int, error) {
 
 	n := 0
 	for n < len(p) {
+		s.markRequired()
 		reader := s.GetReader()
 		nn, err := reader.Read(p[n:])
 		n += nn
 		s.addBytesRead(nn)
 
-		if err != nil && !errors.Is(err, io.EOF) {
+		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
 			b.log.Warn("usenet segment read error",
 				"segment_id", s.Id,
 				"bytes", nn,
@@ -500,10 +533,17 @@ func (b *usenetReader) downloadManager(
 			s := seg
 			segmentID := s.Id
 			pool.Go(func(c context.Context) error {
-				w := s.writer
+				// Keep one synchronized writer snapshot for the entire fetch. A reader
+				// can close the segment while an NNTP request is between retry attempts;
+				// re-reading s.writer after Close clears it would pass a typed nil writer
+				// into nntppool and panic instead of returning the closed-pipe error.
+				w := s.Writer()
+				if w == nil {
+					return nil
+				}
 				startedAt := time.Now()
 				active := atomic.AddInt64(&activeDownloads, 1)
-				b.log.DebugContext(ctx, "usenet.segment.download_starting",
+				b.log.DebugContext(c, "usenet.segment.download_starting",
 					"reader_id", b.id,
 					"segment_id", segmentID,
 					"segment_size", s.SegmentSize,
@@ -511,7 +551,7 @@ func (b *usenetReader) downloadManager(
 				)
 				defer atomic.AddInt64(&activeDownloads, -1)
 
-				bytesFetched, err := b.fetchSegmentBody(ctx, cp, segmentID, s)
+				bytesFetched, err := b.fetchRequiredSegmentBody(c, cp, segmentID, w, s.groups, s)
 				duration := time.Since(startedAt)
 				if bytesFetched > 0 {
 					atomic.AddInt64(&downloadedBytes, bytesFetched)
@@ -519,7 +559,7 @@ func (b *usenetReader) downloadManager(
 				if !errors.Is(err, context.Canceled) {
 					cErr := w.CloseWithError(err)
 					if cErr != nil {
-						b.log.ErrorContext(ctx, "Error closing segment buffer:",
+						b.log.ErrorContext(c, "Error closing segment buffer:",
 							"reader_id", b.id,
 							"segment_id", segmentID,
 							"error", cErr,
@@ -528,7 +568,7 @@ func (b *usenetReader) downloadManager(
 
 					if err != nil && !errors.Is(err, context.Canceled) {
 						atomic.AddInt64(&failedDownloads, 1)
-						b.log.WarnContext(ctx, "usenet.segment.fetch_error",
+						b.log.WarnContext(c, "usenet.segment.fetch_error",
 							"reader_id", b.id,
 							"segment_id", segmentID,
 							"segment_size", s.SegmentSize,
@@ -543,7 +583,7 @@ func (b *usenetReader) downloadManager(
 					}
 
 					completed := atomic.AddInt64(&completedDownloads, 1)
-					b.log.DebugContext(ctx, "usenet.segment.fetch_complete",
+					b.log.DebugContext(c, "usenet.segment.fetch_complete",
 						"reader_id", b.id,
 						"segment_id", segmentID,
 						"segment_size", s.SegmentSize,
@@ -557,9 +597,12 @@ func (b *usenetReader) downloadManager(
 					return nil
 				}
 
-				err = w.Close()
+				// Cancellation is not EOF. Preserve it through the pipe so the
+				// ordered reader stops immediately instead of walking every empty
+				// look-ahead segment and reporting false boundary mismatches.
+				err = w.CloseWithError(context.Canceled)
 				if err != nil {
-					b.log.ErrorContext(ctx, "Error closing segment writer:",
+					b.log.ErrorContext(c, "Error closing segment writer:",
 						"reader_id", b.id,
 						"segment_id", segmentID,
 						"error", err,
@@ -597,14 +640,99 @@ func (b *usenetReader) downloadManager(
 	}
 }
 
-func (b *usenetReader) fetchSegmentBody(ctx context.Context, cp nntppool.UsenetConnectionPool, segmentID string, s *segment) (int64, error) {
+func (b *usenetReader) fetchSegmentBody(
+	ctx context.Context,
+	cp nntppool.UsenetConnectionPool,
+	segmentID string,
+	w io.Writer,
+	groups []string,
+) (int64, error) {
+	return b.fetchSegmentBodyWithWatchdog(ctx, cp, segmentID, w, groups, nil, 0)
+}
+
+func (b *usenetReader) fetchRequiredSegmentBody(
+	ctx context.Context,
+	cp nntppool.UsenetConnectionPool,
+	segmentID string,
+	w io.Writer,
+	groups []string,
+	segment *segment,
+) (int64, error) {
+	return b.fetchSegmentBodyWithWatchdog(
+		ctx, cp, segmentID, w, groups, segment, requiredSegmentNoProgressTimeout,
+	)
+}
+
+func (b *usenetReader) fetchSegmentBodyWithWatchdog(
+	ctx context.Context,
+	cp nntppool.UsenetConnectionPool,
+	segmentID string,
+	w io.Writer,
+	groups []string,
+	segment *segment,
+	noProgressTimeout time.Duration,
+) (int64, error) {
 	var lastErr error
 	for attempt := 1; attempt <= segmentFetchAttempts; attempt++ {
 		if ctx.Err() != nil {
 			return 0, ctx.Err()
 		}
 
-		bytesFetched, err := cp.Body(ctx, segmentID, s.Writer(), s.groups)
+		attemptCtx, cancelAttempt := context.WithCancel(ctx)
+		var trackedWriter *progressWriter
+		bodyWriter := w
+		if segment != nil && noProgressTimeout > 0 {
+			trackedWriter = newProgressWriter(w)
+			bodyWriter = trackedWriter
+		}
+		watchDone := make(chan struct{})
+		var stalled atomic.Bool
+		if trackedWriter != nil {
+			go func() {
+				interval := noProgressTimeout / 4
+				if interval > 250*time.Millisecond {
+					interval = 250 * time.Millisecond
+				}
+				if interval <= 0 {
+					interval = time.Millisecond
+				}
+				ticker := time.NewTicker(interval)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-watchDone:
+						return
+					case <-attemptCtx.Done():
+						return
+					case now := <-ticker.C:
+						if ctx.Err() != nil {
+							return
+						}
+						lastProgress := time.Unix(0, trackedWriter.lastProgressAt.Load())
+						if segment.isRequired() && now.Sub(lastProgress) >= noProgressTimeout {
+							stalled.Store(true)
+							cancelAttempt()
+							return
+						}
+					}
+				}
+			}()
+		}
+
+		bytesFetched, err := cp.Body(attemptCtx, segmentID, bodyWriter, groups)
+		close(watchDone)
+		cancelAttempt()
+		if trackedWriter != nil {
+			if written := trackedWriter.bytesWritten(); written > bytesFetched {
+				bytesFetched = written
+			}
+		}
+		// A provider may race the watchdog and report a nil error after its
+		// context was cancelled. Do not turn that zero-progress timeout into a
+		// successful empty segment.
+		if stalled.Load() && err == nil {
+			err = context.Canceled
+		}
 		if err == nil {
 			if attempt > 1 {
 				b.log.InfoContext(ctx, "usenet.segment.fetch_retry_success",
@@ -617,8 +745,32 @@ func (b *usenetReader) fetchSegmentBody(ctx context.Context, cp nntppool.UsenetC
 			return bytesFetched, nil
 		}
 
-		lastErr = err
-		if bytesFetched > 0 || errors.Is(err, context.Canceled) {
+		if stalled.Load() {
+			lastErr = fmt.Errorf(
+				"%w for %s after %s: %v",
+				errRequiredSegmentNoProgress,
+				segmentID,
+				noProgressTimeout,
+				err,
+			)
+			b.log.WarnContext(ctx, "usenet.required_segment.no_progress",
+				"reader_id", b.id,
+				"segment_id", segmentID,
+				"attempt", attempt,
+				"bytes_fetched", bytesFetched,
+				"timeout", noProgressTimeout.String(),
+				"pool", summarizePoolSnapshot(cp),
+			)
+			// Retrying after partial output would duplicate bytes in the segment
+			// pipe. Surface the failure so playback can recover or migrate.
+			if bytesFetched > 0 || attempt == segmentFetchAttempts {
+				return bytesFetched, lastErr
+			}
+		} else {
+			lastErr = err
+		}
+
+		if bytesFetched > 0 || (!stalled.Load() && errors.Is(err, context.Canceled)) {
 			return bytesFetched, err
 		}
 		if attempt == segmentFetchAttempts {

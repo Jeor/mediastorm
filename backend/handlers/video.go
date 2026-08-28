@@ -772,6 +772,42 @@ func (h *VideoHandler) SetPrewarmService(svc PrewarmService) {
 	h.prewarmSvc = svc
 }
 
+// LinkHLSSessionPrequeue tags a session created by the prequeue worker with
+// its prequeue ID so click→first-frame latency can be measured end to end.
+func (h *VideoHandler) LinkHLSSessionPrequeue(sessionID, prequeueID string) {
+	if h == nil || h.hlsManager == nil || prequeueID == "" {
+		return
+	}
+	h.hlsManager.SetSessionPrequeue(sessionID, prequeueID, "", "")
+}
+
+// linkPreparedSessionToPrequeue correlates an ad-hoc HLS start (POST
+// /video/hls/start) back to the ready prequeue entry whose stream it opened,
+// carrying service metadata forward for latency reporting.
+func (h *VideoHandler) linkPreparedSessionToPrequeue(sessionID, cleanPath string) {
+	if h == nil || h.hlsManager == nil || h.prequeueStore == nil {
+		return
+	}
+	entry, ok := h.prequeueStore.FindReadyByStreamPath(cleanPath)
+	if !ok || entry == nil {
+		return
+	}
+	serviceType := entry.ServiceType
+	if serviceType == "" {
+		p := strings.ToLower(strings.TrimSpace(entry.StreamPath))
+		if strings.HasPrefix(p, "/debrid/") {
+			serviceType = "debrid"
+		} else if p != "" {
+			serviceType = "usenet"
+		}
+	}
+	provider := entry.DebridProvider
+	if serviceType == "usenet" && provider == "" && entry.SelectedResult != nil {
+		provider = entry.SelectedResult.Indexer
+	}
+	h.hlsManager.SetSessionPrequeue(sessionID, entry.ID, serviceType, provider)
+}
+
 func (h *VideoHandler) invalidatePrequeuesForFailedPath(streamPath string) {
 	if h == nil || h.prequeueStore == nil {
 		return
@@ -2152,6 +2188,10 @@ func (h *VideoHandler) providerOrCachedDuration(ctx context.Context, cleanPath s
 }
 
 func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath string) (*ffprobeOutput, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	// Check if this is already an external URL (e.g., from AIOStreams pre-resolved streams)
 	// If so, probe it directly without going through the provider
 	if strings.HasPrefix(cleanPath, "http://") || strings.HasPrefix(cleanPath, "https://") {
@@ -2174,6 +2214,9 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 			videoTracef("[video] ffprobe using direct URL for seekable access: %s", cleanPath)
 			meta, err := h.runFFProbe(ctx, directURL, nil)
 			if err != nil {
+				if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return nil, err
+				}
 				// Log but don't fail - fall through to WebDAV or piped approach
 				log.Printf("[video] ffprobe with direct URL failed, trying alternatives: %v", err)
 			} else {
@@ -2182,6 +2225,8 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 			}
 		} else if err != nil && errors.Is(err, streaming.ErrStaleTorrent) {
 			return nil, fmt.Errorf("%w", streaming.ErrStaleTorrent)
+		} else if err != nil && (ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+			return nil, err
 		} else if err != nil && !errors.Is(err, streaming.ErrNotFound) {
 			log.Printf("[video] GetDirectURL failed for %q: %v", cleanPath, err)
 		}
@@ -2192,12 +2237,18 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 		videoTracef("[video] ffprobe using WebDAV URL for seekable access: %s", cleanPath)
 		meta, err := h.runFFProbe(ctx, webdavURL, nil)
 		if err != nil {
+			if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
 			// Log but don't fail - fall through to piped approach
 			log.Printf("[video] ffprobe with WebDAV URL failed, falling back to piped probe: %v", err)
 		} else {
 			h.enrichBluRayStreamLanguages(ctx, cleanPath, meta)
 			return meta, nil
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	// Fall back to a ranged sample. Progressive MP4s often store moov after
@@ -2531,8 +2582,9 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 	preferredAudioLang := r.URL.Query().Get("audioLang")
 
 	var (
-		fileSize int64
-		notes    []string
+		fileSize              int64
+		notes                 []string
+		remoteHeadUnavailable bool
 	)
 
 	// Check if this is an external URL (e.g., from AIOStreams)
@@ -2622,17 +2674,25 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			if errors.Is(err, streaming.ErrNotFound) {
-				videoTracef("[video] ProbeVideo: stream not found for path=%q", cleanPath)
-				http.Error(w, "stream not found", http.StatusNotFound)
-				return
-			}
-			if errors.Is(err, streaming.ErrStaleTorrent) {
+				// Plex and Jellyfin media endpoints can reject HEAD even when the
+				// same item is available through GET. Treat HEAD as advisory for
+				// those providers and let the ranged ffprobe request verify the item.
+				if !isRemoteMediaProviderPath(cleanPath) {
+					videoTracef("[video] ProbeVideo: stream not found for path=%q", cleanPath)
+					http.Error(w, "stream not found", http.StatusNotFound)
+					return
+				}
+				videoTracef("[video] ProbeVideo: remote library HEAD unavailable for path=%q; falling back to ranged probe", cleanPath)
+				remoteHeadUnavailable = true
+				notes = append(notes, "provider HEAD unavailable; metadata derived from ranged stream")
+			} else if errors.Is(err, streaming.ErrStaleTorrent) {
 				videoTracef("[video] ProbeVideo: stale torrent for path=%q", cleanPath)
 				http.Error(w, "debrid torrent expired or deleted — please re-resolve", http.StatusGone)
 				return
+			} else {
+				log.Printf("[video] metadata provider head failed for %q: %v", cleanPath, err)
+				notes = append(notes, "stream metadata unavailable")
 			}
-			log.Printf("[video] metadata provider head failed for %q: %v", cleanPath, err)
-			notes = append(notes, "stream metadata unavailable")
 		} else if resp != nil {
 			defer resp.Close()
 			fileSize = providerResponseTotalSize(resp)
@@ -2667,6 +2727,11 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 			if m, err := h.runFFProbeFromProvider(r.Context(), cleanPath); err == nil && m != nil {
 				meta = m
 			} else if err != nil && !errors.Is(err, context.Canceled) {
+				if remoteHeadUnavailable && errors.Is(err, streaming.ErrNotFound) {
+					videoTracef("[video] ProbeVideo: ranged remote library probe confirmed stream not found for path=%q", cleanPath)
+					http.Error(w, "stream not found", http.StatusNotFound)
+					return
+				}
 				log.Printf("[video] metadata provider ffprobe failed for %q: %v", cleanPath, err)
 			}
 		}
@@ -4279,6 +4344,10 @@ func (h *VideoHandler) StartHLSSession(w http.ResponseWriter, r *http.Request) {
 	session.ViaShareLink = auth.IsShareLinkRequest(r)
 	session.mu.Unlock()
 
+	// Correlate with the prequeue request that resolved this stream so the
+	// first-frame latency sample covers the whole click→frame path.
+	h.linkPreparedSessionToPrequeue(session.ID, cleanPath)
+
 	session.mu.RLock()
 	actualStartOffset := session.ActualStartOffset
 	session.mu.RUnlock()
@@ -5063,7 +5132,7 @@ func resolveStremioLiveStreamResource(ctx context.Context, streamResourceURL, pr
 		return resolvedStremioStream{}, err
 	}
 	if !isStremioStreamResourceURL(parsed) {
-		return resolvedStremioStream{URL: streamResourceURL}, nil
+		return resolvedStremioStream{URL: streamResourceURL, Index: -1}, nil
 	}
 
 	client, err := netproxy.NewHTTPClientWithOptions(netproxy.HTTPClientOptions{
@@ -5081,7 +5150,7 @@ func resolveStremioLiveStreamResource(ctx context.Context, streamResourceURL, pr
 		return resolvedStremioStream{}, fmt.Errorf("stremio: resolve stream: %w", err)
 	}
 	if stream, ok := playableStremioStream(resp.Streams, selectedIndex); ok {
-		return stream, nil
+		return maybeRouteStremioStreamThroughAddonRelay(ctx, client, streamResourceURL, stream), nil
 	}
 	return resolvedStremioStream{}, fmt.Errorf("stremio: no playable stream for %s", streamResourceURL)
 }
@@ -5203,14 +5272,22 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	// HLS mode: create a segmented HLS session
 	selectedStremioStreamIndex := parseOptionalStremioStreamIndex(r.URL.Query().Get("stremioStreamIndex"))
 	var stremioRequestHeaders map[string]string
+	stremioHLSInput := false
+	resolvedStremioIndex := -1
+	var availableStremioIndexes []int
 	if resolved, err := resolveStremioLiveStreamResource(r.Context(), liveURL, target.ProxyURL, selectedStremioStreamIndex); err != nil {
 		log.Printf("[video] failed to resolve stremio live HLS stream %q: %v", requestsecurity.URLForLog(liveURL), err)
 		http.Error(w, "failed to resolve live stream", http.StatusBadGateway)
 		return
-	} else if resolved.URL != liveURL {
-		log.Printf("[video] resolved stremio live HLS stream resource: %s -> %s", requestsecurity.URLForLog(liveURL), requestsecurity.URLForLog(resolved.URL))
-		liveURL = resolved.URL
+	} else {
 		stremioRequestHeaders = resolved.RequestHeaders
+		stremioHLSInput = resolved.IsHLS
+		resolvedStremioIndex = resolved.Index
+		availableStremioIndexes = resolved.AvailableIndexes
+		if resolved.URL != liveURL {
+			log.Printf("[video] resolved stremio live HLS stream resource: %s -> %s", requestsecurity.URLForLog(liveURL), requestsecurity.URLForLog(resolved.URL))
+			liveURL = resolved.URL
+		}
 	}
 	if !h.requireAllowedExternalPath(w, r, liveURL) {
 		return
@@ -5224,6 +5301,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		LowLatency:         target.LowLatency,
 		ProxyURL:           target.ProxyURL,
 		RequestHeaders:     stremioRequestHeaders,
+		ForceHLSInput:      stremioHLSInput,
 	}
 	playbackTarget := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("target")))
 	clientID := requestClientID(r)
@@ -5246,6 +5324,10 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		// CC detection runs async — frontend polls /video/hls/{id}/cc-status
 		// Include initial state (always false at creation time since detection is background)
 		"hasClosedCaptions": false,
+	}
+	if resolvedStremioIndex >= 0 {
+		response["stremioStreamIndex"] = resolvedStremioIndex
+		response["stremioStreamIndexes"] = availableStremioIndexes
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {

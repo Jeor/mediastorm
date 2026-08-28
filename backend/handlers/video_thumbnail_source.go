@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -16,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"novastream/internal/torboxrate"
 )
 
 const thumbnailSourcePrewarmTimeout = 15 * time.Second
@@ -129,18 +132,7 @@ func (b *thumbnailSourceBridge) serveHTTP(w http.ResponseWriter, r *http.Request
 		http.NotFound(w, r)
 		return
 	}
-	upstream, err := http.NewRequestWithContext(r.Context(), r.Method, session.sourceURL, nil)
-	if err != nil {
-		http.Error(w, "invalid thumbnail source", http.StatusBadGateway)
-		return
-	}
-	for _, name := range []string{"Range", "If-Range", "If-None-Match", "If-Modified-Since"} {
-		if value := r.Header.Get(name); value != "" {
-			upstream.Header.Set(name, value)
-		}
-	}
-	applyRawHTTPHeaders(upstream.Header, session.authHeader)
-	response, err := b.client.Do(upstream)
+	response, err := b.doRequest(r.Context(), r.Method, session, r.Header)
 	if err != nil {
 		http.Error(w, "thumbnail source unavailable", http.StatusBadGateway)
 		return
@@ -157,6 +149,42 @@ func (b *thumbnailSourceBridge) serveHTTP(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (b *thumbnailSourceBridge) doRequest(ctx context.Context, method string, session thumbnailSourceSession, sourceHeaders http.Header) (*http.Response, error) {
+	isTorboxDownload := torboxrate.IsDownloadURL(session.sourceURL)
+	for attempt := 0; ; attempt++ {
+		if isTorboxDownload {
+			if err := torboxrate.Downloads.Wait(ctx, session.sourceURL); err != nil {
+				return nil, err
+			}
+		}
+
+		upstream, err := http.NewRequestWithContext(ctx, method, session.sourceURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range []string{"Range", "If-Range", "If-None-Match", "If-Modified-Since"} {
+			if value := sourceHeaders.Get(name); value != "" {
+				upstream.Header.Set(name, value)
+			}
+		}
+		applyRawHTTPHeaders(upstream.Header, session.authHeader)
+		response, err := b.client.Do(upstream)
+		if err != nil || !isTorboxDownload || response.StatusCode != http.StatusTooManyRequests {
+			return response, err
+		}
+
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 64*1024))
+		response.Body.Close()
+		delay := torboxrate.Downloads.Record(session.sourceURL, response.Header.Get("Retry-After"), body)
+		if attempt >= 1 {
+			response.Body = io.NopCloser(bytes.NewReader(body))
+			response.ContentLength = int64(len(body))
+			return response, nil
+		}
+		log.Printf("[thumbnails] TorBox CDN rate limited source bridge; retrying after %s", delay.Round(time.Millisecond))
+	}
+}
+
 func applyRawHTTPHeaders(headers http.Header, raw string) {
 	for _, line := range strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n") {
 		name, value, ok := strings.Cut(line, ":")
@@ -170,12 +198,7 @@ func (b *thumbnailSourceBridge) prewarm(ctx context.Context, key, sourceURL, aut
 	if _, err := b.register(key, sourceURL, authHeader); err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, sourceURL, nil)
-	if err != nil {
-		return err
-	}
-	applyRawHTTPHeaders(req.Header, authHeader)
-	resp, err := b.client.Do(req)
+	resp, err := b.doRequest(ctx, http.MethodHead, thumbnailSourceSession{sourceURL: sourceURL, authHeader: authHeader}, nil)
 	if err != nil {
 		return err
 	}

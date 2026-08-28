@@ -221,7 +221,7 @@ type aiostreamsStream struct {
 	codec      string // e.g., "HEVC"
 	audio      string // e.g., "DTS-HD MA", "Atmos"
 	rawName    string // Raw name from aiostreams response (contains quality badge)
-	rawDesc    string // Raw description from aiostreams response (emoji-formatted details)
+	rawDesc    string // Raw provider-formatted description from aiostreams response
 }
 
 func (s aiostreamsStream) attributes() map[string]string {
@@ -264,12 +264,17 @@ func (s aiostreamsStream) attributes() map[string]string {
 
 // Regex patterns for parsing AIOStreams description
 var (
-	aioSizeRegex     = regexp.MustCompile(`📦\s*([\d.,]+)\s*([KMGTP]?B)`)
-	aioProviderRegex = regexp.MustCompile(`📡\s*(\S+)`)
-	aioSourceRegex   = regexp.MustCompile(`🎥\s*([^\n📺🎞️🎧]+)`)
-	aioHDRRegex      = regexp.MustCompile(`📺\s*([^\n🎞️🎧]+)`)
-	aioCodecRegex    = regexp.MustCompile(`🎞️\s*([^\n🎧📦]+)`)
-	aioAudioRegex    = regexp.MustCompile(`🎧\s*([^\n🔊📦]+)`)
+	aioSizeRegex            = regexp.MustCompile(`(?:📦|◈|❖)\s*([\d.,]+)(?:\s*/\s*[\d.,]+)?\s*([KMGTP]?B)`)
+	aioProviderRegex        = regexp.MustCompile(`📡\s*(\S+)`)
+	aioSourceRegex          = regexp.MustCompile(`🎥\s*([^\n📺🎞️🎧]+)`)
+	aioHDRRegex             = regexp.MustCompile(`📺\s*([^\n🎞️🎧]+)`)
+	aioCodecRegex           = regexp.MustCompile(`🎞️\s*([^\n🎧📦]+)`)
+	aioAudioRegex           = regexp.MustCompile(`🎧\s*([^\n🔊📦]+)`)
+	aioCurrentProviderRegex = regexp.MustCompile(`(?m)⛉\s*(?:\[[^\]\r\n]+\]\s*)?([^·\r\n]+)`)
+	aioCurrentSourceRegex   = regexp.MustCompile(`〈([^〉]+)〉`)
+	aioCurrentCodecRegex    = regexp.MustCompile(`▣\s*([^✦✧♬\r\n]+)`)
+	aioCurrentHDRRegex      = regexp.MustCompile(`(?:✦|✧)\s*([^♬◈❖⛉✓⛿»\r\n]+)`)
+	aioCurrentAudioRegex    = regexp.MustCompile(`♬\s*([^♯◈❖⛉✓⛿»\r\n]+)`)
 )
 
 func (a *AIOStreamsScraper) fetchStreams(ctx context.Context, mediaType, id string) ([]aiostreamsStream, error) {
@@ -328,7 +333,7 @@ func (a *AIOStreamsScraper) fetchStreams(ctx context.Context, mediaType, id stri
 			filename = extractFilenameFromURL(streamURL)
 		}
 
-		parsed := parseAIODescription(stream.Description)
+		parsed := parseAIODescription(stream.Name, stream.Description)
 		resolution := detectAIOResolution(stream.Name, stream.BehaviorHints.BingeGroup)
 
 		// Use size from behaviorHints if available
@@ -367,27 +372,37 @@ type parsedAIODescription struct {
 	sizeBytes int64
 }
 
-func parseAIODescription(desc string) parsedAIODescription {
+func parseAIODescription(name, desc string) parsedAIODescription {
 	var p parsedAIODescription
 
 	// Extract provider (📡)
 	if match := aioProviderRegex.FindStringSubmatch(desc); len(match) > 1 {
+		p.provider = strings.TrimSpace(match[1])
+	} else if match := aioCurrentProviderRegex.FindStringSubmatch(desc); len(match) > 1 {
 		p.provider = strings.TrimSpace(match[1])
 	}
 
 	// Extract source (🎥) - e.g., "BluRay REMUX"
 	if match := aioSourceRegex.FindStringSubmatch(desc); len(match) > 1 {
 		p.source = strings.TrimSpace(match[1])
+	} else if match := aioCurrentSourceRegex.FindStringSubmatch(stripAIOFormattingRunes(name)); len(match) > 1 {
+		p.source = normalizeAIOSource(match[1])
 	}
 
 	// Extract HDR info (📺) - e.g., "HDR | DV"
 	if match := aioHDRRegex.FindStringSubmatch(desc); len(match) > 1 {
 		p.hdr = strings.TrimSpace(match[1])
+	} else if match := aioCurrentHDRRegex.FindStringSubmatch(desc); len(match) > 1 {
+		p.hdr = normalizeAIOHDR(match[1])
 	}
 
 	// Extract codec (🎞️) - e.g., "HEVC"
-	if match := aioCodecRegex.FindStringSubmatch(desc); len(match) > 1 {
-		codec := strings.TrimSpace(match[1])
+	codecMatch := aioCodecRegex.FindStringSubmatch(desc)
+	if len(codecMatch) <= 1 {
+		codecMatch = aioCurrentCodecRegex.FindStringSubmatch(desc)
+	}
+	if len(codecMatch) > 1 {
+		codec := strings.TrimSpace(codecMatch[1])
 		// Clean up - might contain episode info like "E01"
 		if !strings.HasPrefix(strings.ToUpper(codec), "E0") && !strings.HasPrefix(strings.ToUpper(codec), "E1") {
 			p.codec = codec
@@ -396,6 +411,8 @@ func parseAIODescription(desc string) parsedAIODescription {
 
 	// Extract audio (🎧) - e.g., "Atmos | DTS-HD MA"
 	if match := aioAudioRegex.FindStringSubmatch(desc); len(match) > 1 {
+		p.audio = strings.TrimSpace(match[1])
+	} else if match := aioCurrentAudioRegex.FindStringSubmatch(desc); len(match) > 1 {
 		p.audio = strings.TrimSpace(match[1])
 	}
 
@@ -440,7 +457,13 @@ func extractTitleFromDescription(desc string) string {
 	// Fallback: first line
 	lines := strings.Split(desc, "\n")
 	if len(lines) > 0 {
-		return strings.TrimSpace(lines[0])
+		title := strings.TrimSpace(lines[0])
+		for _, prefix := range []string{"✎", "☁︎", "☁"} {
+			if strings.HasPrefix(title, prefix) {
+				return strings.TrimSpace(strings.TrimPrefix(title, prefix))
+			}
+		}
+		return title
 	}
 	return ""
 }
@@ -472,30 +495,51 @@ func extractLanguagesFromDesc(desc string) []string {
 	var languages []string
 
 	// Common language flags and indicators
-	langPatterns := map[string]string{
-		"🇬🇧": "English",
-		"🇺🇸": "English",
-		"🇩🇪": "German",
-		"🇫🇷": "French",
-		"🇪🇸": "Spanish",
-		"🇮🇹": "Italian",
-		"🇷🇺": "Russian",
-		"🇯🇵": "Japanese",
-		"🇨🇳": "Chinese",
-		"🇰🇷": "Korean",
-		"🇵🇹": "Portuguese",
-		"🇳🇱": "Dutch",
-		"🇵🇱": "Polish",
-		"🇸🇪": "Swedish",
-		"🇨🇿": "Czech",
-		"🇭🇺": "Hungarian",
-		"🇹🇷": "Turkish",
-		"🌎":  "Multi",
+	langPatterns := []struct {
+		marker string
+		name   string
+	}{
+		{"🇬🇧", "English"}, {"🇺🇸", "English"}, {"🇩🇪", "German"},
+		{"🇫🇷", "French"}, {"🇪🇸", "Spanish"}, {"🇮🇹", "Italian"},
+		{"🇷🇺", "Russian"}, {"🇯🇵", "Japanese"}, {"🇨🇳", "Chinese"},
+		{"🇰🇷", "Korean"}, {"🇵🇹", "Portuguese"}, {"🇳🇱", "Dutch"},
+		{"🇵🇱", "Polish"}, {"🇸🇪", "Swedish"}, {"🇨🇿", "Czech"},
+		{"🇭🇺", "Hungarian"}, {"🇹🇷", "Turkish"}, {"🌎", "Multi"},
 	}
 
-	for flag, lang := range langPatterns {
-		if strings.Contains(desc, flag) {
-			languages = append(languages, lang)
+	for _, pattern := range langPatterns {
+		if strings.Contains(desc, pattern.marker) {
+			languages = appendUniqueString(languages, pattern.name)
+		}
+	}
+
+	// Current AIOStreams templates use small-cap ISO codes on the language
+	// line. Only inspect the portion before the subtitle marker so subtitle
+	// languages are not reported as audio languages.
+	for _, line := range strings.Split(desc, "\n") {
+		if !strings.Contains(line, "✓") && !strings.Contains(line, "⛿") {
+			continue
+		}
+		if idx := strings.Index(line, "sᴜʙ"); idx >= 0 {
+			line = line[:idx]
+		}
+		if idx := strings.Index(line, "»"); idx >= 0 {
+			line = line[:idx]
+		}
+		for _, pattern := range []struct {
+			marker string
+			name   string
+		}{
+			{"ᴇɴ", "English"}, {"ꜰʀ", "French"}, {"ᴅᴇ", "German"},
+			{"ᴇꜱ", "Spanish"}, {"ɪᴛ", "Italian"}, {"ᴘᴛ", "Portuguese"},
+			{"ʀᴜ", "Russian"}, {"ᴊᴀ", "Japanese"}, {"ᴋᴏ", "Korean"},
+			{"ᴢʜ", "Chinese"}, {"ɴʟ", "Dutch"}, {"ᴘʟ", "Polish"},
+			{"ꜱᴠ", "Swedish"}, {"ᴄꜱ", "Czech"}, {"ʜᴜ", "Hungarian"},
+			{"ᴛʀ", "Turkish"}, {"ᴍᴜʟᴛɪ", "Multi"},
+		} {
+			if strings.Contains(line, pattern.marker) {
+				languages = appendUniqueString(languages, pattern.name)
+			}
 		}
 	}
 
@@ -507,6 +551,66 @@ func extractLanguagesFromDesc(desc string) []string {
 	}
 
 	return languages
+}
+
+func stripAIOFormattingRunes(value string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case '\u200b', '\u200c', '\u200d', '\u2060', '\ufe0e', '\ufe0f':
+			return -1
+		default:
+			return r
+		}
+	}, value)
+}
+
+func normalizeAIOSource(value string) string {
+	value = strings.TrimSpace(stripAIOFormattingRunes(value))
+	switch strings.ToLower(value) {
+	case "remux":
+		return "REMUX"
+	case "bluray", "blu-ray":
+		return "BluRay"
+	case "web-dl", "web dl", "webdl":
+		return "WEB-DL"
+	case "webrip", "web-rip", "web rip":
+		return "WEBRip"
+	default:
+		return value
+	}
+}
+
+func normalizeAIOHDR(value string) string {
+	var values []string
+	for _, part := range strings.FieldsFunc(value, func(r rune) bool {
+		return r == '·' || r == '|' || r == ',' || r == '/'
+	}) {
+		upper := strings.ToUpper(strings.TrimSpace(part))
+		switch {
+		case strings.Contains(upper, "DOLBY VISION"), strings.Contains(upper, "DOVI"), upper == "DV":
+			values = appendUniqueString(values, "DV")
+		case strings.Contains(upper, "HDR10+"):
+			values = appendUniqueString(values, "HDR10+")
+		case strings.Contains(upper, "HDR10"):
+			values = appendUniqueString(values, "HDR10")
+		case upper == "HDR":
+			values = appendUniqueString(values, "HDR")
+		case strings.Contains(upper, "HLG"):
+			values = appendUniqueString(values, "HLG")
+		case upper == "SDR":
+			values = appendUniqueString(values, "SDR")
+		}
+	}
+	return strings.Join(values, " | ")
+}
+
+func appendUniqueString(values []string, value string) []string {
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
 }
 
 // TestConnection verifies the AIOStreams endpoint is reachable by fetching the manifest.

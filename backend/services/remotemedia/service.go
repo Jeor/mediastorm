@@ -495,12 +495,22 @@ func normalizePlex(library *models.RemoteMediaLibrary, source []plex.PlexLibrary
 			posterPath = item.GrandparentThumb
 			backdropPath = item.GrandparentArt
 		}
-		exts := plexExternalIDs(item.Guid)
+		guids := item.Guid
+		year := item.Year
+		if item.Type == "episode" {
+			if len(item.GrandparentGuid) > 0 {
+				guids = item.GrandparentGuid
+			}
+			if item.GrandparentYear > 0 {
+				year = item.GrandparentYear
+			}
+		}
+		exts := plexExternalIDs(guids)
 		for _, media := range item.Media {
 			for _, part := range media.Part {
 				externalMediaID := strconv.FormatInt(part.ID, 10)
 				v := models.RemoteMediaItem{ID: stableItemID(library.ID, item.RatingKey, externalMediaID), ExternalItemID: item.RatingKey, ExternalMediaID: externalMediaID, GroupKey: groupKey,
-					LibraryType: library.Type, Title: title, Year: item.Year, Overview: item.Summary, Certification: item.ContentRating,
+					LibraryType: library.Type, Title: title, Year: year, Overview: item.Summary, Certification: item.ContentRating,
 					SeasonNumber: item.ParentIndex, EpisodeNumber: item.Index, EpisodeTitle: episodeTitle, ExternalIDs: exts,
 					FileName: filepath.Base(part.File), Container: part.Container, VideoCodec: media.VideoCodec, AudioCodec: media.AudioCodec,
 					Width: media.Width, Height: media.Height, HDRFormat: media.VideoDynamicRange, DurationSeconds: float64(item.Duration) / 1000, SizeBytes: part.Size, CreatedAt: createdAt, UpdatedAt: now,
@@ -862,7 +872,6 @@ func (s *Service) Playback(ctx context.Context, itemID string) (*models.LocalMed
 	if item.LibraryType == models.LocalMediaLibraryTypeShow {
 		mediaType = "episode"
 	}
-	values := url.Values{"path": {item.StreamPath}, "transmux": {"0"}, "mediaType": {mediaType}, "itemId": {item.ID}}
 	seriesTitle := ""
 	if mediaType == "episode" {
 		seriesTitle = item.Title
@@ -871,6 +880,51 @@ func (s *Service) Playback(ctx context.Context, itemID string) (*models.LocalMed
 	// Plex/Jellyfin group keys are library-local and collide with TVDB/TMDB
 	// numeric IDs (e.g. home-video rating key 264995 → wrong movie metadata).
 	titleID := remoteCatalogTitleID(item)
+	values := url.Values{
+		"path":              {item.StreamPath},
+		"transmux":          {"0"},
+		"mediaType":         {mediaType},
+		"sourceServiceType": {library.Provider},
+	}
+	streamItemID := titleID
+	if mediaType == "episode" && streamItemID != "" && item.SeasonNumber > 0 && item.EpisodeNumber > 0 {
+		streamItemID += fmt.Sprintf(":S%02dE%02d", item.SeasonNumber, item.EpisodeNumber)
+	}
+	if streamItemID == "" {
+		streamItemID = item.ID
+	}
+	values.Set("itemId", streamItemID)
+	if titleID != "" {
+		values.Set("titleId", titleID)
+	}
+	if item.Title != "" {
+		values.Set("title", item.Title)
+	}
+	if item.Year > 0 {
+		values.Set("year", strconv.Itoa(item.Year))
+	}
+	if mediaType == "episode" {
+		values.Set("seriesName", item.Title)
+		if titleID != "" {
+			values.Set("seriesId", titleID)
+		}
+		if item.EpisodeTitle != "" {
+			values.Set("episodeName", item.EpisodeTitle)
+		}
+		if item.SeasonNumber > 0 {
+			values.Set("seasonNumber", strconv.Itoa(item.SeasonNumber))
+		}
+		if item.EpisodeNumber > 0 {
+			values.Set("episodeNumber", strconv.Itoa(item.EpisodeNumber))
+		}
+	} else if item.Title != "" {
+		values.Set("movieName", item.Title)
+	}
+	for key, value := range externalMap(item.ExternalIDs) {
+		if strings.TrimSpace(value) != "" {
+			values.Set(key, value)
+		}
+	}
 	return &models.LocalMediaPlaybackResponse{ItemID: item.ID, FileName: item.FileName, DisplayName: item.Title, TitleID: titleID, Title: item.Title, SeriesTitle: seriesTitle, EpisodeTitle: item.EpisodeTitle, Year: item.Year, DurationSeconds: item.DurationSeconds, ExternalIDs: externalMap(item.ExternalIDs), StreamPath: item.StreamPath, StreamURL: "/api/video/stream?" + values.Encode(), DirectStream: true, SourceType: library.Provider, SourceName: strings.Title(library.Provider)}, nil
 }
 

@@ -221,6 +221,9 @@ func TestParseCometDebridProviderFallsBackToNameBadge(t *testing.T) {
 	if got := parseCometDebridProvider(nil, "[PM⚡] Comet 1080p"); got != "premiumize" {
 		t.Fatalf("provider = %q, want premiumize", got)
 	}
+	if got := parseCometDebridProvider(nil, "[TR⚡] Comet 2160p"); got != "torrin" {
+		t.Fatalf("provider = %q, want torrin", got)
+	}
 }
 
 func TestCometSearchTVWithSeasonEpisode(t *testing.T) {

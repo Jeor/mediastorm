@@ -529,6 +529,66 @@ func TestAdminUIHandler_CreateUserAccount(t *testing.T) {
 	}
 }
 
+func TestAdminUIHandler_TransferAdmin(t *testing.T) {
+	handler, tmpDir := setupAdminUIHandler(t)
+	accountsService, err := accounts.NewService(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionsService, err := sessions.NewService(tmpDir, sessions.DefaultSessionDuration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.SetAccountsService(accountsService)
+	handler.SetSessionsService(sessionsService)
+
+	current, _ := accountsService.GetMasterAccount()
+	target, err := accountsService.Create("next-admin", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetSession, err := sessionsService.Create(target.ID, false, "target-agent", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(map[string]string{"accountId": target.ID})
+	req := createAuthenticatedRequest(t, http.MethodPost, "/admin/api/accounts/transfer-admin", body, sessionsService, current.ID, true)
+	currentToken := req.Header.Get("Authorization")[len("Bearer "):]
+	rec := httptest.NewRecorder()
+
+	handler.RequireMasterAuth(handler.TransferAdmin)(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("TransferAdmin status = %d: %s", rec.Code, rec.Body.String())
+	}
+	master, ok := accountsService.GetMasterAccount()
+	if !ok || master.ID != target.ID {
+		t.Fatalf("master = %+v, %v; want %q", master, ok, target.ID)
+	}
+	if _, err := sessionsService.Validate(currentToken); err == nil {
+		t.Fatal("initiating admin session was not revoked")
+	}
+	if _, err := sessionsService.Validate(targetSession.Token); err == nil {
+		t.Fatal("target account session was not revoked")
+	}
+}
+
+func TestAdminUIHandler_TransferAdminRejectsRegularAccount(t *testing.T) {
+	handler, tmpDir := setupAdminUIHandler(t)
+	accountsService, _ := accounts.NewService(tmpDir)
+	sessionsService, _ := sessions.NewService(tmpDir, sessions.DefaultSessionDuration)
+	handler.SetAccountsService(accountsService)
+	handler.SetSessionsService(sessionsService)
+	regular, _ := accountsService.Create("regular", "password123")
+	body, _ := json.Marshal(map[string]string{"accountId": models.MasterAccountID})
+	req := createAuthenticatedRequest(t, http.MethodPost, "/admin/api/accounts/transfer-admin", body, sessionsService, regular.ID, false)
+	rec := httptest.NewRecorder()
+
+	handler.RequireMasterAuth(handler.TransferAdmin)(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("regular transfer status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
 func TestAdminUIHandler_ListInvitations(t *testing.T) {
 	handler, tmpDir := setupAdminUIHandler(t)
 
@@ -2661,6 +2721,76 @@ func TestTransmuxSchemaIsVisibleUnderServerSettings(t *testing.T) {
 	}
 }
 
+func TestSettingsSchemaFirstReadySourceIsGlobalOnly(t *testing.T) {
+	section, ok := handlers.SettingsSchema["streaming"].(map[string]interface{})
+	if !ok {
+		t.Fatal("streaming settings schema is missing")
+	}
+	fields, ok := section["fields"].(map[string]interface{})
+	if !ok {
+		t.Fatal("streaming settings fields are missing")
+	}
+	field, ok := fields["resolveFirstReadySource"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolveFirstReadySource setting is missing")
+	}
+	if field["type"] != "boolean" || field["globalOnly"] != true {
+		t.Fatalf("resolveFirstReadySource schema = %#v, want global-only boolean", field)
+	}
+
+	endRaceField, ok := fields["resolutionEndRaceEarly"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolutionEndRaceEarly setting is missing")
+	}
+	endRaceShowWhen, ok := endRaceField["showWhen"].(map[string]interface{})
+	if !ok || endRaceShowWhen["field"] != "resolveFirstReadySource" || endRaceShowWhen["value"] != true {
+		t.Fatalf("resolutionEndRaceEarly showWhen = %#v, want resolveFirstReadySource=true", endRaceField["showWhen"])
+	}
+
+	settleField, ok := fields["resolutionSettleWindowMs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolutionSettleWindowMs setting is missing")
+	}
+	settleShowWhen, ok := settleField["showWhen"].(map[string]interface{})
+	conditions, conditionsOK := settleShowWhen["conditions"].([]map[string]interface{})
+	if !ok || settleShowWhen["operator"] != "and" || !conditionsOK || len(conditions) != 2 {
+		t.Fatalf("resolutionSettleWindowMs showWhen = %#v, want two AND conditions", settleField["showWhen"])
+	}
+	if conditions[0]["field"] != "resolveFirstReadySource" || conditions[0]["value"] != true ||
+		conditions[1]["field"] != "resolutionEndRaceEarly" || conditions[1]["value"] != true {
+		t.Fatalf("resolutionSettleWindowMs conditions = %#v, want both parent toggles enabled", conditions)
+	}
+	if settleField["min"] != 0 {
+		t.Fatalf("resolutionSettleWindowMs min = %#v, want 0", settleField["min"])
+	}
+	for key, subField := range map[string]map[string]interface{}{
+		"resolutionEndRaceEarly":   endRaceField,
+		"resolutionSettleWindowMs": settleField,
+	} {
+		if subField["group"] != "earlyResolution" {
+			t.Fatalf("%s group = %#v, want earlyResolution", key, subField["group"])
+		}
+	}
+}
+
+func TestSettingsSchemaExternalBackendURLIsGlobalOnlyWatchPartyRequirement(t *testing.T) {
+	section, ok := handlers.SettingsSchema["server"].(map[string]interface{})
+	if !ok {
+		t.Fatal("server settings schema is missing")
+	}
+	fields, ok := section["fields"].(map[string]interface{})
+	if !ok {
+		t.Fatal("server settings fields are missing")
+	}
+	field, ok := fields["externalBackendUrl"].(map[string]interface{})
+	if !ok {
+		t.Fatal("externalBackendUrl setting is missing")
+	}
+	if field["type"] != "text" || field["globalOnly"] != true || field["requiredFor"] != "External Watch Together access" {
+		t.Fatalf("externalBackendUrl schema = %#v", field)
+	}
+}
+
 func TestNavigationVisibilitySchemaIncludesWatchlist(t *testing.T) {
 	section, ok := handlers.SettingsSchema["display"].(map[string]interface{})
 	if !ok {
@@ -2702,6 +2832,31 @@ func TestDisplaySchemaIncludesTVHomeCardDimmingOptOut(t *testing.T) {
 	if field["type"] != "boolean" {
 		t.Fatalf("unexpected disableTvHomeCardDimming schema: %+v", field)
 	}
+}
+
+func TestSettingsSchemaOffersTorrinProvider(t *testing.T) {
+	section, ok := handlers.SettingsSchema["debridProviders"].(map[string]interface{})
+	if !ok {
+		t.Fatal("debrid provider settings schema is missing")
+	}
+	fields, ok := section["fields"].(map[string]interface{})
+	if !ok {
+		t.Fatal("debrid provider settings fields are missing")
+	}
+	provider, ok := fields["provider"].(map[string]interface{})
+	if !ok {
+		t.Fatal("debrid provider field is missing")
+	}
+	options, ok := provider["options"].([]string)
+	if !ok {
+		t.Fatalf("debrid provider options = %#v", provider["options"])
+	}
+	for _, option := range options {
+		if option == "torrin" {
+			return
+		}
+	}
+	t.Fatal("torrin is missing from the backend settings page provider options")
 }
 
 // multipartWriter creates a multipart form with a file field

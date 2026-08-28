@@ -39,8 +39,9 @@ func globalDefaults() config.Settings {
 			PreferredTerms:   []string{"remux"},
 		},
 		Display: config.DisplaySettings{
-			BadgeVisibility:     []string{"watchProgress", "releaseStatus"},
-			WatchStateIconStyle: "colored",
+			BadgeVisibility:      []string{"watchProgress", "releaseStatus"},
+			WatchStateIconStyle:  "colored",
+			ShowStreamSourceInfo: true,
 		},
 		HomeShelves: config.HomeShelvesSettings{
 			Shelves: []config.ShelfConfig{
@@ -63,6 +64,26 @@ func globalDefaults() config.Settings {
 				{ID: config.RankingSize, Name: "Size", Enabled: true, Order: 1},
 			},
 		},
+	}
+}
+
+func TestStripProfileStreamSourceInfo(t *testing.T) {
+	svc := tempService(t)
+	g := globalDefaults()
+	svc.settings["same"] = models.UserSettings{Display: models.DisplaySettings{
+		ShowStreamSourceInfo: models.BoolPtr(true),
+	}}
+	svc.settings["different"] = models.UserSettings{Display: models.DisplaySettings{
+		ShowStreamSourceInfo: models.BoolPtr(false),
+	}}
+
+	svc.StripRedundantOverrides(g, nil, nil)
+
+	if same, ok := svc.settings["same"]; ok && same.Display.ShowStreamSourceInfo != nil {
+		t.Fatal("expected matching stream source information override to be stripped")
+	}
+	if different, ok := svc.settings["different"]; !ok || different.Display.ShowStreamSourceInfo == nil || *different.Display.ShowStreamSourceInfo {
+		t.Fatal("expected differing stream source information override to be preserved")
 	}
 }
 

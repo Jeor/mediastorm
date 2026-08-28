@@ -4,9 +4,12 @@
 
 {{define "content"}}
 {{if .NoProfiles}}
-<div class="page-header">
-    <h1>Watch History</h1>
-    <p>View watch history by profile</p>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
+        <h1>Watch history</h1>
+        <p>Review recently watched movies and episodes by profile.</p>
+    </div>
 </div>
 <div class="card" style="margin-top: 2rem;">
     <div class="card-body" style="text-align: center; padding: 3rem;">
@@ -19,12 +22,13 @@
     </div>
 </div>
 {{else}}
-<div class="page-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-    <div>
-        <h1>Watch History</h1>
-        <p>View watch history by profile</p>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
+        <h1>Watch history</h1>
+        <p>Review recently watched movies and episodes by profile.</p>
     </div>
-    <div style="display: flex; align-items: center; gap: 1rem;">
+    <div class="page-header-actions">
         <select id="profileSelect" class="form-select" style="min-width: 200px;" onchange="loadHistory()">
             <option value="all" selected>All Profiles</option>
             {{range .Users}}
@@ -62,7 +66,7 @@
 </div>
 
 <!-- Filter Tabs -->
-<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+<div class="page-toolbar" aria-label="Watch history filters">
     <button class="btn btn-primary filter-btn active" data-filter="all" onclick="filterHistory('all', this)">All</button>
     <button class="btn btn-secondary filter-btn" data-filter="movie" onclick="filterHistory('movie', this)">Movies</button>
     <button class="btn btn-secondary filter-btn" data-filter="episode" onclick="filterHistory('episode', this)">Episodes</button>

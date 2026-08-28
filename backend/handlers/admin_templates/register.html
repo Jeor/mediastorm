@@ -9,17 +9,17 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{brandingURL "web-icon" "favicon-16.png"}}">
     <style>
         :root {
-            --bg-primary: #0f0f0f;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #252525;
+            --bg-primary: #0d0d12;
+            --bg-secondary: #16161e;
+            --bg-tertiary: #1c1c26;
             --text-primary: #ffffff;
-            --text-secondary: #a0a0a0;
-            --text-muted: #666666;
-            --accent: #6366f1;
+            --text-secondary: #9ca3af;
+            --text-muted: #7d8592;
+            --accent: #5f62ed;
             --accent-hover: #818cf8;
             --success: #22c55e;
             --danger: #ef4444;
-            --border: #333333;
+            --border: #2a2a36;
             --radius: 8px;
             --radius-lg: 12px;
         }
@@ -32,7 +32,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--bg-primary);
+            background: radial-gradient(circle at 50% 0%, rgba(95, 98, 237, 0.1), transparent 34rem), var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
@@ -43,7 +43,7 @@
 
         .register-card {
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
@@ -66,6 +66,15 @@
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
+        }
+
+        .entry-brand {
+            margin-bottom: 0.4rem;
+            color: var(--accent-hover);
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
 
         .register-header p {
@@ -97,8 +106,9 @@
         }
 
         .form-input:focus {
-            outline: none;
+            outline: 2px solid transparent;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(95, 98, 237, 0.18);
         }
 
         .form-input:disabled {
@@ -119,6 +129,15 @@
             transition: all 0.2s;
             border: none;
             text-decoration: none;
+            min-height: 42px;
+        }
+
+        .btn:focus-visible,
+        .form-input:focus-visible,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--accent-hover);
+            outline-offset: 2px;
         }
 
         .btn svg {
@@ -233,8 +252,9 @@
                 <polyline points="2 17 12 22 22 17"/>
                 <polyline points="2 12 12 17 22 12"/>
             </svg>
-            <h1>mediastorm</h1>
-            <p>Create your account</p>
+            <div class="entry-brand">Mediastorm</div>
+            <h1>Create your account</h1>
+            <p>Use the invitation details provided by your administrator.</p>
         </div>
 
         <div id="errorMessage" class="form-error {{if not .Error}}hidden{{end}}">{{.Error}}</div>

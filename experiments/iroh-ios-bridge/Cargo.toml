@@ -8,6 +8,6 @@ name = "iroh_ios_bridge"
 crate-type = ["staticlib"]
 
 [dependencies]
-iroh = "0.98.2"
+iroh = "1.0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "time"] }
 

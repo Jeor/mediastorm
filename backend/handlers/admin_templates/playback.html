@@ -3,9 +3,12 @@
 {{define "title"}}Playback - mediastorm{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>Playback</h1>
-    <p>Browse shelves, resume watching, and launch streams from the web UI</p>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
+        <h1>Playback</h1>
+        <p>Choose a profile, browse media or live channels, and start watching.</p>
+    </div>
 </div>
 
 {{if .NoProfiles}}
@@ -26,7 +29,7 @@
             <button id="iptvModeButton" class="playback-mode-option" type="button" onclick="setPlaybackMode('iptv')" role="tab" aria-selected="false">IPTV</button>
         </div>
         <section id="shelvesPanel">
-            <div class="toolbar search-toolbar">
+            <div class="toolbar search-toolbar page-toolbar" aria-label="Media search controls">
                 <input type="text" id="searchQuery" class="form-input search-input" placeholder="Search movies or shows" onkeydown="if(event.key==='Enter') searchMedia()">
                 <select id="searchType" class="form-select compact-select">
                     <option value="all">All</option>
@@ -55,7 +58,7 @@
         </section>
 
         <section id="iptvPanel" class="iptv-panel" style="display: none;">
-            <div class="toolbar search-toolbar iptv-toolbar">
+            <div class="toolbar search-toolbar iptv-toolbar page-toolbar" aria-label="Live TV filters">
                 <input type="text" id="iptvSearchQuery" class="form-input search-input" placeholder="Search channels" oninput="renderIptvChannels()">
                 <select id="iptvGroupFilter" class="form-select compact-select" onchange="renderIptvChannels()">
                     <option value="">All Groups</option>
@@ -1350,6 +1353,11 @@
         line-height: 1.35;
         white-space: pre-wrap;
         word-break: break-word;
+    }
+
+    .manual-result-title-passthrough,
+    .playback-source-name {
+        white-space: pre-wrap;
     }
 
     .playback-source {
@@ -3019,6 +3027,18 @@
         `;
     }
 
+    function resolveAIOStreamsPassthroughDisplay(attrs) {
+        const name = attrs?.raw_name;
+        if (attrs?.passthrough_format !== 'true' || typeof name !== 'string' || !name.trim()) {
+            return null;
+        }
+        const description = attrs.raw_description;
+        return {
+            name,
+            description: typeof description === 'string' && description.trim() ? description : '',
+        };
+    }
+
     function renderManualResult(result, index) {
         const attrs = result.attributes || {};
         const isExcluded = result.filterStatus === 'filtered';
@@ -3027,10 +3047,13 @@
         const resolution = attrs.resolution || '';
         const hdr = attrs.hdr || (attrs.hasDV === 'true' ? 'DV' : '');
         // AIOStreams passthrough formatting: prefer the scraper's own display name/description.
-        const usePassthrough = attrs.passthrough_format === 'true' && !!attrs.raw_name;
-        const displayTitle = usePassthrough ? attrs.raw_name : (result.title || 'Unknown release');
-        const description = usePassthrough && attrs.raw_description
-            ? `<div class="manual-result-desc">${escapeHtml(attrs.raw_description)}</div>`
+        const passthroughDisplay = resolveAIOStreamsPassthroughDisplay(attrs);
+        const displayTitle = passthroughDisplay?.name || result.title || 'Unknown release';
+        const titleClass = passthroughDisplay
+            ? 'manual-result-title manual-result-title-passthrough'
+            : 'manual-result-title';
+        const description = passthroughDisplay?.description
+            ? `<div class="manual-result-desc">${escapeHtml(passthroughDisplay.description)}</div>`
             : '';
         // Hide the score when an external scraper provided the ranking (bypass mode): mediastorm
         // did not score these, so the value is always 0 and would be misleading.
@@ -3042,7 +3065,7 @@
         return `
             <article class="manual-result ${isExcluded ? 'manual-result-excluded' : ''}">
                 <div style="min-width: 0;">
-                    <div class="manual-result-title" title="${escapeHtml(displayTitle)}">${escapeHtml(displayTitle)}</div>
+                    <div class="${titleClass}" title="${escapeHtml(displayTitle)}">${escapeHtml(displayTitle)}</div>
                     ${description}
                     <div class="manual-result-meta">
                         <span>${escapeHtml(service)}</span>
@@ -3298,11 +3321,11 @@
         const displayFilename = playbackDisplayFilename(resolvedPlayback, candidate.title || '');
         // Surface AIOStreams passthrough formatting (name + description) alongside the filename.
         const attrs = candidate.attributes || {};
-        const usePassthrough = attrs.passthrough_format === 'true' && !!attrs.raw_name;
-        const passthroughBlock = usePassthrough
+        const passthroughDisplay = resolveAIOStreamsPassthroughDisplay(attrs);
+        const passthroughBlock = passthroughDisplay
             ? `<div class="playback-source">
-                    <div class="playback-source-name">${escapeHtml(attrs.raw_name)}</div>
-                    ${attrs.raw_description ? `<div class="playback-source-desc">${escapeHtml(attrs.raw_description)}</div>` : ''}
+                    <div class="playback-source-name">${escapeHtml(passthroughDisplay.name)}</div>
+                    ${passthroughDisplay.description ? `<div class="playback-source-desc">${escapeHtml(passthroughDisplay.description)}</div>` : ''}
                 </div>`
             : '';
         panel.innerHTML = `

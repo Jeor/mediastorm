@@ -55,10 +55,18 @@ func (s *MultiProviderService) CheckCacheAcrossProviders(
 
 	// Collect enabled providers with their priority (index = priority)
 	var enabledProviders []providerEntry
+	var restrictedErr error
 
 	for i := range settings.Streaming.DebridProviders {
 		p := &settings.Streaming.DebridProviders[i]
 		if !p.Enabled || strings.TrimSpace(p.APIKey) == "" {
+			continue
+		}
+		if err := realDebridRestrictionForCandidate(settings, *p, candidate); err != nil {
+			log.Printf("[multi-provider] %s; skipping provider for title=%q", err, strings.TrimSpace(candidate.Title))
+			if restrictedErr == nil {
+				restrictedErr = err
+			}
 			continue
 		}
 
@@ -82,6 +90,9 @@ func (s *MultiProviderService) CheckCacheAcrossProviders(
 	}
 
 	if len(enabledProviders) == 0 {
+		if restrictedErr != nil {
+			return nil, restrictedErr
+		}
 		return nil, fmt.Errorf("no enabled debrid providers with API keys configured")
 	}
 

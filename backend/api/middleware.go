@@ -149,6 +149,15 @@ func AccountAuthMiddleware(sessionsSvc *sessions.Service, accountsSvc *accounts.
 				json.NewEncoder(w).Encode(map[string]string{"error": "session not permitted for this endpoint"})
 				return
 			}
+			// Watch-party guest sessions are consumed only by the dedicated public
+			// handlers, which additionally bind the cookie to one exact room. They
+			// must never inherit the surrounding account's protected API access.
+			if session.Scope == models.SessionScopeWatchParty {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]string{"error": "session not permitted for this endpoint"})
+				return
+			}
 
 			// Valid session - inject account context
 			ctx := context.WithValue(r.Context(), auth.ContextKeyAccountID, session.AccountID)

@@ -46,6 +46,8 @@ func NewProcessor(metadataService *metadata.MetadataService, poolManager pool.Ma
 	enableMemoryPreload := false
 	maxMemoryGB := 8
 
+	parser := NewParser(poolManager)
+
 	if configGetter != nil {
 		if cfg := configGetter(); cfg != nil {
 			if cfg.Import.RarMaxWorkers > 0 {
@@ -58,11 +60,12 @@ func NewProcessor(metadataService *metadata.MetadataService, poolManager pool.Ma
 			if cfg.Import.RarMaxMemoryGB > 0 {
 				maxMemoryGB = cfg.Import.RarMaxMemoryGB
 			}
+			parser.SetConcurrency(cfg.Import.UsenetMaxConcurrentFileParsers, cfg.Import.UsenetParserShareDivisor)
 		}
 	}
 
 	p := &Processor{
-		parser:            NewParser(poolManager),
+		parser:            parser,
 		strmParser:        NewStrmParser(),
 		metadataService:   metadataService,
 		poolManager:       poolManager,

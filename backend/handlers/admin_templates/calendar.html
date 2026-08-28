@@ -4,9 +4,12 @@
 
 {{define "content"}}
 {{if .NoProfiles}}
-<div class="page-header">
-    <h1>Schedule</h1>
-    <p>Upcoming episodes and movie releases</p>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
+        <h1>Schedule</h1>
+        <p>See upcoming episodes and movie releases from connected sources.</p>
+    </div>
 </div>
 <div class="card" style="margin-top: 2rem;">
     <div class="card-body" style="text-align: center; padding: 3rem;">
@@ -21,12 +24,13 @@
     </div>
 </div>
 {{else}}
-<div class="page-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-    <div>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
         <h1>Schedule</h1>
-        <p>Upcoming episodes and movie releases from your sources</p>
+        <p>See upcoming episodes and movie releases from connected sources.</p>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+    <div class="page-header-actions">
         <select id="profileSelect" class="form-select" style="min-width: 200px;" onchange="loadCalendar()">
             {{range .Users}}
             <option value="{{.ID}}">{{.Name}}</option>
@@ -50,7 +54,7 @@
 </div>
 
 <!-- View Controls -->
-<div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+<div class="page-toolbar" style="justify-content: space-between;" aria-label="Schedule view controls">
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <button id="viewListBtn" class="btn btn-primary" onclick="setViewMode('list')">List View</button>
         <button id="viewCalendarBtn" class="btn btn-secondary" onclick="setViewMode('calendar')">Calendar View</button>

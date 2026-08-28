@@ -57,6 +57,7 @@ import (
 	"novastream/services/playback"
 	"novastream/services/plex"
 	"novastream/services/prewarm"
+	"novastream/services/realtimesessions"
 	"novastream/services/recordings"
 	"novastream/services/remoteaccess"
 	"novastream/services/remotemedia"
@@ -92,6 +93,8 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("🚀 mediastorm Backend Starting...")
+	startupStarted := time.Now()
+	startupPhaseStarted := startupStarted
 	if *demoMode {
 		fmt.Println("🧪 Demo mode enabled: returning curated public domain trending rows.")
 	}
@@ -116,7 +119,7 @@ func main() {
 			log.Printf("warning: failed to persist global Live TV proxy migration: %v", err)
 		}
 	}
-	apiusage.ConfigureStorage(settings.Cache.Directory)
+	apiusage.ConfigureStorageAsync(settings.Cache.Directory)
 
 	// Set up file logging with rotation
 	if settings.Log.File != "" {
@@ -144,6 +147,8 @@ func main() {
 	if *portOverride > 0 {
 		settings.Server.Port = *portOverride
 	}
+	log.Printf("[startup] phase=config-load duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Initialize PostgreSQL DataStore if configured
 	var store *datastore.DataStore
@@ -169,14 +174,20 @@ func main() {
 		}
 		defer store.Close()
 		fmt.Println("🐘 PostgreSQL datastore initialized")
+		log.Printf("[startup] phase=datastore-connect-and-schema-migrations duration=%s", time.Since(startupPhaseStarted))
+		startupPhaseStarted = time.Now()
 
 		// Run one-time JSON→PostgreSQL migration for existing users
 		if migrateErr := datastore.MigrateFromJSON(context.Background(), store, settings.Cache.Directory); migrateErr != nil {
 			log.Printf("Warning: JSON migration encountered errors: %v", migrateErr)
 		}
+		log.Printf("[startup] phase=legacy-json-migrations duration=%s", time.Since(startupPhaseStarted))
+		startupPhaseStarted = time.Now()
 		if migrateErr := datastore.RunDataMigrations(context.Background(), store); migrateErr != nil {
 			log.Printf("Warning: datastore data migration encountered errors: %v", migrateErr)
 		}
+		log.Printf("[startup] phase=data-migration-recheck duration=%s", time.Since(startupPhaseStarted))
+		startupPhaseStarted = time.Now()
 	} else {
 		fmt.Println("")
 		fmt.Println("╔══════════════════════════════════════════════════════════════════════╗")
@@ -207,7 +218,6 @@ func main() {
 		fmt.Println("")
 		log.Fatal("DATABASE_URL is required. Set it as an environment variable or in settings.json under database.url")
 	}
-
 	// Construct router
 	var r *mux.Router = utils.NewRouter()
 
@@ -303,10 +313,14 @@ func main() {
 		MaxDownloadWorkers:  settings.Streaming.MaxDownloadWorkers,
 	}
 
+	log.Printf("[startup] phase=core-services-and-usenet duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	nzbSystem, err := integration.NewNzbSystem(nzbSystemConfig, poolManager, configAdapter.GetConfigGetter())
 	if err != nil {
 		log.Fatalf("failed to initialize NZB system: %v", err)
 	}
+	log.Printf("[startup] phase=nzb-system duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	defer nzbSystem.Close()
 
 	// Create WebDAV handler if enabled
@@ -361,6 +375,11 @@ func main() {
 	indexerHandler.SetBadStreamsService(badStreamsService)
 
 	playbackService := playback.NewService(cfgManager, nzbSystem, nzbSystem.MetadataReader())
+	// Wire the preflight availability probe: usenet candidates are
+	// segment-sampled concurrently with the full resolve, so dead releases are
+	// cancelled and rejected cheaply (fail-open — only a definitive
+	// missing-segments verdict rejects).
+	playbackService.SetUsenetHealthChecker(usenetService)
 	playbackHandler := handlers.NewPlaybackHandler(playbackService)
 	playbackHandler.SetBadStreamsService(badStreamsService)
 	// Prequeue handler will be created later after historyService is available
@@ -484,6 +503,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialise user settings: %v", err)
 	}
+	var kidsProfileIDs []string
+	for _, user := range userService.ListAll() {
+		if user.IsKidsProfile {
+			kidsProfileIDs = append(kidsProfileIDs, user.ID)
+		}
+	}
+	if len(kidsProfileIDs) > 0 {
+		if changed, err := userSettingsService.ApplyKidsProfileDefaults(kidsProfileIDs...); err != nil {
+			log.Printf("failed to apply kids profile defaults: %v", err)
+		} else if changed > 0 {
+			log.Printf("enabled M.O.M. Mode by default for %d kids profile(s)", changed)
+		}
+	}
 	userSettingsHandler := handlers.NewUserSettingsHandler(userSettingsService, userService, cfgManager)
 
 	// Initialize content preferences service for per-content language preferences
@@ -497,6 +529,8 @@ func main() {
 		log.Fatalf("failed to initialise content preferences: %v", err)
 	}
 	contentPreferencesHandler := handlers.NewContentPreferencesHandler(contentPreferencesService, userService)
+	log.Printf("[startup] phase=services-before-profiles duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	var hiddenItemsService *hiddenitems.Service
 	if store != nil {
@@ -532,6 +566,8 @@ func main() {
 	clearLegacyAppearanceOverridesOnce(settings.Cache.Directory, userSettingsService, clientSettingsService)
 	clientsHandler := handlers.NewClientsHandler(clientsService, clientSettingsService, userService)
 	clientsHandler.SetConfigManager(cfgManager)
+	log.Printf("[startup] phase=profile-client-services duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Wire up user settings to services for per-user settings
 	debridSearchService.SetUserSettingsProvider(userSettingsService)
@@ -553,6 +589,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialise watch history: %v", err)
 	}
+	log.Printf("[startup] phase=history-service duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	// Wire up metadata service for continue watching generation
 	historyService.SetMetadataService(metadataService)
 
@@ -583,6 +621,20 @@ func main() {
 	go scrobRTScrobbler.StartCleanup(context.Background())
 	simklRTScrobbler := simkl.NewScrobbleStateTracker(simklClient, simklScrobbler, 15*time.Minute)
 	go simklRTScrobbler.StartCleanup(context.Background())
+
+	var realtimeSessionStore realtimesessions.Store = realtimesessions.NewMemoryStore()
+	if store != nil {
+		realtimeSessionStore = store.RealtimeScrobbleSessions()
+	}
+	realtimeSessionRegistry := realtimesessions.New(realtimeSessionStore, time.Hour)
+	scrobbleTracker.SetSessionRegistry(realtimeSessionRegistry)
+	mdblistRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
+	simklRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
+	scrobRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
+	realtimeSessionRegistry.RegisterCleaner("trakt", scrobbleTracker)
+	realtimeSessionRegistry.RegisterCleaner("mdblist", mdblistRTScrobbler)
+	realtimeSessionRegistry.RegisterCleaner("simkl", simklRTScrobbler)
+	realtimeSessionRegistry.RegisterCleaner("scrob", scrobRTScrobbler)
 
 	// Wire up multi-scrobblers that fan out to all enabled providers
 	multiScrobbler := history.NewMultiScrobbler(traktScrobbler, mdblistScrobbler, simklScrobbler, scrobScrobbler)
@@ -641,6 +693,8 @@ func main() {
 	}
 	libraryAccessService := libraryaccess.New(store.LibraryAccess(), store.LocalMedia(), store.RemoteMedia())
 	remotePlaybackReporter := remotemedia.NewPlaybackReporter(remoteMediaService)
+	log.Printf("[startup] phase=media-and-scrobble-services duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	multiRTScrobbler := history.NewMultiRealTimeScrobbler(
 		scrobbleTracker,
 		mdblistRTScrobbler,
@@ -690,19 +744,16 @@ func main() {
 	displayListHandler.SetPrequeueStore(prequeueHandler.GetStore())
 	historyHandler.SetPrequeueStore(prequeueHandler.GetStore())
 	startupHandler.SetPrequeueStore(prequeueHandler.GetStore())
-
-	// Restore magnet links from persisted prequeue entries into the magnet registry
-	// so stale torrents can be re-added after a server restart
-	for _, m := range prequeueHandler.GetStore().RestoredMagnets() {
-		debrid.RegisterMagnet(m.Provider, m.TorrentID, m.MagnetLink)
-	}
+	log.Printf("[startup] phase=prequeue-handler-wiring duration=%s", time.Since(startupPhaseStarted))
 
 	if settings.Transmux.FFmpegPath == "" {
 		settings.Transmux.FFmpegPath = "ffmpeg"
 	}
 
 	// Best-effort save so the config persists the defaults
+	startupPhaseStarted = time.Now()
 	_ = cfgManager.Save(settings)
+	log.Printf("[startup] phase=config-default-save duration=%s", time.Since(startupPhaseStarted))
 
 	// Recordings service is created early so its streaming provider can join the
 	// composite provider, letting recordings play through the shared HLS pipeline.
@@ -747,6 +798,7 @@ func main() {
 	})
 
 	// Create video handler with composite provider
+	startupPhaseStarted = time.Now()
 	videoHandler := handlers.NewVideoHandlerWithProvider(
 		settings.Transmux.Enabled,
 		settings.Transmux.FFmpegPath,
@@ -754,11 +806,15 @@ func main() {
 		settings.Transmux.HLSTempDirectory,
 		compositeProvider,
 	)
+	log.Printf("[startup] phase=video-handler duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	videoHandler.SetThumbnailCacheDir(settings.Cache.Directory)
 	playbackHandler.SetThumbnailPrewarmer(videoHandler)
 	videoHandler.SetPrequeueStore(prequeueHandler.GetStore())
 	localBaseURL := fmt.Sprintf("http://127.0.0.1:%d", settings.Server.Port)
 	videoHandler.SetLocalBaseURL(localBaseURL)
+	debridHealthService.SetFullProber(videoHandler)
+	playbackService.SetDebridFullProber(videoHandler)
 	// Cast capability cache (passive probe + playback observation). HTTP list/describe
 	// endpoints can be mounted later; the store is required for cast session decisions.
 	castCapsHandler := handlers.NewCastCapabilitiesHandler(settings.Cache.Directory)
@@ -766,6 +822,11 @@ func main() {
 	videoHandler.GetHLSManager().AddPlaybackActivityObserver(notificationService)
 	handlers.GetStreamTracker().AddPlaybackActivityObserver(notificationService)
 	historyHandler.SetActivePlaybackTrackers(handlers.GetStreamTracker())
+	cleanupDashboard := handlers.NewAdminHandler(videoHandler.GetHLSManager())
+	cleanupDashboard.SetProgressService(historyService)
+	cleanupDashboard.SetUserService(userService)
+	realtimeSessionRegistry.SetActivePlaybackProvider(cleanupDashboard)
+	go realtimeSessionRegistry.Start(context.Background())
 
 	if videoHandler != nil && settings.WebDAV.Enabled {
 		videoHandler.ConfigureLocalWebDAVAccess(localBaseURL, settings.WebDAV.Prefix, settings.WebDAV.Username, settings.WebDAV.Password)
@@ -869,9 +930,13 @@ func main() {
 	shareHandler := handlers.NewShareHandler(handlers.NewShareStore(shareLinkRepo), sessionsService, userService, settings.Server.BasePath)
 	shareHandler.SetLibraryAccessService(libraryAccessService)
 	var watchRoomsHandler *handlers.WatchRoomsHandler
+	var watchPartyHandler *handlers.WatchPartyHandler
 	if store != nil {
 		watchRoomsService := watchrooms.New(store.WatchRooms(), userService, accountsService)
 		watchRoomsHandler = handlers.NewWatchRoomsHandler(watchRoomsService)
+		watchPartyHandler = handlers.NewWatchPartyHandler(watchRoomsService, sessionsService, settings.Server.BasePath)
+		watchPartyHandler.SetLibraryAccessService(libraryAccessService)
+		watchPartyHandler.SetSettingsProvider(cfgManager)
 		go func() {
 			runCleanup := func() {
 				ended, deleted, err := watchRoomsService.Cleanup(context.Background())
@@ -891,6 +956,16 @@ func main() {
 			}
 		}()
 	}
+
+	// Click→first-frame latency instrumentation. Passive: records prequeue + HLS
+	// phase timestamps into a rolling window, exposes /admin/latency (a passive
+	// click→first-frame observer).
+	latencyTracker := handlers.NewPlaybackLatencyTracker(400)
+	latencyAdmin := handlers.NewPlaybackLatencyAdmin(latencyTracker)
+	prequeueHandler.SetPlaybackLatencyTracker(latencyTracker)
+	videoHandler.GetHLSManager().SetPlaybackLatencyTracker(latencyTracker)
+	log.Printf("[startup] phase=post-video-service-wiring duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	api.Register(
 		r,
@@ -930,8 +1005,12 @@ func main() {
 		userService,
 		shareHandler,
 		watchRoomsHandler,
+		watchPartyHandler,
 		settings.Server.HomepageAPIKey,
+		latencyAdmin,
 	)
+	log.Printf("[startup] phase=primary-api-routes duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Register Trakt accounts API routes
 	traktAccountsHandler := handlers.NewTraktAccountsHandler(cfgManager, traktClient, userService, accountsService)
@@ -993,9 +1072,17 @@ func main() {
 	if store != nil {
 		numbersStationHandler = handlers.NewNumbersStationHandler(numbersstation.New(store))
 	}
+	log.Printf("[startup] phase=admin-service-wiring duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Login/logout routes (no auth required)
 	r.HandleFunc("/admin/login", adminUIHandler.LoginPage).Methods(http.MethodGet)
+	r.HandleFunc("/admin/latency", adminUIHandler.RequireAuth(latencyAdmin.ServeLatencyPage)).Methods(http.MethodGet, http.MethodOptions)
+	// The latency API is an admin-only JSON endpoint on the cookie-authenticated
+	// /admin/api/* namespace (same as the other browser admin APIs) so the
+	// latency page can call it from the browser without extra plumbing.
+	r.HandleFunc("/admin/api/latency", adminUIHandler.RequireMasterAuth(latencyAdmin.ServePlaybackLatencyJSON)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/admin/api/latency/clear", adminUIHandler.RequireMasterAuth(latencyAdmin.ClearLatencySamples)).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/admin/login", api.RateLimitHandlerFunc(adminLoginLimiter, adminUIHandler.LoginSubmit)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/logout", adminUIHandler.Logout).Methods(http.MethodGet, http.MethodPost)
 
@@ -1173,6 +1260,7 @@ func main() {
 	r.HandleFunc("/admin/api/accounts", adminUIHandler.RequireAuth(adminUIHandler.RenameUserAccount)).Methods(http.MethodPatch)
 	r.HandleFunc("/admin/api/accounts", adminUIHandler.RequireAuth(adminUIHandler.DeleteUserAccount)).Methods(http.MethodDelete)
 	r.HandleFunc("/admin/api/accounts/password", adminUIHandler.RequireAuth(adminUIHandler.ResetUserAccountPassword)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/api/accounts/transfer-admin", adminUIHandler.RequireMasterAuth(adminUIHandler.TransferAdmin)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/accounts/max-streams", adminUIHandler.RequireMasterAuth(adminUIHandler.SetAccountMaxStreams)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/api/profiles/share-links", adminUIHandler.RequireMasterAuth(adminUIHandler.SetProfileAllowShareLinks)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/api/profiles/activity-privacy", adminUIHandler.RequireAuth(adminUIHandler.SetProfileActivityPrivacy)).Methods(http.MethodPut)
@@ -1407,6 +1495,9 @@ func main() {
 	r.HandleFunc("/account/login", api.RateLimitHandlerFunc(adminLoginLimiter, accountUIHandler.LoginSubmit)).Methods(http.MethodPost)
 	r.HandleFunc("/account/logout", accountUIHandler.Logout).Methods(http.MethodGet, http.MethodPost)
 
+	log.Printf("[startup] phase=admin-routes duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
+
 	// Protected account routes - Pages (use adminUIHandler with unified templates)
 	r.HandleFunc("/account", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
 	r.HandleFunc("/account/status", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
@@ -1604,6 +1695,8 @@ func main() {
 	r.HandleFunc("/account/api/library/items/{itemID}", adminUIHandler.RequireAuth(adminUIHandler.DeleteLocalMediaItem)).Methods(http.MethodDelete)
 
 	fmt.Println("👤 Account management available at /account")
+	log.Printf("[startup] phase=account-routes duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 
 	// Dedicated browser player handoff backed by the server-side HLS web player.
 	webPlaybackHandler := handlers.NewWebPlaybackHandler(userService, sessionsService, settings.Server.BasePath)
@@ -1611,6 +1704,15 @@ func main() {
 
 	// One-time share link consumption (public, no auth — opening mints a scoped session).
 	r.HandleFunc("/share/{token}", shareHandler.Open).Methods(http.MethodGet)
+	if watchPartyHandler != nil {
+		r.HandleFunc("/watch-party", watchPartyHandler.Landing).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/code", watchPartyHandler.ResolveCode).Methods(http.MethodPost)
+		r.HandleFunc("/watch-party/code/{code}", watchPartyHandler.OpenCode).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/code/{code}", watchPartyHandler.JoinCode).Methods(http.MethodPost)
+		r.HandleFunc("/watch-party/room/{roomID}", watchPartyHandler.RoomPage).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/{token}", watchPartyHandler.OpenToken).Methods(http.MethodGet)
+		r.HandleFunc("/watch-party/{token}", watchPartyHandler.JoinToken).Methods(http.MethodPost)
+	}
 
 	// Dedicated consumer web app served from the frontend Expo web export.
 	webAppHandler := handlers.NewWebAppHandler(handlers.ResolveWebAppDir(), "/watch")
@@ -1792,10 +1894,13 @@ func main() {
 		}()
 	}
 
+	log.Printf("[startup] phase=route-and-background-wiring duration=%s", time.Since(startupPhaseStarted))
+	startupPhaseStarted = time.Now()
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
+	log.Printf("[startup] phase=listener-bind duration=%s", time.Since(startupPhaseStarted))
 	if remoteAccessService != nil {
 		go superviseRemoteAccess(remoteAccessService)
 	}
@@ -1807,6 +1912,7 @@ func main() {
 		}
 	}()
 	log.Printf("Server listening on %s", addr)
+	log.Printf("[startup] phase=ready total=%s", time.Since(startupStarted))
 	startupNotificationCtx, startupNotificationCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	if err := notificationService.NotifySystem(startupNotificationCtx, models.NotificationEventSystemStartup); err != nil {
 		log.Printf("[notifications] startup delivery failed: %v", err)
@@ -1816,6 +1922,19 @@ func main() {
 	// Start expensive restore/sync/warmup work after the socket is accepting
 	// connections so restart health checks are not blocked by external probes.
 	go func() {
+		prequeueRestoreCtx, prequeueRestoreCancel := context.WithTimeout(context.Background(), 45*time.Second)
+		if err := prequeueHandler.GetStore().RestorePersisted(prequeueRestoreCtx); err != nil {
+			log.Printf("[prequeue] Warning: persisted restore failed: %v", err)
+		}
+		prequeueRestoreCancel()
+
+		// Restore magnet links after persisted entries have been loaded so stale
+		// torrents can be re-added after a server restart.
+		for _, m := range prequeueHandler.GetStore().RestoredMagnets() {
+			debrid.RegisterMagnet(m.Provider, m.TorrentID, m.MagnetLink)
+		}
+		prequeueHandler.GetStore().CleanupExpiredPersisted(context.Background())
+
 		prewarmService.RestorePrequeueEntries()
 
 		// Start scheduler service for background tasks. Its immediate task check

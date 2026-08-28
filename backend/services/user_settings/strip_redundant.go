@@ -165,20 +165,21 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			MaxResultsPerResolution:       models.IntPtr(g.Playback.MaxResultsPerResolution),
 		},
 		Filtering: models.FilterSettings{
-			MaxSizeMovieGB:             models.FloatPtr(g.Filtering.MaxSizeMovieGB),
-			MaxSizeEpisodeGB:           models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
-			MaxResolution:              models.StringPtr(g.Filtering.MaxResolution),
-			HDRDVPolicy:                models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
-			RequiredTerms:              g.Filtering.RequiredTerms,
-			FilterOutTerms:             g.Filtering.FilterOutTerms,
-			PreferredTerms:             g.Filtering.PreferredTerms,
-			NonPreferredTerms:          g.Filtering.NonPreferredTerms,
-			DownloadPreferredTerms:     g.Filtering.DownloadPreferredTerms,
-			PreferredScraper:           models.StringPtr(g.Filtering.PreferredScraper),
-			ServicePriority:            models.StringPtr(string(g.Filtering.ServicePriority)),
-			UnknownTrackPolicy:         string(g.Filtering.UnknownTrackPolicy),
-			AdaptivePlaybackEnabled:    models.BoolPtr(g.Filtering.AdaptivePlaybackEnabled),
-			AdaptiveTargetBufferFactor: models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor),
+			MaxSizeMovieGB:                         models.FloatPtr(g.Filtering.MaxSizeMovieGB),
+			MaxSizeEpisodeGB:                       models.FloatPtr(g.Filtering.MaxSizeEpisodeGB),
+			MaxResolution:                          models.StringPtr(g.Filtering.MaxResolution),
+			HDRDVPolicy:                            models.HDRDVPolicy(g.Filtering.HDRDVPolicy),
+			RequiredTerms:                          g.Filtering.RequiredTerms,
+			FilterOutTerms:                         g.Filtering.FilterOutTerms,
+			PreferredTerms:                         g.Filtering.PreferredTerms,
+			NonPreferredTerms:                      g.Filtering.NonPreferredTerms,
+			DownloadPreferredTerms:                 g.Filtering.DownloadPreferredTerms,
+			PreferredScraper:                       models.StringPtr(g.Filtering.PreferredScraper),
+			ServicePriority:                        models.StringPtr(string(g.Filtering.ServicePriority)),
+			UnknownTrackPolicy:                     string(g.Filtering.UnknownTrackPolicy),
+			AdaptivePlaybackEnabled:                models.BoolPtr(g.Filtering.AdaptivePlaybackEnabled),
+			AdaptiveTargetBufferFactor:             models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor),
+			RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(g.Filtering.RealDebridRestrictedTermsFilterEnabled),
 		},
 		AnimeFiltering: models.AnimeFilteringSettings{
 			AnimeLanguageEnabled:   models.BoolPtr(g.AnimeFiltering.AnimeLanguageEnabled),
@@ -193,12 +194,14 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(g.Display.IncludeUnreleasedMoviesInSearch),
 			IncludeUnreleasedShowsInSearch:         models.BoolPtr(g.Display.IncludeUnreleasedShowsInSearch),
 			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                   models.BoolPtr(g.Display.ShowStreamSourceInfo),
 			DisableMobileTopCarousel:               models.BoolPtr(g.Display.DisableMobileTopCarousel),
 			HideContinueWatchingHeroMetadata:       models.BoolPtr(g.Display.HideContinueWatchingHeroMetadata),
 			MoveDetailsRatingsToMetadata:           models.BoolPtr(g.Display.MoveDetailsRatingsToMetadata),
 			HideDetailsPoster:                      models.BoolPtr(g.Display.HideDetailsPoster),
 			HideTVDrawerRail:                       models.BoolPtr(g.Display.HideTVDrawerRail),
 			SimpleMode:                             models.BoolPtr(g.Display.SimpleMode),
+			SimpleModeHomeShelves:                  models.StringSlicePtr(g.Display.SimpleModeHomeShelves),
 			DisableTVHomeCardDimming:               models.BoolPtr(g.Display.DisableTVHomeCardDimming),
 			EnableAnimations:                       models.BoolPtr(g.Display.EnableAnimations),
 			EnableHeroArtPanning:                   models.BoolPtr(g.Display.EnableHeroArtPanning),
@@ -501,8 +504,14 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.Filtering.AdaptiveTargetBufferFactor == nil {
 		eff.Filtering.AdaptiveTargetBufferFactor = models.FloatPtr(g.Filtering.AdaptiveTargetBufferFactor)
 	}
+	if eff.Filtering.RealDebridRestrictedTermsFilterEnabled == nil {
+		eff.Filtering.RealDebridRestrictedTermsFilterEnabled = models.BoolPtr(g.Filtering.RealDebridRestrictedTermsFilterEnabled)
+	}
 	if eff.Display.BypassFilteringForAIOStreamsOnly == nil {
 		eff.Display.BypassFilteringForAIOStreamsOnly = models.BoolPtr(g.Display.BypassFilteringForAIOStreamsOnly)
+	}
+	if eff.Display.ShowStreamSourceInfo == nil {
+		eff.Display.ShowStreamSourceInfo = models.BoolPtr(g.Display.ShowStreamSourceInfo)
 	}
 	if eff.Display.DisableMobileTopCarousel == nil {
 		eff.Display.DisableMobileTopCarousel = models.BoolPtr(g.Display.DisableMobileTopCarousel)
@@ -521,6 +530,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Display.SimpleMode == nil {
 		eff.Display.SimpleMode = models.BoolPtr(g.Display.SimpleMode)
+	}
+	if eff.Display.SimpleModeHomeShelves == nil {
+		eff.Display.SimpleModeHomeShelves = models.StringSlicePtr(g.Display.SimpleModeHomeShelves)
 	}
 	if eff.Display.DisableTVHomeCardDimming == nil {
 		eff.Display.DisableTVHomeCardDimming = models.BoolPtr(g.Display.DisableTVHomeCardDimming)
@@ -895,6 +907,10 @@ func stripFiltering(f *models.FilterSettings, g config.FilterSettings) bool {
 		f.AdaptiveTargetBufferFactor = nil
 		changed = true
 	}
+	if f.RealDebridRestrictedTermsFilterEnabled != nil && *f.RealDebridRestrictedTermsFilterEnabled == g.RealDebridRestrictedTermsFilterEnabled {
+		f.RealDebridRestrictedTermsFilterEnabled = nil
+		changed = true
+	}
 	return changed
 }
 
@@ -986,6 +1002,10 @@ func stripDisplay(d *models.DisplaySettings, g config.DisplaySettings) bool {
 		d.BypassFilteringForAIOStreamsOnly = nil
 		changed = true
 	}
+	if d.ShowStreamSourceInfo != nil && *d.ShowStreamSourceInfo == g.ShowStreamSourceInfo {
+		d.ShowStreamSourceInfo = nil
+		changed = true
+	}
 	if d.DisableMobileTopCarousel != nil && *d.DisableMobileTopCarousel == g.DisableMobileTopCarousel {
 		d.DisableMobileTopCarousel = nil
 		changed = true
@@ -1008,6 +1028,10 @@ func stripDisplay(d *models.DisplaySettings, g config.DisplaySettings) bool {
 	}
 	if d.SimpleMode != nil && *d.SimpleMode == g.SimpleMode {
 		d.SimpleMode = nil
+		changed = true
+	}
+	if d.SimpleModeHomeShelves != nil && stringSliceEqualOrdered(*d.SimpleModeHomeShelves, g.SimpleModeHomeShelves) {
+		d.SimpleModeHomeShelves = nil
 		changed = true
 	}
 	if d.DisableTVHomeCardDimming != nil && *d.DisableTVHomeCardDimming == g.DisableTVHomeCardDimming {
@@ -1359,8 +1383,16 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 		cs.UnknownTrackPolicy = nil
 		changed = true
 	}
+	if cs.RealDebridRestrictedTermsFilterEnabled != nil && eff.Filtering.RealDebridRestrictedTermsFilterEnabled != nil && *cs.RealDebridRestrictedTermsFilterEnabled == *eff.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		cs.RealDebridRestrictedTermsFilterEnabled = nil
+		changed = true
+	}
 	if cs.BypassFilteringForAIOStreamsOnly != nil && eff.Display.BypassFilteringForAIOStreamsOnly != nil && *cs.BypassFilteringForAIOStreamsOnly == *eff.Display.BypassFilteringForAIOStreamsOnly {
 		cs.BypassFilteringForAIOStreamsOnly = nil
+		changed = true
+	}
+	if cs.ShowStreamSourceInfo != nil && eff.Display.ShowStreamSourceInfo != nil && *cs.ShowStreamSourceInfo == *eff.Display.ShowStreamSourceInfo {
+		cs.ShowStreamSourceInfo = nil
 		changed = true
 	}
 	if cs.IncludeUnreleasedMoviesInLists != nil && eff.Display.IncludeUnreleasedMoviesInLists != nil && *cs.IncludeUnreleasedMoviesInLists == *eff.Display.IncludeUnreleasedMoviesInLists {
@@ -1401,6 +1433,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.SimpleMode != nil && eff.Display.SimpleMode != nil && *cs.SimpleMode == *eff.Display.SimpleMode {
 		cs.SimpleMode = nil
+		changed = true
+	}
+	if cs.SimpleModeHomeShelves != nil && eff.Display.SimpleModeHomeShelves != nil && stringSliceEqualOrdered(*cs.SimpleModeHomeShelves, *eff.Display.SimpleModeHomeShelves) {
+		cs.SimpleModeHomeShelves = nil
 		changed = true
 	}
 	if cs.DisableTVHomeCardDimming != nil && eff.Display.DisableTVHomeCardDimming != nil && *cs.DisableTVHomeCardDimming == *eff.Display.DisableTVHomeCardDimming {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"novastream/models"
+	"novastream/services/realtimesessions"
 )
 
 type scrobbleState int
@@ -38,6 +39,11 @@ type ScrobbleStateTracker struct {
 	scrobbler       *Scrobbler
 	refreshInterval time.Duration // how often to re-send scrobble/start while watching (default 15min)
 	staleTimeout    time.Duration // stop sessions with no update for this long (default 30min)
+	registry        *realtimesessions.Registry
+}
+
+func (t *ScrobbleStateTracker) SetSessionRegistry(registry *realtimesessions.Registry) {
+	t.registry = registry
 }
 
 // NewScrobbleStateTracker creates a new tracker.
@@ -115,6 +121,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 			} else {
 				sess.state = statePaused
 				sess.lastTraktCall = now
+				t.registry.Record("trakt", userID, "paused", "", update, percentWatched)
 			}
 		}
 		return
@@ -131,6 +138,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 		} else {
 			sess.state = stateWatching
 			sess.lastTraktCall = now
+			t.registry.Record("trakt", userID, "playing", "", update, percentWatched)
 		}
 	case stateWatching:
 		// Re-send start periodically to keep "now watching" active
@@ -141,6 +149,7 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 				log.Printf("[trakt-scrobble] refresh failed for %s: %v", key, err)
 			} else {
 				sess.lastTraktCall = now
+				t.registry.Record("trakt", userID, "playing", "", update, percentWatched)
 			}
 		}
 	}
@@ -179,7 +188,28 @@ func (t *ScrobbleStateTracker) StopSession(userID string, update models.Playback
 		return t.client.ScrobbleStop(accessToken, scrobbleReq)
 	}); err != nil {
 		log.Printf("[trakt-scrobble] stop failed for %s: %v", key, err)
+		return
 	}
+	t.registry.Remove("trakt", userID, update)
+}
+
+func (t *ScrobbleStateTracker) CleanupRealtimeSession(_ context.Context, session models.RealtimeScrobbleSession) error {
+	accessToken, err := t.scrobbler.getAccessTokenForUser(session.UserID)
+	if err != nil || accessToken == "" {
+		if err == nil {
+			err = fmt.Errorf("no Trakt access token for user %s", session.UserID)
+		}
+		return err
+	}
+	account := t.scrobbler.getAccountForUser(session.UserID)
+	if account != nil {
+		t.client.UpdateCredentials(account.ClientID, account.ClientSecret)
+	}
+	req := buildScrobbleRequest(session.Update, session.PercentWatched)
+	_, err = scrobbleWithAbsoluteEpisodeFallback("stop", req, func(scrobbleReq ScrobbleRequest) (*ScrobbleResponse, error) {
+		return t.client.ScrobbleStop(accessToken, scrobbleReq)
+	})
+	return err
 }
 
 // ClearSession removes a local realtime scrobble session without sending

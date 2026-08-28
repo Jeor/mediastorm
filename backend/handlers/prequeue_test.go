@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +21,8 @@ import (
 
 	"novastream/config"
 	"novastream/models"
+	"novastream/services/badstreams"
+	"novastream/services/indexer"
 	"novastream/services/playback"
 )
 
@@ -90,11 +96,13 @@ func (m *adoptMigrationPrewarmMock) UpdateFromPrequeue(prequeueID string) {
 func (m *adoptMigrationPrewarmMock) InvalidatePrequeue(prequeueID string) {}
 
 type adoptMigrationFullProber struct {
-	path string
+	path  string
+	calls int
 }
 
 func (m *adoptMigrationFullProber) ProbeVideoFull(_ context.Context, path string) (*VideoFullResult, error) {
 	m.path = path
+	m.calls++
 	return &VideoFullResult{
 		VideoCodec:         "h264",
 		HasDolbyVision:     true,
@@ -111,6 +119,29 @@ func (m *adoptMigrationFullProber) ProbeVideoFull(_ context.Context, path string
 			{Index: 3, Codec: "hdmv_pgs_subtitle", Language: "eng", Title: "English PGS"},
 		},
 	}, nil
+}
+
+func TestProbeResolvedCandidateReusesPlaybackProbe(t *testing.T) {
+	prober := &adoptMigrationFullProber{}
+	want := &models.VideoFullResult{
+		VideoCodec: "hevc",
+		AudioStreams: []models.AudioStreamInfo{
+			{Index: 1, Codec: "ac3", Language: "eng"},
+		},
+	}
+	got, err := probeResolvedCandidate(context.Background(), prober, &models.PlaybackResolution{
+		WebDAVPath: "https://example.invalid/video.mkv",
+		Probe:      want,
+	})
+	if err != nil {
+		t.Fatalf("probeResolvedCandidate returned error: %v", err)
+	}
+	if got != want {
+		t.Fatalf("probe result = %#v, want reused result %#v", got, want)
+	}
+	if prober.calls != 0 {
+		t.Fatalf("ProbeVideoFull calls = %d, want 0", prober.calls)
+	}
 }
 
 func TestValidatePrequeueVideoProbe(t *testing.T) {
@@ -134,37 +165,1252 @@ func TestValidatePrequeueVideoProbe(t *testing.T) {
 	}
 }
 
-func TestShouldPrepareTorrentCandidates(t *testing.T) {
-	tests := []struct {
-		name            string
-		candidate       models.NZBResult
-		alreadyPrepared bool
-		want            bool
-	}{
-		{
-			name:      "defers for usenet candidate",
-			candidate: models.NZBResult{Title: "Usenet", ServiceType: models.ServiceTypeUsenet},
-			want:      false,
-		},
-		{
-			name:      "runs for first eligible debrid candidate",
-			candidate: models.NZBResult{Title: "Debrid", ServiceType: models.ServiceTypeDebrid},
-			want:      true,
-		},
-		{
-			name:            "does not repeat for later debrid candidate",
-			candidate:       models.NZBResult{Title: "Debrid", ServiceType: models.ServiceTypeDebrid},
-			alreadyPrepared: true,
-			want:            false,
-		},
+// stubPlaybackService implements the prequeue playback-service seam so the
+// concurrent resolution race can be exercised without a live importer/NNTP stack.
+type stubPlaybackService struct {
+	resolve func(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error)
+}
+
+func (s *stubPlaybackService) Resolve(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
+	if s.resolve == nil {
+		return &models.PlaybackResolution{WebDAVPath: "/webdav/title.mkv"}, nil
+	}
+	return s.resolve(ctx, candidate)
+}
+
+func (s *stubPlaybackService) QueueStatus(ctx context.Context, queueID int64) (*models.PlaybackResolution, error) {
+	return &models.PlaybackResolution{WebDAVPath: "/webdav/title.mkv"}, nil
+}
+
+func (s *stubPlaybackService) PrepareTorrentCandidates(ctx context.Context, candidates []models.NZBResult) []models.NZBResult {
+	return candidates
+}
+
+type raceProbeResult struct{}
+
+func (*raceProbeResult) ProbeVideoFull(ctx context.Context, path string) (*VideoFullResult, error) {
+	return &VideoFullResult{VideoCodec: "h264", Duration: 100}, nil
+}
+
+// slowFailingResolve fails slowly at a generous 3s cadence but aborts instantly
+// once its context is cancelled — the shape of a dead/slow top-ranked release
+// whose articles stall resolution.
+func slowFailingResolve(ctx context.Context, _ models.NZBResult) (*models.PlaybackResolution, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(3 * time.Second):
+		return nil, fmt.Errorf("articles unavailable")
+	}
+}
+
+// testResolutionConfigManager saves settings to a temp file and returns a
+// config.Manager pointing at it, so handler tests can exercise the
+// settings-driven resolution race policy (settle window + end-race-early).
+func testResolutionConfigManager(t *testing.T, settings config.Settings) *config.Manager {
+	t.Helper()
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	return mgr
+}
+
+func TestRacePrequeueResolutionsAdoptsFastSecondCandidate(t *testing.T) {
+	// Bounded-mode regression coverage: with a positive settle window a
+	// slow/failing top candidate must not stall the race — the fast healthy
+	// candidate is adopted once the settle window elapses, far less than the
+	// serial sum of the two resolutions. (Strict order, the default, instead
+	// intentionally waits for the top candidate to fail; this test pins the
+	// bounded fast-path compromise.)
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			_, err := slowFailingResolve(ctx, models.NZBResult{Title: "slow-dead"})
+			return nil, nil, err
+		case 1:
+			return &candidateResolution{
+				index:      1,
+				result:     models.NZBResult{Title: "fast-good"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/fast.mkv"},
+			}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldPrepareTorrentCandidates(tt.candidate, tt.alreadyPrepared); got != tt.want {
-				t.Fatalf("shouldPrepareTorrentCandidates() = %v, want %v", got, tt.want)
+	start := time.Now()
+	src := newSliceCandidateSource([]models.NZBResult{
+		{Title: "slow-dead"}, {Title: "fast-good"},
+	})
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 200*time.Millisecond, true)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("fast candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %v, want 1", winnerIndex(winner))
+	}
+	if elapsed >= time.Second {
+		t.Fatalf("race took %v; the slow candidate was not cancelled when the bounded window elapsed (serial sum would be >3s)", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsReservesSlotForLaterSource(t *testing.T) {
+	src := newStreamCandidateSource()
+	raceCtx, cancelRace := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancelRace()
+		src.Stop()
+	})
+	started := make(chan models.ContentServiceType, 16)
+	process := func(ctx context.Context, i int, candidate models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		started <- candidate.ServiceType
+		if candidate.ServiceType == models.ServiceTypeDebrid {
+			return &candidateResolution{
+				index:      i,
+				result:     candidate,
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/debrid.mkv"},
+			}, nil, nil
+		}
+		<-ctx.Done()
+		return nil, nil, ctx.Err()
+	}
+
+	type raceOutcome struct {
+		winner *candidateResolution
+		err    error
+	}
+	done := make(chan raceOutcome, 1)
+	go func() {
+		winner, _, err := racePrequeueResolutions(raceCtx, src, 8, process, nil, 100*time.Millisecond, true)
+		done <- raceOutcome{winner: winner, err: err}
+	}()
+
+	// The first-ready service has more work than the entire race width. It may
+	// occupy seven slots, but the eighth remains available for a later source.
+	for i := 0; i < 8; i++ {
+		if !src.Feed(models.NZBResult{Title: fmt.Sprintf("usenet-%d", i), ServiceType: models.ServiceTypeUsenet}) {
+			t.Fatalf("stream rejected usenet candidate %d", i)
+		}
+	}
+	for i := 0; i < 7; i++ {
+		select {
+		case serviceType := <-started:
+			if serviceType != models.ServiceTypeUsenet {
+				t.Fatalf("started service = %q, want usenet", serviceType)
 			}
+		case <-time.After(time.Second):
+			t.Fatalf("only %d of 7 reserved-width usenet candidates started", i)
+		}
+	}
+	select {
+	case serviceType := <-started:
+		t.Fatalf("unexpected eighth candidate started before peer source: %q", serviceType)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	if !src.Feed(models.NZBResult{Title: "debrid-ready", ServiceType: models.ServiceTypeDebrid}) {
+		t.Fatal("stream rejected later debrid candidate")
+	}
+	select {
+	case outcome := <-done:
+		src.Stop()
+		if outcome.err != nil {
+			t.Fatalf("race returned error: %v", outcome.err)
+		}
+		if outcome.winner == nil || outcome.winner.result.ServiceType != models.ServiceTypeDebrid {
+			t.Fatalf("winner = %+v, want later debrid source", outcome.winner)
+		}
+	case <-time.After(time.Second):
+		src.Stop()
+		t.Fatal("later debrid source did not receive the reserved resolution slot")
+	}
+}
+
+func TestRacePrequeueResolutionsReportsExhaustionContext(t *testing.T) {
+	topRankedErr := errors.New("restricted release")
+	src := newSliceCandidateSource([]models.NZBResult{
+		{Title: "first"},
+		{Title: "second"},
+	})
+	process := func(_ context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if i == 0 {
+			return nil, nil, topRankedErr
+		}
+		return nil, nil, errors.New("not cached")
+	}
+
+	_, _, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0, false)
+	if err == nil {
+		t.Fatal("race returned nil error for exhausted candidates")
+	}
+	if !errors.Is(err, topRankedErr) {
+		t.Fatalf("error %q does not wrap the top-ranked failure", err)
+	}
+	if !strings.Contains(err.Error(), "all 2 candidates failed to resolve") {
+		t.Fatalf("error = %q, want candidate exhaustion context", err)
+	}
+}
+
+func winnerIndex(w *candidateResolution) int {
+	if w == nil {
+		return -1
+	}
+	return w.index
+}
+
+func TestRacePrequeueResolutionsSettlePrefersBetterRankedArrivingLate(t *testing.T) {
+	// A worse-ranked candidate validates first; the better-ranked candidate is
+	// still mid-download and validates shortly after. The settle window must
+	// keep the better-ranked candidate alive and prefer it, instead of
+	// finalizing the first validator instantly.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(300 * time.Millisecond):
+			}
+			return &candidateResolution{
+				index:      0,
+				result:     models.NZBResult{Title: "better-slow"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/better.mkv"},
+			}, nil, nil
+		case 1:
+			// Both candidates start resolving together; the worse-ranked one
+			// merely validates a little sooner (the realistic "lost by a few ms"
+			// shape) — the 50ms preamble also ensures the main loop has observed
+			// candidate 0's dispatch before this result lands.
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(50 * time.Millisecond):
+			}
+			return &candidateResolution{
+				index:      1,
+				result:     models.NZBResult{Title: "worse-fast"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"},
+			}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-slow"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 1000*time.Millisecond, true)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("first valid candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0 (better-ranked late arrival must win the settle)", winnerIndex(winner))
+	}
+	// The race must have actually waited for the better-ranked candidate (so it
+	// did not finalize the fast winner on arrival) but settled well inside the
+	// 1s window.
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("race returned in %v, want it to wait for the better-ranked candidate", elapsed)
+	}
+	if elapsed >= 900*time.Millisecond {
+		t.Fatalf("race took %v, want the settle to close once the better-ranked candidate lands", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsSettleTimesOutKeepingFastWinner(t *testing.T) {
+	// The better-ranked candidate never validates within the window (it is
+	// dead/slow): the first validator must be finalized after the settle
+	// timeout, cancelling the stuck candidate instead of waiting for it.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+				return nil, nil, fmt.Errorf("articles unavailable")
+			}
+		case 1:
+			// Same preamble as the prefer test: validate a short moment after
+			// candidate 0 is dispatched so the settle window is reliably entered.
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(50 * time.Millisecond):
+			}
+			return &candidateResolution{
+				index:      1,
+				result:     models.NZBResult{Title: "worse-fast"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"},
+			}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-dead"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 400*time.Millisecond, true)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("fast candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %v, want 1 (fast candidate after settle timeout)", winnerIndex(winner))
+	}
+	// The settle must have bounded the wait: the dead candidate was cancelled
+	// at the window close, well under its 5s stall.
+	if elapsed < 250*time.Millisecond {
+		t.Fatalf("race returned in %v, want it to respect the settle window", elapsed)
+	}
+	if elapsed >= 2*time.Second {
+		t.Fatalf("race took %v, want the dead better-ranked candidate cancelled at the settle timeout", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsSettleSkippedWhenWinnerBestRanked(t *testing.T) {
+	// The first validator is already the best-ranked candidate in flight: no
+	// settle window is entered and the race returns immediately with zero added
+	// latency (the fast path must not pay for a worse-ranked candidate that is
+	// still resolving).
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			return &candidateResolution{
+				index:      0,
+				result:     models.NZBResult{Title: "best-fast"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/best.mkv"},
+			}, nil, nil
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+				return nil, nil, fmt.Errorf("articles unavailable")
+			}
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "best-fast"}, {Title: "worse-slow"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 1000*time.Millisecond, true)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("winner adopted as fallback")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0", winnerIndex(winner))
+	}
+	if elapsed >= 300*time.Millisecond {
+		t.Fatalf("fast path took %v, want immediate adoption with no settle window", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsZeroSettleEndsOnFirstValidCandidate(t *testing.T) {
+	// With endEarly enabled, a zero settle window means no grace for an
+	// already-running, better-ranked candidate: the first valid candidate wins.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(200 * time.Millisecond):
+			}
+			return &candidateResolution{index: 0, result: models.NZBResult{Title: "better-slow"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/better.mkv"}}, nil, nil
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(30 * time.Millisecond):
+			}
+			return &candidateResolution{index: 1, result: models.NZBResult{Title: "worse-fast"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"}}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-slow"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 0, true)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("better-ranked candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %v, want 1 (first valid candidate with no grace)", winnerIndex(winner))
+	}
+	if elapsed >= 150*time.Millisecond {
+		t.Fatalf("race took %v, want immediate adoption without a settle grace", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsLegacyNegativeSettleAlsoMeansNoGrace(t *testing.T) {
+	// Defensive runtime behavior matches config normalization: a legacy negative
+	// settle value means no grace, not an undocumented unbounded wait.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(150 * time.Millisecond):
+				return nil, nil, fmt.Errorf("articles unavailable")
+			}
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(20 * time.Millisecond):
+			}
+			return &candidateResolution{index: 1, result: models.NZBResult{Title: "fast-good"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/fast.mkv"}}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "slow-dead"}, {Title: "fast-good"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, -1, true)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("fast candidate was adopted as a fallback instead of winning directly")
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %v, want 1 (first valid candidate with legacy negative grace)", winnerIndex(winner))
+	}
+	if elapsed >= 120*time.Millisecond {
+		t.Fatalf("race took %v, want legacy negative settle to behave as no grace", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsEndRaceEarlyOffWaitsForBatch(t *testing.T) {
+	// endEarly=false: even when the very first release to validate is already
+	// the best-ranked candidate in flight, the race keeps going until the whole
+	// batch drains — a streaming source can still feed a higher-preference
+	// release — and only then adopts the best-ranked validator. The fast path
+	// (endEarly=true) is the thing this deliberately abandons.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			return &candidateResolution{index: 0, result: models.NZBResult{Title: "best-fast"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/best.mkv"}}, nil, nil
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(150 * time.Millisecond):
+				return nil, nil, fmt.Errorf("articles unavailable")
+			}
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "best-fast"}, {Title: "worse-slow"}})
+	start := time.Now()
+	// endEarly=false must wait for the batch even though the settle grace is off
+	// and the best-ranked candidate validated instantly.
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 0, false)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("winner adopted as fallback")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0", winnerIndex(winner))
+	}
+	// endEarly=false must NOT conclude the instant the best-ranked candidate
+	// validates: it waited for the batch (the slow worse-ranked candidate) to
+	// drain before deciding.
+	if elapsed < 120*time.Millisecond {
+		t.Fatalf("endRaceEarly off returned in %v, want it to wait for the batch to drain", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsEndRaceEarlyOffIgnoresBoundedSettleWindow(t *testing.T) {
+	// endEarly=false must drain the batch even when a positive settle window is
+	// configured. The settle window only bounds an early-ending race; it must not
+	// override the explicit instruction to keep racing until every candidate has
+	// resolved or failed.
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(200 * time.Millisecond):
+			}
+			return &candidateResolution{index: 0, result: models.NZBResult{Title: "better-slow"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/better.mkv"}}, nil, nil
+		case 1:
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-time.After(30 * time.Millisecond):
+			}
+			return &candidateResolution{index: 1, result: models.NZBResult{Title: "worse-fast"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/worse.mkv"}}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "better-slow"}, {Title: "worse-fast"}})
+	start := time.Now()
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 4, process, nil, 50*time.Millisecond, false)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("winner adopted as fallback")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %v, want 0 after endRaceEarly=false drains the batch", winnerIndex(winner))
+	}
+	if elapsed < 150*time.Millisecond {
+		t.Fatalf("race returned in %v, want it to ignore the bounded settle window and drain the batch", elapsed)
+	}
+}
+
+func TestRacePrequeueResolutionsReportsInFlightWindow(t *testing.T) {
+	// During the race the reporter must publish the in-flight candidate window
+	// (0-based indices, -1/-1 when idle) as workers pick candidates up and
+	// finish them — what the frontend needs to say "trying streams 1–4"
+	// instead of a single misleading "stream 4".
+	var mu sync.Mutex
+	var windows [][2]int
+	report := func(min, max int) {
+		mu.Lock()
+		windows = append(windows, [2]int{min, max})
+		mu.Unlock()
+	}
+
+	// Candidate 0 is slow and dead; candidate 1 only proceeds once candidate 0
+	// has been PICKED (its process has started, which happens only after the
+	// dispatch(0) handshake reached the owner). With a concurrent pick-up order
+	// that is otherwise nondeterministic, this pins the observed in-flight
+	// window sequence to [0 0] then [0 1] before the winner is adopted.
+	picked0 := make(chan struct{})
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		switch i {
+		case 0:
+			// Slow dead top candidate: holds a slot until cancelled.
+			close(picked0)
+			_, err := slowFailingResolve(ctx, models.NZBResult{Title: "slow-dead"})
+			return nil, nil, err
+		case 1:
+			select {
+			case <-picked0:
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			}
+			// Give the race owner a beat to observe candidate 0's dispatch, so the
+			// in-flight window deterministically covers both candidates before
+			// this (winning) result is published. Candidate 0 stays in flight for
+			// 3s, so activeSet is {0,1} the whole time.
+			time.Sleep(30 * time.Millisecond)
+			return &candidateResolution{index: 1, result: models.NZBResult{Title: "fast-good"}, resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/fast.mkv"}}, nil, nil
+		default:
+			return nil, nil, fmt.Errorf("unexpected index %d", i)
+		}
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{
+		{Title: "slow-dead"}, {Title: "fast-good"}, {Title: "c3"}, {Title: "c4"},
+	})
+	winner, _, err := racePrequeueResolutions(context.Background(), src, 2, process, report, 100*time.Millisecond, true)
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %d, want 1", winnerIndex(winner))
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(windows) == 0 {
+		t.Fatal("no windows reported")
+	}
+	// The first observed dispatch opens a single-slot window (candidate 0 or 1
+	// — concurrent pick-up makes one of the two the first to report).
+	if windows[0] != [2]int{0, 0} && windows[0] != [2]int{1, 1} {
+		t.Fatalf("first window = %v, want a single-slot window", windows[0])
+	}
+	// Candidate 1 is gated on candidate 0 having been picked, so both are in
+	// flight together before the winner is adopted: the window must cover [0 1].
+	// (-1 -1 is the idle window and is fine.)
+	grew := false
+	for _, w := range windows {
+		if w == [2]int{0, 1} {
+			grew = true
+		}
+		if w[0] != -1 && (w[0] > w[1] || w[0] < 0) {
+			t.Fatalf("invalid window %v (min > max)", w)
+		}
+	}
+	if !grew {
+		t.Fatalf("window never grew past the first candidate: %v", windows)
+	}
+}
+
+func TestRacePrequeueResolutionsFallsBackToDeprioritizedWhenNothingValidates(t *testing.T) {
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if i == 0 {
+			return nil, &candidateResolution{
+				index:      0,
+				result:     models.NZBResult{Title: "deprioritized"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/fallback.mkv"},
+			}, nil
+		}
+		return nil, nil, fmt.Errorf("candidate %d failed", i)
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{
+		{Title: "deprioritized"}, {Title: "c1"}, {Title: "c2"},
+	})
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0, false)
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if !usedFallback {
+		t.Fatal("expected the deprioritized candidate to be used as a fallback")
+	}
+	if winner == nil || winner.index != 0 {
+		t.Fatalf("winner index = %d, want 0", winnerIndex(winner))
+	}
+}
+
+func TestRacePrequeueResolutionsPrefersAcceptedOverEarlierDeprioritized(t *testing.T) {
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if i == 0 {
+			return nil, &candidateResolution{
+				index:      0,
+				result:     models.NZBResult{Title: "deprioritized"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/fallback.mkv"},
+			}, nil
+		}
+		if i == 1 {
+			time.Sleep(20 * time.Millisecond)
+			return &candidateResolution{
+				index:      1,
+				result:     models.NZBResult{Title: "accepted"},
+				resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/accepted.mkv"},
+			}, nil, nil
+		}
+		return nil, nil, fmt.Errorf("candidate %d failed", i)
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{
+		{Title: "deprioritized"}, {Title: "accepted"}, {Title: "c2"},
+	})
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0, false)
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback {
+		t.Fatal("deprioritized candidate must not win when a fully validated candidate exists")
+	}
+	if winner == nil || winner.index != 1 {
+		t.Fatalf("winner index = %d, want 1 (accepted beats earlier deprioritized)", winnerIndex(winner))
+	}
+}
+
+func TestRacePrequeueResolutionsAllFailSurfacesFirstError(t *testing.T) {
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		return nil, nil, fmt.Errorf("candidate %d failed", i)
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "c0"}, {Title: "c1"}})
+	winner, usedFallback, err := racePrequeueResolutions(context.Background(), src, 2, process, nil, 0, false)
+	if winner != nil || usedFallback || err == nil {
+		t.Fatalf("all-fail race returned winner=%v usedFallback=%v err=%v, want all failures surfaced", winner != nil, usedFallback, err)
+	}
+}
+
+func TestRacePrequeueResolutionsCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		return nil, nil, fmt.Errorf("must not be invoked on cancelled context")
+	}
+
+	src := newSliceCandidateSource([]models.NZBResult{{Title: "c0"}, {Title: "c1"}})
+	winner, usedFallback, err := racePrequeueResolutions(ctx, src, 2, process, nil, 0, false)
+	if winner != nil || usedFallback {
+		t.Fatalf("cancelled race returned winner=%v usedFallback=%v", winner != nil, usedFallback)
+	}
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled race returned err=%v, want context.Canceled", err)
+	}
+}
+
+func TestResolveCandidatesSequentialUsesRankedOrder(t *testing.T) {
+	var mu sync.Mutex
+	active := 0
+	maxActive := 0
+	var attempted []string
+	playbackSvc := &stubPlaybackService{
+		resolve: func(_ context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
+			mu.Lock()
+			active++
+			if active > maxActive {
+				maxActive = active
+			}
+			attempted = append(attempted, candidate.Title)
+			mu.Unlock()
+			defer func() {
+				mu.Lock()
+				active--
+				mu.Unlock()
+			}()
+
+			if candidate.Title == "rank-0-fails" {
+				time.Sleep(60 * time.Millisecond)
+				return nil, errors.New("unavailable")
+			}
+			return &models.PlaybackResolution{WebDAVPath: "/webdav/selected.mkv", HealthStatus: "healthy"}, nil
+		},
+	}
+	handler := &PrequeueHandler{
+		store:       playback.NewPrequeueStore(time.Minute),
+		playbackSvc: playbackSvc,
+		fullProber:  &raceProbeResult{},
+	}
+
+	choice, err := handler.resolveCandidates(context.Background(), "prequeue-sequential", newSliceCandidateSource([]models.NZBResult{
+		{Title: "rank-0-fails", ServiceType: models.ServiceTypeUsenet},
+		{Title: "rank-1-wins", ServiceType: models.ServiceTypeDebrid},
+		{Title: "rank-2-must-not-run", ServiceType: models.ServiceTypeUsenet},
+	}), prequeueResolutionOptions{
+		mediaType:          "movie",
+		hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
+		unknownTrackPolicy: "none",
+		concurrent:         false,
+	})
+
+	if err != nil {
+		t.Fatalf("resolveCandidates returned error: %v", err)
+	}
+	if choice.selectedResultIndex != 1 {
+		t.Fatalf("selectedResultIndex = %d, want 1", choice.selectedResultIndex)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if maxActive != 1 {
+		t.Fatalf("maximum concurrent resolutions = %d, want 1", maxActive)
+	}
+	wantAttempts := []string{"rank-0-fails", "rank-1-wins"}
+	if !reflect.DeepEqual(attempted, wantAttempts) {
+		t.Fatalf("attempted candidates = %v, want %v", attempted, wantAttempts)
+	}
+}
+
+// TestResolveCandidatesAdoptsFastHealthyCandidate is the handler-level
+// verification for the concurrent resolution race: the wired resolution phase
+// (preflight gate, resolve, probe, policy checks) races candidates and adopts
+// the fast healthy second candidate even though the top-ranked candidate fails
+// slowly on the wire.
+func TestResolveCandidatesAdoptsFastHealthyCandidate(t *testing.T) {
+	playbackSvc := &stubPlaybackService{
+		resolve: func(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
+			if candidate.Title == "slow-dead" {
+				return slowFailingResolve(ctx, candidate)
+			}
+			return &models.PlaybackResolution{WebDAVPath: "/webdav/fast.mkv", HealthStatus: "healthy"}, nil
+		},
+	}
+	handler := &PrequeueHandler{
+		store:       playback.NewPrequeueStore(time.Minute),
+		playbackSvc: playbackSvc,
+		fullProber:  &raceProbeResult{},
+		// Configure a BOUNDED settle window (a positive resolutionSettleWindowMs)
+		// so the fast healthy candidate is adopted once the window elapses instead
+		// of strict order waiting for the slow top candidate to fail. This pins
+		// the bounded fast-path compromise; strict order (the default) is covered
+		// by TestRacePrequeueResolutionsStrictOrderWaitsForSlowDeadTopToFail.
+		configManager: testResolutionConfigManager(t, config.Settings{Streaming: config.StreamingSettings{
+			ResolutionSettleWindowMs: 200,
+			ResolutionEndRaceEarly:   true,
+		}}),
+	}
+
+	allResults := []models.NZBResult{
+		{Title: "slow-dead", ServiceType: models.ServiceTypeUsenet},
+		{Title: "fast-good", ServiceType: models.ServiceTypeUsenet},
+	}
+
+	start := time.Now()
+	choice, err := handler.resolveCandidates(context.Background(), "prequeue-test", newSliceCandidateSource(allResults), prequeueResolutionOptions{
+		mediaType:          "movie",
+		hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
+		unknownTrackPolicy: "none",
+		concurrent:         true,
+	})
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("resolveCandidates returned error: %v", err)
+	}
+	if choice.resolution == nil {
+		t.Fatal("resolveCandidates returned no resolution")
+	}
+	if choice.selectedResultIndex != 1 {
+		t.Fatalf("selectedResultIndex = %d, want 1 (fast second candidate)", choice.selectedResultIndex)
+	}
+	if choice.resolution.WebDAVPath != "/webdav/fast.mkv" {
+		t.Fatalf("WebDAVPath = %q, want the fast candidate's path", choice.resolution.WebDAVPath)
+	}
+	// The dead top candidate is cancelled once the healthy candidate wins, so
+	// total elapsed must be far below its 3s serial stall.
+	if elapsed >= time.Second {
+		t.Fatalf("resolution phase took %v; the slow top candidate was not raced concurrently (serial sum is >3s)", elapsed)
+	}
+}
+
+// TestResolveCandidatesProbeRejectionMarksBadStream covers the bad-stream
+// marking of a candidate rejected by the cheap availability probe (surfaced
+// as playback.ErrUsenetProbeRejected, which wraps importer.ErrArticleUnavailable):
+// it must be marked bad immediately and the race must adopt the next healthy
+// candidate — with the latency tracker recording the probe_rejected attempt.
+func TestResolveCandidatesProbeRejectionMarksBadStream(t *testing.T) {
+	badStreamsSvc := badstreams.New(filepath.Join(t.TempDir(), "bad_streams.json"))
+	playbackSvc := &stubPlaybackService{
+		resolve: func(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
+			if strings.Contains(candidate.Title, "DEAD") {
+				return nil, fmt.Errorf("usenet availability probe rejected: %w", playback.ErrUsenetProbeRejected)
+			}
+			// The healthy candidate takes a touch longer so the dead one's
+			// rejection deterministically reports before adoption.
+			time.Sleep(30 * time.Millisecond)
+			return &models.PlaybackResolution{WebDAVPath: "/webdav/good.mkv", HealthStatus: "healthy"}, nil
+		},
+	}
+	tracker := NewPlaybackLatencyTracker(16)
+	handler := &PrequeueHandler{
+		store:          playback.NewPrequeueStore(time.Minute),
+		playbackSvc:    playbackSvc,
+		fullProber:     &raceProbeResult{},
+		badStreamsSvc:  badStreamsSvc,
+		latencyTracker: tracker,
+	}
+
+	allResults := []models.NZBResult{
+		{Title: "Dead.Release.DEAD.2020.1080p", ServiceType: models.ServiceTypeUsenet},
+		{Title: "Good.Release.2020.1080p", ServiceType: models.ServiceTypeUsenet},
+	}
+
+	choice, err := handler.resolveCandidates(context.Background(), "prequeue-probe-test", newSliceCandidateSource(allResults), prequeueResolutionOptions{
+		mediaType:          "movie",
+		hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
+		unknownTrackPolicy: "none",
+		concurrent:         true,
+	})
+	if err != nil {
+		t.Fatalf("resolveCandidates returned error: %v", err)
+	}
+	if choice.selectedResultIndex != 1 {
+		t.Fatalf("selectedResultIndex = %d, want 1 (healthy second candidate)", choice.selectedResultIndex)
+	}
+
+	entries := badStreamsSvc.List()
+	if len(entries) != 1 {
+		t.Fatalf("bad-stream entries = %d, want exactly the probe-rejected release", len(entries))
+	}
+	if !strings.Contains(entries[0].ReleaseName, "DEAD") {
+		t.Fatalf("bad-stream release = %q, want the dead release", entries[0].ReleaseName)
+	}
+	if entries[0].Reason != "prequeue:usenet-articles-unavailable" {
+		t.Fatalf("bad-stream reason = %q, want prequeue:usenet-articles-unavailable", entries[0].Reason)
+	}
+
+	// The latency tracker must carry the per-candidate attempts:
+	// probe_rejected for the dead release, adopted for the winner, rejection
+	// quicker than adoption.
+	tracker.NotePrequeueOnlySample("prequeue-probe-test")
+	samples := tracker.Latest(1)
+	if len(samples) != 1 {
+		t.Fatalf("tracker samples = %d, want 1", len(samples))
+	}
+	cands := samples[0].Candidates
+	if len(cands) != 2 {
+		t.Fatalf("candidates = %d, want 2", len(cands))
+	}
+	if cands[0].Outcome != PrequeueCandidateProbeRejected {
+		t.Fatalf("candidate[0].Outcome = %q, want probe_rejected", cands[0].Outcome)
+	}
+	if cands[1].Outcome != PrequeueCandidateAdopted {
+		t.Fatalf("candidate[1].Outcome = %q, want adopted", cands[1].Outcome)
+	}
+	if cands[0].DurationMs > cands[1].DurationMs {
+		t.Fatalf("probe rejection (%dms) must be quicker than the adopted resolve (%dms)", cands[0].DurationMs, cands[1].DurationMs)
+	}
+}
+
+// TestResolveCandidatesStreamsUsenetBeforeDebrid is the handler-level
+// verification for streaming candidate sources: the resolution phase must
+// start (and complete) on the first-ready source's candidates while the slower
+// source has not even been published yet — the prequeue no longer waits for
+// debrid scrapers before resolving usenet.
+func TestResolveCandidatesStreamsUsenetBeforeDebrid(t *testing.T) {
+	resolved := make(chan string, 4)
+	playbackSvc := &stubPlaybackService{
+		resolve: func(ctx context.Context, candidate models.NZBResult) (*models.PlaybackResolution, error) {
+			resolved <- candidate.Title
+			if candidate.ServiceType == models.ServiceTypeUsenet {
+				// Deliberately slow-ish usenet resolution: it must still complete
+				// while debrid is absent from the stream.
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(150 * time.Millisecond):
+				}
+				return &models.PlaybackResolution{WebDAVPath: "/webdav/usenet.mkv", HealthStatus: "healthy"}, nil
+			}
+			return &models.PlaybackResolution{WebDAVPath: "/webdav/debrid.mkv", HealthStatus: "healthy"}, nil
+		},
+	}
+	handler := &PrequeueHandler{
+		store:       playback.NewPrequeueStore(time.Minute),
+		playbackSvc: playbackSvc,
+		fullProber:  &raceProbeResult{},
+		// This test pins the cross-source end-early behavior (usenet adopts
+		// while debrid is still scraping), which requires endRaceEarly=true.
+		configManager: testResolutionConfigManager(t, config.Settings{Streaming: config.StreamingSettings{
+			ResolutionSettleWindowMs: 0,
+			ResolutionEndRaceEarly:   true,
+		}}),
+	}
+
+	src := newStreamCandidateSource()
+	resolveDone := make(chan prequeueResolutionChoice, 1)
+	resolveErrCh := make(chan error, 1)
+	go func() {
+		choice, err := handler.resolveCandidates(context.Background(), "prequeue-stream", src, prequeueResolutionOptions{
+			mediaType:          "movie",
+			hdrDVPolicy:        models.HDRDVPolicyIncludeHDRDV,
+			unknownTrackPolicy: "none",
+			concurrent:         true,
 		})
+		if err != nil {
+			resolveErrCh <- err
+			return
+		}
+		resolveDone <- choice
+	}()
+
+	// Publish the usenet candidate first (the fast search source); debrid is
+	// deliberately not fed yet, simulating a slow scraper still in flight.
+	if !src.Feed(models.NZBResult{Title: "usenet-fast", ServiceType: models.ServiceTypeUsenet}) {
+		t.Fatal("stream rejected the usenet candidate")
+	}
+
+	// Usenet resolution must START before debrid is available.
+	select {
+	case title := <-resolved:
+		if title != "usenet-fast" {
+			t.Fatalf("first resolved title = %q, want usenet-fast", title)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("usenet resolution never started while debrid was still absent")
+	}
+
+	// ...and it must COMPLETE (adopt a winner) before debrid is even published.
+	select {
+	case choice := <-resolveDone:
+		if choice.resolution == nil || choice.resolution.WebDAVPath != "/webdav/usenet.mkv" {
+			t.Fatalf("winner resolution = %+v, want the usenet path", choice.resolution)
+		}
+		if choice.selectedResult == nil || choice.selectedResult.ServiceType != models.ServiceTypeUsenet {
+			t.Fatalf("winner candidate = %+v, want the usenet candidate", choice.selectedResult)
+		}
+	case err := <-resolveErrCh:
+		t.Fatalf("resolveCandidates errored: %v", err)
+	case <-time.After(3 * time.Second):
+		t.Fatal("resolution did not complete before debrid was fed")
+	}
+
+	// The race already adopted a usenet winner, so the stream is stopped and a
+	// late debrid candidate must be rejected — debrid is never resolved after
+	// usenet.
+	src.Stop()
+	if src.Feed(models.NZBResult{Title: "debrid-late", ServiceType: models.ServiceTypeDebrid}) {
+		t.Fatal("stream accepted a candidate after the race concluded; debrid would be resolved after the usenet winner")
+	}
+	select {
+	case title := <-resolved:
+		t.Fatalf("debrid resolution started after the usenet winner (%q)", title)
+	case <-time.After(50 * time.Millisecond):
+		// nothing else was ever resolved — usenet won before debrid existed
+	}
+}
+
+func TestStreamCandidateSourceSnapshotIncludesDeliveredCandidate(t *testing.T) {
+	src := newStreamCandidateSource()
+	want := models.NZBResult{Title: "cached-winner", ServiceType: models.ServiceTypeUsenet}
+	fed := make(chan bool, 1)
+	go func() { fed <- src.Feed(want) }()
+
+	_, got, ok := src.Next(context.Background())
+	if !ok || got.Title != want.Title {
+		t.Fatalf("Next() = (%q, %t), want delivered candidate", got.Title, ok)
+	}
+	if !<-fed {
+		t.Fatal("Feed unexpectedly failed")
+	}
+	snapshot := src.Snapshot()
+	if len(snapshot) != 1 || snapshot[0].Title != want.Title {
+		t.Fatalf("Snapshot() = %#v, want the delivered winning candidate", snapshot)
+	}
+	src.Stop()
+}
+
+func TestPrequeueSearchFeederReservesCapacityForSlowerSource(t *testing.T) {
+	src := newStreamCandidateSource()
+	state := newPrequeueFeedState()
+	usenetCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	debridCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go (&PrequeueHandler{store: playback.NewPrequeueStore(time.Minute)}).prequeueSearchFeeder(ctx, src, usenetCh, debridCh, state, prequeueFeederConfig{
+		maxCandidates: 4,
+	})
+
+	debridCh <- splitSearchResult("debrid", models.ServiceTypeDebrid, 4)
+	close(debridCh)
+
+	// The fast debrid source may consume only its two reserved slots while the
+	// usenet source is still pending.
+	for i := 0; i < 2; i++ {
+		_, candidate, ok := nextStreamCandidate(t, src)
+		if !ok || candidate.ServiceType != models.ServiceTypeDebrid {
+			t.Fatalf("candidate %d = (%q, %t), want debrid", i, candidate.ServiceType, ok)
+		}
+	}
+	pending := make(chan models.NZBResult, 1)
+	go func() {
+		_, candidate, ok := src.Next(ctx)
+		if ok {
+			pending <- candidate
+		}
+	}()
+	select {
+	case candidate := <-pending:
+		t.Fatalf("fast source exceeded its reservation with candidate %q", candidate.Title)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	usenetCh <- splitSearchResult("usenet", models.ServiceTypeUsenet, 4)
+	close(usenetCh)
+	select {
+	case candidate := <-pending:
+		if candidate.ServiceType != models.ServiceTypeUsenet {
+			t.Fatalf("third candidate service = %q, want usenet", candidate.ServiceType)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("slower usenet source was not admitted")
+	}
+	_, fourth, ok := nextStreamCandidate(t, src)
+	if !ok || fourth.ServiceType != models.ServiceTypeUsenet {
+		t.Fatalf("fourth candidate = (%q, %t), want usenet", fourth.ServiceType, ok)
+	}
+	if _, _, ok := nextStreamCandidate(t, src); ok {
+		t.Fatal("stream exceeded the four-candidate cap")
+	}
+	<-state.done
+
+	snapshot := src.Snapshot()
+	if len(snapshot) != 4 {
+		t.Fatalf("snapshot candidate count = %d, want 4", len(snapshot))
+	}
+}
+
+func TestPrequeueSearchFeederInterruptsBlockedHandoffForNewSource(t *testing.T) {
+	src := newStreamCandidateSource()
+	state := newPrequeueFeedState()
+	usenetCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	debridCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go (&PrequeueHandler{store: playback.NewPrequeueStore(time.Minute)}).prequeueSearchFeeder(ctx, src, usenetCh, debridCh, state, prequeueFeederConfig{
+		maxCandidates: 4,
+	})
+	debridCh <- splitSearchResult("debrid", models.ServiceTypeDebrid, 4)
+	close(debridCh)
+
+	// Do not consume the stream yet: the first debrid handoff should block.
+	waitForStreamSnapshot(t, src, func(snapshot []models.NZBResult) bool {
+		return len(snapshot) == 1 && snapshot[0].ServiceType == models.ServiceTypeDebrid
+	})
+
+	// A newly completed Usenet source must interrupt and roll back that blocked
+	// debrid handoff rather than waiting for a debrid worker slot to free.
+	usenetCh <- splitSearchResult("usenet", models.ServiceTypeUsenet, 1)
+	close(usenetCh)
+	waitForStreamSnapshot(t, src, func(snapshot []models.NZBResult) bool {
+		return len(snapshot) == 1 && snapshot[0].ServiceType == models.ServiceTypeUsenet
+	})
+	_, candidate, ok := nextStreamCandidate(t, src)
+	if !ok || candidate.ServiceType != models.ServiceTypeUsenet {
+		t.Fatalf("first delivered candidate = (%q, %t), want newly ready usenet", candidate.ServiceType, ok)
+	}
+
+	cancel()
+	src.Stop()
+	select {
+	case <-state.done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("feeder did not stop after cancellation")
+	}
+}
+
+func TestPrequeueSearchFeederReleasesUnusedReservation(t *testing.T) {
+	src := newStreamCandidateSource()
+	state := newPrequeueFeedState()
+	usenetCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	debridCh := make(chan indexer.ScoredSplitSearchResult, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go (&PrequeueHandler{store: playback.NewPrequeueStore(time.Minute)}).prequeueSearchFeeder(ctx, src, usenetCh, debridCh, state, prequeueFeederConfig{
+		maxCandidates: 4,
+	})
+	debridCh <- splitSearchResult("debrid", models.ServiceTypeDebrid, 4)
+	close(debridCh)
+	usenetCh <- indexer.ScoredSplitSearchResult{Source: "usenet", Disabled: true}
+	close(usenetCh)
+
+	for i := 0; i < 4; i++ {
+		_, candidate, ok := nextStreamCandidate(t, src)
+		if !ok || candidate.ServiceType != models.ServiceTypeDebrid {
+			t.Fatalf("candidate %d = (%q, %t), want debrid", i, candidate.ServiceType, ok)
+		}
+	}
+	if _, _, ok := nextStreamCandidate(t, src); ok {
+		t.Fatal("stream exceeded the four-candidate cap")
+	}
+	<-state.done
+}
+
+func splitSearchResult(source string, serviceType models.ContentServiceType, count int) indexer.ScoredSplitSearchResult {
+	result := indexer.ScoredSplitSearchResult{Source: source}
+	for i := 0; i < count; i++ {
+		result.Scored = append(result.Scored, models.ScoredNZBResult{
+			NZBResult: models.NZBResult{
+				Title:       fmt.Sprintf("%s-%d", source, i),
+				ServiceType: serviceType,
+			},
+		})
+	}
+	return result
+}
+
+func nextStreamCandidate(t *testing.T, src *streamCandidateSource) (int, models.NZBResult, bool) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	return src.Next(ctx)
+}
+
+func waitForStreamSnapshot(t *testing.T, src *streamCandidateSource, ready func([]models.NZBResult) bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if ready(src.Snapshot()) {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("stream snapshot did not reach expected state; final=%#v", src.Snapshot())
+}
+
+// TestStreamCandidateSourceStopUnblocksBlockedFeed guards the worker's winner
+// path: once the race adopts a candidate it stops consuming, so a feeder that is
+// mid-Feed (blocked publishing a just-arrived candidate) is unblocked by Stop
+// rather than deadlocking the worker's join.
+func TestStreamCandidateSourceStopUnblocksBlockedFeed(t *testing.T) {
+	src := newStreamCandidateSource()
+	feedDone := make(chan bool, 1)
+	go func() {
+		feedDone <- src.Feed(models.NZBResult{Title: "c1"}) // blocks: no consumer yet
+	}()
+
+	// Give the Feed a moment to actually block on the channel send, then stop.
+	time.Sleep(20 * time.Millisecond)
+	src.Stop()
+
+	select {
+	case ok := <-feedDone:
+		if ok {
+			t.Fatal("Feed reported success after the source was stopped")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Feed was not unblocked by Stop (deadlock)")
+	}
+
+	if src.Feed(models.NZBResult{Title: "c2"}) {
+		t.Fatal("Feed after Stop must be refused")
+	}
+	if got := src.Total(); got != 0 {
+		t.Fatalf("Total = %d, want 0 — no candidate was ever consumed by a race", got)
+	}
+}
+
+// TestStreamCandidateSourceCloseAndStopIdempotent guards against the
+// benchmark crash ("close of closed channel"): on the exhaustion path the feeder
+// Close()s the source and then the worker Stop()s it — both teardown paths must
+// be idempotent in either order.
+func TestStreamCandidateSourceCloseAndStopIdempotent(t *testing.T) {
+	// Exhaustion order: feeder Close first, worker Stop after.
+	src := newStreamCandidateSource()
+	src.Close()
+	src.Stop() // was panicking: double-close of s.done
+	src.Close()
+	src.Stop()
+	if src.Feed(models.NZBResult{Title: "c"}) {
+		t.Fatal("Feed after Close must be refused")
+	}
+
+	// Winner order: worker Stop first, feeder Close after.
+	src2 := newStreamCandidateSource()
+	src2.Stop()
+	src2.Close()
+	src2.Stop()
+	src2.Close()
+	if src2.Feed(models.NZBResult{Title: "c"}) {
+		t.Fatal("Feed after Stop must be refused")
 	}
 }
 

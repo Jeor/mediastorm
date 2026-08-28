@@ -25,7 +25,7 @@ func newFileCache(dir string, ttlHours int) *fileCache {
 func (c *fileCache) jitteredTTL(key string) time.Duration {
 	h := sha256.Sum256([]byte(key))
 	n := binary.BigEndian.Uint64(h[:8])
-	jitter := time.Duration(n%uint64(6*time.Hour)) // 0 to 6 hours
+	jitter := time.Duration(n % uint64(6*time.Hour)) // 0 to 6 hours
 	return c.ttl + jitter
 }
 
@@ -75,20 +75,19 @@ func (c *fileCache) set(key string, v any) error {
 		return err
 	}
 	path := filepath.Join(c.dir, key+".json")
-	tmp := path + ".tmp"
-	f, err := os.Create(tmp)
+	f, err := os.CreateTemp(c.dir, key+".json.tmp-*")
 	if err != nil {
 		return err
 	}
+	tmp := f.Name()
+	defer os.Remove(tmp)
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(v); err != nil {
 		f.Close()
-		_ = os.Remove(tmp)
 		return err
 	}
 	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp)
 		return err
 	}
 	return os.Rename(tmp, path)

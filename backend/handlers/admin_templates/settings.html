@@ -18,6 +18,147 @@
     background: transparent;
 }
 
+.usenet-server-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.usenet-server-card {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-tertiary);
+}
+
+.usenet-server-card-header {
+    display: flex;
+    min-height: 58px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.usenet-server-identity,
+.usenet-server-toggles,
+.usenet-server-actions,
+.usenet-server-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.usenet-server-identity {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 0.65rem;
+}
+
+.usenet-server-name {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usenet-server-badge {
+    display: inline-flex;
+    min-width: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0.12rem 0.42rem;
+    border: 1px solid rgba(99, 102, 241, 0.65);
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-hover);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.usenet-server-toggles,
+.usenet-server-actions {
+    gap: 0.65rem;
+}
+
+.usenet-server-toggles {
+    margin-left: 0.6rem;
+}
+
+.usenet-server-toggle {
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.usenet-server-toggle .toggle {
+    flex: 0 0 auto;
+}
+
+.usenet-server-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem 1rem;
+    padding: 0.85rem;
+}
+
+.usenet-server-fields .form-group {
+    min-width: 0;
+    margin: 0;
+}
+
+.usenet-server-fields .form-label {
+    margin-bottom: 0.35rem;
+}
+
+.usenet-server-fields .form-hint {
+    margin-top: 0.3rem;
+}
+
+.usenet-server-actions .btn {
+    min-height: 36px;
+}
+
+@media (max-width: 1100px) {
+    .usenet-server-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .usenet-server-card-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .usenet-server-identity {
+        flex: 1 1 100%;
+    }
+
+    .usenet-server-toggles {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .usenet-server-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .usenet-server-actions {
+        width: 100%;
+    }
+
+    .usenet-server-actions .btn-secondary {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
 .field-subgroup {
     grid-column: 1 / -1;
     margin: 0.5rem 0 1rem;
@@ -43,6 +184,290 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
+}
+
+.live-source-card {
+    padding: 0;
+    overflow: visible;
+    background: var(--bg-secondary);
+}
+
+.live-source-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 72px;
+    padding: 0.8rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.live-source-card-identity,
+.live-source-card-meta,
+.live-source-card-actions {
+    display: flex;
+    align-items: center;
+}
+
+.live-source-card-identity {
+    min-width: 0;
+    flex: 1;
+    gap: 1rem;
+}
+
+.live-source-card-name {
+    min-width: 140px;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-source-card-meta {
+    min-width: 0;
+    gap: 0.7rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.live-source-card-meta > span + span {
+    padding-left: 0.7rem;
+    border-left: 1px solid var(--border);
+}
+
+.live-source-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.live-source-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.live-source-status.enabled .live-source-status-dot {
+    background: #22c55e;
+}
+
+.live-source-type-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 0.18rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.live-source-endpoint {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-source-card-actions {
+    flex: 0 0 auto;
+    gap: 0.5rem;
+}
+
+.live-source-action-menu {
+    position: relative;
+}
+
+.live-source-action-menu > summary {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 32px;
+    padding: 0;
+    list-style: none;
+}
+
+.live-source-action-menu > summary::-webkit-details-marker,
+.live-source-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.live-source-action-menu > summary svg {
+    width: 16px;
+    height: 16px;
+}
+
+.live-source-action-menu-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 150px;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-secondary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.live-source-action-menu-panel button {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.live-source-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.75rem;
+}
+
+.live-source-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.live-source-group > summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(180px, auto);
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 48px;
+    padding: 0.62rem 0.75rem;
+    list-style: none;
+    cursor: pointer;
+}
+
+.live-source-group > summary:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: -2px;
+}
+
+.live-source-group-chevron {
+    display: grid;
+    place-items: center;
+    color: var(--text-secondary);
+    transition: transform 0.15s ease;
+}
+
+.live-source-group-chevron svg {
+    width: 15px;
+    height: 15px;
+}
+
+.live-source-group[open] .live-source-group-chevron {
+    transform: rotate(180deg);
+}
+
+.live-source-group-heading {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 0.65rem;
+}
+
+.live-source-group-title {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.live-source-group-description,
+.live-source-group-summary {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-source-group-summary {
+    text-align: right;
+}
+
+.live-source-group[open] .live-source-group-summary {
+    visibility: hidden;
+}
+
+.live-source-group-body {
+    padding: 0.2rem 0.75rem 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.live-source-group-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0.9rem;
+    padding-top: 0.75rem;
+}
+
+.live-source-group.source .live-source-group-fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.live-source-group .form-group {
+    min-width: 0;
+}
+
+.live-source-group .form-group-toggle {
+    align-self: start;
+}
+
+@media (max-width: 1100px) {
+    .live-source-card-header,
+    .live-source-card-identity {
+        align-items: flex-start;
+    }
+    .live-source-card-header,
+    .live-source-card-identity,
+    .live-source-card-meta {
+        flex-wrap: wrap;
+    }
+    .live-source-card-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .live-source-group.source .live-source-group-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .live-source-card-identity,
+    .live-source-card-actions {
+        width: 100%;
+    }
+    .live-source-card-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    .live-source-card-name {
+        min-width: 100%;
+    }
+    .live-source-group > summary {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+    .live-source-group-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+    .live-source-group-summary {
+        display: none;
+    }
+    .live-source-group-fields,
+    .live-source-group.source .live-source-group-fields {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Shared drag-to-reorder row primitive, used by provider priority, home shelves,
@@ -427,12 +852,18 @@
 .settings-level-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
 .settings-category-btn.active,
 .settings-level-btn.active { color: var(--text-primary); background: rgba(99, 102, 241, 0.15); border-color: var(--accent); }
+.settings-category-btn:focus-visible,
+.settings-level-btn:focus-visible,
+.settings-home-link:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: 2px;
+}
 .settings-level-section {
     margin-top: 0.55rem;
     padding-top: 0.7rem;
     border-top: 1px solid var(--border);
 }
-.settings-level-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
+.settings-level-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 8px; background: var(--bg-tertiary); }
 .settings-level-btn:disabled {
     cursor: not-allowed;
     opacity: 0.42;
@@ -617,6 +1048,437 @@
     font-size: 0.75rem;
 }
 .settings-scope-tree-storage { display: none; }
+
+.settings-page-shell {
+    position: relative;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.playback-setting-group {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.02);
+}
+.playback-setting-group > summary {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.85rem;
+    cursor: pointer;
+    list-style: none;
+}
+.playback-setting-group > summary::-webkit-details-marker { display: none; }
+.playback-setting-group > summary::after { content: 'Edit'; color: var(--accent-hover); font-size: 0.75rem; font-weight: 650; }
+.playback-setting-group[open] > summary::after { content: 'Close'; }
+.playback-setting-group > summary:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: -2px; }
+.playback-setting-group-copy { min-width: 0; }
+.playback-setting-group-title { display: block; color: var(--text-primary); font-size: 0.875rem; font-weight: 650; }
+.playback-setting-group-description { display: block; overflow: hidden; margin-top: 0.12rem; color: var(--text-muted); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
+.playback-setting-group .field-subgroup-fields { padding: 0.85rem; border-top: 1px solid var(--border); }
+.playback-setting-group input[type="number"] { width: min(100%, 8rem); font-variant-numeric: tabular-nums; }
+.playback-setting-group-static > .playback-setting-group-copy { display: block; padding: 0.7rem 0.85rem; }
+
+.settings-page-header {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.settings-page-kicker,
+.settings-category-breadcrumb {
+    color: var(--accent-hover);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.settings-page-header h1 {
+    margin: 0;
+    font-size: 1.65rem;
+}
+
+.settings-page-header > p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.settings-command-bar {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto minmax(210px, 0.7fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+
+.settings-search-wrap {
+    position: relative;
+    min-width: 0;
+}
+
+.settings-search-wrap > svg {
+    position: absolute;
+    top: 50%;
+    left: 0.9rem;
+    width: 17px;
+    height: 17px;
+    color: var(--text-muted);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.settings-search-wrap .form-input {
+    width: 100%;
+    min-height: 48px;
+    padding-left: 2.65rem;
+}
+
+.settings-command-bar .settings-level-switch {
+    display: grid;
+    width: 240px;
+    height: 48px;
+    padding: 0.2rem;
+}
+
+.settings-command-bar .settings-level-btn {
+    min-height: 0;
+    height: 100%;
+}
+
+.settings-command-bar .settings-context-trigger-desktop { min-height: 48px; }
+
+.settings-save-state {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-self: end;
+    gap: 0.55rem;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.settings-save-state.unsaved {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.08);
+    color: #fbbf24;
+}
+
+.settings-scope-panel {
+    position: fixed;
+    z-index: 310;
+    display: none;
+    width: min(520px, calc(100vw - 2rem));
+    max-height: min(680px, calc(100vh - 2rem));
+    overflow-y: auto;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+}
+
+.settings-scope-panel.open { display: block; }
+
+.settings-scope-heading {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.settings-scope-panel .settings-scope-bar {
+    display: none;
+}
+
+.settings-scope-panel .settings-scope-server-btn,
+.settings-scope-panel .settings-scope-select-wrap,
+.settings-scope-panel .settings-scope-select-wrap select {
+    min-height: 44px;
+}
+
+.settings-scope-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.settings-scope-actions .btn {
+    min-height: 40px;
+}
+
+.settings-scope-panel > .settings-scope-actions {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
+}
+
+.settings-home[hidden],
+.settings-workspace[hidden],
+.settings-sticky-save[hidden],
+.settings-attention-banner[hidden] {
+    display: none !important;
+}
+
+.settings-home {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.settings-attention-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(245, 158, 11, 0.58);
+    border-radius: 9px;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.settings-attention-banner strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+}
+
+.settings-attention-banner p {
+    margin: 0.2rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.settings-home-heading {
+    margin-top: 0.75rem;
+}
+
+.settings-home-heading h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+.settings-home-heading p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.settings-category-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+.settings-category-card {
+    position: relative;
+    display: grid;
+    min-height: 164px;
+    align-content: start;
+    gap: 0.7rem;
+    padding: 1.5rem 4rem 1.4rem 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-category-card:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px var(--shadow);
+}
+
+.settings-category-card:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: 2px;
+}
+
+.settings-category-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.settings-category-card-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-category-card-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.settings-category-card:hover .settings-category-card-icon,
+.settings-category-card:focus-visible .settings-category-card-icon {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-hover);
+}
+
+.settings-category-card-title {
+    min-width: 0;
+    font-size: 1.0625rem;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.settings-category-card-description,
+.settings-category-card-meta {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.settings-category-card-meta {
+    margin-top: auto;
+    color: var(--accent-hover);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.settings-category-card-arrow {
+    position: absolute;
+    top: 50%;
+    right: 1.4rem;
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    transform: translateY(-50%);
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.settings-category-card-arrow svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.settings-category-card:hover .settings-category-card-arrow,
+.settings-category-card:focus-visible .settings-category-card-arrow {
+    color: var(--accent-hover);
+    transform: translate(2px, -50%);
+}
+
+.settings-workspace {
+    display: block;
+}
+
+.settings-sidebar {
+    display: none;
+}
+
+.settings-home-link {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.settings-category-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.settings-category-header h2 {
+    margin: 0.3rem 0 0.3rem;
+    font-size: 1.75rem;
+}
+
+.settings-category-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.settings-category-summary {
+    align-self: end;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.settings-sticky-save {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    border-radius: 10px;
+    background: rgba(38, 28, 14, 0.97);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.settings-sticky-save strong {
+    color: #fbbf24;
+    font-size: 0.8125rem;
+}
+
+.settings-sticky-save p {
+    margin: 0.15rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+}
+
+.settings-sticky-save-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.settings-sticky-save-actions .btn {
+    min-height: 44px;
+}
 .indexer-table-shell {
     overflow-x: auto;
     border-radius: var(--radius);
@@ -745,6 +1607,49 @@
 #settingsContainer .form-group { margin-bottom: 0.75rem; }
 #settingsContainer .form-hint { margin-top: 0.3rem; font-size: 0.74rem; line-height: 1.35; }
 #settingsContainer .field-subgroup { margin: 0.25rem 0 0.75rem; padding: 0.8rem; }
+.appearance-setting-group {
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+.appearance-setting-group > summary {
+    display: flex;
+    min-height: 58px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    list-style: none;
+}
+.appearance-setting-group > summary::-webkit-details-marker { display: none; }
+.appearance-setting-group > summary::after {
+    content: 'Show';
+    flex: 0 0 auto;
+    color: var(--accent-hover);
+    font-size: 0.75rem;
+    font-weight: 650;
+}
+.appearance-setting-group[open] > summary::after { content: 'Hide'; }
+.appearance-setting-group > summary:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: -2px; }
+.appearance-setting-group-copy { min-width: 0; }
+.appearance-setting-group .field-subgroup-title {
+    margin: 0;
+    padding: 0;
+    color: var(--accent-hover);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.appearance-setting-group .field-subgroup-description {
+    margin: 0.18rem 0 0;
+    padding: 0;
+    border: 0;
+}
+.appearance-setting-group .field-subgroup-fields { padding: 1rem; border-top: 1px solid var(--border); }
+.appearance-theme-presets { grid-column: 1 / -1; }
+.appearance-theme-presets > div { margin-bottom: 0 !important; }
 .advanced-setting-badge {
     display: inline-flex;
     margin-left: 0.45rem;
@@ -769,6 +1674,55 @@
     background: var(--bg-secondary);
 }
 .settings-related-card p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.75rem; }
+.settings-mobile-heading-row { display: block; }
+.settings-mobile-search-button,
+.settings-context-trigger,
+.settings-context-scrim,
+.settings-scope-sheet-close,
+.settings-scope-sheet-kicker,
+.settings-mobile-level-section { display: none; }
+.settings-scope-sheet-header { display: contents; }
+.settings-context-trigger-desktop {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+.settings-context-trigger-desktop svg { width: 16px; height: 16px; flex: 0 0 16px; color: var(--text-muted); }
+.settings-context-trigger-desktop .settings-context-label { display: block; color: var(--text-muted); font-size: 0.625rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.settings-context-trigger-desktop .settings-context-summary { display: block; overflow: hidden; max-width: 220px; margin-top: 0.1rem; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; font-weight: 650; }
+.settings-context-trigger-desktop:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
+.settings-scope-tree-storage { display: flex; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.settings-context-scrim.open { display: block; position: fixed; inset: 0; z-index: 309; border: 0; background: rgba(0, 0, 0, 0.35); }
+#settingsContainer .section { scroll-margin-top: 7rem; }
+#settingsContainer.settings-essentials-view .section {
+    border-color: var(--border);
+}
+
+.settings-workspace.settings-essentials-workspace {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-workspace.settings-essentials-workspace .settings-sidebar {
+    display: none;
+}
+#settingsContainer.settings-essentials-view .section-header {
+    cursor: default;
+}
+#settingsContainer.settings-essentials-view .section-toggle {
+    display: none;
+}
+#settingsContainer.settings-essentials-view .section-content {
+    display: block;
+}
 @media (max-width: 900px) {
     .page-header-controls { flex-wrap: wrap; }
     .settings-workspace { grid-template-columns: 1fr; }
@@ -872,6 +1826,458 @@
     .indexer-url { max-width: 100%; }
     .indexer-actions { flex-wrap: wrap; }
 }
+
+@media (max-width: 900px) {
+    .settings-command-bar {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .settings-save-state {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+    }
+
+    .settings-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-sidebar {
+        position: static;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    .settings-category-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.65rem 0 0.15rem;
+        scrollbar-width: thin;
+    }
+
+    .settings-category-btn {
+        width: auto;
+        min-height: 44px;
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1024px),
+       (min-width: 761px) and (max-width: 1366px) and (any-pointer: coarse) {
+    .settings-context-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 309;
+        border: 0;
+        background: rgba(0, 0, 0, 0.62);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.18s ease, visibility 0.18s ease;
+    }
+
+    .settings-context-scrim.open {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .settings-scope-panel {
+        position: fixed;
+        top: auto !important;
+        right: 0;
+        bottom: 0;
+        left: 0 !important;
+        z-index: 310;
+        display: block;
+        width: auto;
+        max-height: min(82vh, 720px);
+        margin: 0;
+        padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-bottom: 0;
+        border-radius: 18px 18px 0 0;
+        background: var(--bg-secondary);
+        box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.45);
+        transform: translateY(105%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s ease;
+    }
+
+    .settings-scope-panel.open {
+        transform: translateY(0);
+        visibility: visible;
+    }
+
+    .settings-scope-sheet-header {
+        position: sticky;
+        top: -0.9rem;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: -0.9rem -0.9rem 0.75rem;
+        padding: 1rem 0.9rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-secondary);
+    }
+
+    .settings-scope-sheet-kicker {
+        display: block;
+        margin-bottom: 0.15rem;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    .settings-scope-heading {
+        display: block;
+        font-size: 0.875rem;
+    }
+
+    .settings-scope-sheet-close {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1.4rem;
+    }
+
+    .settings-scope-tree-storage {
+        display: flex;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .settings-scope-tree-storage[aria-hidden="true"] {
+        visibility: visible;
+    }
+
+    .settings-scope-row {
+        min-height: 44px;
+    }
+
+    .settings-mobile-level-section {
+        display: block;
+        margin-top: 0.9rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .settings-mobile-level-label {
+        display: block;
+        margin-bottom: 0.45rem;
+        color: var(--text-muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .settings-mobile-level-section .settings-level-btn {
+        min-height: 44px;
+    }
+
+    .settings-scope-actions {
+        display: none !important;
+    }
+}
+
+@media (max-width: 760px) {
+    .settings-page-shell {
+        padding-bottom: 5rem;
+    }
+
+    .settings-page-header {
+        position: sticky;
+        top: 0;
+        z-index: 24;
+        margin: -0.75rem -0.75rem 0;
+        padding: 0.7rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
+        backdrop-filter: blur(14px);
+    }
+
+    .settings-page-header .settings-page-kicker,
+    .settings-page-header > p {
+        display: none;
+    }
+
+    .settings-mobile-heading-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .settings-page-header h1 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .settings-mobile-search-button {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .settings-mobile-search-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .settings-mobile-search-button:focus-visible,
+    .settings-context-trigger:focus-visible,
+    .settings-scope-sheet-close:focus-visible {
+        outline: 2px solid var(--accent-hover);
+        outline-offset: 2px;
+    }
+
+    .settings-command-bar {
+        display: none;
+        grid-template-columns: 1fr;
+        margin-top: 0.65rem;
+    }
+
+    .settings-page-shell.mobile-search-open .settings-command-bar {
+        display: grid;
+    }
+
+    .settings-command-bar .settings-level-switch,
+    .settings-command-bar .settings-save-state {
+        display: none;
+    }
+
+    .settings-context-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        min-height: 48px;
+        margin: 0.75rem 0;
+        padding: 0.55rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        text-align: left;
+    }
+
+    .settings-context-trigger-desktop { display: none; }
+    .settings-context-trigger-mobile { display: flex; }
+
+    .settings-context-trigger svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        color: var(--text-muted);
+    }
+
+    .settings-context-label {
+        display: block;
+        margin-bottom: 0.08rem;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .settings-context-summary {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.82rem;
+        font-weight: 650;
+    }
+
+    .settings-context-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 309;
+        border: 0;
+        background: rgba(0, 0, 0, 0.62);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.18s ease, visibility 0.18s ease;
+    }
+
+    .settings-context-scrim.open {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .settings-scope-panel {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 310;
+        display: block;
+        max-height: min(82vh, 720px);
+        margin: 0;
+        padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-bottom: 0;
+        border-radius: 18px 18px 0 0;
+        background: var(--bg-secondary);
+        box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.45);
+        transform: translateY(105%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s ease;
+    }
+
+    .settings-scope-panel.open {
+        transform: translateY(0);
+        visibility: visible;
+    }
+
+    .settings-scope-sheet-header {
+        position: sticky;
+        top: -0.9rem;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: -0.9rem -0.9rem 0.75rem;
+        padding: 1rem 0.9rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-secondary);
+    }
+
+    .settings-scope-sheet-kicker {
+        display: block;
+        margin-bottom: 0.15rem;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    .settings-scope-heading {
+        display: block;
+        font-size: 0.875rem;
+    }
+
+    .settings-scope-sheet-close {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1.4rem;
+    }
+
+    .settings-scope-panel .settings-scope-bar {
+        display: none;
+    }
+
+    .settings-scope-tree-storage {
+        display: flex;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .settings-scope-tree-storage[aria-hidden="true"] {
+        visibility: visible;
+    }
+
+    .settings-scope-row {
+        min-height: 44px;
+    }
+
+    .settings-mobile-level-section {
+        display: block;
+        margin-top: 0.9rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .settings-mobile-level-label {
+        display: block;
+        margin-bottom: 0.45rem;
+        color: var(--text-muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .settings-mobile-level-section .settings-level-btn {
+        min-height: 44px;
+    }
+
+    .settings-scope-actions {
+        display: none !important;
+    }
+
+    .settings-category-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-category-card {
+        min-height: 132px;
+        gap: 0.6rem;
+        padding: 1rem 3.25rem 1rem 1rem;
+    }
+
+    .settings-category-card-icon {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
+    }
+
+    .settings-category-header {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-category-summary {
+        align-self: start;
+    }
+
+    .settings-sticky-save {
+        bottom: 0.5rem;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settings-sticky-save-actions .btn {
+        flex: 1;
+    }
+
+    #settingsContainer .section {
+        scroll-margin-top: 5.5rem;
+    }
+}
 </style>
 {{end}}
 
@@ -892,50 +2298,60 @@
     </div>
 </div>
 {{else}}
-<div class="page-header page-header-flex" style="display: flex; align-items: center; justify-content: space-between;">
-    <div>
+<div class="settings-page-shell">
+<header class="settings-page-header">
+    <div class="settings-page-kicker">Configure</div>
+    <div class="settings-mobile-heading-row">
         <h1>Settings</h1>
-        <p>{{if .IsAdmin}}Configure your Mediastorm server{{else}}Configure profile settings{{end}}</p>
-    </div>
-    <div class="page-header-controls" style="display: flex; gap: 0.5rem; align-items: center;">
-        <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)" style="min-width: 200px;">
-        <button id="identifyClientBtn" class="btn btn-secondary" style="display: none;" onclick="identifyClient()" title="Send ping to identify this device">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            Identify
-        </button>
-        <button id="revertBtn" class="btn btn-secondary" style="display: none;" onclick="revertToGlobal()" title="Reset all settings to inherit from parent defaults">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                <path d="M3 3v5h5"/>
-            </svg>
-            Use Parent Defaults
-        </button>
-        <button id="propagateBtn" class="btn btn-secondary" style="display: none;" onclick="propagateSettings()" title="Review child scopes with custom settings">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14"/>
-                <path d="M19 12l-7 7-7-7"/>
-            </svg>
-            <span id="propagateBtnLabel">Review Customizations</span>
-        </button>
-        <button class="btn btn-primary" onclick="saveAllSettings()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Save
+        <button class="settings-mobile-search-button" type="button" aria-label="Search settings" aria-expanded="false" onclick="toggleSettingsMobileSearch(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         </button>
     </div>
-</div>
+    <p>Find, understand, and safely customize MediaStorm.</p>
+    <div class="settings-command-bar">
+        <label class="settings-search-wrap" for="settingsSearch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Search every setting" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)">
+        </label>
+        <div class="settings-level-switch" aria-label="Settings detail level">
+            <button id="settingsEssentialBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Essential</button>
+            <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+            <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
+        </div>
+        <button class="settings-context-trigger settings-context-trigger-desktop" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsScopePanel" onclick="openSettingsContextSheet()">
+            <span><span class="settings-context-label">Current scope</span><span class="settings-context-summary" data-settings-context-summary>Server defaults</span></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <div id="settingsSaveState" class="settings-save-state" role="status" aria-live="polite">
+            <span aria-hidden="true">✓</span>
+            <span id="settingsSaveStateText">All changes saved</span>
+        </div>
+    </div>
+</header>
 
-<section class="settings-scope-panel" aria-label="Settings scope">
+<button id="settingsContextTrigger" class="settings-context-trigger settings-context-trigger-mobile" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsScopePanel" onclick="openSettingsContextSheet()">
+    <span>
+        <span class="settings-context-label">Editing</span>
+        <span id="settingsContextSummary" class="settings-context-summary" data-settings-context-summary>Server defaults</span>
+    </span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+</button>
+<button id="settingsContextScrim" class="settings-context-scrim" type="button" aria-label="Close settings context" onclick="closeSettingsContextSheet()"></button>
+
+<section id="settingsScopePanel" class="settings-scope-panel settings-scope-popover" aria-label="Settings scope">
+    <div class="settings-scope-sheet-header">
+        <div>
+            <span class="settings-scope-sheet-kicker">Editing context</span>
+            <span class="settings-scope-heading">Current scope · <span id="settingsScopeName">Server defaults</span></span>
+        </div>
+        <button class="settings-scope-sheet-close" type="button" aria-label="Close settings context" onclick="closeSettingsContextSheet()">×</button>
+    </div>
     <div class="settings-scope-bar">
-        <span class="settings-scope-label">Scope:</span>
         {{if .IsAdmin}}<button id="settingsServerScopeBtn" class="settings-scope-server-btn active" type="button" onclick="selectSettingsScope('server', '')">Server defaults</button>{{end}}
+        {{if .IsAdmin}}<label class="settings-scope-select-wrap" id="settingsHouseholdScopeWrap">
+            <span class="settings-scope-control-label">Household</span>
+            <select id="settingsHouseholdSelector" aria-label="Household access filter" onchange="handleSettingsHouseholdFilter(this.value)"><option value="">All households</option></select>
+        </label>{{end}}
         <label class="settings-scope-select-wrap" id="settingsPersonScopeWrap">
             <span class="settings-scope-control-label">Person</span>
             <select id="userSelector" aria-label="Person" onchange="selectSettingsScope(this.value ? 'person' : 'server', this.value)">
@@ -950,28 +2366,69 @@
             <select id="clientSelector" aria-label="Device" onchange="selectSettingsScope(this.value ? 'device' : 'person', selectedUserId, this.value)"><option value="">Choose a device</option></select>
         </label>
         <span class="settings-scope-spacer"></span>
-        <div class="settings-view-compact">
-            <span class="settings-scope-label">View:</span>
-            <div class="settings-level-switch" aria-label="Settings detail level">
-                <button id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true" title="Basic view is not ready yet">Basic</button>
-                <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
-            </div>
+    </div>
+    <p id="settingsCascadeCopy" class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides. Applies to all people and devices unless overridden.</p>
+    <div id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage" aria-hidden="true"></div>
+    <div class="settings-scope-actions">
+        <button id="identifyClientBtn" class="btn btn-secondary" style="display: none;" onclick="identifyClient()" title="Send ping to identify this device">Identify device</button>
+        <button id="revertBtn" class="btn btn-secondary" style="display: none;" onclick="revertToGlobal()" title="Reset all settings to inherit from parent defaults">Use Parent Defaults</button>
+        <button id="propagateBtn" class="btn btn-secondary" style="display: none;" onclick="propagateSettings()" title="Review child scopes with custom settings"><span id="propagateBtnLabel">Review Customizations</span></button>
+    </div>
+    <div class="settings-mobile-level-section">
+        <span class="settings-mobile-level-label">Settings view</span>
+        <div class="settings-level-switch" aria-label="Mobile settings detail level">
+            <button id="settingsMobileEssentialBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Essential</button>
+            <button id="settingsMobileBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
+            <button id="settingsMobileAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
         </div>
     </div>
-    <p class="settings-cascade-copy">Settings cascade: Server defaults → Person overrides → Device overrides</p>
-    <div id="settingsScopeTree" class="settings-scope-tree settings-scope-tree-storage" aria-hidden="true"></div>
-    <div id="settingsCategoryNav" hidden aria-hidden="true"></div>
     <div id="settingsLevelHelp" hidden aria-hidden="true"></div>
 </section>
 
-<div class="settings-workspace">
-    <main class="settings-main">
+<section id="settingsHome" class="settings-home">
+    <div id="settingsAttentionBanner" class="settings-attention-banner" hidden>
+        <div>
+            <strong id="settingsAttentionTitle">Settings need attention</strong>
+            <p id="settingsAttentionCopy">Review the highlighted configuration issues.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="openFirstSettingsIssue()">Review issue →</button>
+    </div>
+    <div class="settings-home-heading">
+        <h2>Settings categories</h2>
+        <p>Choose a task area. Search also finds Advanced and technical settings.</p>
+    </div>
+    <div id="settingsCategoryCards" class="settings-category-grid"></div>
+</section>
+
+<div id="settingsCategoryWorkspace" class="settings-workspace" hidden>
+    <nav id="settingsCategoryNav" hidden aria-hidden="true"></nav>
+    <section class="settings-main" aria-labelledby="settingsCategoryTitle">
+        <header class="settings-category-header">
+            <div>
+                <div class="settings-category-breadcrumb">Settings</div>
+                <h2 id="settingsCategoryTitle">All settings</h2>
+                <p id="settingsCategoryDescription">Browse every available MediaStorm setting.</p>
+            </div>
+            <div id="settingsCategorySummary" class="settings-category-summary"></div>
+        </header>
         <div id="settingsContainer">
             <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
                 <div class="spinner"></div>
             </div>
         </div>
-    </main>
+    </section>
+</div>
+
+<div id="settingsStickySave" class="settings-sticky-save" hidden>
+    <div>
+        <strong id="settingsStickySaveTitle">Unsaved changes</strong>
+        <p id="settingsStickySaveCopy">Review and save your changes.</p>
+    </div>
+    <div class="settings-sticky-save-actions">
+        <button class="btn btn-secondary" type="button" onclick="resetSettings()">Discard</button>
+        <button class="btn btn-primary" type="button" onclick="saveAllSettings()">Save changes</button>
+    </div>
+</div>
 </div>
 
 <!-- Test Result Modal -->
@@ -1209,22 +2666,30 @@
     // Sensitive settings may be revealed only until their first blur. Keep the
     // lock outside renderSettings so rerendering cannot make them viewable again.
     const lockedSensitiveFields = new Set();
-    const basicSettingsReady = false;
-    let settingsLevel = 'advanced';
-    localStorage.setItem('mediastorm-settings-level', settingsLevel);
+    const settingsLevels = new Set(['basic', 'advanced', 'essentials']);
+    const storedSettingsLevel = localStorage.getItem('mediastorm-settings-level');
+    let settingsLevel = settingsLevels.has(storedSettingsLevel) ? storedSettingsLevel : 'basic';
+    let settingsContextReturnFocus = null;
+    let settingsLastSectionViewport = null;
+    let selectedSettingsHouseholdId = '';
     let expandedIndexerEditIndex = -1;
+    const liveSourceGroupOpenState = new Map();
     const expandedProviderEditIndexes = {
         debridProviders: -1,
         torrentScrapers: -1,
+        usenet: -1,
+        usenetEngines: -1,
     };
     const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers']);
+    providerTableSectionKeys.add('usenet');
+    providerTableSectionKeys.add('usenetEngines');
     const settingsSectionDescriptions = {
         indexers: 'Configure indexers and search providers',
-        debridProviders: 'Real-Debrid, AllDebrid, Premiumize',
+        debridProviders: 'Real-Debrid, TorBox, AllDebrid, Premiumize, Torrin',
         torrentScrapers: 'Torrent indexers and streaming providers',
         'live.sources': 'IPTV and live television sources',
         'liveTV.sources': 'IPTV and live television sources',
-        usenet: 'Usenet server connections',
+        usenet: 'Manage and benchmark parallel provider slots',
         usenetEngines: 'SABnzbd, NZBGet configuration',
         streaming: 'Search behavior and source priority',
         filtering: 'Resolution, codec, and quality preferences',
@@ -1236,23 +2701,34 @@
         mdblist: 'MDBList integration and lists',
         subtitles: 'OpenSubtitles and subtitle preferences',
         homeShelves: 'Dashboard layout and widgets',
-        display: 'Theme, colors, and custom branding',
+        display: 'Interface, theme, accessibility, and custom branding',
         server: 'Base URL and port configuration',
         network: 'Local and remote access URLs'
     };
     const settingsOverviewGroups = [
-        { id: 'sources', label: 'Sources & Providers' },
-        { id: 'search', label: 'Search & Results' },
-        { id: 'playback', label: 'Playback' },
-        { id: 'metadata', label: 'Metadata & Services' },
-        { id: 'interface', label: 'Interface' },
+        { id: 'sources', label: 'Sources' },
+        { id: 'search', label: 'Search & Quality' },
+        { id: 'playback', label: 'Playback & Subtitles' },
+        { id: 'interface', label: 'Home' },
+        { id: 'appearance', label: 'Appearance & Branding' },
+        { id: 'metadata', label: 'Metadata' },
         { id: 'server', label: 'Server & Network' }
     ];
+    const settingsLandingGroups = [
+        { id: 'sources', label: 'Sources', description: 'Indexers, torrent scrapers, Usenet, debrid, and media sources.' },
+        { id: 'search', label: 'Search & Quality', description: 'Search behavior, filtering, quality, release terms, and ordering.' },
+        { id: 'playback', label: 'Playback & Subtitles', description: 'Playback, streams, transcoding, subtitles, and Live TV.' },
+        { id: 'interface', label: 'Home', description: 'Home screen shelves, discovery layout, and featured content.' },
+        { id: 'appearance', label: 'Appearance & Branding', description: 'Interface visibility, presentation, theme, accessibility, and branding images.' },
+        { id: 'metadata', label: 'Metadata', description: 'Movie and show information, languages, ratings, artwork, and metadata providers.' },
+        { id: 'server', label: 'Server & Network', description: 'Server, storage, WebDAV, networking, and maintenance.' }
+    ];
+    const settingsLandingArrowIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
     const settingsOverviewSectionOrder = new Map([
-        'indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines',
+        'indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines', 'live', 'liveTV',
         'streaming', 'filtering', 'animeFiltering', 'ranking',
-        'playback', 'transmux',
-        'metadata', 'mdblist', 'subtitles',
+        'playback', 'subtitles', 'transmux',
+        'metadata', 'mdblist',
         'homeShelves', 'display',
         'server', 'network'
     ].map((key, index) => [key, index]));
@@ -1281,6 +2757,7 @@
         'display.includeUnreleasedMoviesInSearch',
         'display.includeUnreleasedShowsInSearch',
         'display.bypassFilteringForAioStreamsOnly',
+        'display.showStreamSourceInfo',
         'display.showParsedBadges',
         'display.enableHeroArtPanning',
         'display.enableHeroArtRotation',
@@ -1313,32 +2790,164 @@
         'liveTV.sources.proxyUrl', 'liveTV.sources.playlistCacheTtlHours', 'liveTV.sources.probeSizeMb', 'liveTV.sources.analyzeDurationSec', 'liveTV.sources.lowLatency',
         'usenetEngines.apiPath', 'usenetEngines.priority', 'usenetEngines.config.webdavPathPrefix', 'usenetEngines.pollIntervalSeconds', 'usenetEngines.timeoutSeconds'
     ]);
+    // This presentation-only allowlist intentionally uses existing section and
+    // field paths. It can be reviewed independently without changing stored
+    // values, defaults, APIs, or inheritance behavior.
+    const watchEssentialSections = new Set([
+        'indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines',
+        'streaming', 'filtering', 'playback', 'subtitles'
+    ]);
+    const watchEssentialFieldPaths = new Set([
+        'streaming.serviceMode',
+        'filtering.maxSizeMovieGb', 'filtering.maxSizeEpisodeGb', 'filtering.maxResolution', 'filtering.hdrDvPolicy',
+        'filtering.requiredTerms', 'filtering.filterOutTerms', 'filtering.preferredTerms', 'filtering.nonPreferredTerms',
+        'playback.preferredPlayer', 'playback.preferredAudioLanguage', 'playback.preferredSubtitleLanguage',
+        'playback.allowedTrackLanguages', 'playback.preferredSubtitleMode', 'playback.forceAacTranscoding',
+        'subtitles.openSubtitlesUsername', 'subtitles.openSubtitlesPassword', 'subtitles.subdlApiKey',
+        'subtitles.subsourceApiKey', 'subtitles.enableTranslatedSubs'
+    ]);
     const requestedSettingsSection = window.location.hash.replace(/^#/, '');
+    const requestedSettingsParams = new URLSearchParams(window.location.search);
+    const requestedSettingsCategory = requestedSettingsParams.get('category') || '';
+    if (requestedSettingsParams.get('view') === 'essentials') {
+        settingsLevel = 'essentials';
+    } else if (requestedSettingsParams.get('view') === 'dashboard' && settingsLevel === 'essentials') {
+        settingsLevel = 'basic';
+    }
+    if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
+        activeSettingsGroup = requestedSettingsCategory;
+        if (settingsLevel === 'essentials') settingsLevel = 'basic';
+    }
     if (requestedSettingsSection && schema[requestedSettingsSection]?.group) {
-        activeSettingsGroup = schema[requestedSettingsSection].group;
+        activeSettingsGroup = settingsOverviewGroupForSection(requestedSettingsSection, schema[requestedSettingsSection]);
     }
     if (advancedSections.has(requestedSettingsSection)) {
         settingsLevel = 'advanced';
     }
 
     function setSettingsLevel(level) {
-        settingsLevel = (basicSettingsReady && level === 'basic') ? 'basic' : 'advanced';
+        settingsLevel = settingsLevels.has(level) ? level : 'basic';
         localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        const url = new URL(window.location.href);
+        if (settingsLevel === 'essentials') {
+            activeSettingsGroup = '';
+            url.searchParams.delete('category');
+            url.searchParams.set('view', 'essentials');
+            url.hash = '';
+        } else if (activeSettingsGroup) {
+            url.searchParams.delete('view');
+        } else {
+            url.searchParams.set('view', 'dashboard');
+        }
+        history.pushState({}, '', url);
+        syncSettingsSidebarDestination(activeSettingsGroup || 'home');
         renderSettings();
+        closeSettingsContextSheet();
     }
 
     function setSettingsGroup(groupId) {
+        if (settingsLevel === 'essentials' && groupId) {
+            settingsLevel = 'basic';
+            localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        }
         activeSettingsGroup = groupId;
+        searchTerm = '';
+        filteredSections = null;
+        filteredFields = null;
+        const searchInput = document.getElementById('settingsSearch');
+        if (searchInput) searchInput.value = '';
+        const url = new URL(window.location.href);
+        url.searchParams.delete('view');
+        if (groupId) url.searchParams.set('category', groupId);
+        else url.searchParams.delete('category');
+        url.hash = '';
+        history.pushState({}, '', url);
+        syncSettingsSidebarDestination(activeSettingsGroup || 'home');
         renderSettings();
+        requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    }
+
+    function toggleSettingsMobileSearch(button) {
+        const shell = document.querySelector('.settings-page-shell');
+        if (!shell) return;
+        const shouldOpen = !shell.classList.contains('mobile-search-open');
+        shell.classList.toggle('mobile-search-open', shouldOpen);
+        button?.setAttribute('aria-expanded', String(shouldOpen));
+        if (shouldOpen) {
+            const input = document.getElementById('settingsSearch');
+            activateSettingsSearch(input);
+            requestAnimationFrame(() => input?.focus());
+        }
+    }
+
+    function settingsUsesSheetContext() {
+        return window.matchMedia('(max-width: 1024px)').matches ||
+            window.matchMedia('(max-width: 1366px) and (any-pointer: coarse)').matches;
+    }
+
+    function positionSettingsScopePanel(panel, trigger = settingsContextReturnFocus) {
+        if (!panel) return;
+        if (settingsUsesSheetContext()) {
+            panel.style.left = '';
+            panel.style.top = '';
+            return;
+        }
+        const triggerRect = trigger?.getBoundingClientRect?.();
+        const panelWidth = Math.min(520, window.innerWidth - 32);
+        const preferredLeft = triggerRect ? triggerRect.right - panelWidth : window.innerWidth - panelWidth - 16;
+        panel.style.left = Math.max(16, Math.min(preferredLeft, window.innerWidth - panelWidth - 16)) + 'px';
+        panel.style.top = Math.min((triggerRect?.bottom || 80) + 8, window.innerHeight - 240) + 'px';
+    }
+
+    function openSettingsContextSheet() {
+        const panel = document.getElementById('settingsScopePanel');
+        const scrim = document.getElementById('settingsContextScrim');
+        if (!panel) return;
+        if (scrim?.parentElement !== document.body) document.body.appendChild(scrim);
+        if (panel.parentElement !== document.body) document.body.appendChild(panel);
+        settingsContextReturnFocus = document.activeElement;
+        settingsScopeServerExpanded = true;
+        const households = settingsScopeHouseholds();
+        if (!isAdmin || households.length === 1) expandedSettingsHouseholds.add(households[0]?.id || '__household__');
+        if (selectedUserId) expandedSettingsPeople.add(selectedUserId);
+        renderSettingsScopeTree();
+        const isMobileContext = settingsUsesSheetContext();
+        positionSettingsScopePanel(panel);
+        panel.classList.add('open');
+        scrim?.classList.add('open');
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        document.getElementById('settingsScopeTree')?.setAttribute('aria-hidden', 'false');
+        document.querySelectorAll('.settings-context-trigger').forEach(trigger => trigger.setAttribute('aria-expanded', 'true'));
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => (isMobileContext ? panel.querySelector('.settings-scope-sheet-close') : panel.querySelector('.settings-scope-row button'))?.focus());
+    }
+
+    function closeSettingsContextSheet() {
+        const panel = document.getElementById('settingsScopePanel');
+        const scrim = document.getElementById('settingsContextScrim');
+        if (!panel?.classList.contains('open')) return;
+        panel.classList.remove('open');
+        scrim?.classList.remove('open');
+        panel.removeAttribute('role');
+        panel.removeAttribute('aria-modal');
+        document.getElementById('settingsScopeTree')?.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('.settings-context-trigger').forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
+        document.body.style.overflow = '';
+        panel.style.left = '';
+        panel.style.top = '';
+        const returnFocus = settingsContextReturnFocus;
+        settingsContextReturnFocus = null;
+        requestAnimationFrame(() => returnFocus?.focus?.());
     }
 
     function renderSettingsWorkspaceNavigation() {
         renderSettingsScopeTree();
         updateSettingsScopeBarState();
         const nav = document.getElementById('settingsCategoryNav');
-        const availableGroups = groups.filter(group => Object.entries(schema).some(([key, def]) => {
-            if (def.group !== group.id || def.hidden) return false;
-            if (settingsLevel === 'basic' && advancedSections.has(key)) return false;
+        const availableGroups = settingsLandingGroups.filter(group => Object.entries(schema).some(([key, def]) => {
+            if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id || def.hidden) return false;
+            if (!settingsSectionVisibleAtCurrentLevel(key)) return false;
             if (selectedClientId && !clientConfigSections.includes(key)) return false;
             if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
             if (!selectedUserId && def.inheritFrom) return false;
@@ -1348,20 +2957,36 @@
             activeSettingsGroup = '';
         }
         if (nav) {
-            const allCustomizationCount = availableGroups.reduce((total, group) => total + settingsGroupCustomizationCount(group.id), 0);
-            const allButton = '<button type="button" class="settings-category-btn '+(!activeSettingsGroup ? 'active' : '')+'"'+(!activeSettingsGroup ? ' aria-current="page"' : '')+' onclick="setSettingsGroup(\'\')"><span class="settings-category-btn-copy"><span>All</span>'+renderCustomizationCount(allCustomizationCount)+'</span></button>';
-            nav.innerHTML = allButton + availableGroups.map(group => {
+            nav.innerHTML = availableGroups.map(group => {
                 const isActive = group.id === activeSettingsGroup;
-                const customizationCount = settingsGroupCustomizationCount(group.id);
+                const customizationCount = settingsOverviewCustomizationCount(group.id);
                 return '<button type="button" class="settings-category-btn '+(isActive ? 'active' : '')+'"'+(isActive ? ' aria-current="page"' : '')+' onclick="setSettingsGroup(\''+group.id+'\')"><span class="settings-category-btn-copy"><span>'+group.label+'</span>'+renderCustomizationCount(customizationCount)+'</span></button>';
             }).join('');
         }
-        document.getElementById('settingsBasicBtn')?.classList.toggle('active', settingsLevel === 'basic');
-        document.getElementById('settingsAdvancedBtn')?.classList.toggle('active', settingsLevel === 'advanced');
+        const essentialButton = document.getElementById('settingsEssentialBtn');
+        const basicButton = document.getElementById('settingsBasicBtn');
+        const advancedButton = document.getElementById('settingsAdvancedBtn');
+        const mobileEssentialButton = document.getElementById('settingsMobileEssentialBtn');
+        const mobileBasicButton = document.getElementById('settingsMobileBasicBtn');
+        const mobileAdvancedButton = document.getElementById('settingsMobileAdvancedBtn');
+        essentialButton?.classList.toggle('active', settingsLevel === 'essentials');
+        basicButton?.classList.toggle('active', settingsLevel === 'basic');
+        advancedButton?.classList.toggle('active', settingsLevel === 'advanced');
+        mobileEssentialButton?.classList.toggle('active', settingsLevel === 'essentials');
+        mobileBasicButton?.classList.toggle('active', settingsLevel === 'basic');
+        mobileAdvancedButton?.classList.toggle('active', settingsLevel === 'advanced');
+        essentialButton?.setAttribute('aria-pressed', String(settingsLevel === 'essentials'));
+        basicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
+        advancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
+        mobileEssentialButton?.setAttribute('aria-pressed', String(settingsLevel === 'essentials'));
+        mobileBasicButton?.setAttribute('aria-pressed', String(settingsLevel === 'basic'));
+        mobileAdvancedButton?.setAttribute('aria-pressed', String(settingsLevel === 'advanced'));
         const help = document.getElementById('settingsLevelHelp');
         if (help) help.textContent = settingsLevel === 'basic'
             ? 'Showing common settings. Switch to Advanced or search to find everything else.'
-            : 'Showing all settings.';
+            : (settingsLevel === 'essentials'
+                ? 'Showing the settings needed to find and watch content on one page.'
+                : 'Showing all settings.');
     }
 
     function updateSettingsScopeBarState() {
@@ -1370,6 +2995,7 @@
         const deviceWrap = document.getElementById('settingsDeviceScopeWrap');
         const userSelector = document.getElementById('userSelector');
         const clientSelector = document.getElementById('clientSelector');
+        renderSettingsHouseholdFilter();
         const isServer = !selectedUserId;
         const isPerson = !!selectedUserId && !selectedClientId;
         const isDevice = !!selectedClientId;
@@ -1381,14 +3007,28 @@
             clientSelector.disabled = !selectedUserId || clientsForUser.length === 0;
             if (clientSelector.value !== selectedClientId) clientSelector.value = selectedClientId;
         }
+        const scopeName = document.getElementById('settingsScopeName');
+        const cascadeCopy = document.getElementById('settingsCascadeCopy');
+        if (scopeName) scopeName.textContent = settingsScopeDisplayName();
+        document.querySelectorAll('[data-settings-context-summary]').forEach(summary => {
+            summary.textContent = settingsContextDisplayName();
+        });
+        if (cascadeCopy) {
+            cascadeCopy.textContent = isDevice
+                ? 'Overrides this device only · inherits from the selected person, then Server defaults.'
+                : (isPerson
+                    ? 'Applies to this person and their devices unless a device overrides it.'
+                    : 'Settings cascade: Server defaults → Person overrides → Device overrides. Applies to all people and devices unless overridden.');
+        }
     }
 
     function settingsOverviewGroupForSection(sectionKey, sectionDef) {
-        if (['indexers', 'debridProviders', 'torrentScrapers', 'live', 'usenet', 'usenetEngines'].includes(sectionKey)) return 'sources';
+        if (['indexers', 'debridProviders', 'torrentScrapers', 'live', 'liveTV', 'usenet', 'usenetEngines'].includes(sectionKey)) return 'sources';
         if (['streaming', 'filtering', 'animeFiltering', 'ranking'].includes(sectionKey)) return 'search';
-        if (['playback', 'transmux'].includes(sectionKey)) return 'playback';
-        if (['metadata', 'mdblist', 'subtitles'].includes(sectionKey)) return 'metadata';
-        if (['homeShelves', 'display'].includes(sectionKey)) return 'interface';
+        if (['playback', 'transmux', 'subtitles'].includes(sectionKey)) return 'playback';
+        if (['metadata', 'mdblist'].includes(sectionKey)) return 'metadata';
+        if (sectionKey === 'homeShelves') return 'interface';
+        if (sectionKey === 'display') return 'appearance';
         if (['server', 'network'].includes(sectionKey)) return 'server';
         return {
             providers: 'sources',
@@ -1397,6 +3037,203 @@
             services: 'metadata',
             server: 'server'
         }[sectionDef.group] || 'metadata';
+    }
+
+    function settingsAvailableSectionsForOverview(groupId) {
+        return Object.entries(schema).filter(([key, def]) => {
+            if (!def.group || def.hidden || settingsOverviewGroupForSection(key, def) !== groupId) return false;
+            if (!settingsSectionVisibleAtCurrentLevel(key)) return false;
+            if (selectedClientId && !clientConfigSections.includes(key)) return false;
+            if (selectedUserId && !selectedClientId && !perUserSections.includes(key)) return false;
+            if (!selectedUserId && def.inheritFrom) return false;
+            return true;
+        });
+    }
+
+    function settingsScopeDisplayName() {
+        if (selectedClientId) {
+            const client = clientsForUser.find(candidate => candidate.id === selectedClientId);
+            return 'Device · ' + (client?.nickname || client?.name || 'Selected device');
+        }
+        if (selectedUserId) {
+            const profile = profilesData.find(candidate => candidate.id === selectedUserId);
+            return 'Person · ' + (profile?.name || 'Selected person');
+        }
+        return 'Server defaults';
+    }
+
+    function renderSettingsHouseholdFilter() {
+        const householdSelector = document.getElementById('settingsHouseholdSelector');
+        const personSelector = document.getElementById('userSelector');
+        if (!householdSelector || !personSelector || !isAdmin) return;
+        const households = settingsScopeHouseholds();
+        const selectedProfile = profilesData.find(candidate => candidate.id === selectedUserId);
+        if (selectedProfile?.accountId) selectedSettingsHouseholdId = selectedProfile.accountId;
+        if (selectedSettingsHouseholdId && !households.some(household => household.id === selectedSettingsHouseholdId)) {
+            selectedSettingsHouseholdId = '';
+        }
+        householdSelector.innerHTML = '<option value="">All households</option>' + households.map(household => {
+            const id = household.id || '__household__';
+            const name = household.username || household.name || 'Household';
+            return '<option value="'+escapeHtml(id)+'">'+escapeHtml(/household$/i.test(name) ? name : name + '’s Household')+'</option>';
+        }).join('');
+        householdSelector.value = selectedSettingsHouseholdId;
+        const visibleProfiles = selectedSettingsHouseholdId
+            ? profilesData.filter(profile => profile.accountId === selectedSettingsHouseholdId)
+            : profilesData;
+        personSelector.innerHTML = '<option value="">Choose a person</option>' + visibleProfiles.map(profile =>
+            '<option value="'+escapeHtml(profile.id)+'">'+escapeHtml(profile.name || 'Unnamed person')+'</option>'
+        ).join('');
+        personSelector.value = visibleProfiles.some(profile => profile.id === selectedUserId) ? selectedUserId : '';
+    }
+
+    async function handleSettingsHouseholdFilter(householdId) {
+        selectedSettingsHouseholdId = householdId || '';
+        const selectedProfile = profilesData.find(candidate => candidate.id === selectedUserId);
+        if (selectedUserId && selectedSettingsHouseholdId && selectedProfile?.accountId !== selectedSettingsHouseholdId) {
+            await selectSettingsScope('server', '');
+        }
+        renderSettingsHouseholdFilter();
+    }
+
+    function settingsHouseholdDisplayName() {
+        if (!selectedUserId) return 'All households';
+        const profile = profilesData.find(candidate => candidate.id === selectedUserId);
+        const household = settingsScopeHouseholds().find(candidate => candidate.id === profile?.accountId);
+        const name = household?.username || household?.name || settingsScopeUsername || 'Household';
+        return /household$/i.test(name) ? name : name + '’s Household';
+    }
+
+    function settingsContextDisplayName() {
+        const parts = [settingsHouseholdDisplayName()];
+        if (selectedUserId) {
+            const profile = profilesData.find(candidate => candidate.id === selectedUserId);
+            parts.push(profile?.name || 'Selected person');
+        } else {
+            parts.push('Server defaults');
+        }
+        if (selectedClientId) {
+            const client = clientsForUser.find(candidate => candidate.id === selectedClientId);
+            parts.push(client?.nickname || client?.name || 'Selected device');
+        }
+        return parts.join(' · ');
+    }
+
+    function settingsSectionVisibleAtCurrentLevel(sectionKey) {
+        if (searchTerm) return true;
+        if (settingsLevel === 'essentials') return watchEssentialSections.has(sectionKey);
+        if (settingsLevel === 'basic') return !advancedSections.has(sectionKey);
+        return true;
+    }
+
+    function settingsFieldVisibleAtCurrentLevel(sectionKey, fieldKey, isAdvancedField) {
+        if (searchTerm) return true;
+        if (settingsLevel === 'essentials') return watchEssentialFieldPaths.has(sectionKey + '.' + fieldKey);
+        if (settingsLevel === 'basic') return !isAdvancedField;
+        return true;
+    }
+
+    function settingsCategoryMeta(groupId) {
+        const customizationCount = settingsOverviewCustomizationCount(groupId);
+        if (customizationCount > 0) return customizationCount + ' customized';
+        if (!selectedUserId && groupId === 'server') return 'Server only';
+        if (selectedUserId || selectedClientId) return 'Inherited unless customized';
+        const configured = settingsAvailableSectionsForOverview(groupId).reduce((total, [key, def]) => total + settingsSectionConfiguredCount(key, def), 0);
+        return configured > 0 ? configured + ' configured' : 'Using defaults';
+    }
+
+    function renderSettingsLanding() {
+        const cards = document.getElementById('settingsCategoryCards');
+        if (cards) {
+            cards.innerHTML = settingsLandingGroups
+                .filter(group => settingsAvailableSectionsForOverview(group.id).length > 0)
+                .map(group => '<button type="button" class="settings-category-card" onclick="setSettingsGroup(\''+group.id+'\')">' +
+                    '<span class="settings-category-card-heading"><span class="settings-category-card-icon">'+settingsLandingIcon(group.id)+'</span><span class="settings-category-card-title">'+escapeHtml(group.label)+'</span></span>' +
+                    '<span class="settings-category-card-description">'+escapeHtml(group.description)+'</span>' +
+                    '<span class="settings-category-card-meta">'+escapeHtml(settingsCategoryMeta(group.id))+'</span>' +
+                    '<span class="settings-category-card-arrow" aria-hidden="true">'+settingsLandingArrowIcon+'</span>' +
+                '</button>').join('');
+        }
+
+        const issueKeys = Object.keys(validationErrors);
+        const attention = document.getElementById('settingsAttentionBanner');
+        if (attention) attention.hidden = issueKeys.length === 0 || !!selectedUserId;
+        if (issueKeys.length > 0) {
+            const issueCount = issueKeys.reduce((total, key) => total + Math.max(1, getSectionErrorCount(key)), 0);
+            const firstLabel = schema[issueKeys[0]]?.label || issueKeys[0];
+            const title = document.getElementById('settingsAttentionTitle');
+            const copy = document.getElementById('settingsAttentionCopy');
+            if (title) title.textContent = issueCount + (issueCount === 1 ? ' setting needs attention' : ' settings need attention');
+            if (copy) copy.textContent = 'Review ' + firstLabel + (issueKeys.length > 1 ? ' and other highlighted sections.' : '.');
+        }
+    }
+
+    function renderSettingsCategoryHeader() {
+        const group = settingsLandingGroups.find(candidate => candidate.id === activeSettingsGroup);
+        const title = document.getElementById('settingsCategoryTitle');
+        const description = document.getElementById('settingsCategoryDescription');
+        const summary = document.getElementById('settingsCategorySummary');
+        const isEssentials = settingsLevel === 'essentials' && !searchTerm;
+        if (title) title.textContent = searchTerm ? 'Search results' : (isEssentials ? 'Essential settings' : (group?.label || 'All settings'));
+        if (description) description.textContent = searchTerm
+            ? 'Every matching setting is shown, including advanced and technical options.'
+            : (isEssentials
+                ? 'The settings most people need to connect sources, choose results, and start watching. All other controls remain available in Basic and Advanced.'
+                : (group?.description || 'Browse every available MediaStorm setting.'));
+        if (summary) {
+            const count = searchTerm && filteredSections
+                ? filteredSections.size
+                : (isEssentials
+                    ? Object.entries(schema).filter(([key, def]) => def.group && !def.hidden && watchEssentialSections.has(key)).length
+                    : (group ? settingsAvailableSectionsForOverview(group.id).length : 0));
+            summary.textContent = count + (count === 1 ? ' section' : ' sections') + ' · ' + settingsScopeDisplayName();
+        }
+    }
+
+    function openFirstSettingsIssue() {
+        const firstKey = Object.keys(validationErrors)[0];
+        if (!firstKey || !schema[firstKey]) return;
+        if (!settingsSectionVisibleAtCurrentLevel(firstKey)) {
+            settingsLevel = 'advanced';
+            localStorage.setItem('mediastorm-settings-level', settingsLevel);
+        }
+        activeSettingsGroup = settingsOverviewGroupForSection(firstKey, schema[firstKey]);
+        const url = new URL(window.location.href);
+        url.searchParams.set('category', activeSettingsGroup);
+        url.hash = firstKey;
+        history.pushState({}, '', url);
+        syncSettingsSidebarDestination(activeSettingsGroup);
+        renderSettings();
+        requestAnimationFrame(() => openSettingsSection(firstKey, { focus: true, scroll: true, historyMode: 'none' }));
+    }
+
+    function settingsHasUnsavedChanges() {
+        return Object.keys(schema).some(sectionHasChanges);
+    }
+
+    function updateSettingsSaveStatus() {
+        const hasChanges = settingsHasUnsavedChanges();
+        const state = document.getElementById('settingsSaveState');
+        const stateText = document.getElementById('settingsSaveStateText');
+        const sticky = document.getElementById('settingsStickySave');
+        const stickyTitle = document.getElementById('settingsStickySaveTitle');
+        const stickyCopy = document.getElementById('settingsStickySaveCopy');
+        state?.classList.toggle('unsaved', hasChanges);
+        if (stateText) stateText.textContent = hasChanges ? 'Unsaved changes' : 'All changes saved';
+        if (sticky) sticky.hidden = !hasChanges;
+        if (stickyTitle) stickyTitle.textContent = 'Unsaved changes · ' + settingsScopeDisplayName();
+        if (stickyCopy) stickyCopy.textContent = selectedClientId
+            ? 'Saving updates this device only.'
+            : (selectedUserId ? 'Saving updates this person and leaves device overrides unchanged.' : 'Saving updates the Server defaults. Existing overrides remain customized.');
+    }
+
+    function announceSettingsSaved() {
+        const stateText = document.getElementById('settingsSaveStateText');
+        if (!stateText) return;
+        stateText.textContent = 'Saved · ' + settingsScopeDisplayName();
+        window.setTimeout(() => {
+            if (!settingsHasUnsavedChanges()) stateText.textContent = 'All changes saved';
+        }, 3200);
     }
 
     function settingsSectionRowDescription(sectionKey, sectionDef) {
@@ -1556,6 +3393,13 @@
             .reduce((total, [sectionKey]) => total + settingsSectionCustomizationCount(sectionKey), 0);
     }
 
+    function settingsOverviewCustomizationCount(groupId) {
+        if (!selectedUserId && !selectedClientId) return 0;
+        return Object.entries(schema)
+            .filter(([sectionKey, def]) => def.group && !def.hidden && settingsOverviewGroupForSection(sectionKey, def) === groupId)
+            .reduce((total, [sectionKey]) => total + settingsSectionCustomizationCount(sectionKey), 0);
+    }
+
     function renderSettingsPersonScope(profile) {
         const profileClients = settingsScopeClients.filter(client => client.userId === profile.id);
         const activeClients = profileClients.filter(client => !isSettingsDeviceStale(client));
@@ -1581,8 +3425,19 @@
 
     function toggleSettingsHousehold(householdId) {
         if (expandedSettingsHouseholds.has(householdId)) expandedSettingsHouseholds.delete(householdId);
-        else expandedSettingsHouseholds.add(householdId);
+        else {
+            expandedSettingsHouseholds.clear();
+            expandedSettingsHouseholds.add(householdId);
+        }
         renderSettingsScopeTree();
+    }
+
+    function settingsLandingIcon(groupId) {
+        const sidebarIcon = document.querySelector('[data-settings-destination="'+groupId+'"] .sidebar-nav-icon');
+        if (!sidebarIcon) return '';
+        const icon = sidebarIcon.cloneNode(true);
+        icon.removeAttribute('class');
+        return icon.outerHTML;
     }
 
     function toggleSettingsServer(event) {
@@ -1611,6 +3466,7 @@
         settingsScopeServerExpanded = true;
         const householdId = profile.accountId || '__household__';
         expandedSettingsHouseholds.add(householdId);
+        expandedSettingsPeople.add(profileId);
     }
 
     async function selectSettingsScope(kind, profileId, clientId = '') {
@@ -1618,6 +3474,7 @@
             const selector = document.getElementById('userSelector');
             if (selector) selector.value = '';
             await handleUserChange('');
+            closeSettingsContextSheet();
             return;
         }
         const selector = document.getElementById('userSelector');
@@ -1628,6 +3485,7 @@
             if (clientSelector) clientSelector.value = clientId;
             await handleClientChange(clientId);
         }
+        closeSettingsContextSheet();
     }
 
     function stringifyDebugArg(arg) {
@@ -1909,7 +3767,7 @@
         if (!fieldDef) return undefined;
         if (fieldDef.type === 'boolean') return false;
         if (fieldDef.type === 'number') return 0;
-        if (['tags', 'weighted-tags', 'multiselect'].includes(fieldDef.type)) return [];
+        if (['tags', 'weighted-tags', 'multiselect', 'ordered-multiselect'].includes(fieldDef.type)) return [];
         if (['text', 'password', 'select'].includes(fieldDef.type)) return '';
         return undefined;
     }
@@ -2086,6 +3944,13 @@
             return;
         }
         handleSettingsSearch(input.value);
+    }
+
+    function clearSettingsSearch() {
+        const input = document.getElementById('settingsSearch');
+        if (input) input.value = '';
+        handleSettingsSearch('');
+        requestAnimationFrame(() => input?.focus());
     }
 
     function handleSettingsSearch(term) {
@@ -2856,9 +4721,9 @@
         {
             key: 'display',
             label: 'Display',
-            description: 'Badge Icon Style, navigation tabs, TV home/details layout, unreleased visibility, filtering bypass, episode privacy, appearance',
+            description: 'Badge Icon Style, navigation tabs, M.O.M. Mode, TV home/details layout, unreleased visibility, filtering bypass, episode privacy, appearance',
             detailSection: 'Display',
-            detailFields: ['Badge Icon Style', 'Navigation Tabs', 'Include Unreleased Movies in Lists', 'Include Unreleased Shows in Lists', 'Include Unreleased Movies in Search', 'Include Unreleased Shows in Search', 'Bypass Filtering for AIOStreams Only', 'Enable Application Animations', 'Enable Hero Art Panning', 'Enable Hero Art Rotation', 'Hide Continue Watching Hero Details', 'Move Details Ratings Up', 'Hide Details Poster', 'Hide TV Drawer Rail', 'Keep TV Home Cards Visible', 'Blur Unwatched Episode Thumbnails', 'Blur Unwatched Episode Overview', 'appearance', 'Show Parsed Metadata Badges', 'Badge Visibility'],
+            detailFields: ['Badge Icon Style', 'Navigation Tabs', 'Include Unreleased Movies in Lists', 'Include Unreleased Shows in Lists', 'Include Unreleased Movies in Search', 'Include Unreleased Shows in Search', 'Bypass Filtering for AIOStreams Only', 'Show Stream Source Information', 'Enable Application Animations', 'Enable Hero Art Panning', 'Enable Hero Art Rotation', 'Hide Continue Watching Hero Details', 'Move Details Ratings Up', 'Hide Details Poster', 'Hide TV Drawer Rail', 'M.O.M. Mode™', 'M.O.M. Mode™ Home Shelves', 'Keep TV Home Cards Visible', 'Blur Unwatched Episode Thumbnails', 'Blur Unwatched Episode Overview', 'appearance', 'Show Parsed Metadata Badges', 'Badge Visibility'],
             userPaths: [
                 'display.watchStateIconStyle',
                 'display.navigationTabVisibility',
@@ -2867,6 +4732,7 @@
                 'display.includeUnreleasedMoviesInSearch',
                 'display.includeUnreleasedShowsInSearch',
                 'display.bypassFilteringForAioStreamsOnly',
+                'display.showStreamSourceInfo',
                 'display.enableAnimations',
                 'display.enableHeroArtPanning',
                 'display.enableHeroArtRotation',
@@ -2875,6 +4741,7 @@
                 'display.hideDetailsPoster',
                 'display.hideTvDrawerRail',
                 'display.simpleMode',
+                'display.simpleModeHomeShelves',
                 'display.disableTvHomeCardDimming',
                 'display.blurUnwatchedEpisodeThumbnails',
                 'display.showSeriesBackdropForMissingEpisodeArt',
@@ -2892,6 +4759,7 @@
                 'includeUnreleasedMoviesInSearch',
                 'includeUnreleasedShowsInSearch',
                 'bypassFilteringForAioStreamsOnly',
+                'showStreamSourceInfo',
                 'enableAnimations',
                 'enableHeroArtPanning',
                 'enableHeroArtRotation',
@@ -2900,6 +4768,7 @@
                 'hideDetailsPoster',
                 'hideTvDrawerRail',
                 'simpleMode',
+                'simpleModeHomeShelves',
                 'disableTvHomeCardDimming',
                 'blurUnwatchedEpisodeThumbnails',
                 'showSeriesBackdropForMissingEpisodeArt',
@@ -3762,6 +5631,8 @@
         'unlock': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>',
         'edit': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
         'trash': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+        'chevron-down': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>',
+        'more-horizontal': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
         'plus': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
         'check': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
         'x': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
@@ -3782,7 +5653,7 @@
 
     // Map filtering field paths to client settings keys
     const clientFilterFields = ['maxSizeMovieGb', 'maxSizeEpisodeGb', 'maxResolution', 'hdrDvPolicy', 'requiredTerms', 'filterOutTerms', 'preferredTerms', 'nonPreferredTerms', 'downloadPreferredTerms', 'unknownTrackPolicy', 'splitByService'];
-    const clientDisplayFields = ['bypassFilteringForAioStreamsOnly', 'navigationTabVisibility', 'includeUnreleasedMoviesInLists', 'includeUnreleasedShowsInLists', 'includeUnreleasedMoviesInSearch', 'includeUnreleasedShowsInSearch', 'enableAnimations', 'enableHeroArtPanning', 'enableHeroArtRotation', 'showSeriesBackdropForMissingEpisodeArt', 'hideContinueWatchingHeroMetadata', 'moveDetailsRatingsToMetadata', 'hideDetailsPoster', 'hideTvDrawerRail', 'simpleMode', 'disableTvHomeCardDimming', 'blurUnwatchedEpisodeThumbnails', 'blurUnwatchedEpisodeThumbnailsIncludeCurrent', 'blurUnwatchedEpisodeOverviews', 'blurUnwatchedEpisodeOverviewsIncludeCurrent', 'appearance.fontScale', 'appearance.accentColor', 'appearance.textColor', 'appearance.secondaryTextColor', 'appearance.backgroundColor', 'appearance.modalBackgroundColor', 'appearance.buttonStyle', 'appearance.buttonRadius', 'appearance.highContrast', 'appearance.reduceOverlays'];
+    const clientDisplayFields = ['bypassFilteringForAioStreamsOnly', 'showStreamSourceInfo', 'navigationTabVisibility', 'includeUnreleasedMoviesInLists', 'includeUnreleasedShowsInLists', 'includeUnreleasedMoviesInSearch', 'includeUnreleasedShowsInSearch', 'enableAnimations', 'enableHeroArtPanning', 'enableHeroArtRotation', 'showSeriesBackdropForMissingEpisodeArt', 'hideContinueWatchingHeroMetadata', 'moveDetailsRatingsToMetadata', 'hideDetailsPoster', 'hideTvDrawerRail', 'simpleMode', 'disableTvHomeCardDimming', 'blurUnwatchedEpisodeThumbnails', 'blurUnwatchedEpisodeThumbnailsIncludeCurrent', 'blurUnwatchedEpisodeOverviews', 'blurUnwatchedEpisodeOverviewsIncludeCurrent', 'appearance.fontScale', 'appearance.accentColor', 'appearance.textColor', 'appearance.secondaryTextColor', 'appearance.backgroundColor', 'appearance.modalBackgroundColor', 'appearance.buttonStyle', 'appearance.buttonRadius', 'appearance.highContrast', 'appearance.reduceOverlays'];
     const clientPlaybackFields = [
         'preferredPlayer',
         'preferredAudioLanguage',
@@ -4470,14 +6341,16 @@
                 }).join('');
                 return '<div class="checkboxes-group'+invalidClass+'" id="'+id+'_container">'+checkboxesHtml+'</div>';
             case 'multiselect':
+            case 'ordered-multiselect':
                 const msSelected = Array.isArray(value) ? value : [];
+                const msOrdered = fieldDef.type === 'ordered-multiselect';
                 const msTagsHtml = msSelected.length === 0 && fieldDef.optionsFrom === 'profiles'
                     ? '<span class="tag"><span class="tag-text">All profiles</span></span>'
                     : msSelected.map(v => '<span class="tag" title="'+escapeHtml(v).replace(/"/g, '&quot;')+'"><span class="tag-text">'+escapeHtml(resolveMultiselectValueLabel(fieldDef, v))+'</span></span>').join('');
                 const endpoint = fieldDef.optionsEndpoint || '';
                 const optionsFrom = fieldDef.optionsFrom || '';
                 return '<div class="multiselect-container'+invalidClass+'" id="'+id+'_container">' + msTagsHtml +
-                    '<button type="button" class="multiselect-btn" onclick="openMultiselectModal(\''+basePath+'\', \''+fieldKey+'\', \''+endpoint+'\', \''+fieldDef.label+'\', \''+optionsFrom+'\')">Select...</button></div>';
+                    '<button type="button" class="multiselect-btn" onclick="openMultiselectModal(\''+basePath+'\', \''+fieldKey+'\', \''+endpoint+'\', \''+fieldDef.label+'\', \''+optionsFrom+'\', '+msOrdered+')">'+ (msOrdered ? 'Select &amp; Order...' : 'Select...') +'</button></div>';
             case 'file_upload':
                 const uploadEndpoint = fieldDef.endpoint || '';
                 const acceptTypes = fieldDef.accept || '';
@@ -4518,6 +6391,7 @@
         section.querySelectorAll('.section-save-btn').forEach(button => {
             button.disabled = !hasChanges;
         });
+        updateSettingsSaveStatus();
     }
 
     function handleFieldInputChange(basePath, fieldKey, value) {
@@ -4863,7 +6737,8 @@
         fieldKey: '',
         options: [],
         selected: [],
-        searchTerm: ''
+        searchTerm: '',
+        ordered: false
     };
 
     function resolveMultiselectValueLabel(fieldDef, value) {
@@ -4871,14 +6746,25 @@
             const profile = profilesData.find(p => p.id === value);
             return profile?.name || value;
         }
+        if (fieldDef?.optionsFrom === 'homeShelves') {
+            const shelves = ensureBuiltInHomeShelfConfig(getValue('homeShelves.shelves') || []);
+            const shelf = shelves.find(item => item && item.id === value);
+            if (shelf) {
+                return shelf.name ? `${shelf.name}` : value;
+            }
+        }
         return value;
     }
 
-    async function openMultiselectModal(sectionPath, fieldKey, endpoint, label, optionsFrom) {
+    async function openMultiselectModal(sectionPath, fieldKey, endpoint, label, optionsFrom, ordered) {
         multiselectState.basePath = sectionPath;
         multiselectState.fieldKey = fieldKey;
+        multiselectState.ordered = !!ordered;
         const fullPath = sectionPath ? sectionPath+'.'+fieldKey : fieldKey;
-        multiselectState.selected = [...(getValue(fullPath) || [])];
+        const currentValue = getValue(fullPath);
+        multiselectState.selected = Array.isArray(currentValue) && currentValue.length > 0
+            ? [...currentValue]
+            : (optionsFrom === 'homeShelves' ? ['top-ten', 'continue-watching', 'watch-something', 'trending-movies', 'trending-tv'] : []);
         multiselectState.searchTerm = '';
 
         // Disable body scrolling
@@ -4921,6 +6807,18 @@
                 label: profile.name || profile.id
             }));
             renderMultiselectOptions();
+        } else if (optionsFrom === 'homeShelves') {
+            const shelves = ensureBuiltInHomeShelfConfig(getValue('homeShelves.shelves') || []);
+            multiselectState.options = shelves
+                .slice()
+                .filter(isAdminVisibleHomeShelf)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .filter(shelf => shelf && shelf.id)
+                .map(shelf => ({
+                    value: shelf.id,
+                    label: shelf.name ? shelf.name : shelf.id
+                }));
+            renderMultiselectOptions();
         } else if (endpoint) {
             try {
                 const apiUrl = basePath + '/api' + endpoint;  // basePath is the global admin path ("/admin")
@@ -4962,11 +6860,29 @@
         );
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="multiselect-empty">No categories found</div>';
+            container.innerHTML = '<div class="multiselect-empty">No options found</div>';
             return;
         }
 
-        container.innerHTML = filtered.map(opt => {
+        const optionByValue = new Map(multiselectState.options.map(opt => [opt.value, opt]));
+        const selectedHtml = multiselectState.ordered
+            ? '<div class="multiselect-selected-order">' +
+                (multiselectState.selected.length === 0
+                    ? '<div class="multiselect-empty" style="padding:0.75rem;">Select at least one shelf</div>'
+                    : multiselectState.selected.map((value, index) => {
+                        const opt = optionByValue.get(value);
+                        const label = opt?.label || value;
+                        return `<div class="multiselect-order-row">
+                            <span class="multiselect-order-index">${index + 1}</span>
+                            <span class="multiselect-option-label">${escapeHtml(label)}</span>
+                            <button type="button" class="btn btn-sm btn-secondary" ${index === 0 ? 'disabled' : ''} onclick="moveMultiselectOption(${index}, -1)">Up</button>
+                            <button type="button" class="btn btn-sm btn-secondary" ${index === multiselectState.selected.length - 1 ? 'disabled' : ''} onclick="moveMultiselectOption(${index}, 1)">Down</button>
+                        </div>`;
+                    }).join('')) +
+              '</div>'
+            : '';
+
+        container.innerHTML = selectedHtml + filtered.map(opt => {
             const isSelected = multiselectState.selected.includes(opt.value);
             const countHtml = opt.count !== undefined ? '<span class="multiselect-option-count">(' + opt.count + ' channels)</span>' : '';
             return `<label class="multiselect-option ${isSelected ? 'selected' : ''}">
@@ -4975,6 +6891,16 @@
                 ${countHtml}
             </label>`;
         }).join('');
+    }
+
+    function moveMultiselectOption(index, direction) {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= multiselectState.selected.length) return;
+        const selected = [...multiselectState.selected];
+        const [moved] = selected.splice(index, 1);
+        selected.splice(nextIndex, 0, moved);
+        multiselectState.selected = selected;
+        renderMultiselectOptions();
     }
 
     function filterMultiselectOptions(searchTerm) {
@@ -5733,6 +7659,7 @@
     // Close modal on Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
+            closeSettingsContextSheet();
             closeTestModal();
         }
     });
@@ -6738,6 +8665,8 @@
                     showToast('Device settings saved successfully');
                     updateRevertButtonVisibility();
                     renderSettingsScopeTree();
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                     setTimeout(() => renderSettings(), 500);
                 } else {
                     const result = await response.json().catch(() => ({}));
@@ -6769,6 +8698,7 @@
                     setTimeout(() => renderSettings(), 500);
                     await updateClientSaveImpact();
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.text();
                     showToast(result || 'Failed to save settings', 'error');
@@ -6793,6 +8723,7 @@
                     setTimeout(() => renderSettings(), 500);
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -6885,6 +8816,9 @@
         if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
             return showWhen.conditions.some(condition => getItemValue(condition.field) === condition.value);
         }
+        if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+            return showWhen.conditions.every(condition => getItemValue(condition.field) === condition.value);
+        }
         if (showWhen.field) return getItemValue(showWhen.field) === showWhen.value;
         return true;
     }
@@ -6893,7 +8827,7 @@
         return Object.entries(sectionDef.fields)
             .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
             .map(([fieldKey, fieldDef]) => {
-                if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return '';
+                if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return '';
                 if (!providerTableFieldVisible(item, fieldDef)) return '';
                 const fieldValue = fieldKey.includes('.')
                     ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
@@ -6937,7 +8871,11 @@
             const statusInput = renderInput('enabled', sectionDef.fields.enabled, item.enabled, basePath + '.' + index, sectionKey)
                 .replace('<label class="toggle">', '<label class="toggle" aria-label="Enable ' + escapeHtml(name).replace(/"/g, '&quot;') + '">');
             const isEditing = expandedProviderEditIndexes[sectionKey] === index;
-            const credentialMask = item.apiKey ? '••••••••' : 'Not set';
+            const credentialMask = options.credential ? options.credential(item) : (item.apiKey ? '••••••••' : 'Not set');
+            const detailValue = options.detail ? options.detail(item, index) : (index + 1);
+            const detailCell = options.detail
+                ? '<td data-label="' + options.detailLabel + '">' + escapeHtml(String(detailValue)) + '</td>'
+                : '<td data-label="Priority">' + (index + 1) + '</td>';
             const badges = renderProviderTableBadges(sectionKey, item);
             const badgesHtml = badges ? '<span class="provider-type-badges">' + badges + '</span>' : '';
             const editHint = sectionKey === 'torrentScrapers' && item.type === 'aiostreams' && item.enabled && (currentSettings.streaming?.indexerTimeoutSec || 5) <= 5
@@ -6948,8 +8886,8 @@
                     (secondary ? '<span class="indexer-url" title="' + escapeHtml(secondary).replace(/"/g, '&quot;') + '">' + escapeHtml(secondary) + '</span>' : '') +
                     badgesHtml + '</td>' +
                 '<td data-label="Status"><span class="indexer-status">' + statusInput + '<span class="indexer-status-text ' + (item.enabled ? 'enabled' : '') + '">' + (item.enabled ? 'On' : 'Off') + '</span></span></td>' +
-                '<td data-label="Priority">' + (index + 1) + '</td>' +
-                '<td data-label="API Key"><span class="indexer-api-mask">' + credentialMask + '</span></td>' +
+                detailCell +
+                '<td data-label="' + (options.credentialLabel || 'API Key') + '"><span class="indexer-api-mask">' + escapeHtml(String(credentialMask)) + '</span></td>' +
                 '<td data-label="Actions"><div class="indexer-actions">' +
                     '<button id="test-btn-' + sectionKey + '-' + index + '" class="indexer-action-btn" type="button" onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">Test</button>' +
                     '<button class="indexer-action-btn" type="button" aria-expanded="' + isEditing + '" onclick="toggleProviderEditor(\'' + sectionKey + '\', ' + index + ', event)">' + (isEditing ? 'Close' : 'Edit') + '</button>' +
@@ -6962,7 +8900,7 @@
             return mainRow + editRow;
         }).join('');
         const table = items.length > 0
-            ? '<div class="indexer-table-shell provider-table-shell"><table class="indexer-table provider-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">API Key</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            ? '<div class="indexer-table-shell provider-table-shell"><table class="indexer-table provider-table"><thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col">' + (options.detailLabel || 'Priority') + '</th><th scope="col">' + (options.credentialLabel || 'API Key') + '</th><th scope="col">Actions</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
             : '<div class="indexer-empty-state"><strong>' + options.emptyTitle + '</strong><p class="form-hint">' + options.emptyHint + '</p></div>';
         const hasChanges = sectionHasChanges(sectionKey);
         const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
@@ -7007,6 +8945,185 @@
             '<button type="button" class="section-save-btn" onclick="saveSection(\'indexers\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
     }
 
+    function renderUsenetServerSection(sectionDef, items, basePath) {
+        const fieldOrder = ['name', 'host', 'port', 'username', 'password', 'connections'];
+        const renderUsenetField = (item, index, fieldKey) => {
+            const fieldDef = sectionDef.fields[fieldKey];
+            if (!fieldDef) return '';
+            const fieldValue = item[fieldKey];
+            const isRequired = fieldDef.required === true;
+            const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+            const requiredBadge = isMissingRequired ? '<span style="margin-left:0.4rem;color:var(--warning);font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Required</span>' : '';
+            const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+            const fieldInputId = (basePath+'.'+index+'_'+fieldKey).replace(/\./g, '_');
+            return '<div class="form-group'+(isMissingRequired ? ' required-missing' : '')+'">' +
+                '<label class="form-label" for="'+fieldInputId+'">'+escapeHtml(fieldDef.label)+requiredBadge+'</label>' +
+                renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, 'usenet') +
+                (fieldDef.description ? '<p class="form-hint">'+escapeHtml(fieldDef.description)+'</p>' : '') +
+                requiredHint + renderAdditionalFieldHint('usenet', fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+            '</div>';
+        };
+        const renderHeaderToggle = (item, index, fieldKey) => {
+            const fieldDef = sectionDef.fields[fieldKey];
+            if (!fieldDef) return '';
+            const fieldInputId = (basePath+'.'+index+'_'+fieldKey).replace(/\./g, '_');
+            return '<div class="usenet-server-toggle">' +
+                renderInput(fieldKey, fieldDef, item[fieldKey], basePath+'.'+index, 'usenet') +
+                '<label for="'+fieldInputId+'">'+escapeHtml(fieldDef.label)+'</label>' +
+            '</div>';
+        };
+        const cardsHtml = items.map((item, index) => {
+            const displayName = item.name || item.host || 'New Usenet server';
+            const displayNameAttribute = escapeHtml(displayName).replace(/"/g, '&quot;');
+            return '<div class="usenet-server-card" data-usenet-index="'+index+'">' +
+                '<div class="usenet-server-card-header">' +
+                    '<div class="usenet-server-identity"><span class="usenet-server-name">'+escapeHtml(displayName)+'</span><span class="usenet-server-badge">USN</span><div class="usenet-server-toggles">'+renderHeaderToggle(item, index, 'enabled')+renderHeaderToggle(item, index, 'ssl')+'</div></div>' +
+                    '<div class="usenet-server-actions">' +
+                        '<button id="test-btn-usenet-'+index+'" class="btn btn-sm btn-secondary" type="button" onclick="testProvider(\'usenet\', '+index+')">'+getIcon('check')+' Test Connection</button>' +
+                        '<button class="btn btn-sm btn-danger" type="button" aria-label="Remove '+displayNameAttribute+'" title="Remove Usenet server" onclick="removeArrayItem(\'usenet\', '+index+')">'+getIcon('trash')+'</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="usenet-server-fields">'+fieldOrder.map(fieldKey => renderUsenetField(item, index, fieldKey)).join('')+'</div>' +
+            '</div>';
+        }).join('');
+        const addButton = '<button class="add-item-btn usenet-add-server" type="button" onclick="addArrayItem(\'usenet\')">'+getIcon('plus')+' Add Usenet Server</button>';
+        return '<div class="usenet-server-list">'+cardsHtml+addButton+'</div>';
+    }
+
+    function isLiveSourceSection(sectionKey) {
+        return sectionKey === 'live.sources' || sectionKey === 'liveTV.sources';
+    }
+
+    function setLiveSourceGroupOpen(sectionKey, index, groupKey, isOpen) {
+        liveSourceGroupOpenState.set(sectionKey + ':' + index + ':' + groupKey, isOpen);
+    }
+
+    function liveSourceGroupIsOpen(sectionKey, index, groupKey) {
+        const stateKey = sectionKey + ':' + index + ':' + groupKey;
+        if (liveSourceGroupOpenState.has(stateKey)) return liveSourceGroupOpenState.get(stateKey);
+        return groupKey === 'source' || groupKey === 'connection';
+    }
+
+    function liveSourceOptionLabel(fieldDef, value, fallback) {
+        const option = (fieldDef?.options || []).find(candidate => {
+            const optionValue = typeof candidate === 'object' ? candidate.value : candidate;
+            return optionValue === value;
+        });
+        if (!option) return fallback || String(value || 'Not set');
+        return typeof option === 'object' ? option.label : option;
+    }
+
+    function liveSourceTypeLabel(sectionDef, item) {
+        return liveSourceOptionLabel(sectionDef.fields?.mode, item.mode, 'Type not set');
+    }
+
+    function liveSourceEndpointSummary(item) {
+        const rawEndpoint = item.mode === 'xtream'
+            ? item.xtreamHost
+            : item.mode === 'stremio'
+                ? item.manifestUrl
+                : item.playlistUrl;
+        if (!rawEndpoint) return 'Server not set';
+        try {
+            return new URL(rawEndpoint).host || 'Server configured';
+        } catch (_) {
+            const sanitized = String(rawEndpoint).replace(/^.*@/, '').replace(/^\w+:\/\//, '').split('/')[0];
+            return sanitized || 'Server configured';
+        }
+    }
+
+    function liveSourceGroupSummary(groupKey, sectionDef, item) {
+        if (groupKey === 'source') {
+            return liveSourceTypeLabel(sectionDef, item) + ' · ' + (item.enabled ? 'Enabled' : 'Disabled');
+        }
+        if (groupKey === 'connection') return liveSourceEndpointSummary(item);
+        if (groupKey === 'playback') {
+            const streams = Number(item.maxStreams || 0);
+            const streamLabel = streams === 0 ? 'Unlimited streams' : streams + ' max stream' + (streams === 1 ? '' : 's');
+            const format = liveSourceOptionLabel(sectionDef.fields?.streamFormat, item.streamFormat, 'Format not set');
+            const cacheTtl = item.playlistCacheTtlHours === undefined || item.playlistCacheTtlHours === null || item.playlistCacheTtlHours === ''
+                ? 'Default cache'
+                : item.playlistCacheTtlHours + 'h cache';
+            return streamLabel + ' · ' + format + ' · ' + cacheTtl + ' · Low latency ' + (item.lowLatency ? 'on' : 'off');
+        }
+        if (groupKey === 'channelFiltering') {
+            const categories = Array.isArray(item.filtering?.enabledCategories) ? item.filtering.enabledCategories : [];
+            const categoryLabel = categories.length === 0 ? 'All categories' : categories.length + ' categor' + (categories.length === 1 ? 'y' : 'ies');
+            const maxChannels = Number(item.filtering?.maxChannels || 0);
+            return categoryLabel + ' · ' + (maxChannels === 0 ? 'No channel limit' : maxChannels + ' channel limit');
+        }
+        if (groupKey === 'epg') {
+            if (!item.epg?.enabled) return 'Disabled';
+            const refresh = item.epg.refreshIntervalHours || 12;
+            const retention = item.epg.retentionDays || 7;
+            return 'Enabled · Refresh every ' + refresh + 'h · ' + retention + '-day retention';
+        }
+        return '';
+    }
+
+    function renderLiveSourceCard(sectionKey, sectionDef, item, index, fieldEntries, isTestable) {
+        const groupedEntries = [];
+        const groupsByKey = new Map();
+        for (const entry of fieldEntries) {
+            const groupKey = entry.group || 'source';
+            if (!groupsByKey.has(groupKey)) {
+                const group = {
+                    key: groupKey,
+                    label: entry.groupLabel || groupKey,
+                    description: entry.groupDescription || '',
+                    fields: [],
+                };
+                groupsByKey.set(groupKey, group);
+                groupedEntries.push(group);
+            }
+            groupsByKey.get(groupKey).fields.push(entry.html);
+        }
+
+        const groupsHtml = groupedEntries.map(group => {
+            const isOpen = liveSourceGroupIsOpen(sectionKey, index, group.key);
+            const safeGroupKey = escapeHtml(group.key).replace(/"/g, '&quot;');
+            return '<details class="live-source-group ' + safeGroupKey + '" ' + (isOpen ? 'open' : '') +
+                ' ontoggle="setLiveSourceGroupOpen(\'' + sectionKey + '\', ' + index + ', \'' + safeGroupKey + '\', this.open)">' +
+                    '<summary>' +
+                        '<span class="live-source-group-chevron" aria-hidden="true">' + getIcon('chevron-down') + '</span>' +
+                        '<span class="live-source-group-heading"><span class="live-source-group-title">' + escapeHtml(group.label) + '</span>' +
+                            (group.description ? '<span class="live-source-group-description">' + escapeHtml(group.description) + '</span>' : '') +
+                        '</span>' +
+                        '<span class="live-source-group-summary">' + escapeHtml(liveSourceGroupSummary(group.key, sectionDef, item)) + '</span>' +
+                    '</summary>' +
+                    '<div class="live-source-group-body"><div class="live-source-group-fields">' + group.fields.join('') + '</div></div>' +
+                '</details>';
+        }).join('');
+
+        const name = item.name || item.id || 'Live TV source ' + (index + 1);
+        const enabledLabel = item.enabled ? 'Enabled' : 'Disabled';
+        const endpoint = liveSourceEndpointSummary(item);
+        const testButton = isTestable
+            ? '<button id="test-btn-' + sectionKey + '-' + index + '" type="button" class="btn btn-sm btn-secondary" onclick="testProvider(\'' + sectionKey + '\', ' + index + ')">' + getIcon('check') + ' Test</button>'
+            : '';
+        const hiddenChannelsButton = '<button type="button" class="btn btn-sm btn-secondary" onclick="openHiddenChannelsManagerForSource(\'' + sectionKey + '\', ' + index + ', event)">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M10.58 10.58A2 2 0 0 0 13.42 13.42"/><path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M6.61 6.61C3.98 8.38 2 12 2 12s3 8 10 8a10.9 10.9 0 0 0 5.39-1.39"/></svg> Manage Hidden Channels</button>';
+        const deleteMenu = '<details class="live-source-action-menu">' +
+            '<summary class="btn btn-sm btn-secondary" aria-label="More actions for ' + escapeHtml(name).replace(/"/g, '&quot;') + '">' + getIcon('more-horizontal') + '</summary>' +
+            '<div class="live-source-action-menu-panel"><button type="button" class="btn btn-sm btn-danger" onclick="event.preventDefault(); removeArrayItem(\'' + sectionKey + '\', ' + index + ')">' + getIcon('trash') + ' Delete</button></div>' +
+        '</details>';
+
+        return '<div class="array-item live-source-card">' +
+            '<div class="live-source-card-header">' +
+                '<div class="live-source-card-identity">' +
+                    '<div class="live-source-card-name" title="' + escapeHtml(name).replace(/"/g, '&quot;') + '">' + escapeHtml(name) + '</div>' +
+                    '<div class="live-source-card-meta">' +
+                        '<span class="live-source-status ' + (item.enabled ? 'enabled' : '') + '"><span class="live-source-status-dot"></span>' + enabledLabel + '</span>' +
+                        '<span class="live-source-type-badge">' + escapeHtml(liveSourceTypeLabel(sectionDef, item)) + '</span>' +
+                        '<span class="live-source-endpoint" title="' + escapeHtml(endpoint).replace(/"/g, '&quot;') + '">Server: ' + escapeHtml(endpoint) + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="live-source-card-actions">' + hiddenChannelsButton + testButton + deleteMenu + '</div>' +
+            '</div>' +
+            '<div class="live-source-groups">' + groupsHtml + '</div>' +
+        '</div>';
+    }
+
     function renderArraySection(sectionKey, sectionDef) {
         let items, basePath;
         const parentKey = sectionDef.parent;
@@ -7033,6 +9150,34 @@
         }
         const isTestable = testableSections.includes(sectionKey);
         if (sectionKey === 'indexers') return renderIndexerTableSection(sectionDef, items, basePath);
+        if (sectionKey === 'usenet') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Usenet server',
+                secondary: item => item.host ? item.host + ':' + (item.port || '') : 'Host not set',
+                detailLabel: 'Connection',
+                detail: item => (item.ssl ? 'SSL' : 'Plain') + ' · ' + (item.connections || 0) + ' connections',
+                credentialLabel: 'Login',
+                credential: item => item.username ? item.username : 'Not set',
+                intro: 'Manage Usenet servers in a compact list. Open a server only when you need to edit its connection details.',
+                emptyTitle: 'No Usenet servers configured',
+                emptyHint: 'Add a server to enable Usenet downloads.',
+                addLabel: 'Add Usenet Server',
+            });
+        }
+        if (sectionKey === 'usenetEngines') {
+            return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
+                itemFallback: 'Usenet app',
+                secondary: item => item.baseUrl || 'URL not set',
+                detailLabel: 'App',
+                detail: item => item.type || 'Not selected',
+                credentialLabel: 'Credentials',
+                credential: item => (item.apiKey || item.username || item.password) ? 'Configured' : 'Not set',
+                intro: 'Manage SABnzbd and NZBGet connections. Open an app only when you need to edit it.',
+                emptyTitle: 'No Usenet apps configured',
+                emptyHint: 'Add an app to send and manage Usenet downloads.',
+                addLabel: 'Add Usenet App',
+            });
+        }
         if (sectionKey === 'debridProviders') {
             return renderProviderTableSection(sectionKey, sectionDef, items, basePath, {
                 itemFallback: 'Debrid service',
@@ -7080,9 +9225,6 @@
                     typeBadgesHtml =
                         '<span style="' + badgeStyle + 'background:rgba(245,158,11,0.16);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);">TOR</span>';
                 }
-            } else if (sectionKey === 'usenet') {
-                typeBadgesHtml =
-                    '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:0.125rem 0.45rem;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;background:rgba(59,130,246,0.16);color:#60a5fa;border:1px solid rgba(96,165,250,0.35);">USN</span>';
             } else if (sectionKey === 'usenetEngines') {
                 typeBadgesHtml =
                     '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:0.125rem 0.45rem;border-radius:999px;font-size:0.68rem;font-weight:700;letter-spacing:0.04em;background:rgba(34,197,94,0.16);color:#22c55e;border:1px solid rgba(34,197,94,0.35);">ENG</span>';
@@ -7090,10 +9232,10 @@
             const fieldEntries = Object.entries(sectionDef.fields)
                 .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
                 .map(([fieldKey, fieldDef]) => {
-                if (settingsLevel === 'basic' && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) {
+                if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) {
                     return null;
                 }
-                if (settingsLevel === 'basic' && sectionKey === 'usenetEngines' && ['apiPath', 'priority', 'config.webdavPathPrefix', 'pollIntervalSeconds', 'timeoutSeconds', 'allowedProfiles'].includes(fieldKey)) {
+                if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && sectionKey === 'usenetEngines' && ['apiPath', 'priority', 'config.webdavPathPrefix', 'pollIntervalSeconds', 'timeoutSeconds', 'allowedProfiles'].includes(fieldKey)) {
                     return null;
                 }
                 const showWhen = fieldDef.showWhen;
@@ -7106,6 +9248,8 @@
                         shouldShow = getItemValue(field) === value;
                     } else if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
                         shouldShow = showWhen.conditions.some(cond => getItemValue(cond.field) === cond.value);
+                    } else if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+                        shouldShow = showWhen.conditions.every(cond => getItemValue(cond.field) === cond.value);
                     } else if (showWhen.field) {
                         shouldShow = getItemValue(showWhen.field) === showWhen.value;
                     }
@@ -7131,6 +9275,9 @@
                     html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+(isMissingRequired ? ' required-missing' : '')+'"><label class="form-label" for="'+fieldInputId+'">'+fieldDef.label+requiredBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, basePath+'.'+index, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+requiredHint+renderAdditionalFieldHint(sectionKey, fieldKey, item)+renderApiKeyFormatWarning(fieldKey, fieldValue)+'</div>',
                 };
             }).filter(Boolean);
+            if (isLiveSourceSection(sectionKey)) {
+                return renderLiveSourceCard(sectionKey, sectionDef, item, index, fieldEntries, isTestable);
+            }
             const fieldHtmlParts = [];
             let currentGroup = '';
             let groupedFields = [];
@@ -7765,24 +9912,31 @@
 
     function getMediaLibraryLabel(libraryId) {
         const library = mediaLibrariesData.find((item) => item.id === libraryId);
-        if (!library) return libraryId ? 'Missing library' : 'No library selected';
+        if (!library) return libraryId ? `Missing library · ${libraryId}` : 'No library selected';
         const source = library.sourceType && library.sourceType !== 'local'
             ? (library.sourceName || library.serverName || library.sourceType)
             : 'Local';
-        return `${library.name} · ${source}`;
+        const server = library.sourceServerName || library.serverName || '';
+        return [library.name, source, server].filter(Boolean).join(' · ');
+    }
+
+    function getMediaLibraryOptionsHTML(selectedValue) {
+        const options = mediaLibrariesData.map((library) => {
+            const selected = library.id === selectedValue ? 'selected' : '';
+            return `<option value="${escapeHtml(library.id).replace(/"/g, '&quot;')}" ${selected}>${escapeHtml(getMediaLibraryLabel(library.id))}</option>`;
+        });
+        if (selectedValue && !mediaLibrariesData.some((library) => library.id === selectedValue)) {
+            options.unshift(
+                `<option value="${escapeHtml(selectedValue).replace(/"/g, '&quot;')}" selected>${escapeHtml(getMediaLibraryLabel(selectedValue))}</option>`,
+            );
+        }
+        return options.join('') || '<option value="">No configured libraries</option>';
     }
 
     function renderMediaLibraryOptions(selectId, selectedValue) {
         const select = document.getElementById(selectId);
         if (!select) return;
-        if (!mediaLibrariesData.length) {
-            select.innerHTML = '<option value="">No configured libraries</option>';
-            return;
-        }
-        select.innerHTML = mediaLibrariesData.map((library) => {
-            const selected = library.id === selectedValue ? 'selected' : '';
-            return `<option value="${library.id}" ${selected}>${getMediaLibraryLabel(library.id)}</option>`;
-        }).join('');
+        select.innerHTML = getMediaLibraryOptionsHTML(selectedValue);
         if (!selectedValue && select.options.length) select.value = select.options[0].value;
     }
 
@@ -9633,9 +11787,7 @@
         const isDecadeShelf = shelf.type === 'decade';
         const isLibraryShelf = shelf.type === 'library' || shelf.type === 'local-library';
         const selectedLibraryId = shelf.libraryId || getLegacyShelfLibraryId(shelf);
-        const mediaLibraryOptions = mediaLibrariesData.map((library) =>
-            `<option value="${library.id}" ${library.id === selectedLibraryId ? 'selected' : ''}>${getMediaLibraryLabel(library.id)}</option>`
-        ).join('') || '<option value="">No configured libraries</option>';
+        const mediaLibraryOptions = getMediaLibraryOptionsHTML(selectedLibraryId);
         const traktAccounts = getAvailableTraktAccountsForShelfForm();
         const traktAccountOptions = traktAccounts.map((acc) => {
             const selected = acc.id === (shelf.traktAccountId || '') ? 'selected' : '';
@@ -10887,6 +13039,62 @@
         });
     }
 
+    const playbackFieldGroups = [
+        { id: 'player', label: 'Player', description: 'Default player used when playback starts.', fields: ['preferredPlayer'] },
+        { id: 'languages', label: 'Languages & Tracks', description: 'Audio, subtitle, and player language choices.', fields: ['preferredAudioLanguage', 'preferredSubtitleLanguage', 'allowedTrackLanguages', 'preferredSubtitleMode'] },
+        { id: 'skipResume', label: 'Skip & Resume', description: 'Compact seek and rewind timing controls.', fields: ['seekForwardSeconds', 'seekBackwardSeconds', 'rewindOnResumeFromPause', 'rewindOnPlaybackStart'] },
+        { id: 'behavior', label: 'Playback Behavior', description: 'Compatibility, prequeue, migration, credits, and TV behavior.', fields: ['pauseWhenAppInactive', 'forceAacTranscoding', 'autoPlayTrailersTV', 'disablePrequeue', 'streamMigrationEnabled', 'creditsDetectionEnabled', 'creditsAutoSkip', 'matchFrameRate', 'liveClosedCaptionExtraction', 'maxResultsPerResolution'] },
+        { id: 'subtitleAppearance', label: 'Subtitle Appearance', description: 'Typography, color, outline, position, and background.', fields: ['subtitleSize', 'subtitleUseCropDetectPosition', 'subtitleColor', 'subtitleOpacity', 'subtitleFont', 'subtitleBold', 'subtitleOutlineEnabled', 'subtitleOutlineColor', 'subtitleOutlineWeight', 'subtitleBackgroundEnabled', 'subtitleBackgroundColor', 'subtitleBackgroundOpacity'] },
+        { id: 'preroll', label: 'Pre-roll', description: 'Optional artwork or video shown while playback is prepared.', fields: ['prerollMode', 'prerollAssetId', 'prerollMediaScope', 'prerollSkipIfPrequeueReady'] },
+        { id: 'playbackTools', label: 'Advanced Playback Tools', description: 'Seek thumbnails and server-side YouTube extraction.', fields: ['thumbnails.enabled', 'thumbnails.workers', 'youtubeProxyUrl', 'ytdlpCookies'] },
+    ];
+    const playbackFieldLayout = new Map(playbackFieldGroups.flatMap((group, groupIndex) => group.fields.map((field, fieldIndex) => [field, { ...group, groupIndex, fieldIndex }])));
+
+    const displayFieldGroups = [
+        {
+            id: 'interfaceContent',
+            label: 'Interface & Content',
+            description: 'Navigation, badges, content visibility, language, and information shown throughout the app.',
+            fields: ['badgeVisibility', 'navigationTabVisibility', 'watchStateIconStyle', 'hideWatched', 'alwaysShowProfileSelector', 'includeUnreleasedMoviesInLists', 'includeUnreleasedShowsInLists', 'includeUnreleasedMoviesInSearch', 'includeUnreleasedShowsInSearch', 'bypassFilteringForAioStreamsOnly', 'showParsedBadges', 'showStreamSourceInfo', 'appLanguage'],
+        },
+        {
+            id: 'motionTv',
+            label: 'Motion & TV Presentation',
+            description: 'Animation, hero artwork, TV layouts, simplified browsing, and spoiler presentation.',
+            fields: ['enableAnimations', 'enableHeroArtPanning', 'enableHeroArtRotation', 'hideContinueWatchingHeroMetadata', 'moveDetailsRatingsToMetadata', 'hideDetailsPoster', 'hideTvDrawerRail', 'simpleMode', 'simpleModeHomeShelves', 'disableTvHomeCardDimming', 'showSeriesBackdropForMissingEpisodeArt', 'blurUnwatchedEpisodeThumbnails', 'blurUnwatchedEpisodeThumbnailsIncludeCurrent', 'blurUnwatchedEpisodeOverviews', 'blurUnwatchedEpisodeOverviewsIncludeCurrent'],
+        },
+        {
+            id: 'theme',
+            label: 'Theme & Accessibility',
+            description: 'Text scale, color palette, buttons, contrast, and overlay treatment.',
+            fields: ['appearance.fontScale', 'appearance.accentColor', 'appearance.textColor', 'appearance.secondaryTextColor', 'appearance.backgroundColor', 'appearance.modalBackgroundColor', 'appearance.buttonStyle', 'appearance.buttonRadius', 'appearance.highContrast', 'appearance.reduceOverlays'],
+        },
+        {
+            id: 'branding',
+            label: 'Branding Images',
+            description: 'Upload and manage the images used across TV, mobile, loading, and web surfaces.',
+            fields: ['branding.wizard', 'branding.homeTvImageUrl', 'branding.homeTvImageUpload', 'branding.homeMobileLogoUrl', 'branding.homeMobileLogoUpload', 'branding.settingsTvImageUrl', 'branding.settingsTvImageUpload', 'branding.webIconUrl', 'branding.webIconUpload', 'branding.loadingLogoUrl', 'branding.loadingLogoUpload'],
+        },
+    ];
+    const displayFieldLayout = new Map(displayFieldGroups.flatMap((group, groupIndex) => group.fields.map((field, fieldIndex) => [field, { ...group, groupIndex, fieldIndex }])));
+
+    function handleSettingsSubsectionActivation(summary) {
+        const details = summary?.closest('details[data-settings-accordion]');
+        if (!details) return;
+        requestAnimationFrame(() => {
+            if (!details.open) return;
+            const accordion = details.dataset.settingsAccordion;
+            document.querySelectorAll('details[data-settings-accordion]').forEach(other => {
+                if (other !== details && other.dataset.settingsAccordion === accordion) other.open = false;
+            });
+            summary.focus({ preventScroll: true });
+            details.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'start',
+            });
+        });
+    }
+
     function renderObjectSection(sectionKey, sectionDef) {
         // Use getValue for proper three-tier cascade (global → profile → client)
         // Get section data for showWhen conditions
@@ -10896,12 +13104,22 @@
         const sectionFieldFilter = filteredFields ? filteredFields.get(sectionKey) : null;
 
         const fieldEntries = Object.entries(sectionDef.fields)
-            .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+            .sort((a, b) => {
+                if (sectionKey === 'playback' || sectionKey === 'display') {
+                    const fieldLayout = sectionKey === 'playback' ? playbackFieldLayout : displayFieldLayout;
+                    const aLayout = fieldLayout.get(a[0]);
+                    const bLayout = fieldLayout.get(b[0]);
+                    const aRank = aLayout ? aLayout.groupIndex * 100 + aLayout.fieldIndex : 9999 + (a[1].order || 0);
+                    const bRank = bLayout ? bLayout.groupIndex * 100 + bLayout.fieldIndex : 9999 + (b[1].order || 0);
+                    return aRank - bRank;
+                }
+                return (a[1].order || 0) - (b[1].order || 0);
+            })
             .map(([fieldKey, fieldDef]) => {
                 // Skip hidden fields
                 if (fieldDef.hidden) return '';
                 const isAdvancedField = fieldDef.advanced || advancedFieldPaths.has(sectionKey + '.' + fieldKey);
-                if (settingsLevel === 'basic' && !searchTerm && isAdvancedField) return '';
+                if (!settingsFieldVisibleAtCurrentLevel(sectionKey, fieldKey, isAdvancedField)) return '';
                 // Skip global-only fields (like file uploads) when viewing profile/client settings
                 if (fieldDef.globalOnly && (selectedUserId || selectedClientId)) return '';
                 // When editing device settings, only show fields that support client overrides.
@@ -10929,6 +13147,8 @@
                         shouldShow = getCondValue(field) === value;
                     } else if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
                         shouldShow = showWhen.conditions.some(cond => getCondValue(cond.field) === cond.value);
+                    } else if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+                        shouldShow = showWhen.conditions.every(cond => getCondValue(cond.field) === cond.value);
                     } else if (showWhen.field) {
                         shouldShow = getCondValue(showWhen.field) === showWhen.value;
                     }
@@ -10946,11 +13166,17 @@
                     ? (inheritanceInfo.isOverridden ? ' field-overridden' : ' field-inherited')
                     : '';
                 const fieldInputId = (sectionKey+'_'+fieldKey).replace(/\./g, '_');
+                const requiredForBadge = fieldDef.requiredFor
+                    ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required for ' + escapeHtml(fieldDef.requiredFor) + '</span>'
+                    : '';
+                const sectionLayout = sectionKey === 'playback'
+                    ? playbackFieldLayout.get(fieldKey)
+                    : (sectionKey === 'display' ? displayFieldLayout.get(fieldKey) : null);
                 return {
-                    group: fieldDef.group || '',
-                    groupLabel: fieldDef.groupLabel || '',
-                    groupDescription: fieldDef.groupDescription || '',
-                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
+                    group: sectionLayout?.id || fieldDef.group || '',
+                    groupLabel: sectionLayout?.label || fieldDef.groupLabel || '',
+                    groupDescription: sectionLayout?.description || fieldDef.groupDescription || '',
+                    html: '<div class="form-group'+(fieldDef.type === 'boolean' ? ' form-group-toggle' : '')+invalidClass+inheritanceClass+'"><label class="form-label" for="'+fieldInputId+'"><span class="setting-field-title">'+fieldDef.label+(isAdvancedField ? '<span class="advanced-setting-badge">Advanced</span>' : '')+requiredForBadge+renderUserEditableSettingToggle(fieldDef)+'</span>'+inheritanceBadge+'</label>'+renderInput(fieldKey, fieldDef, fieldValue, sectionKey, sectionKey)+(fieldDef.description ? '<p class="form-hint">'+fieldDef.description+'</p>' : '')+renderAdditionalFieldHint(sectionKey, fieldKey)+renderApiKeyFormatWarning(fieldKey, fieldValue)+errorHtml+'</div>',
                 };
             })
             .filter(Boolean);
@@ -10962,14 +13188,42 @@
         let currentGroupDescription = '';
         const flushGroup = () => {
             if (groupedFields.length === 0) return;
-            if (currentGroup) {
-                fieldHtmlParts.push(
-                    '<div class="field-subgroup">' +
-                        '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
-                        (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
-                        '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
-                    '</div>'
-                );
+                if (currentGroup && sectionKey === 'playback' && settingsLevel === 'essentials') {
+                    fieldHtmlParts.push(
+                        '<div class="playback-setting-group playback-setting-group-static"><span class="playback-setting-group-copy"><span class="playback-setting-group-title">' + currentGroupLabel + '</span>' +
+                        (currentGroupDescription ? '<span class="playback-setting-group-description">' + currentGroupDescription + '</span>' : '') + '</span>' +
+                        '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div></div>'
+                    );
+                } else if (currentGroup && sectionKey === 'playback') {
+                    const groupOpen = currentGroup === 'player' || Boolean(searchTerm);
+                    fieldHtmlParts.push(
+                        '<details class="playback-setting-group" data-settings-accordion="playback"' + (groupOpen ? ' open' : '') + '>' +
+                            '<summary onclick="handleSettingsSubsectionActivation(this)"><span class="playback-setting-group-copy"><span class="playback-setting-group-title">' + currentGroupLabel + '</span>' +
+                            (currentGroupDescription ? '<span class="playback-setting-group-description">' + currentGroupDescription + '</span>' : '') + '</span></summary>' +
+                            '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
+                        '</details>'
+                    );
+                } else if (currentGroup) {
+                    const appearancePresetHtml = sectionKey === 'display' && currentGroup === 'theme'
+                        ? '<div class="appearance-theme-presets">' + renderThemeQuickSelect() + '</div>'
+                        : '';
+                    if (sectionKey === 'display') {
+                        fieldHtmlParts.push(
+                            '<details class="field-subgroup appearance-setting-group"' + (searchTerm ? ' open' : '') + '>' +
+                                '<summary><span class="appearance-setting-group-copy"><span class="field-subgroup-title">' + currentGroupLabel + '</span>' +
+                                (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') + '</span></summary>' +
+                                '<div class="field-subgroup-fields">' + appearancePresetHtml + groupedFields.join('') + '</div>' +
+                            '</details>'
+                        );
+                    } else {
+                        fieldHtmlParts.push(
+                            '<div class="field-subgroup">' +
+                                '<h3 class="field-subgroup-title">' + currentGroupLabel + '</h3>' +
+                                (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') +
+                                '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
+                            '</div>'
+                        );
+                    }
             } else {
                 fieldHtmlParts.push(...groupedFields);
             }
@@ -10993,9 +13247,6 @@
         if (sectionKey === 'streaming') {
             customHtml = renderProviderPriorityUI();
         }
-        if (sectionKey === 'display') {
-            customHtml = renderThemeQuickSelect();
-        }
 
         // Add test button for testable object sections
         let testHtml = '';
@@ -11005,7 +13256,7 @@
                 '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test Connection</button>'+
                 '<span id="test-result-'+sectionKey+'" class="test-result"></span></div>';
         }
-        return (sectionKey === 'display' ? customHtml + fieldsHtml : fieldsHtml + customHtml) + testHtml;
+        return fieldsHtml + customHtml + testHtml;
     }
 
     function sectionShowWhenMatches(sectionDef) {
@@ -11021,6 +13272,9 @@
         }
         if (showWhen.operator === 'or' && Array.isArray(showWhen.conditions)) {
             return showWhen.conditions.some(cond => read(cond.field) === cond.value);
+        }
+        if (showWhen.operator === 'and' && Array.isArray(showWhen.conditions)) {
+            return showWhen.conditions.every(cond => read(cond.field) === cond.value);
         }
         if (showWhen.field) {
             return read(showWhen.field) === showWhen.value;
@@ -11131,8 +13385,8 @@
             resultSpan.className = 'test-result error';
         }
     }
-    function renderSection(sectionKey, sectionDef) {
-        const isOpen = window.location.hash === '#'+sectionKey;
+    function renderSection(sectionKey, sectionDef, forceOpen = false) {
+        const isOpen = forceOpen || window.location.hash === '#'+sectionKey;
         const errorCount = getSectionErrorCount(sectionKey);
         const customizationCount = settingsSectionCustomizationCount(sectionKey);
         const sectionMessages = validationErrors[sectionKey]?.messages || [];
@@ -11195,6 +13449,7 @@
         for (const [nestedKey, nestedDef] of Object.entries(schema)) {
             // Only render as nested if parent matches AND section doesn't have its own group
             if (nestedDef.parent === sectionKey && !nestedDef.group) {
+                if (settingsLevel === 'essentials' && !searchTerm && !watchEssentialSections.has(nestedKey)) continue;
                 if (selectedUserId && !perUserSections.includes(nestedKey)) continue;
                 if (!sectionShowWhenMatches(nestedDef)) continue;
                 nestedHtml += renderNestedSectionPanel(nestedKey, nestedDef);
@@ -11203,12 +13458,15 @@
         const advancedBadge = advancedSections.has(sectionKey) ? '<span class="advanced-setting-badge">Advanced</span>' : '';
         const rowDescription = settingsSectionRowDescription(sectionKey, sectionDef);
         const configuredBadge = renderSettingsSectionBadge(sectionKey, sectionDef);
+        const headerInteractionAttrs = forceOpen
+            ? 'role="heading" aria-level="3"'
+            : 'role="button" tabindex="0" aria-expanded="'+(isOpen ? 'true' : 'false')+'" aria-controls="section-content-'+sectionKey+'" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)"';
         return '<div class="section '+(isOpen ? 'open' : '')+(hasChanges ? ' has-changes' : '')+disabledClass+'" id="section-'+sectionKey+'">' +
-            '<div class="section-header" onclick="toggleSettingsSection(this)" onkeydown="handleSettingsSectionKeydown(event, this)">' +
+            '<div class="section-header" '+headerInteractionAttrs+'>' +
                 '<div class="section-title">'+getIcon(sectionDef.icon)+'<span class="settings-section-copy"><span class="settings-section-label">'+sectionDef.label+advancedBadge+renderCustomizationCount(customizationCount, 'section-customization-count')+warningBadge+'</span><span class="settings-section-description">'+escapeHtml(rowDescription)+'</span></span></div>' +
                 '<div class="section-header-actions">'+configuredBadge+saveBtn+'<svg class="section-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></div>' +
             '</div>' +
-            '<div class="section-content">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div>' +
+            '<div class="section-content" id="section-content-'+sectionKey+'">'+comingSoonHtml+messagesHtml+descriptionHtml+contentHtml+nestedHtml+'</div>' +
         '</div>';
     }
 
@@ -11961,6 +14219,25 @@
         // Run validation before rendering
         validationErrors = validateSettings();
 
+        const settingsHome = document.getElementById('settingsHome');
+        const settingsWorkspace = document.getElementById('settingsCategoryWorkspace');
+        const sectionHash = window.location.hash.replace(/^#/, '');
+        const isEssentials = settingsLevel === 'essentials' && !searchTerm;
+        const showHome = !isEssentials && !activeSettingsGroup && !searchTerm && !schema[sectionHash];
+        if (settingsHome) settingsHome.hidden = !showHome;
+        if (settingsWorkspace) {
+            settingsWorkspace.hidden = showHome;
+            settingsWorkspace.classList.toggle('settings-essentials-workspace', isEssentials);
+        }
+        container.classList.toggle('settings-essentials-view', isEssentials);
+        if (showHome) {
+            container.innerHTML = '';
+            renderSettingsLanding();
+            updateSettingsSaveStatus();
+            return;
+        }
+        renderSettingsCategoryHeader();
+
         // Save currently open sections before re-rendering
         const openSection = container.querySelector('.section.open')?.id.replace('section-', '') || '';
 
@@ -11978,9 +14255,13 @@
         }
 
         // Add validation warning banner if there are issues
-        const totalErrors = Object.keys(validationErrors).length;
+        const visibleErrorKeys = Object.keys(validationErrors).filter(key => {
+            if (!activeSettingsGroup || searchTerm || !schema[key]) return true;
+            return settingsOverviewGroupForSection(key, schema[key]) === activeSettingsGroup;
+        });
+        const totalErrors = visibleErrorKeys.length;
         if (totalErrors > 0 && !selectedUserId) {
-            const errorSections = Object.keys(validationErrors).map(key => {
+            const errorSections = visibleErrorKeys.map(key => {
                 const sectionDef = schema[key];
                 return sectionDef?.label || key;
             }).join(', ');
@@ -11995,11 +14276,12 @@
         let totalMatchingSections = 0;
 
         for (const group of settingsOverviewGroups) {
+            if (activeSettingsGroup && !searchTerm && group.id !== activeSettingsGroup) continue;
             const groupSections = Object.entries(schema).filter(([key, def]) => {
                 if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
                 if (def.hidden) return false;
-                if (settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)) return false;
+                if (!settingsSectionVisibleAtCurrentLevel(key)) return false;
                 // If search is active, only show matching sections
                 if (filteredSections !== null && !filteredSections.has(key)) return false;
                 // If a client is selected, only show client-configurable sections
@@ -12018,54 +14300,96 @@
             if (groupSections.length === 0) continue;
 
             totalMatchingSections += groupSections.length;
-            const relatedHtml = group.id === 'metadata' && isAdmin && !selectedUserId && !selectedClientId
-                ? '<div class="settings-related-card"><div><strong>Connected services</strong><p>Connect Trakt, Simkl, MDBList, Plex, or Jellyfin and assign them to profiles.</p></div><a class="btn btn-secondary btn-sm" href="'+basePath+'/integrations">Manage Services</a></div>'
-                : '';
-            html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+relatedHtml+groupSections.map(([key, def]) => renderSection(key, def)).join('')+'</div></div>';
+            html += '<div class="settings-group"><h2 class="group-title">'+group.label+'</h2><div class="group-sections">'+groupSections.map(([key, def]) => renderSection(key, def, isEssentials || (activeSettingsGroup === 'appearance' && key === 'display'))).join('')+'</div></div>';
         }
 
         // Show "no results" message if search found nothing
         if (searchTerm && totalMatchingSections === 0) {
-            html += '<div style="text-align: center; padding: 3rem; color: var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="margin: 0;">No settings found for "<strong>' + searchTerm + '</strong>"</p><p style="margin: 0.5rem 0 0; font-size: 0.875rem;">Try a different search term</p></div>';
+            html += '<div role="status" style="text-align: center; padding: 3rem; color: var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.5;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="margin: 0;">No settings found for "<strong>' + escapeHtml(searchTerm) + '</strong>"</p><p style="margin: 0.5rem 0 1rem; font-size: 0.875rem;">Search includes every settings level.</p><button class="btn btn-secondary btn-sm" type="button" onclick="clearSettingsSearch()">Clear search</button></div>';
         }
 
         container.innerHTML = html;
 
         // Restore previously open sections (or auto-expand if searching)
-        if (searchTerm && filteredSections && filteredSections.size > 0) {
+        if (isEssentials) {
+            container.querySelectorAll('.section').forEach(section => {
+                section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            });
+        } else if (searchTerm && filteredSections && filteredSections.size > 0) {
             // Keep progressive disclosure intact while searching: open the first match only.
             const firstMatch = filteredSections.values().next().value;
             const section = document.getElementById('section-'+firstMatch);
-            if (section) section.classList.add('open');
+            if (section) {
+                section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            }
         } else if (openSection) {
             const section = document.getElementById('section-'+openSection);
-            if (section) section.classList.add('open');
+            if (section) {
+                section.classList.add('open');
+                section.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'true');
+            }
         }
 
-        if (window.location.hash) {
+        if (window.location.hash && !isEssentials) {
             const section = document.getElementById('section-'+window.location.hash.substring(1));
             if (section) {
-                container.querySelectorAll('.section.open').forEach(open => open.classList.remove('open'));
-                section.classList.add('open');
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                requestAnimationFrame(() => openSettingsSection(section.id.replace('section-', ''), { focus: false, scroll: true, historyMode: 'none' }));
             }
         }
 
         // Initialize drag-drop for provider priority and shelves
         initDragDrop();
         initFileUploadStatuses();
+        updateSettingsSaveStatus();
+    }
+
+    function openSettingsSection(sectionKey, options = {}) {
+        const { focus = true, scroll = true, historyMode = 'push' } = options;
+        const container = document.getElementById('settingsContainer');
+        const section = document.getElementById('section-' + sectionKey);
+        if (!container || !section) return false;
+        if (settingsLevel !== 'essentials') {
+            container.querySelectorAll('.section.open').forEach(openSection => {
+                if (openSection === section) return;
+                openSection.classList.remove('open');
+                openSection.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'false');
+            });
+        }
+        section.classList.add('open');
+        const header = section.querySelector(':scope > .section-header');
+        header?.setAttribute('aria-expanded', 'true');
+        if (historyMode !== 'none') {
+            const url = new URL(window.location.href);
+            url.hash = sectionKey;
+            history[historyMode === 'replace' ? 'replaceState' : 'pushState']({}, '', url);
+        }
+        if (scroll) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (focus) requestAnimationFrame(() => header?.focus({ preventScroll: true }));
+        return true;
     }
 
     function toggleSettingsSection(header) {
         const section = header.closest('.section');
-        if (!section) return;
+        if (!section || settingsLevel === 'essentials') return;
+        const sectionKey = section.id.replace('section-', '');
         const shouldOpen = !section.classList.contains('open');
-        document.querySelectorAll('#settingsContainer .section.open').forEach(openSection => {
-            openSection.classList.remove('open');
-            openSection.querySelector(':scope > .section-header')?.setAttribute('aria-expanded', 'false');
-        });
-        section.classList.toggle('open', shouldOpen);
-        header.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        if (shouldOpen) {
+            settingsLastSectionViewport = window.scrollY;
+            openSettingsSection(sectionKey, { focus: true, scroll: true, historyMode: 'push' });
+            return;
+        }
+        section.classList.remove('open');
+        header.setAttribute('aria-expanded', 'false');
+        const url = new URL(window.location.href);
+        url.hash = '';
+        history.pushState({}, '', url);
+        if (Number.isFinite(settingsLastSectionViewport)) {
+            const restoreTop = settingsLastSectionViewport;
+            settingsLastSectionViewport = null;
+            window.scrollTo({ top: restoreTop, behavior: 'smooth' });
+        }
     }
 
     function handleSettingsSectionKeydown(event, header) {
@@ -12114,6 +14438,8 @@
                     updateClientDropdownIndicators();
                     updateRevertButtonVisibility();
                     renderSettingsScopeTree();
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.json().catch(() => ({}));
                     showToast(result.error || 'Failed to save client settings', 'error');
@@ -12139,6 +14465,7 @@
                     renderSettings(); // Re-render to update inherited field styling
                     await updateClientSaveImpact();
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.text();
                     showToast(result || 'Failed to save user settings', 'error');
@@ -12160,6 +14487,7 @@
                     if (committedPendingTextArrays) renderSettings();
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
+                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -12229,14 +14557,60 @@
             }
         }
         renderSettings();
+        syncSettingsSidebarDestination(activeSettingsGroup || 'home');
     });
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.substring(1);
-        if (hash) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
-            const section = document.getElementById('section-'+hash);
-            if (section) { section.classList.add('open'); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        if (hash && schema[hash]) {
+            if (settingsLevel === 'essentials' && !watchEssentialSections.has(hash)) {
+                settingsLevel = 'advanced';
+                localStorage.setItem('mediastorm-settings-level', settingsLevel);
+            }
+            activeSettingsGroup = settingsOverviewGroupForSection(hash, schema[hash]);
+            syncSettingsSidebarDestination(activeSettingsGroup);
+            renderSettings();
+            requestAnimationFrame(() => openSettingsSection(hash, { focus: true, scroll: true, historyMode: 'none' }));
         }
+    });
+    window.addEventListener('popstate', () => {
+        const params = new URLSearchParams(window.location.search);
+        const category = params.get('category') || '';
+        const storedLevel = settingsLevels.has(localStorage.getItem('mediastorm-settings-level')) ? localStorage.getItem('mediastorm-settings-level') : 'basic';
+        settingsLevel = params.get('view') === 'essentials'
+            ? 'essentials'
+            : ((params.get('view') === 'dashboard' || category) && storedLevel === 'essentials' ? 'basic' : storedLevel);
+        activeSettingsGroup = settingsLandingGroups.some(group => group.id === category) ? category : '';
+        syncSettingsSidebarDestination(activeSettingsGroup || 'home');
+        renderSettings();
+    });
+    document.addEventListener('keydown', event => {
+        const panel = document.getElementById('settingsScopePanel');
+        if (event.key === 'Escape') {
+            closeSettingsContextSheet();
+            return;
+        }
+        if (event.key !== 'Tab' || !panel?.classList.contains('open')) return;
+        const focusable = Array.from(panel.querySelectorAll('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+            .filter(element => element.getClientRects().length > 0);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+    window.addEventListener('resize', () => {
+        const panel = document.getElementById('settingsScopePanel');
+        if (panel?.classList.contains('open')) positionSettingsScopePanel(panel);
+    });
+    window.addEventListener('beforeunload', event => {
+        if (!settingsHasUnsavedChanges()) return;
+        event.preventDefault();
+        event.returnValue = '';
     });
 </script>
 {{end}}

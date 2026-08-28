@@ -252,8 +252,24 @@
     margin-bottom: 0 !important;
 }
 
+.dashboard-header-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.5rem;
+    align-items: end;
+}
+
 .dashboard-page-header {
     margin: 0;
+}
+
+.dashboard-page-kicker {
+    margin: 0 0 0.35rem;
+    color: var(--accent-light);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 .dashboard-page-header h1 {
@@ -265,7 +281,7 @@
 
 .dashboard-toolbar {
     display: flex;
-    min-height: 36px;
+    min-height: 44px;
     align-items: center;
     justify-content: flex-end;
     gap: 0.5rem;
@@ -282,6 +298,7 @@
 }
 
 .dashboard-toolbar .settings-level-btn {
+    min-height: 44px;
     border: 1px solid transparent;
     border-radius: var(--radius);
     background: transparent;
@@ -304,7 +321,7 @@
 
 .dashboard-summary-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 1rem;
 }
 
@@ -330,6 +347,26 @@
     font-size: 1.375rem;
     font-weight: 700;
     line-height: 1.25;
+}
+
+.dashboard-status-value {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.dashboard-status-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.dashboard-status-dot.warning {
+    background: #f59e0b;
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
 }
 
 .dashboard-summary-meta {
@@ -789,9 +826,93 @@ body.numbers-station-open {
     border-radius: 8px;
 }
 
+.dashboard-primary-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    gap: 1.25rem;
+    align-items: stretch;
+}
+
+.dashboard-primary-grid.dashboard-primary-grid-single {
+    grid-template-columns: 1fr;
+}
+
+.dashboard-primary-grid > .card {
+    display: flex;
+    min-width: 0;
+    min-height: 100%;
+    flex-direction: column;
+}
+
+.dashboard-primary-grid > .card > .card-body {
+    flex: 1;
+}
+
+.provider-health-list {
+    display: grid;
+}
+
+.provider-health-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    min-height: 58px;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.provider-health-row:last-child {
+    border-bottom: 0;
+}
+
+.provider-health-name {
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.provider-health-meta {
+    margin-top: 0.15rem;
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+}
+
+.dashboard-advanced-disclosure {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.dashboard-advanced-disclosure[hidden] {
+    display: none;
+}
+
+.dashboard-advanced-disclosure strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.dashboard-advanced-disclosure p {
+    margin: 0.2rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.dashboard-advanced-disclosure .btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+}
+
 .dashboard-insights {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.25rem;
 }
 
@@ -835,6 +956,12 @@ body.numbers-station-open {
         justify-content: flex-start;
     }
 
+    .dashboard-header-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
     .dashboard-toolbar {
         align-items: stretch;
         flex-direction: column;
@@ -851,13 +978,25 @@ body.numbers-station-open {
     .dashboard-summary-grid {
         grid-template-columns: 1fr;
     }
+
+    .dashboard-primary-grid,
+    .dashboard-insights {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dashboard-advanced-disclosure {
+        align-items: stretch;
+        flex-direction: column;
+    }
 }
 </style>
 {{end}}
 
 {{define "content"}}
 <div class="dashboard-v4">
+<div class="dashboard-header-row">
 <div class="page-header dashboard-page-header">
+    <div class="dashboard-page-kicker">Overview</div>
     <h1>
         <span>Dashboard</span>
         <button id="numbersStationSignal" class="numbers-station-signal" type="button" aria-label="Unidentified carrier" title="77.77" onclick="openNumbersStation()">
@@ -866,10 +1005,6 @@ body.numbers-station-open {
         </button>
     </h1>
     <p>System overview and quick actions</p>
-</div>
-
-<div id="numbersStationAchievement" class="numbers-station-achievement" hidden>
-    <button class="numbers-station-achievement-badge" type="button" onclick="openNumbersStation()" aria-label="Storm-Marked — open Numbers Station">Storm-Marked</button>
 </div>
 
 <div class="dashboard-toolbar" aria-label="Dashboard controls">
@@ -885,38 +1020,11 @@ body.numbers-station-open {
         Refresh
     </button>
 </div>
+</div>
 
-<section id="donationBanner" class="donation-banner" aria-label="Support mediastorm">
-    <div class="donation-banner-copy">
-        <h2 class="donation-banner-title">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-            Support the project
-        </h2>
-        <p>mediastorm is free to use. Donations help keep development moving.</p>
-    </div>
-    <div class="donation-links" aria-label="Donation links">
-        <a class="donation-link github" href="https://github.com/sponsors/godver3" target="_blank" rel="noopener noreferrer">
-            <span class="donation-link-label">Sponsor</span>
-            <span class="donation-link-value">GitHub</span>
-        </a>
-        <a class="donation-link patreon" href="https://patreon.com/godver3" target="_blank" rel="noopener noreferrer">
-            <span class="donation-link-label">Support</span>
-            <span class="donation-link-value">Patreon</span>
-        </a>
-        <a class="donation-link kofi" href="https://ko-fi.com/godver3" target="_blank" rel="noopener noreferrer">
-            <span class="donation-link-label">Support</span>
-            <span class="donation-link-value">Ko-fi</span>
-        </a>
-    </div>
-    <button class="donation-banner-close" type="button" aria-label="Hide donation links permanently" title="Hide donation links" onclick="hideDonationBanner()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-    </button>
-</section>
+<div id="numbersStationAchievement" class="numbers-station-achievement" hidden>
+    <button class="numbers-station-achievement-badge" type="button" onclick="openNumbersStation()" aria-label="Storm-Marked — open Numbers Station">Storm-Marked</button>
+</div>
 
 <section id="dashboardUpdateBanner" class="dashboard-update-banner" aria-label="Backend update available" hidden>
     <div>
@@ -951,6 +1059,14 @@ body.numbers-station-open {
 
 <div class="dashboard-summary-grid" aria-label="Dashboard summary">
     <section class="dashboard-summary-card">
+        <div class="dashboard-summary-label">System Status</div>
+        <div class="dashboard-summary-value dashboard-status-value">
+            <span id="dashboardSystemStatusDot" class="dashboard-status-dot" aria-hidden="true"></span>
+            <span id="dashboardSystemStatus" aria-live="polite">Checking…</span>
+        </div>
+        <div class="dashboard-summary-meta" id="dashboardSystemStatusMeta">Contacting the backend</div>
+    </section>
+    <section class="dashboard-summary-card">
         <div class="dashboard-summary-label">Active Streams</div>
         <div class="dashboard-summary-value" id="activeStreamCount">0</div>
         <div class="dashboard-summary-meta" id="streamSubtext">Loading stream activity…</div>
@@ -960,8 +1076,23 @@ body.numbers-station-open {
         <div class="dashboard-uptime">
             <span id="backendUptime" aria-live="polite">Loading…</span>
         </div>
-        <div class="dashboard-summary-meta">Live server runtime</div>
+        <div class="dashboard-summary-meta" id="backendStartedAt">Live server runtime</div>
     </section>
+    {{if .IsAdmin}}
+    <section id="providerReadinessCard" class="dashboard-summary-card"
+        data-usenet-enabled="{{countEnabledProviders .Settings.Usenet}}"
+        data-usenet-total="{{len .Settings.Usenet}}"
+        data-debrid-enabled="{{countEnabledDebrid .Settings.Streaming.DebridProviders}}"
+        data-debrid-total="{{len .Settings.Streaming.DebridProviders}}"
+        data-indexer-enabled="{{countEnabledIndexers .Settings.Indexers}}"
+        data-indexer-total="{{len .Settings.Indexers}}"
+        data-scraper-enabled="{{countEnabledScrapers .Settings.TorrentScrapers}}"
+        data-scraper-total="{{len .Settings.TorrentScrapers}}">
+        <div class="dashboard-summary-label">Provider Readiness</div>
+        <div class="dashboard-summary-value" id="providerReadinessValue">—</div>
+        <div class="dashboard-summary-meta" id="providerReadinessMeta">Configured source groups</div>
+    </section>
+    {{end}}
 </div>
 
 <dialog id="numbersStationDialog" class="numbers-station-dialog" aria-label="Numbers Station receiver">
@@ -972,8 +1103,9 @@ body.numbers-station-open {
     </div>
 </dialog>
 
+<div class="dashboard-primary-grid {{if not .IsAdmin}}dashboard-primary-grid-single{{end}}">
 <!-- Active Streams -->
-<div class="card" style="margin-bottom: 1.5rem;">
+<div class="card">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1007,6 +1139,69 @@ body.numbers-station-open {
             </div>
         </div>
     </div>
+</div>
+
+{{if .IsAdmin}}
+<section class="card" aria-labelledby="providerHealthHeading">
+    <div class="card-header">
+        <h2 id="providerHealthHeading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>
+            </svg>
+            Provider Health
+        </h2>
+        <a href="{{.BasePath}}/settings" class="btn btn-sm btn-secondary">Manage</a>
+    </div>
+    <div class="card-body">
+        <div class="provider-health-list">
+            <div class="provider-health-row">
+                <div>
+                    <div class="provider-health-name">Usenet</div>
+                    <div class="provider-health-meta">{{countEnabledProviders .Settings.Usenet}} enabled of {{len .Settings.Usenet}}</div>
+                </div>
+                {{if gt (countEnabledProviders .Settings.Usenet) 0}}
+                <span class="status-badge online"><span class="status-dot"></span> Ready</span>
+                {{else}}
+                <span class="status-badge offline"><span class="status-dot"></span> Not set</span>
+                {{end}}
+            </div>
+            <div class="provider-health-row">
+                <div>
+                    <div class="provider-health-name">Debrid</div>
+                    <div class="provider-health-meta">{{countEnabledDebrid .Settings.Streaming.DebridProviders}} enabled of {{len .Settings.Streaming.DebridProviders}}</div>
+                </div>
+                {{if gt (countEnabledDebrid .Settings.Streaming.DebridProviders) 0}}
+                <span class="status-badge online"><span class="status-dot"></span> Ready</span>
+                {{else}}
+                <span class="status-badge offline"><span class="status-dot"></span> Not set</span>
+                {{end}}
+            </div>
+            <div class="provider-health-row">
+                <div>
+                    <div class="provider-health-name">Indexers</div>
+                    <div class="provider-health-meta">{{countEnabledIndexers .Settings.Indexers}} enabled of {{len .Settings.Indexers}}</div>
+                </div>
+                {{if gt (countEnabledIndexers .Settings.Indexers) 0}}
+                <span class="status-badge online"><span class="status-dot"></span> Ready</span>
+                {{else}}
+                <span class="status-badge offline"><span class="status-dot"></span> Not set</span>
+                {{end}}
+            </div>
+            <div class="provider-health-row">
+                <div>
+                    <div class="provider-health-name">Torrent Scrapers</div>
+                    <div class="provider-health-meta">{{countEnabledScrapers .Settings.TorrentScrapers}} enabled of {{len .Settings.TorrentScrapers}}</div>
+                </div>
+                {{if gt (countEnabledScrapers .Settings.TorrentScrapers) 0}}
+                <span class="status-badge online"><span class="status-dot"></span> Ready</span>
+                {{else}}
+                <span class="status-badge offline"><span class="status-dot"></span> Not set</span>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</section>
+{{end}}
 </div>
 
 <!-- User Stats -->
@@ -1084,6 +1279,14 @@ body.numbers-station-open {
         </div>
     </div>
 </div>
+
+<section id="dashboardAdvancedDisclosure" class="dashboard-advanced-disclosure" aria-label="Advanced dashboard details">
+    <div>
+        <strong>Need deeper system detail?</strong>
+        <p>Show connection usage, provider diagnostics, endpoint checks, and configuration summaries.</p>
+    </div>
+    <button class="btn btn-secondary" type="button" onclick="setDashboardDetail('advanced')">Show advanced details</button>
+</section>
 
 <!-- Usenet Activity -->
 <div class="card dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
@@ -1570,6 +1773,38 @@ body.numbers-station-open {
     </div>
 </div>
 {{end}}
+
+<section id="donationBanner" class="donation-banner" aria-label="Support mediastorm">
+    <div class="donation-banner-copy">
+        <h2 class="donation-banner-title">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            Support the project
+        </h2>
+        <p>mediastorm is free to use. Donations help keep development moving.</p>
+    </div>
+    <div class="donation-links" aria-label="Donation links">
+        <a class="donation-link github" href="https://github.com/sponsors/godver3" target="_blank" rel="noopener noreferrer">
+            <span class="donation-link-label">Sponsor</span>
+            <span class="donation-link-value">GitHub</span>
+        </a>
+        <a class="donation-link patreon" href="https://patreon.com/godver3" target="_blank" rel="noopener noreferrer">
+            <span class="donation-link-label">Support</span>
+            <span class="donation-link-value">Patreon</span>
+        </a>
+        <a class="donation-link kofi" href="https://ko-fi.com/godver3" target="_blank" rel="noopener noreferrer">
+            <span class="donation-link-label">Support</span>
+            <span class="donation-link-value">Ko-fi</span>
+        </a>
+    </div>
+    <button class="donation-banner-close" type="button" aria-label="Hide donation links permanently" title="Hide donation links" onclick="hideDonationBanner()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+    </button>
+</section>
 </div>
 {{end}}
 
@@ -2379,8 +2614,38 @@ body.numbers-station-open {
         document.querySelectorAll('.dashboard-advanced-detail').forEach(element => {
             element.style.display = dashboardDetail === 'advanced' ? '' : 'none';
         });
-        document.getElementById('dashboardBasicBtn')?.classList.toggle('active', dashboardDetail === 'basic');
-        document.getElementById('dashboardAdvancedBtn')?.classList.toggle('active', dashboardDetail === 'advanced');
+        const basicButton = document.getElementById('dashboardBasicBtn');
+        const advancedButton = document.getElementById('dashboardAdvancedBtn');
+        basicButton?.classList.toggle('active', dashboardDetail === 'basic');
+        advancedButton?.classList.toggle('active', dashboardDetail === 'advanced');
+        basicButton?.setAttribute('aria-pressed', String(dashboardDetail === 'basic'));
+        advancedButton?.setAttribute('aria-pressed', String(dashboardDetail === 'advanced'));
+        const disclosure = document.getElementById('dashboardAdvancedDisclosure');
+        if (disclosure) disclosure.hidden = dashboardDetail === 'advanced';
+    }
+
+    function initializeProviderReadiness() {
+        const card = document.getElementById('providerReadinessCard');
+        if (!card) return;
+        const groups = ['usenet', 'debrid', 'indexer', 'scraper'];
+        const totals = groups.reduce((result, group) => {
+            result.enabled += Number(card.dataset[`${group}Enabled`]) || 0;
+            result.total += Number(card.dataset[`${group}Total`]) || 0;
+            return result;
+        }, { enabled: 0, total: 0 });
+        const value = document.getElementById('providerReadinessValue');
+        const meta = document.getElementById('providerReadinessMeta');
+        if (value) value.textContent = totals.total > 0 ? `${totals.enabled} / ${totals.total}` : 'Not configured';
+        if (meta) meta.textContent = totals.total > 0 ? 'Enabled provider and source entries' : 'Add providers in Settings';
+    }
+
+    function setDashboardSystemStatus(healthy) {
+        const label = document.getElementById('dashboardSystemStatus');
+        const meta = document.getElementById('dashboardSystemStatusMeta');
+        const dot = document.getElementById('dashboardSystemStatusDot');
+        if (label) label.textContent = healthy ? 'Operational' : 'Needs attention';
+        if (meta) meta.textContent = healthy ? 'Backend is responding normally' : 'Backend status is unavailable';
+        dot?.classList.toggle('warning', !healthy);
     }
     const isAdmin = {{json .IsAdmin}};
     const donationBannerStorageKey = 'mediastormDonationBannerHidden';
@@ -2549,7 +2814,9 @@ body.numbers-station-open {
         const uptimeEl = document.getElementById('backendUptime');
         if (!uptimeEl || !backendStartedAtMs) return;
         const elapsedSeconds = Math.max(0, (Date.now() - backendStartedAtMs) / 1000);
-        uptimeEl.innerHTML = `Backend up for <span class="dashboard-uptime-count">${formatBackendUptime(elapsedSeconds)}</span> (since ${formatBackendStartedAt(backendStartedAtMs)})`;
+        uptimeEl.innerHTML = `<span class="dashboard-uptime-count">${formatBackendUptime(elapsedSeconds)}</span>`;
+        const startedAtEl = document.getElementById('backendStartedAt');
+        if (startedAtEl) startedAtEl.textContent = `Since ${formatBackendStartedAt(backendStartedAtMs)}`;
     }
 
     function startBackendUptimeTimer() {
@@ -2564,17 +2831,23 @@ body.numbers-station-open {
             const response = await fetch(basePath + '/api/status', { credentials: 'same-origin' });
             if (!response.ok) throw new Error(`Status ${response.status}`);
             const status = await response.json();
+            setDashboardSystemStatus(true);
             const startedAt = new Date(status.started_at).getTime();
             if (!Number.isNaN(startedAt)) {
                 backendStartedAtMs = startedAt;
                 renderBackendUptime();
                 startBackendUptimeTimer();
             } else {
-                uptimeEl.innerHTML = `Backend up for <span class="dashboard-uptime-count">${formatBackendUptime(status.uptime_seconds)}</span> (since unknown)`;
+                uptimeEl.innerHTML = `<span class="dashboard-uptime-count">${formatBackendUptime(status.uptime_seconds)}</span>`;
+                const startedAtEl = document.getElementById('backendStartedAt');
+                if (startedAtEl) startedAtEl.textContent = 'Start time unavailable';
             }
         } catch (error) {
             console.warn('Failed to load backend uptime:', error);
             uptimeEl.textContent = 'Backend uptime unavailable';
+            const startedAtEl = document.getElementById('backendStartedAt');
+            if (startedAtEl) startedAtEl.textContent = 'Unable to read server runtime';
+            setDashboardSystemStatus(false);
         }
     }
 
@@ -2718,7 +2991,7 @@ body.numbers-station-open {
 
     function getStreamServiceType(stream) {
         const serviceType = String(stream?.service_type || '').trim().toLowerCase();
-        if (['debrid', 'usenet', 'stream'].includes(serviceType)) return serviceType;
+        if (['debrid', 'usenet', 'local', 'plex', 'jellyfin', 'stream'].includes(serviceType)) return serviceType;
         if (getStreamKind(stream).key === 'live') return 'stream';
         const path = String(stream?.path || stream?.original_path || '').trim().toLowerCase();
         return path.includes('/debrid/') || path.startsWith('debrid/') ? 'debrid' : 'usenet';
@@ -2731,7 +3004,8 @@ body.numbers-station-open {
             realdebrid: 'Real-Debrid',
             torbox: 'TorBox',
             alldebrid: 'AllDebrid',
-            premiumize: 'Premiumize'
+            premiumize: 'Premiumize',
+            torrin: 'Torrin'
         };
         return labels[provider] || String(stream?.debrid_provider || '').trim();
     }
@@ -3988,6 +4262,7 @@ body.numbers-station-open {
 
     document.addEventListener('DOMContentLoaded', () => {
         setDashboardDetail(dashboardDetail);
+        initializeProviderReadiness();
         setStreamView(currentStreamView);
         connectSSE();
         startInterpolation();

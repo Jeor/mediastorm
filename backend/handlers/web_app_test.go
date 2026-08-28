@@ -178,6 +178,29 @@ func TestAdminPlaybackTemplateDoesNotForceEndedProgressToDuration(t *testing.T) 
 	}
 }
 
+func TestAdminPlaybackTemplatePreservesAIOStreamsPassthroughFormatting(t *testing.T) {
+	body, err := adminTemplates.ReadFile("admin_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read admin playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, want := range []string{
+		"function resolveAIOStreamsPassthroughDisplay(attrs)",
+		"manual-result-title-passthrough",
+		".manual-result-title-passthrough,",
+		"white-space: pre-wrap;",
+		"const passthroughDisplay = resolveAIOStreamsPassthroughDisplay(attrs);",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("admin playback template missing passthrough formatting hook %q", want)
+		}
+	}
+	if count := strings.Count(rendered, "resolveAIOStreamsPassthroughDisplay(attrs)"); count != 3 {
+		t.Fatalf("passthrough resolver occurrence count = %d, want definition plus two renderers", count)
+	}
+}
+
 func TestWebPlaybackTemplateSendsFinalHeartbeatOnTeardown(t *testing.T) {
 	body, err := webTemplates.ReadFile("web_templates/playback.html")
 	if err != nil {
@@ -355,6 +378,113 @@ func TestWebPlaybackTemplateForwardsClientIdentity(t *testing.T) {
 	}
 }
 
+func TestWebPlaybackTemplateSynchronizesExternalWatchPartyGuests(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, want := range []string{
+		"startProgressTracking();\n        startWatchPartySync();",
+		"video.readyState >= 2",
+		"reportWatchPartyReady();",
+		"?buffering=${encodeURIComponent(String(Boolean(webPlayerBuffering)))}",
+		`id="watchPartyPanel"`,
+		`id="watchPartyPanelToggle"`,
+		"#videoHost.controls-hidden .watch-party-panel",
+		"function toggleWatchPartyPanel()",
+		"renderWatchPartyMembers(room);",
+		"member?.buffering",
+		"watchPartyEstimatedSeekStartupSeconds",
+		"setWatchPartyPlaybackRate(video, drift);",
+		"seekWebPlayer(clampSeekTarget(target + startupLead));",
+		"WEB_WATCH_PARTY_HARD_SYNC_COOLDOWN_MS",
+		"video.paused && !webPlayerSeekInProgress && !webPlayerSessionRecovering",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("web playback template missing external watch party sync hook %q", want)
+		}
+	}
+}
+
+func TestWebPlaybackTemplateRecoversStalledSeekWithoutChangingSubtitlePipeline(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	start := strings.Index(rendered, "async function seekWebPlayer(target)")
+	end := strings.Index(rendered, "function currentAbsoluteTime()")
+	if start < 0 || end <= start {
+		t.Fatal("could not locate web player seek function")
+	}
+	seek := rendered[start:end]
+	for _, want := range []string{
+		"seekParams.set('subtitleTrack', '-1');",
+		"video.addEventListener('canplay', finishSeek",
+		"releaseSeekState(false);",
+		"forceNewSession: true",
+	} {
+		if !strings.Contains(seek, want) {
+			t.Fatalf("web player seek missing recovery hook %q", want)
+		}
+	}
+	if strings.Contains(seek, "seekParams.set('subtitleTrack', String(webPlayerSelectedSubtitleTrack))") {
+		t.Fatal("web player seek must not rebuild its video pipeline around the selected overlay subtitle")
+	}
+}
+
+func TestWebPlaybackTemplateLocksGuestPlaybackControls(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, want := range []string{
+		".btn:disabled,",
+		"seek.disabled = WATCH_PARTY_MODE",
+		"if (WATCH_PARTY_MODE || !segment || webPlayerAutoSkipInProgress)",
+		"if (WATCH_PARTY_MODE || !nextEpisodeInfo || playingNextEpisode)",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("web playback template missing guest control lock %q", want)
+		}
+	}
+}
+
+func TestWebPlaybackTemplateChangesSubtitlesWithoutRestartingPlayer(t *testing.T) {
+	body, err := webTemplates.ReadFile("web_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read web playback template: %v", err)
+	}
+
+	rendered := string(body)
+	start := strings.Index(rendered, "function changeSubtitleTrack(value)")
+	end := strings.Index(rendered, "async function installSubtitleTrack(video, options = {})")
+	if start < 0 || end <= start {
+		t.Fatal("could not locate subtitle track change function")
+	}
+	changeTrack := rendered[start:end]
+	if !strings.Contains(changeTrack, "installSubtitleTrack(video);") {
+		t.Fatal("subtitle track change must update the active player")
+	}
+	if strings.Contains(changeTrack, "startWebPlayerFromSource") {
+		t.Fatal("subtitle track change must not recreate the HLS session")
+	}
+	for _, want := range []string{
+		"X-Subtitle-Timestamp-Base",
+		"webPlayerSubtitleTimestampBase",
+		"Number(webPlayerSubtitleTimestampBase || 0)",
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("subtitle overlay missing timestamp alignment hook %q", want)
+		}
+	}
+}
+
 func TestWebPlaybackHandlerRedirectsWithoutValidSession(t *testing.T) {
 	handler := NewWebPlaybackHandler(fakeWebPlaybackUsers{
 		users: []models.User{{ID: "profile-1", Name: "Main"}},
@@ -395,6 +525,32 @@ func TestWebPlaybackHandlerScopesProfilesForAccountSession(t *testing.T) {
 	}
 	if strings.Contains(body, `"id":"profile-2"`) {
 		t.Fatalf("unexpected profile from another account in body")
+	}
+}
+
+func TestWebPlaybackHandlerScopesStreamSessionToRequestedProfile(t *testing.T) {
+	handler := NewWebPlaybackHandler(fakeWebPlaybackUsers{
+		users: []models.User{
+			{ID: "profile-1", Name: "One", AccountID: "account-a"},
+			{ID: "profile-2", Name: "Two", AccountID: "account-a"},
+		},
+	}, fakeWebPlaybackSessions{token: "tok", session: models.Session{
+		AccountID: "account-a", Scope: models.SessionScopeStream, ScopeResource: "/movie.mkv",
+	}}, "")
+
+	req := httptest.NewRequest(http.MethodGet, "/watch?token=tok&profileId=profile-1", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"id":"profile-1"`) {
+		t.Fatal("expected requested profile in stream-scoped page")
+	}
+	if strings.Contains(body, `"id":"profile-2"`) {
+		t.Fatal("stream-scoped page exposed another profile from the account")
 	}
 }
 

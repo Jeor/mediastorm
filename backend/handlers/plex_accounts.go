@@ -660,7 +660,7 @@ func (h *PlexAccountsHandler) convertHistoryItems(historyItems []plex.WatchHisto
 	return items
 }
 
-// GetServers returns the list of online owned Plex servers for an account.
+// GetServers returns owned Plex servers and their selectable connection URLs.
 // GET /admin/api/plex/accounts/{accountID}/servers
 func (h *PlexAccountsHandler) GetServers(w http.ResponseWriter, r *http.Request) {
 	session := adminSessionFromContext(r.Context())
@@ -704,7 +704,7 @@ func (h *PlexAccountsHandler) GetServers(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	servers, err := h.plexClient.GetOwnedServers(account.AuthToken)
+	servers, err := h.plexClient.GetOwnedVisibleServers(account.AuthToken)
 	if err != nil {
 		jsonError(w, "Failed to get servers: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -712,17 +712,27 @@ func (h *PlexAccountsHandler) GetServers(w http.ResponseWriter, r *http.Request)
 
 	// Convert to simple response
 	type serverInfo struct {
-		Name     string `json:"name"`
-		Platform string `json:"platform"`
-		Online   bool   `json:"online"`
+		ID          string                `json:"id"`
+		Name        string                `json:"name"`
+		Platform    string                `json:"platform"`
+		Online      bool                  `json:"online"`
+		Connections []plex.PlexConnection `json:"connections"`
 	}
 
 	result := make([]serverInfo, 0, len(servers))
 	for _, s := range servers {
+		connections := make([]plex.PlexConnection, 0, len(s.Connections))
+		for _, connection := range s.Connections {
+			if _, err := plex.NormalizeServerURL(connection.URI); err == nil {
+				connections = append(connections, connection)
+			}
+		}
 		result = append(result, serverInfo{
-			Name:     s.Name,
-			Platform: s.Platform,
-			Online:   s.Presence,
+			ID:          s.ClientIdentifier,
+			Name:        s.Name,
+			Platform:    s.Platform,
+			Online:      s.Presence,
+			Connections: connections,
 		})
 	}
 

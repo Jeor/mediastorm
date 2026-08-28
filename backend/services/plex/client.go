@@ -800,25 +800,30 @@ type PlexMedia struct {
 	Part              []PlexPart `json:"Part"`
 }
 type PlexLibraryItem struct {
-	RatingKey            string      `json:"ratingKey"`
-	GrandparentRatingKey string      `json:"grandparentRatingKey,omitempty"`
-	Title                string      `json:"title"`
-	GrandparentTitle     string      `json:"grandparentTitle,omitempty"`
-	Type                 string      `json:"type"`
-	Year                 int         `json:"year,omitempty"`
-	Summary              string      `json:"summary,omitempty"`
-	ContentRating        string      `json:"contentRating,omitempty"`
-	Duration             int64       `json:"duration,omitempty"`
-	AddedAt              int64       `json:"addedAt,omitempty"`
-	Thumb                string      `json:"thumb,omitempty"`
-	Art                  string      `json:"art,omitempty"`
-	GrandparentThumb     string      `json:"grandparentThumb,omitempty"`
-	GrandparentArt       string      `json:"grandparentArt,omitempty"`
-	Index                int         `json:"index,omitempty"`
-	ParentIndex          int         `json:"parentIndex,omitempty"`
-	GUID                 string      `json:"guid,omitempty"`
-	Guid                 []PlexGuid  `json:"Guid,omitempty"`
-	Media                []PlexMedia `json:"Media,omitempty"`
+	RatingKey            string `json:"ratingKey"`
+	GrandparentRatingKey string `json:"grandparentRatingKey,omitempty"`
+	// GrandparentGuid and GrandparentYear are populated by GetServerLibraryItems
+	// for episodes. Plex's type=4 response exposes episode-level provider GUIDs,
+	// but consumers matching/scrobbling a series need the parent show's IDs.
+	GrandparentGuid  []PlexGuid  `json:"-"`
+	GrandparentYear  int         `json:"-"`
+	Title            string      `json:"title"`
+	GrandparentTitle string      `json:"grandparentTitle,omitempty"`
+	Type             string      `json:"type"`
+	Year             int         `json:"year,omitempty"`
+	Summary          string      `json:"summary,omitempty"`
+	ContentRating    string      `json:"contentRating,omitempty"`
+	Duration         int64       `json:"duration,omitempty"`
+	AddedAt          int64       `json:"addedAt,omitempty"`
+	Thumb            string      `json:"thumb,omitempty"`
+	Art              string      `json:"art,omitempty"`
+	GrandparentThumb string      `json:"grandparentThumb,omitempty"`
+	GrandparentArt   string      `json:"grandparentArt,omitempty"`
+	Index            int         `json:"index,omitempty"`
+	ParentIndex      int         `json:"parentIndex,omitempty"`
+	GUID             string      `json:"guid,omitempty"`
+	Guid             []PlexGuid  `json:"Guid,omitempty"`
+	Media            []PlexMedia `json:"Media,omitempty"`
 }
 
 // WatchHistoryItem represents an item from Plex watch history
@@ -889,6 +894,23 @@ func (c *Client) GetOwnedServers(authToken string) ([]PlexResource, error) {
 		// Filter for owned servers that provide "server" capability
 		if r.Owned && strings.Contains(r.Provides, "server") && r.Presence {
 			servers = append(servers, r)
+		}
+	}
+	return servers, nil
+}
+
+// GetOwnedVisibleServers returns owned Plex Media Servers even when Plex Cloud
+// reports them offline. A selected LAN, VPN, or reverse-proxy URL may still be
+// reachable from mediastorm in that state.
+func (c *Client) GetOwnedVisibleServers(authToken string) ([]PlexResource, error) {
+	resources, err := c.GetResources(authToken)
+	if err != nil {
+		return nil, err
+	}
+	servers := []PlexResource{}
+	for _, resource := range resources {
+		if resource.Owned && strings.Contains(resource.Provides, "server") {
+			servers = append(servers, resource)
 		}
 	}
 	return servers, nil
@@ -1024,6 +1046,32 @@ func (c *Client) GetServerLibraryItems(server PlexResource, sectionID, libraryTy
 	if libraryType == "show" {
 		params.Set("type", "4")
 	}
+	items, err := c.getServerLibraryItems(server, base, sectionID, params)
+	if err != nil || libraryType != "show" {
+		return items, err
+	}
+
+	showParams := url.Values{"includeGuids": {"1"}, "type": {"2"}}
+	shows, err := c.getServerLibraryItems(server, base, sectionID, showParams)
+	if err != nil {
+		return nil, err
+	}
+	parents := make(map[string]PlexLibraryItem, len(shows))
+	for _, show := range shows {
+		parents[show.RatingKey] = show
+	}
+	for i := range items {
+		parent, ok := parents[items[i].GrandparentRatingKey]
+		if !ok {
+			continue
+		}
+		items[i].GrandparentGuid = append([]PlexGuid(nil), parent.Guid...)
+		items[i].GrandparentYear = parent.Year
+	}
+	return items, nil
+}
+
+func (c *Client) getServerLibraryItems(server PlexResource, base, sectionID string, params url.Values) ([]PlexLibraryItem, error) {
 	start := 0
 	items := []PlexLibraryItem{}
 	for {
@@ -1168,30 +1216,9 @@ func (c *Client) serverJSON(ctx context.Context, server PlexResource, endpoint s
 // GetServerWatchHistory fetches watch history from a specific Plex server
 // If accountID > 0, filters history to only that Plex user account
 func (c *Client) GetServerWatchHistory(server PlexResource, limit int, accountID int) ([]WatchHistoryItem, error) {
-	// Find the best connection to use (prefer direct over relay)
-	var serverURL string
-	for _, conn := range server.Connections {
-		if !conn.Relay && conn.Protocol == "https" {
-			serverURL = conn.URI
-			break
-		}
-	}
-	// Fallback to any available connection
-	if serverURL == "" {
-		for _, conn := range server.Connections {
-			if !conn.Relay {
-				serverURL = conn.URI
-				break
-			}
-		}
-	}
-	// Last resort: use relay
-	if serverURL == "" && len(server.Connections) > 0 {
-		serverURL = server.Connections[0].URI
-	}
-
-	if serverURL == "" {
-		return nil, fmt.Errorf("no available connection for server %s", server.Name)
+	serverURL, err := PreferredConnection(server)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build history URL with pagination and optional account filter
@@ -1249,27 +1276,9 @@ func (c *Client) GetServerWatchHistory(server PlexResource, limit int, accountID
 
 // GetServerItemDetails fetches detailed metadata including GUIDs from a Plex server
 func (c *Client) GetServerItemDetails(server PlexResource, ratingKey string) (*WatchHistoryItem, error) {
-	// Find connection URL
-	var serverURL string
-	for _, conn := range server.Connections {
-		if !conn.Relay && conn.Protocol == "https" {
-			serverURL = conn.URI
-			break
-		}
-	}
-	if serverURL == "" {
-		for _, conn := range server.Connections {
-			if !conn.Relay {
-				serverURL = conn.URI
-				break
-			}
-		}
-	}
-	if serverURL == "" && len(server.Connections) > 0 {
-		serverURL = server.Connections[0].URI
-	}
-	if serverURL == "" {
-		return nil, fmt.Errorf("no available connection for server %s", server.Name)
+	serverURL, err := PreferredConnection(server)
+	if err != nil {
+		return nil, err
 	}
 
 	detailsURL := fmt.Sprintf("%s/library/metadata/%s?X-Plex-Token=%s", serverURL, ratingKey, server.AccessToken)
@@ -1360,6 +1369,33 @@ type ProgressCallback func(stage string, current, total int)
 // If accountID > 0, filters history to only that Plex user account
 func (c *Client) GetAllWatchHistory(authToken string, limit int, accountID int) ([]WatchHistoryItem, error) {
 	return c.GetAllWatchHistoryWithProgress(authToken, limit, accountID, nil)
+}
+
+// GetWatchHistoryForServer fetches history from one explicitly selected Plex
+// server and connection. Scheduled tasks use this so accounts with multiple
+// servers do not import history from an unintended server or address.
+func (c *Client) GetWatchHistoryForServer(authToken, serverID, serverURL string, limit int, accountID int) ([]WatchHistoryItem, error) {
+	servers, err := c.GetOwnedVisibleServers(authToken)
+	if err != nil {
+		return nil, err
+	}
+	serverID = strings.TrimSpace(serverID)
+	for _, server := range servers {
+		if server.ClientIdentifier != serverID {
+			continue
+		}
+		server, err = WithConnection(server, serverURL)
+		if err != nil {
+			return nil, err
+		}
+		history, err := c.GetServerWatchHistory(server, limit, accountID)
+		if err != nil {
+			return nil, err
+		}
+		c.fetchDetailsParallel(server, history, nil)
+		return history, nil
+	}
+	return nil, fmt.Errorf("selected Plex server is unavailable")
 }
 
 // GetAllWatchHistoryWithProgress fetches watch history with progress reporting

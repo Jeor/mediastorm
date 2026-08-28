@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -382,6 +383,73 @@ http://stream.example/movie-1`))
 	}
 	if resp.Total != 5 || len(resp.Channels) != 2 {
 		t.Fatalf("stale category should fall back to all channels, got total=%d page=%d", resp.Total, len(resp.Channels))
+	}
+
+	categories := make([]string, 0, 370)
+	categories = append(categories, "Sports")
+	for i := 1; i < 370; i++ {
+		categories = append(categories, fmt.Sprintf("Old Category %d", i))
+	}
+	body, err := json.Marshal(liveChannelsRequest{
+		Offset:      intPointer(1),
+		Limit:       intPointer(2),
+		Categories:  categories,
+		FavoriteIDs: []string{"news-1"},
+	})
+	if err != nil {
+		t.Fatalf("marshal POST request: %v", err)
+	}
+	postReq := httptest.NewRequest(http.MethodPost, "/live/channels", strings.NewReader(string(body)))
+	postRec := httptest.NewRecorder()
+	h.GetChannels(postRec, postReq)
+	if postRec.Code != http.StatusOK {
+		t.Fatalf("POST status = %d, body=%s", postRec.Code, postRec.Body.String())
+	}
+	if err := json.Unmarshal(postRec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode POST response: %v", err)
+	}
+	if resp.Total != 4 || len(resp.Channels) != 2 || resp.Channels[0].Name != "Sports One" {
+		t.Fatalf("POST response = total:%d channels:%+v, want GET-equivalent filtered page", resp.Total, resp.Channels)
+	}
+}
+
+func intPointer(value int) *int {
+	return &value
+}
+
+func TestParseLiveChannelsRequestRejectsInvalidPostBodies(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "malformed JSON", body: `{"offset":`},
+		{name: "multiple values", body: `{}` + "\n" + `{}`},
+		{name: "invalid limit", body: `{"limit":501}`},
+		{name: "too many categories", body: `{"categories":[` + strings.Repeat(`"category",`, maxLiveChannelCategories) + `"extra"]}`},
+		{name: "filter too long", body: `{"filter":"` + strings.Repeat("x", maxLiveChannelFilterBytes+1) + `"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/live/channels", strings.NewReader(test.body))
+			rec := httptest.NewRecorder()
+			(&LiveHandler{}).GetChannels(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestParseLiveChannelsRequestRejectsOversizedPostBody(t *testing.T) {
+	body := `{"filter":"` + strings.Repeat("x", maxLiveChannelsRequestBody) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/live/channels", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	(&LiveHandler{}).GetChannels(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusRequestEntityTooLarge, rec.Body.String())
 	}
 }
 

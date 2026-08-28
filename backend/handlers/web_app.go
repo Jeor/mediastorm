@@ -187,7 +187,7 @@ func (h *WebPlaybackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	data := WebPlaybackPageData{
-		Users:          h.scopedUsers(session),
+		Users:          h.scopedUsers(session, r.URL.Query().Get("profileId")),
 		ServerBasePath: h.serverBasePath,
 	}
 	if err := h.template.ExecuteTemplate(w, "playback", data); err != nil {
@@ -228,7 +228,7 @@ func (h *WebPlaybackHandler) resolveSession(r *http.Request) *models.Session {
 	return &session
 }
 
-func (h *WebPlaybackHandler) scopedUsers(session *models.Session) []models.User {
+func (h *WebPlaybackHandler) scopedUsers(session *models.Session, requestedProfileID string) []models.User {
 	if h.users == nil || session == nil {
 		return []models.User{}
 	}
@@ -240,7 +240,8 @@ func (h *WebPlaybackHandler) scopedUsers(session *models.Session) []models.User 
 
 	scoped := make([]models.User, 0, len(all))
 	for _, user := range all {
-		if user.AccountID == session.AccountID {
+		if user.AccountID == session.AccountID &&
+			(session.Scope != models.SessionScopeStream || user.ID == strings.TrimSpace(requestedProfileID)) {
 			scoped = append(scoped, user)
 		}
 	}

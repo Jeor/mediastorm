@@ -135,6 +135,13 @@ type (
 		Search(context.Context, string, string) ([]models.SearchResult, error)
 	}
 
+	// metadataLocalizedTitleResolver resolves the same catalog item in a
+	// requested language. It is optional so lightweight test doubles and custom
+	// metadata implementations only need to provide Search.
+	metadataLocalizedTitleResolver interface {
+		ResolveSearchTitle(context.Context, string, string, int, string, string) (*models.Title, error)
+	}
+
 	// metadataAliasService is optionally implemented by the metadata service
 	// to provide full TVDB aliases (international titles) for a given title.
 	metadataAliasService interface {
@@ -158,7 +165,7 @@ type Service struct {
 	// Usenet search call counters for diagnostics (atomic, safe for concurrent use).
 	// Grep logs for [search-stats] to see totals during playback.
 	searchCount        atomic.Int64 // top-level Search calls (manual search)
-	searchSplitCount   atomic.Int64 // top-level SearchSplit calls (prequeue)
+	searchSplitCount   atomic.Int64 // top-level SearchWithScoringSplit calls (prequeue streaming search)
 	usenetAPICallCount atomic.Int64 // individual usenet/torznab indexer API calls
 	providerBreaker    *providerbreaker.Breaker
 }
@@ -236,20 +243,21 @@ type effectiveRankingBundle struct {
 
 func filterSettingsFromConfig(in config.FilterSettings) models.FilterSettings {
 	return models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(in.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(in.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(in.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(in.HDRDVPolicy),
-		RequiredTerms:              append([]string(nil), in.RequiredTerms...),
-		FilterOutTerms:             append([]string(nil), in.FilterOutTerms...),
-		PreferredTerms:             append([]string(nil), in.PreferredTerms...),
-		NonPreferredTerms:          append([]string(nil), in.NonPreferredTerms...),
-		DownloadPreferredTerms:     append([]string(nil), in.DownloadPreferredTerms...),
-		PreferredScraper:           models.StringPtr(in.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(in.ServicePriority)),
-		UnknownTrackPolicy:         string(in.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(in.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(in.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(in.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(in.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(in.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(in.HDRDVPolicy),
+		RequiredTerms:                          append([]string(nil), in.RequiredTerms...),
+		FilterOutTerms:                         append([]string(nil), in.FilterOutTerms...),
+		PreferredTerms:                         append([]string(nil), in.PreferredTerms...),
+		NonPreferredTerms:                      append([]string(nil), in.NonPreferredTerms...),
+		DownloadPreferredTerms:                 append([]string(nil), in.DownloadPreferredTerms...),
+		PreferredScraper:                       models.StringPtr(in.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(in.ServicePriority)),
+		UnknownTrackPolicy:                     string(in.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(in.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(in.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(in.RealDebridRestrictedTermsFilterEnabled),
 	}
 }
 
@@ -296,6 +304,9 @@ func applyUserFilterOverrides(dst *models.FilterSettings, src models.FilterSetti
 	if src.AdaptiveTargetBufferFactor != nil {
 		dst.AdaptiveTargetBufferFactor = src.AdaptiveTargetBufferFactor
 	}
+	if src.RealDebridRestrictedTermsFilterEnabled != nil {
+		dst.RealDebridRestrictedTermsFilterEnabled = src.RealDebridRestrictedTermsFilterEnabled
+	}
 }
 
 func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFilterSettings) {
@@ -332,6 +343,9 @@ func applyClientFilterOverrides(dst *models.FilterSettings, src *models.ClientFi
 	if src.UnknownTrackPolicy != nil {
 		dst.UnknownTrackPolicy = *src.UnknownTrackPolicy
 	}
+	if src.RealDebridRestrictedTermsFilterEnabled != nil {
+		dst.RealDebridRestrictedTermsFilterEnabled = src.RealDebridRestrictedTermsFilterEnabled
+	}
 }
 
 func filterBundleForService(bundle effectiveFilterBundle, serviceType models.ContentServiceType) models.FilterSettings {
@@ -350,20 +364,21 @@ func filterBundleForService(bundle effectiveFilterBundle, serviceType models.Con
 func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSettings config.Settings) (models.FilterSettings, models.AnimeFilteringSettings, effectiveOverrides) {
 	// Start with global settings (as pointers)
 	filterSettings := models.FilterSettings{
-		MaxSizeMovieGB:             models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
-		MaxSizeEpisodeGB:           models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
-		MaxResolution:              models.StringPtr(globalSettings.Filtering.MaxResolution),
-		HDRDVPolicy:                models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
-		RequiredTerms:              globalSettings.Filtering.RequiredTerms,
-		FilterOutTerms:             globalSettings.Filtering.FilterOutTerms,
-		PreferredTerms:             globalSettings.Filtering.PreferredTerms,
-		NonPreferredTerms:          globalSettings.Filtering.NonPreferredTerms,
-		DownloadPreferredTerms:     globalSettings.Filtering.DownloadPreferredTerms,
-		PreferredScraper:           models.StringPtr(globalSettings.Filtering.PreferredScraper),
-		ServicePriority:            models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
-		UnknownTrackPolicy:         string(globalSettings.Filtering.UnknownTrackPolicy),
-		AdaptivePlaybackEnabled:    models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
-		AdaptiveTargetBufferFactor: models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		MaxSizeMovieGB:                         models.FloatPtr(globalSettings.Filtering.MaxSizeMovieGB),
+		MaxSizeEpisodeGB:                       models.FloatPtr(globalSettings.Filtering.MaxSizeEpisodeGB),
+		MaxResolution:                          models.StringPtr(globalSettings.Filtering.MaxResolution),
+		HDRDVPolicy:                            models.HDRDVPolicy(globalSettings.Filtering.HDRDVPolicy),
+		RequiredTerms:                          globalSettings.Filtering.RequiredTerms,
+		FilterOutTerms:                         globalSettings.Filtering.FilterOutTerms,
+		PreferredTerms:                         globalSettings.Filtering.PreferredTerms,
+		NonPreferredTerms:                      globalSettings.Filtering.NonPreferredTerms,
+		DownloadPreferredTerms:                 globalSettings.Filtering.DownloadPreferredTerms,
+		PreferredScraper:                       models.StringPtr(globalSettings.Filtering.PreferredScraper),
+		ServicePriority:                        models.StringPtr(string(globalSettings.Filtering.ServicePriority)),
+		UnknownTrackPolicy:                     string(globalSettings.Filtering.UnknownTrackPolicy),
+		AdaptivePlaybackEnabled:                models.BoolPtr(globalSettings.Filtering.AdaptivePlaybackEnabled),
+		AdaptiveTargetBufferFactor:             models.FloatPtr(globalSettings.Filtering.AdaptiveTargetBufferFactor),
+		RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 	}
 	overrides := effectiveOverrides{
 		BypassFilteringForAIOStreamsOnly: models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
@@ -462,6 +477,9 @@ func (s *Service) getEffectiveFilterSettings(userID, clientID string, globalSett
 			}
 			if clientSettings.UnknownTrackPolicy != nil {
 				filterSettings.UnknownTrackPolicy = *clientSettings.UnknownTrackPolicy
+			}
+			if clientSettings.RealDebridRestrictedTermsFilterEnabled != nil {
+				filterSettings.RealDebridRestrictedTermsFilterEnabled = clientSettings.RealDebridRestrictedTermsFilterEnabled
 			}
 			if clientSettings.BypassFilteringForAIOStreamsOnly != nil {
 				overrides.BypassFilteringForAIOStreamsOnly = clientSettings.BypassFilteringForAIOStreamsOnly
@@ -1232,6 +1250,7 @@ type SearchOptions struct {
 	EpisodeAirYear        int                         // Year the target episode aired (for year filter tolerance)
 	EpisodeReleased       bool                        // True only when metadata confirms the target episode has aired
 	IncludeFiltered       bool                        // When true, return filtered results alongside passed results
+	IncludeScoreBreakdown bool                        // When true, attach per-criterion scoring details (admin search tester)
 	SkipFilter            bool                        // When true, skip filtering entirely (used by SearchTest)
 	UseDownloadRanking    bool                        // When true, apply download-only preferred terms as a final ranking boost
 }
@@ -1497,7 +1516,10 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 	includeUsenet := shouldUseUsenet(settings.Streaming.ServiceMode)
 	includeDebrid := shouldUseDebrid(settings.Streaming.ServiceMode)
 
-	alternateTitles := s.resolveAlternateTitles(ctx, opts, s.getEffectiveMetadataLanguage(opts.UserID, settings), settings.Streaming.MaxAlternateTitleSearches)
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
 	if len(alternateTitles) > 0 {
 		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
 	}
@@ -1506,7 +1528,8 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 	rankingBundle := s.getEffectiveRankingBundle(opts.UserID, opts.ClientID, settings)
 	rankingCriteria := rankingBundle.Default
-	cacheKey := s.searchCacheKey("ranked", opts, settings, alternateTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
+	cacheTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+	cacheKey := s.searchCacheKey("ranked", opts, settings, cacheTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
 	if cached, ok := s.getCachedSearchResults(cacheKey, searchStart); ok {
 		log.Printf("[indexer] search cache hit for query=%q mediaType=%q user=%q client=%q results=%d", opts.Query, opts.MediaType, opts.UserID, opts.ClientID, len(cached))
 		log.Printf("[search-stats] Search #%d cache hit: %d results in %v (totals: search=%d, splitSearch=%d, usenetAPICalls=%d)",
@@ -1538,6 +1561,12 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 			defer wg.Done()
 			usenetStart := time.Now()
 			usenetResults, err := s.searchUsenetWithFilter(ctx, settings, sourceOpts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+			if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
+				fallbackQueries := buildEnglishFallbackQueries(sourceOpts, parsedQuery, englishFallbackTitles)
+				log.Printf("[indexer/usenet] localized search returned no results; trying English fallback queries: %v", fallbackQueries)
+				filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+				usenetResults, err = s.searchUsenetWithFilter(ctx, settings, sourceOpts, parsedQuery, filterTitles, fallbackQueries, filterBundle.Usenet)
+			}
 			log.Printf("[indexer] TIMING: usenet search complete (took: %v, results: %d)", time.Since(usenetStart), len(usenetResults))
 			if err != nil {
 				resultsChan <- searchResult{err: err, source: "usenet"}
@@ -1585,6 +1614,15 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 				SkipFilter:            opts.SkipFilter,
 			}
 			debridResults, err := s.debrid.Search(ctx, debOpts)
+			if err == nil && len(debridResults) == 0 && len(englishFallbackTitles) > 0 {
+				fallbackQueries := buildEnglishFallbackQueries(sourceOpts, parsedQuery, englishFallbackTitles)
+				if len(fallbackQueries) > 0 {
+					debOpts.Query = fallbackQueries[0]
+					debOpts.AlternateTitles = append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+					log.Printf("[indexer/debrid] localized search returned no results; trying English fallback query %q", debOpts.Query)
+					debridResults, err = s.debrid.Search(ctx, debOpts)
+				}
+			}
 			log.Printf("[indexer] TIMING: debrid search complete (took: %v, results: %d)", time.Since(debridStart), len(debridResults))
 			if err != nil {
 				resultsChan <- searchResult{err: err, source: "debrid"}
@@ -1757,7 +1795,7 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		if rankingBundle.NewestReleaseFirst {
 			sortScoredResultsNewestReleaseFirst(scored)
 		}
-		return scored, nil
+		return capScoredResults(scored, opts.MaxResults), nil
 	}
 	if opts.IsAnime && models.BoolVal(animeSettings.AnimeLanguageEnabled, false) {
 		langCode := ""
@@ -1817,9 +1855,11 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		resultCtx := s.buildScoringContextForResult(opts, settings, filterBundle, rankingBundle, animeSettings, fr.Result)
 		score, breakdown := ScoreResult(fr.Result, resultCtx)
 		sr := models.ScoredNZBResult{
-			NZBResult:      fr.Result,
-			TotalScore:     score,
-			ScoreBreakdown: breakdown,
+			NZBResult:  fr.Result,
+			TotalScore: score,
+		}
+		if opts.IncludeScoreBreakdown {
+			sr.ScoreBreakdown = breakdown
 		}
 		if fr.Passed {
 			sr.FilterStatus = "passed"
@@ -1859,9 +1899,494 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		sortScoredResultsNewestReleaseFirst(filtered)
 	}
 
-	// Combine: passed first, then filtered
+	// Combine: passed first, then filtered. Cap after ranking so MaxResults is a
+	// presentation limit, not a per-source fetch limit.
 	result := append(passed, filtered...)
-	return result, nil
+	return capScoredResults(result, opts.MaxResults), nil
+}
+
+func capScoredResults(results []models.ScoredNZBResult, max int) []models.ScoredNZBResult {
+	if max <= 0 || len(results) <= max {
+		return results
+	}
+	log.Printf("[indexer] MaxResults=%d applied after ranking: %d -> %d", max, len(results), max)
+	return results[:max]
+}
+
+// ScoredSplitSearchResult is one split search source's completed output. Each
+// channel is closed exactly once, once its source settles; an enabled source
+// sends exactly one value (Scored on success, Err on failure) before the close,
+// and a source outside the active service mode sends one value with
+// Disabled=true (so callers never wait on a source that will never run).
+//
+// Scored carries the source's passed-only, ranked candidates — the same shape
+// SearchWithScoring would produce for the combined set, restricted to this
+// source — so a caller can start resolving them while other sources are still
+// in flight. RawCount/FilteredCount are diagnostics (raw fetched/rejected).
+type ScoredSplitSearchResult struct {
+	Source        string
+	Scored        []models.ScoredNZBResult
+	RawCount      int
+	FilteredCount int
+	Err           error
+	Disabled      bool
+}
+
+// searchSplitOutcome is the internal per-source completion record used by
+// SearchWithScoringSplit both to emit scored results to the caller and to
+// reconstruct the aggregated raw set for the shared "raw" search cache.
+type searchSplitOutcome struct {
+	source     string
+	scored     []models.ScoredNZBResult
+	raw        []models.NZBResult
+	incomplete bool
+	filtered   int
+	err        error
+	disabled   bool
+}
+
+// SearchWithScoringSplit runs the usenet and debrid searches concurrently and
+// emits each source's filtered+ranked passed candidates as soon as THAT source
+// completes, instead of waiting for both (Search/searchRawResults wait for all
+// sources via wg.Wait). A usenet-prioritized install can start resolving its
+// usenet candidates while debrid scrapers are still in flight.
+//
+// Each returned channel receives exactly one ScoredSplitSearchResult and is then
+// closed; callers must drain both (a disabled source reports Disabled=true so
+// both channels always settle). Within-source ranking/merge semantics and the
+// search-cache write behavior match the non-split paths: per-source filters,
+// per-source scoring/ranking, and a single aggregate "raw" cache write once
+// both sources settle (only when neither failed and no source was incomplete).
+func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions) (usenetCh, debridCh <-chan ScoredSplitSearchResult) {
+	callNum := s.searchSplitCount.Add(1)
+	searchStart := time.Now()
+	log.Printf("[search-stats] SearchSplit #%d started (query=%q, mediaType=%q, user=%q, client=%q)",
+		callNum, opts.Query, opts.MediaType, opts.UserID, opts.ClientID)
+	log.Printf("[indexer] TIMING: SearchSplit started for query=%q mediaType=%q", opts.Query, opts.MediaType)
+
+	usenetOut := make(chan ScoredSplitSearchResult, 1)
+	debridOut := make(chan ScoredSplitSearchResult, 1)
+	if s.cfg == nil {
+		cfgErr := errors.New("config manager not configured")
+		usenetOut <- ScoredSplitSearchResult{Source: "usenet", Err: cfgErr}
+		debridOut <- ScoredSplitSearchResult{Source: "debrid", Err: cfgErr}
+		close(usenetOut)
+		close(debridOut)
+		return usenetOut, debridOut
+	}
+
+	settings, err := s.cfg.Load()
+	if err != nil {
+		usenetOut <- ScoredSplitSearchResult{Source: "usenet", Err: fmt.Errorf("load settings: %w", err)}
+		debridOut <- ScoredSplitSearchResult{Source: "debrid", Err: fmt.Errorf("load settings: %w", err)}
+		close(usenetOut)
+		close(debridOut)
+		return usenetOut, debridOut
+	}
+	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+
+	includeUsenet := shouldUseUsenet(settings.Streaming.ServiceMode)
+	includeDebrid := shouldUseDebrid(settings.Streaming.ServiceMode)
+
+	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
+	filterSettings := filterBundle.Default
+
+	// Mirror SearchWithScoring: skip filter/rank for the debrid source when
+	// AIOStreams is the only enabled scraper and the bypass setting is on.
+	bypassAIOStreamsRanking := shouldBypassAIOStreamsRanking(settings, filterOverrides, includeUsenet)
+
+	// Inject anime language filter-out terms early (before search/filter calls),
+	// mirroring Search/SearchWithScoring.
+	if opts.IsAnime && models.BoolVal(animeSettings.AnimeLanguageEnabled, false) {
+		langCode := ""
+		if animeSettings.AnimePreferredLanguage != nil {
+			langCode = *animeSettings.AnimePreferredLanguage
+		}
+		if langCode == "" {
+			langCode = "eng"
+		}
+		_, _, animeFilterOut := filter.GetAnimeLanguageTerms(langCode)
+		if len(animeFilterOut) > 0 {
+			filterBundle.Default.FilterOutTerms = append(filterBundle.Default.FilterOutTerms, animeFilterOut...)
+			filterBundle.Debrid.FilterOutTerms = append(filterBundle.Debrid.FilterOutTerms, animeFilterOut...)
+			filterBundle.Usenet.FilterOutTerms = append(filterBundle.Usenet.FilterOutTerms, animeFilterOut...)
+			log.Printf("[indexer] Anime language filter-out: injected %d terms for lang=%s", len(animeFilterOut), langCode)
+		}
+	}
+
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	if len(alternateTitles) > 0 {
+		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
+	}
+
+	parsedQuery := debrid.ParseQuery(opts.Query)
+	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
+	rankingBundle := s.getEffectiveRankingBundle(opts.UserID, opts.ClientID, settings)
+	rankingCriteria := rankingBundle.Default
+
+	// Check the shared raw cache once so a warm search never re-fetches or waits
+	// on a slow scraper (same key searchRawResults would use). The key includes
+	// the English fallback titles so both pipelines compute the identical key.
+	cacheTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+	cacheKey := s.searchCacheKey("raw", opts, settings, cacheTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
+	if cached, ok := s.getCachedSearchResults(cacheKey, searchStart); ok {
+		log.Printf("[indexer] raw search cache hit for query=%q mediaType=%q user=%q client=%q results=%d", opts.Query, opts.MediaType, opts.UserID, opts.ClientID, len(cached))
+		// A cache hit carries only the merged aggregate, so partition it by the
+		// ServiceType the fetchers stamped and emit each partition as its own
+		// source batch (both are immediately available).
+		bySource := partitionResultsBySource(cached)
+		for _, out := range bySource {
+			// A cache hit stores raw results only, so each partitioned source must
+			// be filtered/scored/ranked exactly like a freshly-fetched source
+			// before it is emitted — otherwise the caller sees zero passed
+			// candidates on a warm cache. In AIOStreams bypass mode the debrid
+			// partition skips filter/rank, matching splitSearchDebrid.
+			if bypassAIOStreamsRanking && out.source == "debrid" {
+				out.scored = bypassScoredResults(out.raw, rankingBundle.NewestReleaseFirst)
+				out.filtered = 0
+			} else {
+				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet)
+				if out.source == "debrid" {
+					filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid)
+				}
+				out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, out.raw, filterOpts, filterBundle, animeSettings, filterOverrides, rankingBundle)
+			}
+			s.emitSplitSourceBatch(usenetOut, debridOut, settings, opts, out)
+		}
+		close(usenetOut)
+		close(debridOut)
+		return usenetOut, debridOut
+	}
+
+	sourceOpts := opts
+	sourceOpts.MaxResults = 0 // ranking is final-order; source caps would truncate before it
+
+	resultsCh := make(chan searchSplitOutcome, 2)
+
+	// Launch usenet source
+	if includeUsenet {
+		go func() {
+			out := s.splitSearchUsenet(ctx, settings, sourceOpts, parsedQuery, alternateTitles, searchQueries, englishFallbackTitles, filterBundle, animeSettings, filterOverrides, rankingBundle)
+			resultsCh <- out
+		}()
+	} else {
+		resultsCh <- searchSplitOutcome{source: "usenet", disabled: true}
+	}
+
+	// Launch debrid source
+	if includeDebrid {
+		go func() {
+			out := s.splitSearchDebrid(ctx, settings, sourceOpts, parsedQuery, alternateTitles, englishFallbackTitles, filterBundle, animeSettings, filterOverrides, rankingBundle, bypassAIOStreamsRanking)
+			resultsCh <- out
+		}()
+	} else {
+		resultsCh <- searchSplitOutcome{source: "debrid", disabled: true}
+	}
+
+	// Drain the two source outcomes AS EACH completes, emitting that source's
+	// scored candidates to the caller immediately — the whole point of the split
+	// is that the first-ready source (typically usenet) is published while the
+	// other source is still in flight, so the caller can start resolving it. This
+	// runs in the background so SearchWithScoringSplit returns the channels
+	// right away instead of blocking on the slowest source. The raw aggregate is
+	// accumulated for the shared "raw" search cache, written once BOTH sources
+	// settle.
+	go func() {
+		errCount := 0
+		incompleteSearch := false
+		var aggregated []models.NZBResult
+		pending := 2
+		for pending > 0 {
+			select {
+			case <-ctx.Done():
+				// The caller stopped consuming (e.g. a winner was adopted before
+				// the slow source finished). Close both channels so the documented
+				// contract ("each channel is closed exactly once") holds — receivers
+				// tolerate the close and the sole consumer aborts on this context.
+				// Let the in-flight source goroutines finish or abort on this
+				// context; the cache is deliberately not written.
+				close(usenetOut)
+				close(debridOut)
+				return
+			case out := <-resultsCh:
+				pending--
+				if out.err != nil {
+					log.Printf("[indexer] %s search failed: %v", out.source, out.err)
+					errCount++
+					// Emit the failure so the caller can count this source as an
+					// enabled source that failed (vs. a disabled/absent source).
+					s.emitSplitSourceBatch(usenetOut, debridOut, settings, opts, out)
+					continue
+				}
+				if out.disabled {
+					// Not part of the active service mode: emit Disabled=true so
+					// the caller can treat every channel as carrying one value.
+					s.emitSplitSourceBatch(usenetOut, debridOut, settings, opts, out)
+					continue
+				}
+				if len(out.raw) > 0 {
+					if out.incomplete {
+						incompleteSearch = true
+					}
+					aggregated = append(aggregated, out.raw...)
+				}
+				s.emitSplitSourceBatch(usenetOut, debridOut, settings, opts, out)
+			}
+		}
+
+		// Preserve searchRawResults' cache write semantics: write the aggregate
+		// only when every source succeeded and none reported an incomplete search.
+		if errCount == 0 && !incompleteSearch {
+			s.setCachedSearchResults(cacheKey, aggregated, time.Now())
+		} else {
+			log.Printf("[indexer] skipping raw search cache for query=%q because one or more providers failed", opts.Query)
+		}
+		close(usenetOut)
+		close(debridOut)
+
+		log.Printf("[search-stats] SearchSplit #%d complete: %d results in %v (totals: search=%d, splitSearch=%d, usenetAPICalls=%d)",
+			callNum, len(aggregated), time.Since(searchStart),
+			s.searchCount.Load(), s.searchSplitCount.Load(), s.usenetAPICallCount.Load())
+	}()
+
+	return usenetOut, debridOut
+}
+
+// emitSplitSourceBatch routes one completed source's scored batch to the
+// appropriate caller-facing channel (usenet vs debrid).
+func (s *Service) emitSplitSourceBatch(usenetOut, debridOut chan ScoredSplitSearchResult, settings config.Settings, opts SearchOptions, out searchSplitOutcome) {
+	sr := ScoredSplitSearchResult{
+		Source:        out.source,
+		Scored:        out.scored,
+		RawCount:      len(out.raw),
+		FilteredCount: out.filtered,
+		Err:           out.err,
+		Disabled:      out.disabled,
+	}
+	if out.source == "debrid" {
+		debridOut <- sr
+	} else {
+		usenetOut <- sr
+	}
+}
+
+// partitionResultsBySource splits a cached raw aggregate into per-source batches
+// by the ServiceType the fetchers stamped onto each result.
+func partitionResultsBySource(raw []models.NZBResult) []searchSplitOutcome {
+	var usenet, debrid []models.NZBResult
+	for _, r := range raw {
+		switch r.ServiceType {
+		case models.ServiceTypeDebrid:
+			debrid = append(debrid, r)
+		default:
+			usenet = append(usenet, r)
+		}
+	}
+	var out []searchSplitOutcome
+	if len(usenet) > 0 {
+		out = append(out, searchSplitOutcome{source: "usenet", raw: usenet})
+	}
+	if len(debrid) > 0 {
+		out = append(out, searchSplitOutcome{source: "debrid", raw: debrid})
+	}
+	return out
+}
+
+// splitSearchUsenet fetches and scores the usenet source for the split search.
+func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Settings, opts SearchOptions, parsedQuery debrid.ParsedQuery, alternateTitles, searchQueries, englishFallbackTitles []string, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle) searchSplitOutcome {
+	usenetStart := time.Now()
+	log.Printf("[indexer] TIMING: split usenet search starting (query=%q)", opts.Query)
+	out := searchSplitOutcome{source: "usenet"}
+
+	raw, err := s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
+	// Mirror searchRawResults: only when the localized query set returns nothing,
+	// retry with the English fallback queries so results aren't silently lost
+	// for localized installs.
+	if err == nil && len(raw) == 0 && len(englishFallbackTitles) > 0 {
+		fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+		log.Printf("[indexer/usenet] localized split search returned no results; trying English fallback queries: %v", fallbackQueries)
+		raw, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, fallbackQueries)
+	}
+	if err != nil {
+		out.err = err
+		return out
+	}
+	incomplete := false
+	for i := range raw {
+		if raw[i].ServiceType == models.ServiceTypeUnknown {
+			raw[i].ServiceType = models.ServiceTypeUsenet
+		}
+		if raw[i].Attributes != nil && strings.EqualFold(strings.TrimSpace(raw[i].Attributes["searchIncomplete"]), "true") {
+			incomplete = true
+		}
+	}
+	out.raw = raw
+	out.incomplete = incomplete
+	out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Usenet), filterBundle, animeSettings, filterOverrides, rankingBundle)
+	log.Printf("[indexer] TIMING: split usenet search complete (took: %v, raw=%d, passed=%d)", time.Since(usenetStart), len(raw), len(out.scored))
+	return out
+}
+
+// splitSearchDebrid fetches and scores the debrid source for the split search.
+func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Settings, opts SearchOptions, parsedQuery debrid.ParsedQuery, alternateTitles, englishFallbackTitles []string, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle, bypassAIOStreamsRanking bool) searchSplitOutcome {
+	debridStart := time.Now()
+	log.Printf("[indexer] TIMING: split debrid search starting (query=%q)", opts.Query)
+	out := searchSplitOutcome{source: "debrid"}
+	if s.debrid == nil {
+		out.err = fmt.Errorf("debrid search service not configured")
+		return out
+	}
+	debOpts := debrid.SearchOptions{
+		Query:                 opts.Query,
+		Categories:            append([]string{}, opts.Categories...),
+		MaxResults:            0, // ranking is final-order; a source cap would truncate before filter/rank (non-split path uses 0)
+		IMDBID:                opts.IMDBID,
+		MediaType:             opts.MediaType,
+		Year:                  opts.Year,
+		AlternateTitles:       append([]string{}, alternateTitles...),
+		UserID:                opts.UserID,
+		ClientID:              opts.ClientID,
+		TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
+		EpisodeResolver:       opts.EpisodeResolver,
+		AbsoluteEpisodeNumber: opts.AbsoluteEpisodeNumber,
+		IsAnime:               opts.IsAnime,
+		IsDaily:               opts.IsDaily,
+		TargetAirDate:         opts.TargetAirDate,
+		EpisodeAirYear:        opts.EpisodeAirYear,
+		EpisodeReleased:       opts.EpisodeReleased,
+		SkipFilter:            true,
+	}
+	raw, err := s.debrid.Search(ctx, debOpts)
+	// Mirror searchRawResults: only when the localized search returns nothing,
+	// retry with the English fallback query so results aren't silently lost
+	// for localized installs.
+	if err == nil && len(raw) == 0 && len(englishFallbackTitles) > 0 {
+		fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+		if len(fallbackQueries) > 0 {
+			debOpts.Query = fallbackQueries[0]
+			debOpts.AlternateTitles = append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+			log.Printf("[indexer/debrid] localized split search returned no results; trying English fallback query %q", debOpts.Query)
+			raw, err = s.debrid.Search(ctx, debOpts)
+		}
+	}
+	if err != nil {
+		out.err = err
+		return out
+	}
+	incomplete := false
+	for i := range raw {
+		if raw[i].ServiceType == models.ServiceTypeUnknown {
+			raw[i].ServiceType = models.ServiceTypeDebrid
+		}
+		if raw[i].Attributes != nil && strings.EqualFold(strings.TrimSpace(raw[i].Attributes["searchIncomplete"]), "true") {
+			incomplete = true
+		}
+	}
+	out.raw = raw
+	out.incomplete = incomplete
+	if bypassAIOStreamsRanking {
+		// Mirror SearchWithScoring's short-circuit: AIOStreams is the only
+		// enabled scraper and the bypass setting is on, so skip filter/rank and
+		// pass every raw candidate through flagged as ranking-bypassed.
+		log.Printf("[indexer] Bypassing mediastorm filtering/ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
+		out.scored = bypassScoredResults(raw, rankingBundle.NewestReleaseFirst)
+		out.filtered = 0
+	} else {
+		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid), filterBundle, animeSettings, filterOverrides, rankingBundle)
+	}
+	log.Printf("[indexer] TIMING: split debrid search complete (took: %v, raw=%d, passed=%d)", time.Since(debridStart), len(raw), len(out.scored))
+	return out
+}
+
+// scoreSourceCandidates runs the same filter→score→rank pipeline SearchWithScoring
+// applies to the combined source set, restricted to one source's raw results, and
+// returns the passed-only scored list (ranked within the source) plus the count of
+// raw results rejected by the filter. Scoring shares the DEFAULT filter settings
+// for the context and per-service criteria for each result, exactly like the
+// non-split path, so one source's candidates keep the same relative order they
+// would have inside the merged list.
+func (s *Service) scoreSourceCandidates(opts SearchOptions, settings config.Settings, raw []models.NZBResult, filterOpts filter.Options, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingBundle effectiveRankingBundle) ([]models.ScoredNZBResult, int) {
+	expectedYear := opts.Year
+	if expectedYear == 0 {
+		expectedYear = debrid.ParseQuery(opts.Query).Year
+	}
+
+	detailed := make([]filter.FilteredResult, 0, len(raw))
+	for _, r := range raw {
+		details := filter.ResultsWithDetails([]models.NZBResult{r}, filterOpts)
+		if len(details) > 0 {
+			detailed = append(detailed, details[0])
+		}
+	}
+	passedResults := make([]models.NZBResult, 0, len(detailed))
+	for _, result := range detailed {
+		if result.Passed {
+			passedResults = append(passedResults, result.Result)
+		}
+	}
+	applyEpisodeYearPriority(passedResults, expectedYear, opts.EpisodeAirYear)
+	passedIndex := 0
+	for i := range detailed {
+		if detailed[i].Passed {
+			detailed[i].Result = passedResults[passedIndex]
+			passedIndex++
+		}
+	}
+
+	filteredCount := 0
+	passed := make([]models.ScoredNZBResult, 0, len(detailed))
+	for _, fr := range detailed {
+		if !fr.Passed {
+			filteredCount++
+			continue
+		}
+		resultCtx := s.buildScoringContextForResult(opts, settings, filterBundle, rankingBundle, animeSettings, fr.Result)
+		score, _ := ScoreResult(fr.Result, resultCtx)
+		passed = append(passed, models.ScoredNZBResult{NZBResult: fr.Result, TotalScore: score, FilterStatus: "passed"})
+	}
+	if len(passed) > 0 {
+		scoringCtx := s.buildScoringContextWithCriteria(opts, settings, filterBundle.Default, animeSettings, rankingBundle.Default)
+		if rankingBundle.NewestReleaseFirst {
+			sortScoredResultsNewestReleaseFirst(passed)
+		} else {
+			sortScoredResultsByRankingBundle(passed, scoringCtx, rankingBundle)
+		}
+		maxPerRes := models.IntVal(filterOverrides.MaxResultsPerResolution, 0)
+		if maxPerRes > 0 {
+			resolutionCounts := map[int]int{}
+			var limited []models.ScoredNZBResult
+			for _, r := range passed {
+				res := extractResolutionFromResult(r.NZBResult)
+				if resolutionCounts[res] < maxPerRes {
+					limited = append(limited, r)
+					resolutionCounts[res]++
+				}
+			}
+			log.Printf("[indexer] Per-resolution limit=%d applied to %s passed results: %d -> %d", maxPerRes, "split", len(passed), len(limited))
+			passed = limited
+		}
+	}
+	return passed, filteredCount
+}
+
+// bypassScoredResults wraps raw candidates as ranking-bypassed passed results,
+// mirroring SearchWithScoring's AIOStreams short-circuit: no filtering and no
+// mediastorm ranking (NewestReleaseFirst sorting still applies).
+func bypassScoredResults(raw []models.NZBResult, newestFirst bool) []models.ScoredNZBResult {
+	scored := make([]models.ScoredNZBResult, len(raw))
+	for i, r := range raw {
+		scored[i] = models.ScoredNZBResult{
+			NZBResult:    markRankingBypassed(r),
+			FilterStatus: "passed",
+		}
+	}
+	if newestFirst {
+		sortScoredResultsNewestReleaseFirst(scored)
+	}
+	return scored
 }
 
 // SearchTest runs search with full scoring breakdown and filter details for the admin search tester.
@@ -1871,6 +2396,9 @@ func (s *Service) SearchTest(ctx context.Context, opts SearchOptions) ([]models.
 
 	searchOpts := opts
 	searchOpts.IncludeFiltered = true
+	searchOpts.IncludeScoreBreakdown = true
+	// Admin tester needs the full scored set, including filtered rejects.
+	searchOpts.MaxResults = 0
 	result, err := s.SearchWithScoring(ctx, searchOpts)
 	if err != nil {
 		return nil, err
@@ -1930,14 +2458,18 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 		}
 	}
 
-	alternateTitles := s.resolveAlternateTitles(ctx, opts, s.getEffectiveMetadataLanguage(opts.UserID, settings), settings.Streaming.MaxAlternateTitleSearches)
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
 	filterSettings := filterBundle.Default
 	rankingBundle := s.getEffectiveRankingBundle(opts.UserID, opts.ClientID, settings)
 	rankingCriteria := rankingBundle.Default
-	cacheKey := s.searchCacheKey("raw", opts, settings, alternateTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
+	cacheTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+	cacheKey := s.searchCacheKey("raw", opts, settings, cacheTitles, filterSettings, filterBundle, animeSettings, filterOverrides, rankingCriteria, rankingBundle)
 	if cached, ok := s.getCachedSearchResults(cacheKey, searchStart); ok {
 		log.Printf("[indexer] raw search cache hit for query=%q mediaType=%q user=%q client=%q results=%d", opts.Query, opts.MediaType, opts.UserID, opts.ClientID, len(cached))
 		return cached, nil
@@ -1959,6 +2491,11 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 			if opts.SkipFilter {
 				// Fetch raw results without filtering
 				usenetResults, err := s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
+				if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
+					fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+					log.Printf("[indexer/usenet] localized raw search returned no results; trying English fallback queries: %v", fallbackQueries)
+					usenetResults, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, fallbackQueries)
+				}
 				if err != nil {
 					resultsChan <- searchResult{err: err, source: "usenet"}
 					return
@@ -1971,6 +2508,12 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				resultsChan <- searchResult{results: usenetResults, source: "usenet"}
 			} else {
 				usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+				if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
+					fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+					filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+					log.Printf("[indexer/usenet] localized raw search returned no results; trying English fallback queries: %v", fallbackQueries)
+					usenetResults, err = s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, filterTitles, fallbackQueries, filterBundle.Usenet)
+				}
 				if err != nil {
 					resultsChan <- searchResult{err: err, source: "usenet"}
 					return
@@ -2014,6 +2557,15 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				SkipFilter:            opts.SkipFilter,
 			}
 			debridResults, err := s.debrid.Search(ctx, debOpts)
+			if err == nil && len(debridResults) == 0 && len(englishFallbackTitles) > 0 {
+				fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+				if len(fallbackQueries) > 0 {
+					debOpts.Query = fallbackQueries[0]
+					debOpts.AlternateTitles = append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+					log.Printf("[indexer/debrid] localized raw search returned no results; trying English fallback query %q", debOpts.Query)
+					debridResults, err = s.debrid.Search(ctx, debOpts)
+				}
+			}
 			if err != nil {
 				resultsChan <- searchResult{err: err, source: "debrid"}
 				return
@@ -2183,6 +2735,7 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 		TargetSeason:          parsedQuery.Season,
 		TargetEpisode:         parsedQuery.Episode,
 		TargetAbsoluteEpisode: opts.AbsoluteEpisodeNumber,
+		IsAnime:               opts.IsAnime,
 	}
 }
 
@@ -2246,7 +2799,10 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		}
 	}
 
-	alternateTitles := s.resolveAlternateTitles(ctx, opts, s.getEffectiveMetadataLanguage(opts.UserID, settings), settings.Streaming.MaxAlternateTitleSearches)
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 
@@ -2318,6 +2874,15 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		}
 
 		debridResults, err := s.debrid.Search(ctx, debOpts)
+		if err == nil && len(debridResults) == 0 && len(englishFallbackTitles) > 0 {
+			fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+			if len(fallbackQueries) > 0 {
+				debOpts.Query = fallbackQueries[0]
+				debOpts.AlternateTitles = append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+				log.Printf("[indexer/debrid] localized split search returned no results; trying English fallback query %q", debOpts.Query)
+				debridResults, err = s.debrid.Search(ctx, debOpts)
+			}
+		}
 		if err != nil {
 			log.Printf("[indexer] TIMING: split debrid search failed after %v: %v", time.Since(debridStart), err)
 			debridOut <- SplitSearchResult{Err: err, Source: "debrid"}
@@ -2351,6 +2916,12 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		log.Printf("[indexer] TIMING: split usenet search starting (query=%q)", opts.Query)
 
 		usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+		if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
+			fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
+			filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
+			log.Printf("[indexer/usenet] localized split search returned no results; trying English fallback queries: %v", fallbackQueries)
+			usenetResults, err = s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, filterTitles, fallbackQueries, filterBundle.Usenet)
+		}
 		if err != nil {
 			log.Printf("[indexer] TIMING: split usenet search failed after %v: %v", time.Since(usenetStart), err)
 			usenetOut <- SplitSearchResult{Err: err, Source: "usenet"}
@@ -2536,6 +3107,128 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 	return aliases
 }
 
+// resolveEnglishFallbackTitles resolves the catalog item through an explicitly
+// English metadata client. This is kept separate from normal aliases so English
+// can be queried only after a non-English display-title search returns nothing.
+func (s *Service) resolveEnglishFallbackTitles(ctx context.Context, opts SearchOptions, metadataLang string) []string {
+	lang := strings.ToLower(strings.TrimSpace(metadataLang))
+	if lang == "" || lang == "eng" || lang == "en" || s.metadata == nil {
+		return nil
+	}
+	parsed := debrid.ParseQuery(opts.Query)
+	name := strings.TrimSpace(parsed.Title)
+	var title *models.Title
+	if resolver, ok := s.metadata.(metadataLocalizedTitleResolver); ok {
+		resolved, err := resolver.ResolveSearchTitle(ctx, opts.MediaType, name, opts.Year, opts.IMDBID, "eng")
+		if err != nil {
+			log.Printf("[indexer] English release-title fallback resolution failed query=%q imdbId=%q err=%v", name, opts.IMDBID, err)
+		}
+		title = resolved
+	}
+
+	// Some catalog entries do not carry an IMDb ID. Fall back to the regular
+	// metadata hit so its original name and language-tagged TVDB aliases can
+	// still provide an English release title.
+	if title == nil {
+		results, err := s.metadata.Search(ctx, name, opts.MediaType)
+		if err == nil && len(results) > 0 {
+			chosen := 0
+			for i := range results {
+				if opts.IMDBID != "" && strings.EqualFold(strings.TrimSpace(results[i].Title.IMDBID), strings.TrimSpace(opts.IMDBID)) {
+					chosen = i
+					break
+				}
+				if opts.Year > 0 && results[i].Title.Year == opts.Year {
+					chosen = i
+				}
+			}
+			title = &results[chosen].Title
+		}
+	}
+	if title == nil {
+		return nil
+	}
+
+	seen := map[string]struct{}{strings.ToLower(name): {}}
+	var titles []string
+	add := func(value string) {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return
+		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		titles = append(titles, trimmed)
+	}
+	add(title.Name)
+	add(title.OriginalName)
+
+	if aliasSvc, ok := s.metadata.(metadataAliasService); ok && title.TVDBID > 0 {
+		for _, alias := range aliasSvc.FetchAliasesWithLanguage(title.MediaType, title.TVDBID) {
+			aliasLang := strings.ToLower(strings.TrimSpace(alias.Language))
+			if aliasLang == "eng" || aliasLang == "en" {
+				add(alias.Name)
+			}
+		}
+	}
+	if len(titles) > 0 {
+		log.Printf("[indexer] resolved English fallback title(s) for %q: %v", opts.Query, titles)
+	}
+	return titles
+}
+
+func buildEnglishFallbackQueries(opts SearchOptions, parsed debrid.ParsedQuery, titles []string) []string {
+	seen := make(map[string]struct{})
+	var queries []string
+	for _, title := range titles {
+		for _, variant := range titleVariants(title) {
+			query := strings.TrimSpace(composeQueryForSearch(variant, opts, parsed))
+			if query == "" {
+				continue
+			}
+			key := strings.ToLower(query)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			queries = append(queries, query)
+			for _, absolute := range composeAbsoluteEpisodeQueries(variant, opts) {
+				absolute = strings.TrimSpace(absolute)
+				absoluteKey := strings.ToLower(absolute)
+				if absolute == "" {
+					continue
+				}
+				if _, exists := seen[absoluteKey]; exists {
+					continue
+				}
+				seen[absoluteKey] = struct{}{}
+				queries = append(queries, absolute)
+			}
+		}
+	}
+	return queries
+}
+
+func excludeFallbackTitles(titles, fallbackTitles []string) []string {
+	if len(titles) == 0 || len(fallbackTitles) == 0 {
+		return titles
+	}
+	excluded := make(map[string]struct{}, len(fallbackTitles))
+	for _, title := range fallbackTitles {
+		excluded[strings.ToLower(strings.TrimSpace(title))] = struct{}{}
+	}
+	filtered := make([]string, 0, len(titles))
+	for _, title := range titles {
+		if _, skip := excluded[strings.ToLower(strings.TrimSpace(title))]; !skip {
+			filtered = append(filtered, title)
+		}
+	}
+	return filtered
+}
+
 func isReleaseFriendlyTitle(value string) bool {
 	hasLetter := false
 	for _, r := range value {
@@ -2585,6 +3278,12 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 				addQuery(fmt.Sprintf("%s %s.%s.%s", title, year, month, day))
 				// Format: "Title 2026 01 21" (space-separated)
 				addQuery(fmt.Sprintf("%s %s %s %s", title, year, month, day))
+				// Human date formats are used by some indexers and cannot always be
+				// discovered through a numeric-date query.
+				if airDate, err := time.Parse("2006-01-02", opts.TargetAirDate); err == nil {
+					addQuery(fmt.Sprintf("%s %s %s %d", title, ordinalDay(airDate.Day()), airDate.Format("Jan"), airDate.Year()))
+					addQuery(fmt.Sprintf("%s %d %s %d", title, airDate.Day(), airDate.Format("Jan"), airDate.Year()))
+				}
 			}
 
 			addDateQueries(parsed.Title)
@@ -2620,6 +3319,21 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 	}
 
 	return queries
+}
+
+func ordinalDay(day int) string {
+	suffix := "th"
+	if day%100 < 11 || day%100 > 13 {
+		switch day % 10 {
+		case 1:
+			suffix = "st"
+		case 2:
+			suffix = "nd"
+		case 3:
+			suffix = "rd"
+		}
+	}
+	return fmt.Sprintf("%d%s", day, suffix)
 }
 
 func sportsEventSearchQuery(title string) string {
@@ -3067,6 +3781,7 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 		TargetSeason:          baseParsed.Season,
 		TargetEpisode:         baseParsed.Episode,
 		TargetAbsoluteEpisode: opts.AbsoluteEpisodeNumber,
+		IsAnime:               opts.IsAnime,
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 	}

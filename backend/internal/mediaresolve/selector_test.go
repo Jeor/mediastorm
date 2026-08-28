@@ -132,6 +132,9 @@ func TestCandidateMatchesDailyDate(t *testing.T) {
 		{"Different format same date", "The-Daily-Show-2026-01-22.mkv", "2026-01-22", 0, true},
 		{"Underscore date same date", "Dateline.NBC.2026_05_16.1080p.WEB.h264-GROUP", "2026-05-16", 0, true},
 		{"Non-padded date same date", "Dateline.NBC.2026.5.16.1080p.WEB.h264-GROUP", "2026-05-16", 0, true},
+		{"Ordinal human date", "Coronation street 18th Aug 2026 1080 (Deep71)[1337X]", "2026-08-18", 0, true},
+		{"Compact human date", "Coronation Street 17Aug2026 1080", "2026-08-17", 0, true},
+		{"Wrong ordinal human date", "Coronation street 17th Aug 2026 1080 (Deep71)[1337X]", "2026-08-18", 0, false},
 
 		// Wrong date (exact match required)
 		{"Wrong date", "The.Daily.Show.2026.01.21.Guest.mkv", "2026-01-22", 0, false},
@@ -298,6 +301,7 @@ func TestParseAbsoluteEpisodeNumber(t *testing.T) {
 		// S01ENNNN format (anime using absolute episode in S01E format)
 		// This is common for long-running anime where releases use S01E1153 instead of S22E68
 		{"S01E with 4-digit episode", "One Piece S01E1153 The Episode Title [1080p].mkv", 1153, true},
+		{"Current season with 4-digit absolute episode", "One Piece S23E1174 1080p.mkv", 1174, true},
 		{"S01E with 3-digit episode", "Anime S01E123 [1080p].mkv", 123, true},
 		{"s01e lowercase", "anime s01e1000 [720p].mkv", 1000, true},
 		{"S01E at end of filename", "One.Piece.S01E1153.REPACK.1080p.mkv", 1153, true},

@@ -16,6 +16,7 @@ import (
 
 	"novastream/config"
 	"novastream/internal/dnscache"
+	"novastream/internal/torboxrate"
 	"novastream/services/streaming"
 )
 
@@ -453,7 +454,34 @@ func (p *StreamingProvider) streamWithProviderInfo(ctx context.Context, req stre
 
 	// Use shared HTTP client with connection pooling — rapid seek requests
 	// reuse warm TCP+TLS connections to the CDN instead of handshaking each time
-	resp, err := p.httpClient.Do(httpReq)
+	var resp *http.Response
+	isTorboxDownload := strings.EqualFold(providerName, "torbox") && torboxrate.IsDownloadURL(downloadURL)
+	for attempt := 0; ; attempt++ {
+		if isTorboxDownload {
+			if err := torboxrate.Downloads.Wait(ctx, downloadURL); err != nil {
+				return nil, &SourceError{Provider: providerName, URL: downloadURL, Err: err}
+			}
+		}
+
+		resp, err = p.httpClient.Do(httpReq.Clone(ctx))
+		if err != nil || !isTorboxDownload || resp.StatusCode != http.StatusTooManyRequests {
+			break
+		}
+
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		resp.Body.Close()
+		delay := torboxrate.Downloads.Record(downloadURL, resp.Header.Get("Retry-After"), body)
+		if attempt >= 1 {
+			return nil, &SourceError{
+				Provider:   providerName,
+				URL:        downloadURL,
+				StatusCode: resp.StatusCode,
+				Status:     resp.Status,
+				Body:       string(body),
+			}
+		}
+		log.Printf("[debrid-stream] TorBox CDN rate limited torrent %s file %s; retrying same URL after %s", torrentID, fileID, delay.Round(time.Millisecond))
+	}
 	if err != nil {
 		if fromCache && retryCachedFailure {
 			if p.evictCachedURL(cacheKey) {

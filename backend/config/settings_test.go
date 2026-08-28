@@ -16,6 +16,34 @@ func TestPlaybackSettingsNormalizeAllowedTrackLanguages(t *testing.T) {
 	}
 }
 
+func TestRealDebridRestrictedTermsFilterDefaultsOnAndPreservesOff(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"filtering":{}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	mgr := NewManager(settingsPath)
+	settings, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if !settings.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		t.Fatal("expected Real-Debrid restricted-term filter to default on")
+	}
+
+	settings.Filtering.RealDebridRestrictedTermsFilterEnabled = false
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	reloaded, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("reload settings: %v", err)
+	}
+	if reloaded.Filtering.RealDebridRestrictedTermsFilterEnabled {
+		t.Fatal("expected explicit off setting to be preserved")
+	}
+}
+
 func TestPlaybackSettingsNormalizePrerollMediaScope(t *testing.T) {
 	playback := PlaybackSettings{PrerollMode: "default", PrerollMediaScope: " TV "}
 	playback.NormalizePreroll()
@@ -27,6 +55,17 @@ func TestPlaybackSettingsNormalizePrerollMediaScope(t *testing.T) {
 	playback.NormalizePreroll()
 	if playback.PrerollMediaScope != "all" {
 		t.Fatalf("invalid PrerollMediaScope = %q, want all", playback.PrerollMediaScope)
+	}
+}
+
+func TestPlaybackSettingsNormalizePrerollArtworkMode(t *testing.T) {
+	playback := PlaybackSettings{PrerollMode: " ARTWORK ", PrerollAssetID: "unused-video"}
+	playback.NormalizePreroll()
+	if playback.PrerollMode != "artwork" {
+		t.Fatalf("PrerollMode = %q, want artwork", playback.PrerollMode)
+	}
+	if playback.PrerollAssetID != "" {
+		t.Fatalf("PrerollAssetID = %q, want empty for artwork mode", playback.PrerollAssetID)
 	}
 }
 
@@ -144,11 +183,143 @@ func TestDefaultSettingsDisablesMatchFrameRate(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsWaitsForCombinedSearchRanking(t *testing.T) {
+	settings := DefaultSettings()
+	if settings.Streaming.ResolveFirstReadySource {
+		t.Fatal("ResolveFirstReadySource must default off so prequeue preserves combined cross-source ranking")
+	}
+	if !settings.Streaming.ResolutionEndRaceEarly {
+		t.Fatal("ResolutionEndRaceEarly must default on for concurrent early resolution")
+	}
+	if settings.Streaming.ResolutionSettleWindowMs != 250 {
+		t.Fatalf("ResolutionSettleWindowMs = %d, want default 250", settings.Streaming.ResolutionSettleWindowMs)
+	}
+}
+
+func TestLoadBackfillsEarlyResolutionChildDefaultsWithoutEnablingParent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"streaming":{"resolveFirstReadySource":false}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Streaming.ResolveFirstReadySource {
+		t.Fatal("backfilling child defaults must not enable ResolveFirstReadySource")
+	}
+	if !settings.Streaming.ResolutionEndRaceEarly || settings.Streaming.ResolutionSettleWindowMs != 250 {
+		t.Fatalf("child defaults = endEarly:%v settle:%d, want true/250", settings.Streaming.ResolutionEndRaceEarly, settings.Streaming.ResolutionSettleWindowMs)
+	}
+}
+
+func TestLoadPreservesExplicitEarlyResolutionChildSettings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"streaming":{"resolutionSettleWindowMs":0,"resolutionEndRaceEarly":false}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Streaming.ResolutionEndRaceEarly || settings.Streaming.ResolutionSettleWindowMs != 0 {
+		t.Fatalf("explicit child settings = endEarly:%v settle:%d, want false/0", settings.Streaming.ResolutionEndRaceEarly, settings.Streaming.ResolutionSettleWindowMs)
+	}
+}
+
+func TestLoadNormalizesLegacyNegativeResolutionSettleWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"streaming":{"resolutionSettleWindowMs":-1,"resolutionEndRaceEarly":true}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Streaming.ResolutionSettleWindowMs != 0 {
+		t.Fatalf("ResolutionSettleWindowMs = %d, want legacy -1 normalized to 0", settings.Streaming.ResolutionSettleWindowMs)
+	}
+	if !settings.Streaming.ResolutionEndRaceEarly {
+		t.Fatal("ResolutionEndRaceEarly must preserve its explicit true value")
+	}
+}
+
+func TestDefaultSettingsDisablesCropDetectSubtitlePosition(t *testing.T) {
+	settings := DefaultSettings()
+
+	if settings.Playback.SubtitleUseCropDetectPosition {
+		t.Fatal("expected crop-detect subtitle positioning to default to disabled")
+	}
+}
+
+func TestLoadDefaultsMissingCropDetectSubtitlePositionToDisabled(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	raw := []byte(`{"playback":{"preferredPlayer":"native"}}`)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.Playback.SubtitleUseCropDetectPosition {
+		t.Fatal("expected missing crop-detect subtitle positioning setting to load disabled")
+	}
+}
+
 func TestDefaultSettingsDisablesSimpleMode(t *testing.T) {
 	settings := DefaultSettings()
 
 	if settings.Display.SimpleMode {
 		t.Fatal("expected simple mode to default to disabled")
+	}
+}
+
+func TestStreamSourceInfoDefaultsOnAndPreservesOff(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"display":{}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	mgr := NewManager(settingsPath)
+	settings, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if !settings.Display.ShowStreamSourceInfo {
+		t.Fatal("expected stream source information to default on")
+	}
+
+	settings.Display.ShowStreamSourceInfo = false
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	reloaded, err := mgr.Load()
+	if err != nil {
+		t.Fatalf("reload settings: %v", err)
+	}
+	if reloaded.Display.ShowStreamSourceInfo {
+		t.Fatal("expected explicit stream source information off setting to be preserved")
+	}
+}
+
+func TestDefaultSettingsIncludesSimpleModeHomeShelves(t *testing.T) {
+	settings := DefaultSettings()
+	want := DefaultSimpleModeHomeShelfIDs()
+	if len(settings.Display.SimpleModeHomeShelves) != len(want) {
+		t.Fatalf("simple mode home shelves = %#v, want %#v", settings.Display.SimpleModeHomeShelves, want)
+	}
+	for i, id := range want {
+		if settings.Display.SimpleModeHomeShelves[i] != id {
+			t.Fatalf("simple mode home shelves = %#v, want %#v", settings.Display.SimpleModeHomeShelves, want)
+		}
 	}
 }
 

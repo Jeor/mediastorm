@@ -2314,7 +2314,7 @@
             <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Search every setting" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)">
         </label>
         <div class="settings-level-switch" aria-label="Settings detail level">
-            <button id="settingsEssentialBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Essential</button>
+            <button id="settingsEssentialBtn" class="settings-level-btn" type="button" disabled aria-disabled="true">Essential</button>
             <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
         </div>
@@ -2377,7 +2377,7 @@
     <div class="settings-mobile-level-section">
         <span class="settings-mobile-level-label">Settings view</span>
         <div class="settings-level-switch" aria-label="Mobile settings detail level">
-            <button id="settingsMobileEssentialBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Essential</button>
+            <button id="settingsMobileEssentialBtn" class="settings-level-btn" type="button" disabled aria-disabled="true">Essential</button>
             <button id="settingsMobileBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsMobileAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
         </div>
@@ -2666,7 +2666,7 @@
     // Sensitive settings may be revealed only until their first blur. Keep the
     // lock outside renderSettings so rerendering cannot make them viewable again.
     const lockedSensitiveFields = new Set();
-    const settingsLevels = new Set(['basic', 'advanced', 'essentials']);
+    const settingsLevels = new Set(['basic', 'advanced']);
     const storedSettingsLevel = localStorage.getItem('mediastorm-settings-level');
     let settingsLevel = settingsLevels.has(storedSettingsLevel) ? storedSettingsLevel : 'basic';
     let settingsContextReturnFocus = null;
@@ -2739,6 +2739,7 @@
         'streaming.indexerTimeoutSec',
         'streaming.healthCheckTimeoutSec',
         'streaming.maxAlternateTitleSearches',
+        'streaming.maxDailyUsenetQueries',
         'playback.thumbnails.enabled',
         'playback.thumbnails.workers',
         'playback.youtubeProxyUrl',
@@ -2809,14 +2810,8 @@
     const requestedSettingsSection = window.location.hash.replace(/^#/, '');
     const requestedSettingsParams = new URLSearchParams(window.location.search);
     const requestedSettingsCategory = requestedSettingsParams.get('category') || '';
-    if (requestedSettingsParams.get('view') === 'essentials') {
-        settingsLevel = 'essentials';
-    } else if (requestedSettingsParams.get('view') === 'dashboard' && settingsLevel === 'essentials') {
-        settingsLevel = 'basic';
-    }
     if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
         activeSettingsGroup = requestedSettingsCategory;
-        if (settingsLevel === 'essentials') settingsLevel = 'basic';
     }
     if (requestedSettingsSection && schema[requestedSettingsSection]?.group) {
         activeSettingsGroup = settingsOverviewGroupForSection(requestedSettingsSection, schema[requestedSettingsSection]);
@@ -14576,9 +14571,7 @@
         const params = new URLSearchParams(window.location.search);
         const category = params.get('category') || '';
         const storedLevel = settingsLevels.has(localStorage.getItem('mediastorm-settings-level')) ? localStorage.getItem('mediastorm-settings-level') : 'basic';
-        settingsLevel = params.get('view') === 'essentials'
-            ? 'essentials'
-            : ((params.get('view') === 'dashboard' || category) && storedLevel === 'essentials' ? 'basic' : storedLevel);
+        settingsLevel = storedLevel;
         activeSettingsGroup = settingsLandingGroups.some(group => group.id === category) ? category : '';
         syncSettingsSidebarDestination(activeSettingsGroup || 'home');
         renderSettings();

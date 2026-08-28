@@ -196,6 +196,13 @@ func TestDefaultSettingsWaitsForCombinedSearchRanking(t *testing.T) {
 	}
 }
 
+func TestDefaultSettingsCapsDailyUsenetQueries(t *testing.T) {
+	settings := DefaultSettings()
+	if settings.Streaming.MaxDailyUsenetQueries != 5 {
+		t.Fatalf("MaxDailyUsenetQueries = %d, want 5", settings.Streaming.MaxDailyUsenetQueries)
+	}
+}
+
 func TestLoadBackfillsEarlyResolutionChildDefaultsWithoutEnablingParent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	raw := []byte(`{"streaming":{"resolveFirstReadySource":false}}`)

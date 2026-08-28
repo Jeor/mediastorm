@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"novastream/config"
+	"novastream/internal/mediaidentity"
 	"novastream/models"
 	calendarpkg "novastream/services/calendar"
 	"novastream/services/kids"
@@ -158,6 +159,7 @@ type HomeManifestResponse struct {
 	ShelvesHash              string              `json:"shelvesHash"`
 	ContinueWatchingRevision string              `json:"continueWatchingRevision,omitempty"`
 	WatchlistHash            string              `json:"watchlistHash"`
+	EpisodeCountsHash        string              `json:"episodeCountsHash,omitempty"`
 	HiddenItemsHash          string              `json:"hiddenItemsHash,omitempty"`
 	WatchlistTotal           int                 `json:"watchlistTotal"`
 	Shelves                  []HomeShelfManifest `json:"shelves"`
@@ -207,6 +209,10 @@ func (h *StartupHandler) GetHomeManifest(w http.ResponseWriter, r *http.Request)
 			items = h.filterHiddenWatchlistItems(userID, items)
 			resp.WatchlistTotal = len(items)
 			resp.WatchlistHash = watchlistManifestHash(items)
+			resp.EpisodeCountsHash = cachedEpisodeCountsManifestHash(
+				items,
+				metadataServiceForUser(h.metadata, h.cfgManager, h.userSettings, userID),
+			)
 		}
 	}
 	resp.HiddenItemsHash = h.hiddenItemsManifestHash(userID)
@@ -216,6 +222,7 @@ func (h *StartupHandler) GetHomeManifest(w http.ResponseWriter, r *http.Request)
 		resp.ShelvesHash,
 		resp.ContinueWatchingRevision,
 		resp.WatchlistHash,
+		resp.EpisodeCountsHash,
 		resp.WatchlistTotal,
 		resp.HiddenItemsHash,
 	)
@@ -506,7 +513,9 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 
 	// Enrich items with pre-computed watch state (after all concurrent fetches complete)
 	idx := buildWatchStateIndex(watchHistory, resp.ContinueWatching, playbackProgress)
-	enrichWatchlistItems(resp.Watchlist, idx)
+	startupMetadataSvc := metadataServiceForUser(h.metadata, h.cfgManager, h.userSettings, userID)
+	warmEpisodeCounts := resp.UserSettings != nil && stringSliceContainsFold(resp.UserSettings.Display.BadgeVisibility, "unwatchedCount")
+	enrichWatchlistItems(resp.Watchlist, idx, startupMetadataSvc, warmEpisodeCounts)
 	// Enrich with MDBList ratings for sort-by-rating support (bounded by startupPayloadLimit)
 	enrichWatchlistRatings(r.Context(), resp.Watchlist, h.metadata)
 	// Match display-list watchlist enrichment so the initial home shelf does not
@@ -514,10 +523,10 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 	enrichDisplayListReleases(r, resp.Watchlist, h.metadata)
 	resp.Watchlist = filterWatchlistItemsByUnreleasedVisibility(resp.Watchlist, listPolicy)
 	if resp.TrendingMovies != nil {
-		enrichTrendingItems(resp.TrendingMovies.Items, idx)
+		enrichTrendingItems(resp.TrendingMovies.Items, idx, startupMetadataSvc, false)
 	}
 	if resp.TrendingSeries != nil {
-		enrichTrendingItems(resp.TrendingSeries.Items, idx)
+		enrichTrendingItems(resp.TrendingSeries.Items, idx, startupMetadataSvc, false)
 	}
 
 	if resp.UserSettings != nil && h.displayList != nil {
@@ -1235,6 +1244,27 @@ func watchlistManifestHash(items []models.WatchlistItem) string {
 	}
 	sort.Strings(keys)
 	return hashForManifest(keys)
+}
+
+func cachedEpisodeCountsManifestHash(items []models.WatchlistItem, metadata any) string {
+	provider, ok := metadata.(releasedEpisodeCountProvider)
+	if !ok {
+		return ""
+	}
+	counts := make([]string, 0, len(items))
+	for _, item := range items {
+		if mediaidentity.NormalizeMediaType(item.MediaType) != "series" {
+			continue
+		}
+		count, cached := provider.GetCachedReleasedEpisodeCount(seriesEpisodeCountQuery(item))
+		if !cached {
+			counts = append(counts, item.ID+":missing")
+			continue
+		}
+		counts = append(counts, fmt.Sprintf("%s:%d", item.ID, count))
+	}
+	sort.Strings(counts)
+	return hashForManifest(counts)
 }
 
 func hashForManifest(values ...interface{}) string {

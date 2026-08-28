@@ -87,15 +87,16 @@ func watchlistRating(item models.WatchlistItem, source string) (float64, bool) {
 }
 
 type displayListQueryOptions struct {
-	Title         string
-	MediaType     string
-	WatchStatus   string
-	Genres        []string
-	SortBy        string
-	SortDirection string
-	RatingSource  string
-	IncludeFacets bool
-	Alphabet      string
+	Title                  string
+	MediaType              string
+	WatchStatus            string
+	Genres                 []string
+	SortBy                 string
+	SortDirection          string
+	RatingSource           string
+	IncludeFacets          bool
+	IncludeUnwatchedCounts bool
+	Alphabet               string
 }
 
 func parseDisplayListQuery(r *http.Request) displayListQueryOptions {
@@ -107,15 +108,16 @@ func parseDisplayListQuery(r *http.Request) displayListQueryOptions {
 		}
 	}
 	return displayListQueryOptions{
-		Title:         strings.TrimSpace(q.Get("titleFilter")),
-		MediaType:     strings.ToLower(strings.TrimSpace(q.Get("filterMediaType"))),
-		WatchStatus:   strings.ToLower(strings.TrimSpace(q.Get("watchStatus"))),
-		Genres:        genres,
-		SortBy:        strings.ToLower(strings.TrimSpace(q.Get("sortBy"))),
-		SortDirection: strings.ToLower(strings.TrimSpace(q.Get("sortDirection"))),
-		RatingSource:  strings.ToLower(strings.TrimSpace(q.Get("ratingSource"))),
-		IncludeFacets: strings.EqualFold(strings.TrimSpace(q.Get("includeFacets")), "true"),
-		Alphabet:      strings.ToUpper(strings.TrimSpace(q.Get("alphabet"))),
+		Title:                  strings.TrimSpace(q.Get("titleFilter")),
+		MediaType:              strings.ToLower(strings.TrimSpace(q.Get("filterMediaType"))),
+		WatchStatus:            strings.ToLower(strings.TrimSpace(q.Get("watchStatus"))),
+		Genres:                 genres,
+		SortBy:                 strings.ToLower(strings.TrimSpace(q.Get("sortBy"))),
+		SortDirection:          strings.ToLower(strings.TrimSpace(q.Get("sortDirection"))),
+		RatingSource:           strings.ToLower(strings.TrimSpace(q.Get("ratingSource"))),
+		IncludeFacets:          strings.EqualFold(strings.TrimSpace(q.Get("includeFacets")), "true"),
+		IncludeUnwatchedCounts: strings.EqualFold(strings.TrimSpace(q.Get("includeUnwatchedCounts")), "true"),
+		Alphabet:               strings.ToUpper(strings.TrimSpace(q.Get("alphabet"))),
 	}
 }
 
@@ -126,7 +128,7 @@ func (q displayListQueryOptions) RequiresIndex() bool {
 func (q displayListQueryOptions) Active() bool {
 	return q.Title != "" || (q.MediaType != "" && q.MediaType != "all") ||
 		(q.WatchStatus != "" && q.WatchStatus != "all") || len(q.Genres) > 0 ||
-		(q.SortBy != "" && q.SortBy != "default") || q.Alphabet != ""
+		(q.SortBy != "" && q.SortBy != "default") || q.Alphabet != "" || q.IncludeUnwatchedCounts
 }
 
 func (q displayListQueryOptions) Apply(items []models.TrendingItem) []models.TrendingItem {
@@ -344,7 +346,7 @@ func (h *MetadataHandler) queryTrendingList(
 		if whErr == nil {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
-			enrichTrendingItems(items, buildWatchStateIndex(wh, cw, pp))
+			enrichTrendingItems(items, buildWatchStateIndex(wh, cw, pp), service, false)
 		}
 	}
 	enrichTrendingRatings(items, service)

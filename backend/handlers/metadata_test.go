@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -2244,6 +2245,57 @@ func TestMetadataHandler_TopTenFiltersUnreleasedByListPolicy(t *testing.T) {
 	}
 	if resp.Items[0].Title.Name != "Toy Story 2" || resp.Items[1].Title.Name != "Released Show" {
 		t.Fatalf("unexpected top-ten items: %+v", resp.Items)
+	}
+}
+
+func TestMetadataHandler_TopTenBackfillsAfterVisibilityFiltering(t *testing.T) {
+	cfg := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	settings := config.DefaultSettings()
+	settings.Display.IncludeUnreleasedMoviesInLists = false
+	settings.Display.IncludeUnreleasedShowsInLists = false
+	if err := cfg.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	items := []models.TrendingItem{
+		{Title: models.Title{Name: "Future Movie", MediaType: "movie", Status: models.MovieReleaseStatusUpcoming}},
+		{Title: models.Title{Name: "Movie 1", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 2", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 3", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 4", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Movie 5", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{Name: "Future Show", MediaType: "series", Status: models.SeriesReleaseStatusUnreleased}},
+		{Title: models.Title{Name: "Show 1", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 2", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 3", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 4", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{Name: "Show 5", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+	}
+	handler := NewMetadataHandler(&fakeMetadataService{trendingResp: items}, cfg)
+	req := httptest.NewRequest(http.MethodGet, "/api/discover/top-ten?type=all", nil)
+	rec := httptest.NewRecorder()
+
+	handler.TopTen(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp TopTenResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Items) != 10 {
+		t.Fatalf("items = %d, want ten backfilled results: %#v", len(resp.Items), resp.Items)
+	}
+	for i, item := range resp.Items {
+		position := i/2 + 1
+		wantName := fmt.Sprintf("Movie %d", position)
+		if i%2 == 1 {
+			wantName = fmt.Sprintf("Show %d", position)
+		}
+		if item.Title.Name != wantName || item.Rank != i+1 {
+			t.Fatalf("items[%d] = name %q rank %d, want name %q rank %d", i, item.Title.Name, item.Rank, wantName, i+1)
+		}
 	}
 }
 

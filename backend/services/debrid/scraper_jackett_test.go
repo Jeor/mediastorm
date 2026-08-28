@@ -490,6 +490,49 @@ func TestJackettSearchTV(t *testing.T) {
 	}
 }
 
+func TestJackettSearchDailyTVIncludesHumanDateFormats(t *testing.T) {
+	var queries []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if query.Get("t") != "search" {
+			t.Errorf("request type = %q, want search", query.Get("t"))
+		}
+		queries = append(queries, query.Get("q"))
+		w.Header().Set("Content-Type", "application/xml")
+		switch query.Get("q") {
+		case "Coronation Street 24th Aug 2026":
+			_, _ = w.Write([]byte(`<rss><channel><item><title>Coronation Street 24th Aug 2026 1080p</title><guid>ordinal-date</guid></item></channel></rss>`))
+		case "Coronation Street 24 Aug 2026":
+			_, _ = w.Write([]byte(`<rss><channel><item><title>Coronation Street 24 Aug 2026 720p</title><guid>human-date</guid></item></channel></rss>`))
+		default:
+			_, _ = w.Write([]byte(`<rss><channel></channel></rss>`))
+		}
+	}))
+	defer server.Close()
+
+	scraper := NewJackettScraper(server.URL, "testkey", "Jackett", server.Client())
+	results, err := scraper.searchDailyTV(t.Context(), "Coronation Street", "2026-08-24")
+	if err != nil {
+		t.Fatalf("searchDailyTV: %v", err)
+	}
+	wantQueries := []string{
+		"Coronation Street 2026.08.24",
+		"Coronation Street 24th Aug 2026",
+		"Coronation Street 24 Aug 2026",
+	}
+	if len(queries) != len(wantQueries) {
+		t.Fatalf("queries = %v, want %v", queries, wantQueries)
+	}
+	for i := range wantQueries {
+		if queries[i] != wantQueries[i] {
+			t.Fatalf("query[%d] = %q, want %q", i, queries[i], wantQueries[i])
+		}
+	}
+	if len(results) != 2 {
+		t.Fatalf("merged results = %d, want 2", len(results))
+	}
+}
+
 func TestJackettSearchReleasedEpisodeFallsBackToSeason(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

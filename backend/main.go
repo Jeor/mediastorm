@@ -1951,7 +1951,7 @@ func main() {
 		// Start prewarm URL refresh and cache warmers after initial restore.
 		prewarmService.Start(context.Background())
 		metadataService.StartBackgroundCacheManager(2 * time.Hour)
-		metadataService.StartBackgroundTopTenWorker(12 * time.Hour)
+		metadataService.StartBackgroundTopTenWorker(time.Hour)
 		calendarService.StartBackgroundRefresh(4 * time.Hour)
 	}()
 

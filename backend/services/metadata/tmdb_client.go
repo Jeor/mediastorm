@@ -2776,6 +2776,108 @@ type tmdbSimilarResponse struct {
 	} `json:"results"`
 }
 
+type tmdbDailyTrendingResponse struct {
+	Results []struct {
+		ID               int64   `json:"id"`
+		Name             string  `json:"name"`
+		Title            string  `json:"title"`
+		OriginalName     string  `json:"original_name"`
+		OriginalTitle    string  `json:"original_title"`
+		Overview         string  `json:"overview"`
+		OriginalLanguage string  `json:"original_language"`
+		PosterPath       string  `json:"poster_path"`
+		BackdropPath     string  `json:"backdrop_path"`
+		Popularity       float64 `json:"popularity"`
+		VoteCount        int     `json:"vote_count"`
+		FirstAirDate     string  `json:"first_air_date"`
+		ReleaseDate      string  `json:"release_date"`
+		GenreIDs         []int   `json:"genre_ids"`
+		Adult            bool    `json:"adult"`
+		Video            bool    `json:"video"`
+	} `json:"results"`
+}
+
+// trendingDaily returns TMDB's ordered daily trending chart for one media type.
+// Adult entries and movie results classified as videos are excluded before the
+// service chooses the first eligible titles for Top 10 Today.
+func (c *tmdbClient) trendingDaily(ctx context.Context, mediaType string) ([]models.TrendingItem, error) {
+	return c.trendingDailyPage(ctx, mediaType, 1)
+}
+
+func (c *tmdbClient) trendingDailyPage(ctx context.Context, mediaType string, page int) ([]models.TrendingItem, error) {
+	if !c.isConfigured() {
+		return nil, errors.New("tmdb api key not configured")
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	apiMediaType := strings.ToLower(strings.TrimSpace(mediaType))
+	if apiMediaType != "movie" {
+		apiMediaType = "tv"
+	}
+	endpoint, err := url.JoinPath(tmdbBaseURL, "trending", apiMediaType, "day")
+	if err != nil {
+		return nil, err
+	}
+	query := url.Values{"api_key": {c.apiKey}, "page": {strconv.Itoa(page)}}
+	if lang := strings.TrimSpace(c.language); lang != "" {
+		query.Set("language", normalizeLanguage(lang))
+	}
+	endpoint += "?" + query.Encode()
+
+	var payload tmdbDailyTrendingResponse
+	if err := c.doGET(ctx, endpoint, &payload); err != nil {
+		return nil, fmt.Errorf("tmdb daily trending %s failed: %w", apiMediaType, err)
+	}
+
+	resultMediaType := "movie"
+	if apiMediaType == "tv" {
+		resultMediaType = "series"
+	}
+	items := make([]models.TrendingItem, 0, len(payload.Results))
+	for _, result := range payload.Results {
+		if result.ID <= 0 || result.Adult || (apiMediaType == "movie" && result.Video) {
+			continue
+		}
+		name := strings.TrimSpace(pickTMDBName(apiMediaType, result.Name, result.Title))
+		if name == "" {
+			continue
+		}
+		originalName := strings.TrimSpace(result.OriginalTitle)
+		if apiMediaType == "tv" {
+			originalName = strings.TrimSpace(result.OriginalName)
+		}
+		if strings.EqualFold(originalName, name) {
+			originalName = ""
+		}
+
+		title := models.Title{
+			ID:           fmt.Sprintf("tmdb:%s:%d", apiMediaType, result.ID),
+			Name:         name,
+			OriginalName: originalName,
+			Overview:     strings.TrimSpace(result.Overview),
+			Language:     strings.TrimSpace(result.OriginalLanguage),
+			MediaType:    resultMediaType,
+			TMDBID:       result.ID,
+			Popularity:   result.Popularity,
+			VoteCount:    result.VoteCount,
+			Genres:       resolveGenreIDs(result.GenreIDs, apiMediaType),
+			Adult:        result.Adult,
+		}
+		title.Year = parseTMDBYear(result.ReleaseDate, result.FirstAirDate)
+		if apiMediaType == "movie" {
+			title.Status = models.MovieReleaseStatusFromReleaseDate(result.ReleaseDate)
+		} else {
+			title.Status = models.SeriesReleaseStatusFromDate(result.FirstAirDate)
+		}
+		title.Poster = buildTMDBImage(result.PosterPath, tmdbPosterSize, "poster")
+		title.Backdrop = buildTMDBImage(result.BackdropPath, tmdbBackdropSize, "backdrop")
+		items = append(items, models.TrendingItem{Rank: (page-1)*20 + len(items) + 1, Title: title})
+	}
+	return items, nil
+}
+
 // fetchPersonDetails retrieves detailed information about a person from TMDB
 func (c *tmdbClient) fetchPersonDetails(ctx context.Context, personID int64) (*models.Person, error) {
 	if !c.isConfigured() {

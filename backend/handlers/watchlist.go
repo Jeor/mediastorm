@@ -74,6 +74,8 @@ func (h *WatchlistHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metadataSvc := h.metadataForUser(userID)
+
 	// Enrich with pre-computed watch state if history service is available
 	if h.HistoryService != nil {
 		wh, whErr := h.HistoryService.ListWatchHistory(userID)
@@ -81,12 +83,11 @@ func (h *WatchlistHandler) List(w http.ResponseWriter, r *http.Request) {
 		pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 		if whErr == nil {
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichWatchlistItems(items, idx)
+			enrichWatchlistItems(items, idx, metadataSvc, false)
 		}
 	}
 
 	// Enrich with MDBList ratings for sort-by-rating support
-	metadataSvc := h.metadataForUser(userID)
 	enrichWatchlistRatings(r.Context(), items, metadataSvc)
 
 	// Enrich with artwork URLs from metadata cache

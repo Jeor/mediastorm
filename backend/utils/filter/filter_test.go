@@ -1541,6 +1541,28 @@ func TestResults_ForeignLanguageTitles(t *testing.T) {
 	})
 }
 
+func TestResults_LocalizedMetadataTitleAcceptsEnglishFallback(t *testing.T) {
+	results := []models.NZBResult{
+		{Title: "Snoopy.in.Space.S01E01.1080p.WEB-DL"},
+	}
+	opts := Options{
+		ExpectedTitle:   "Snoopy dans l'espace",
+		ExpectedYear:    2019,
+		IsMovie:         false,
+		TargetSeason:    1,
+		TargetEpisode:   1,
+		AlternateTitles: []string{"Snoopy in Space"},
+	}
+
+	detailed := ResultsWithDetails(results, opts)
+	if len(detailed) != 1 || !detailed[0].Passed {
+		t.Fatalf("English release title should match localized metadata fallback: %+v", detailed)
+	}
+	if got := detailed[0].Result.Attributes["titleMatch"]; got != "strong" {
+		t.Fatalf("titleMatch = %q, want strong", got)
+	}
+}
+
 func TestResults_ParsedMetadataAttributes(t *testing.T) {
 	results := []models.NZBResult{
 		{Title: "The.Matrix.1999.1080p.BluRay.x264.DTS-SPARKS"},

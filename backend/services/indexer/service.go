@@ -162,6 +162,9 @@ type Service struct {
 	searchCacheMu sync.RWMutex
 	searchCache   map[string]searchCacheEntry
 
+	dailyUsenetMu          sync.RWMutex
+	dailyUsenetPreferences map[string]dailyUsenetPreference
+
 	// Usenet search call counters for diagnostics (atomic, safe for concurrent use).
 	// Grep logs for [search-stats] to see totals during playback.
 	searchCount        atomic.Int64 // top-level Search calls (manual search)
@@ -173,6 +176,11 @@ type Service struct {
 type searchCacheEntry struct {
 	results   []models.NZBResult
 	expiresAt time.Time
+}
+
+type dailyUsenetPreference struct {
+	candidateKey string
+	updatedAt    time.Time
 }
 
 func NewService(cfg *config.Manager, metadataSvc metadataSearchService, debridSvc debridSearchService) *Service {
@@ -192,11 +200,12 @@ func NewService(cfg *config.Manager, metadataSvc metadataSearchService, debridSv
 			Timeout:   20 * time.Second,
 			Transport: transport,
 		},
-		debrid:          debridSvc,
-		debridPlayback:  debrid.NewPlaybackService(cfg, nil),
-		metadata:        metadataSvc,
-		searchCache:     make(map[string]searchCacheEntry),
-		providerBreaker: providerbreaker.Shared(),
+		debrid:                 debridSvc,
+		debridPlayback:         debrid.NewPlaybackService(cfg, nil),
+		metadata:               metadataSvc,
+		searchCache:            make(map[string]searchCacheEntry),
+		dailyUsenetPreferences: make(map[string]dailyUsenetPreference),
+		providerBreaker:        providerbreaker.Shared(),
 	}
 }
 
@@ -1236,6 +1245,7 @@ type SearchOptions struct {
 	Categories            []string
 	MaxResults            int
 	IMDBID                string
+	TVDBID                int64
 	MediaType             string                      // "movie" or "series"
 	Year                  int                         // Release year (for movies)
 	CountryCode           string                      // Original production country from metadata
@@ -1253,6 +1263,14 @@ type SearchOptions struct {
 	IncludeScoreBreakdown bool                        // When true, attach per-criterion scoring details (admin search tester)
 	SkipFilter            bool                        // When true, skip filtering entirely (used by SearchTest)
 	UseDownloadRanking    bool                        // When true, apply download-only preferred terms as a final ranking boost
+
+	// Internal Newznab request controls used by the daily-show tiered search.
+	usenetSearchType      string
+	usenetTitle           string
+	usenetSeason          string
+	usenetEpisode         string
+	usenetUseID           bool
+	disableSeasonFallback bool
 }
 
 type searchCacheKeyPayload struct {
@@ -1283,6 +1301,7 @@ type searchStreamingSettings struct {
 	SearchMode                config.SearchMode
 	IndexerTimeoutSec         float64
 	MaxAlternateTitleSearches int
+	MaxDailyUsenetQueries     int
 }
 
 type searchMetadataSettings struct {
@@ -1301,6 +1320,7 @@ type searchCacheOptions struct {
 	Categories            []string
 	MaxResults            int
 	IMDBID                string
+	TVDBID                int64
 	MediaType             string
 	Year                  int
 	CountryCode           string
@@ -1324,6 +1344,7 @@ func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 		Categories:            append([]string(nil), opts.Categories...),
 		MaxResults:            opts.MaxResults,
 		IMDBID:                opts.IMDBID,
+		TVDBID:                opts.TVDBID,
 		MediaType:             opts.MediaType,
 		Year:                  opts.Year,
 		CountryCode:           opts.CountryCode,
@@ -1351,6 +1372,7 @@ func buildSearchRelevantSettings(settings config.Settings) searchRelevantSetting
 			SearchMode:                settings.Streaming.SearchMode,
 			IndexerTimeoutSec:         settings.Streaming.IndexerTimeoutSec,
 			MaxAlternateTitleSearches: settings.Streaming.MaxAlternateTitleSearches,
+			MaxDailyUsenetQueries:     settings.Streaming.MaxDailyUsenetQueries,
 		},
 		Metadata: searchMetadataSettings{
 			Language:         append([]string(nil), settings.Metadata.Language...),
@@ -1473,6 +1495,28 @@ func cloneNZBResults(results []models.NZBResult) []models.NZBResult {
 	return out
 }
 
+// annotateDailySearchResults carries request-specific daily-show identity into
+// playback resolution. This must be applied consistently to standard, combined
+// IncludeFiltered, and split searches because cached torrent contents may use a
+// broadcast date instead of S##E## naming.
+func annotateDailySearchResults(results []models.NZBResult, opts SearchOptions) bool {
+	if !opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) == "" {
+		return false
+	}
+	for i := range results {
+		if results[i].Attributes == nil {
+			results[i].Attributes = make(map[string]string)
+		}
+		if opts.IsDaily {
+			results[i].Attributes["isDaily"] = "true"
+		}
+		if opts.TargetAirDate != "" {
+			results[i].Attributes["targetAirDate"] = opts.TargetAirDate
+		}
+	}
+	return true
+}
+
 func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBResult, error) {
 	searchStart := time.Now()
 	callNum := s.searchCount.Add(1)
@@ -1520,6 +1564,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	if len(alternateTitles) > 0 {
 		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
 	}
@@ -1560,7 +1605,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		go func() {
 			defer wg.Done()
 			usenetStart := time.Now()
-			usenetResults, err := s.searchUsenetWithFilter(ctx, settings, sourceOpts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+			usenetResults, err := s.searchUsenetWithFilter(ctx, settings, sourceOpts, parsedQuery, filterTitles, searchQueries, filterBundle.Usenet)
 			if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
 				fallbackQueries := buildEnglishFallbackQueries(sourceOpts, parsedQuery, englishFallbackTitles)
 				log.Printf("[indexer/usenet] localized search returned no results; trying English fallback queries: %v", fallbackQueries)
@@ -1600,7 +1645,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
-				AlternateTitles:       append([]string{}, alternateTitles...),
+				AlternateTitles:       append([]string{}, filterTitles...),
 				UserID:                opts.UserID,
 				ClientID:              opts.ClientID,
 				TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
@@ -1717,19 +1762,8 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		aggregated = aggregated[:opts.MaxResults]
 	}
 
-	// Add daily show attributes to all results for file matching
-	if opts.IsDaily || opts.TargetAirDate != "" {
-		for i := range aggregated {
-			if aggregated[i].Attributes == nil {
-				aggregated[i].Attributes = make(map[string]string)
-			}
-			if opts.IsDaily {
-				aggregated[i].Attributes["isDaily"] = "true"
-			}
-			if opts.TargetAirDate != "" {
-				aggregated[i].Attributes["targetAirDate"] = opts.TargetAirDate
-			}
-		}
+	// Add daily show attributes to all results for file matching.
+	if annotateDailySearchResults(aggregated, opts) {
 		log.Printf("[indexer] Added daily show attributes to %d results: isDaily=%v, airDate=%q", len(aggregated), opts.IsDaily, opts.TargetAirDate)
 	}
 
@@ -1772,6 +1806,10 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 	if err != nil {
 		return nil, err
 	}
+	// The IncludeFiltered path is also used by the default, combined prequeue
+	// search. Preserve the same date identity as Search and the split search so
+	// playback can select a date-named file inside a daily-show torrent.
+	annotateDailySearchResults(rawResults, opts)
 
 	// Build filter options from effective settings
 	settings, err := s.cfg.Load()
@@ -1783,6 +1821,10 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
 	filterSettings := filterBundle.Default
 	rankingBundle := s.getEffectiveRankingBundle(opts.UserID, opts.ClientID, settings)
+	metadataLanguage := s.getEffectiveMetadataLanguage(opts.UserID, settings)
+	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
+	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	if shouldBypassAIOStreamsRanking(settings, filterOverrides, shouldUseUsenet(settings.Streaming.ServiceMode)) {
 		log.Printf("[indexer] Bypassing mediastorm filtering/ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
 		scored := make([]models.ScoredNZBResult, len(rawResults))
@@ -1814,9 +1856,9 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		}
 	}
 	filterOptsByService := map[models.ContentServiceType]filter.Options{
-		models.ServiceTypeDebrid:  s.buildFilterOptions(rawOpts, filterBundle.Debrid),
-		models.ServiceTypeUsenet:  s.buildFilterOptions(rawOpts, filterBundle.Usenet),
-		models.ServiceTypeUnknown: s.buildFilterOptions(rawOpts, filterBundle.Default),
+		models.ServiceTypeDebrid:  s.buildFilterOptions(rawOpts, filterBundle.Debrid, filterTitles),
+		models.ServiceTypeUsenet:  s.buildFilterOptions(rawOpts, filterBundle.Usenet, filterTitles),
+		models.ServiceTypeUnknown: s.buildFilterOptions(rawOpts, filterBundle.Default, filterTitles),
 	}
 	detailed := make([]filter.FilteredResult, 0, len(rawResults))
 	for _, raw := range rawResults {
@@ -2018,6 +2060,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	if len(alternateTitles) > 0 {
 		log.Printf("[indexer] resolved %d alternate title(s) for %q: %v", len(alternateTitles), opts.Query, alternateTitles)
 	}
@@ -2048,9 +2091,9 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 				out.scored = bypassScoredResults(out.raw, rankingBundle.NewestReleaseFirst)
 				out.filtered = 0
 			} else {
-				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet)
+				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet, filterTitles)
 				if out.source == "debrid" {
-					filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid)
+					filterOpts = s.buildFilterOptions(opts, filterBundle.Debrid, filterTitles)
 				}
 				out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, out.raw, filterOpts, filterBundle, animeSettings, filterOverrides, rankingBundle)
 			}
@@ -2158,6 +2201,22 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 // emitSplitSourceBatch routes one completed source's scored batch to the
 // appropriate caller-facing channel (usenet vs debrid).
 func (s *Service) emitSplitSourceBatch(usenetOut, debridOut chan ScoredSplitSearchResult, settings config.Settings, opts SearchOptions, out searchSplitOutcome) {
+	// The non-split search path adds these after ranking. Do the same at the
+	// split emission boundary so prequeue resolution receives the daily-show
+	// identity needed to validate date-named files inside cached torrents.
+	if opts.IsDaily || opts.TargetAirDate != "" {
+		for i := range out.scored {
+			if out.scored[i].Attributes == nil {
+				out.scored[i].Attributes = make(map[string]string)
+			}
+			if opts.IsDaily {
+				out.scored[i].Attributes["isDaily"] = "true"
+			}
+			if opts.TargetAirDate != "" {
+				out.scored[i].Attributes["targetAirDate"] = opts.TargetAirDate
+			}
+		}
+	}
 	sr := ScoredSplitSearchResult{
 		Source:        out.source,
 		Scored:        out.scored,
@@ -2201,11 +2260,17 @@ func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Setting
 	log.Printf("[indexer] TIMING: split usenet search starting (query=%q)", opts.Query)
 	out := searchSplitOutcome{source: "usenet"}
 
-	raw, err := s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
+	var raw []models.NZBResult
+	var err error
+	if opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) != "" {
+		raw, err = s.searchDailyUsenet(ctx, settings, opts, parsedQuery, alternateTitles, filterBundle.Usenet, true)
+	} else {
+		raw, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
+	}
 	// Mirror searchRawResults: only when the localized query set returns nothing,
 	// retry with the English fallback queries so results aren't silently lost
 	// for localized installs.
-	if err == nil && len(raw) == 0 && len(englishFallbackTitles) > 0 {
+	if err == nil && len(raw) == 0 && len(englishFallbackTitles) > 0 && !(opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) != "") {
 		fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
 		log.Printf("[indexer/usenet] localized split search returned no results; trying English fallback queries: %v", fallbackQueries)
 		raw, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, fallbackQueries)
@@ -2225,7 +2290,8 @@ func (s *Service) splitSearchUsenet(ctx context.Context, settings config.Setting
 	}
 	out.raw = raw
 	out.incomplete = incomplete
-	out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Usenet), filterBundle, animeSettings, filterOverrides, rankingBundle)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
+	out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Usenet, filterTitles), filterBundle, animeSettings, filterOverrides, rankingBundle)
 	log.Printf("[indexer] TIMING: split usenet search complete (took: %v, raw=%d, passed=%d)", time.Since(usenetStart), len(raw), len(out.scored))
 	return out
 }
@@ -2295,7 +2361,8 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		out.scored = bypassScoredResults(raw, rankingBundle.NewestReleaseFirst)
 		out.filtered = 0
 	} else {
-		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid), filterBundle, animeSettings, filterOverrides, rankingBundle)
+		filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
+		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid, filterTitles), filterBundle, animeSettings, filterOverrides, rankingBundle)
 	}
 	log.Printf("[indexer] TIMING: split debrid search complete (took: %v, raw=%d, passed=%d)", time.Since(debridStart), len(raw), len(out.scored))
 	return out
@@ -2462,6 +2529,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, settings)
@@ -2490,8 +2558,14 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 			defer wg.Done()
 			if opts.SkipFilter {
 				// Fetch raw results without filtering
-				usenetResults, err := s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
-				if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
+				var usenetResults []models.NZBResult
+				var err error
+				if opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) != "" {
+					usenetResults, err = s.searchDailyUsenet(ctx, settings, opts, parsedQuery, alternateTitles, filterBundle.Usenet, true)
+				} else {
+					usenetResults, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, searchQueries)
+				}
+				if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 && !(opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) != "") {
 					fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
 					log.Printf("[indexer/usenet] localized raw search returned no results; trying English fallback queries: %v", fallbackQueries)
 					usenetResults, err = s.fetchUsenetResultsAllQueries(ctx, settings, opts, fallbackQueries)
@@ -2507,7 +2581,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				}
 				resultsChan <- searchResult{results: usenetResults, source: "usenet"}
 			} else {
-				usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+				usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, filterTitles, searchQueries, filterBundle.Usenet)
 				if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
 					fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
 					filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
@@ -2543,7 +2617,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
-				AlternateTitles:       append([]string{}, alternateTitles...),
+				AlternateTitles:       append([]string{}, filterTitles...),
 				UserID:                opts.UserID,
 				ClientID:              opts.ClientID,
 				TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
@@ -2700,7 +2774,7 @@ func (s *Service) fetchUsenetResultsAllQueries(ctx context.Context, settings con
 }
 
 // buildFilterOptions constructs filter.Options from SearchOptions and FilterSettings.
-func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.FilterSettings) filter.Options {
+func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.FilterSettings, resolvedTitles ...[]string) filter.Options {
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	expectedTitle := strings.TrimSpace(parsedQuery.Title)
 	if expectedTitle == "" {
@@ -2714,7 +2788,12 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 
 	isMovie := strings.ToLower(opts.MediaType) == "movie"
 
-	alternateTitles := s.resolveAlternateTitles(context.Background(), opts, "", 0)
+	var alternateTitles []string
+	if len(resolvedTitles) > 0 {
+		alternateTitles = combineFilterTitles(resolvedTitles...)
+	} else {
+		alternateTitles = s.resolveAlternateTitles(context.Background(), opts, "", 0)
+	}
 
 	return filter.Options{
 		ExpectedTitle:         expectedTitle,
@@ -2803,6 +2882,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 	alternateTitles := s.resolveAlternateTitles(ctx, opts, metadataLanguage, settings.Streaming.MaxAlternateTitleSearches)
 	englishFallbackTitles := s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
 	alternateTitles = excludeFallbackTitles(alternateTitles, englishFallbackTitles)
+	filterTitles := combineFilterTitles(alternateTitles, englishFallbackTitles)
 	parsedQuery := debrid.ParseQuery(opts.Query)
 	searchQueries := buildSearchQueries(opts, parsedQuery, alternateTitles)
 
@@ -2860,7 +2940,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 			IMDBID:                opts.IMDBID,
 			MediaType:             opts.MediaType,
 			Year:                  opts.Year,
-			AlternateTitles:       append([]string{}, alternateTitles...),
+			AlternateTitles:       append([]string{}, filterTitles...),
 			UserID:                opts.UserID,
 			ClientID:              opts.ClientID,
 			TotalSeriesEpisodes:   opts.TotalSeriesEpisodes,
@@ -2915,7 +2995,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		usenetStart := time.Now()
 		log.Printf("[indexer] TIMING: split usenet search starting (query=%q)", opts.Query)
 
-		usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, alternateTitles, searchQueries, filterBundle.Usenet)
+		usenetResults, err := s.searchUsenetWithFilter(ctx, settings, opts, parsedQuery, filterTitles, searchQueries, filterBundle.Usenet)
 		if err == nil && len(usenetResults) == 0 && len(englishFallbackTitles) > 0 {
 			fallbackQueries := buildEnglishFallbackQueries(opts, parsedQuery, englishFallbackTitles)
 			filterTitles := append(append([]string{}, alternateTitles...), englishFallbackTitles...)
@@ -3002,13 +3082,16 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 
 	type alternateTitleCandidate struct {
 		value                     string
+		language                  string
 		languageMatch             bool
 		releaseReady              bool
 		asciiReleaseReady         bool
 		romanizedOriginalLanguage bool
+		providerAlias             bool
 	}
 
 	seen := make(map[string]struct{})
+	candidateIndexes := make(map[string]int)
 	// The canonical/query titles are already searched and should not consume an
 	// alternate-title slot when an aliases endpoint returns them again.
 	seen[strings.ToLower(query)] = struct{}{}
@@ -3017,28 +3100,45 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 	}
 
 	var candidates []alternateTitleCandidate
-	add := func(value string, languageMatch, originalLanguage bool) {
+	add := func(value, language string, languageMatch, originalLanguage, providerAlias bool) {
 		trimmed := strings.TrimSpace(value)
 		if trimmed == "" {
 			return
 		}
 		lowered := strings.ToLower(trimmed)
 		if _, exists := seen[lowered]; exists {
+			// Search translations frequently arrive without language metadata and
+			// are repeated by the aliases endpoint with a useful language tag.
+			// Enrich the existing candidate instead of losing that information to
+			// deduplication, so daily-query filtering can make the right decision.
+			if index, ok := candidateIndexes[lowered]; ok {
+				normalizedLanguage := strings.ToLower(strings.TrimSpace(language))
+				if candidates[index].language == "" && normalizedLanguage != "" {
+					candidates[index].language = normalizedLanguage
+				}
+				candidates[index].languageMatch = candidates[index].languageMatch || languageMatch
+				candidates[index].romanizedOriginalLanguage = candidates[index].romanizedOriginalLanguage ||
+					(opts.IsAnime && originalLanguage && candidates[index].releaseReady)
+				candidates[index].providerAlias = candidates[index].providerAlias || providerAlias
+			}
 			return
 		}
 		seen[lowered] = struct{}{}
 		releaseReady := isReleaseFriendlyTitle(trimmed)
+		candidateIndexes[lowered] = len(candidates)
 		candidates = append(candidates, alternateTitleCandidate{
 			value:                     trimmed,
+			language:                  strings.ToLower(strings.TrimSpace(language)),
 			languageMatch:             languageMatch,
 			releaseReady:              releaseReady,
 			asciiReleaseReady:         releaseReady && isASCIIString(trimmed),
 			romanizedOriginalLanguage: opts.IsAnime && originalLanguage && releaseReady,
+			providerAlias:             providerAlias,
 		})
 	}
-	add(chosen.OriginalName, false, true)
+	add(chosen.OriginalName, chosen.Language, false, true, false)
 	for _, alt := range chosen.AlternateTitles {
-		add(alt, false, false)
+		add(alt, "", false, false, false)
 	}
 
 	// Fetch full TVDB aliases (international titles) if the metadata service
@@ -3060,11 +3160,39 @@ func (s *Service) resolveAlternateTitles(ctx context.Context, opts SearchOptions
 			}
 		}
 		for _, a := range langMatched {
-			add(a, true, originalLang != "" && aliasLanguages[strings.ToLower(strings.TrimSpace(a))] == originalLang)
+			aliasLang := aliasLanguages[strings.ToLower(strings.TrimSpace(a))]
+			add(a, aliasLang, true, originalLang != "" && aliasLang == originalLang, true)
 		}
 		for _, a := range others {
-			add(a, false, originalLang != "" && aliasLanguages[strings.ToLower(strings.TrimSpace(a))] == originalLang)
+			aliasLang := aliasLanguages[strings.ToLower(strings.TrimSpace(a))]
+			add(a, aliasLang, false, originalLang != "" && aliasLang == originalLang, true)
 		}
+	}
+
+	// Daily searches have a deliberately small query budget. Do not spend it on
+	// translated aliases in unrelated, explicitly tagged languages when the
+	// canonical title is already release-friendly. Dedicated provider aliases
+	// without a language tag are retained only when ASCII-safe; untagged search
+	// translations are display names and are not useful release queries.
+	if opts.IsDaily && isReleaseFriendlyTitle(chosen.Name) {
+		metadataLanguage := strings.ToLower(strings.TrimSpace(metadataLang))
+		originalLanguage := strings.ToLower(strings.TrimSpace(chosen.Language))
+		filtered := candidates[:0]
+		for _, candidate := range candidates {
+			if candidate.language == "" {
+				// Untagged search translations are usually arbitrary localized
+				// display names. Only retain an untagged alias from the dedicated
+				// aliases endpoint when it is ASCII-safe for release searches.
+				if candidate.providerAlias && candidate.asciiReleaseReady {
+					filtered = append(filtered, candidate)
+				}
+				continue
+			}
+			if candidate.language == metadataLanguage || candidate.language == originalLanguage || candidate.romanizedOriginalLanguage {
+				filtered = append(filtered, candidate)
+			}
+		}
+		candidates = filtered
 	}
 
 	// Alias APIs often return a native-script original before a provider-supplied
@@ -3227,6 +3355,30 @@ func excludeFallbackTitles(titles, fallbackTitles []string) []string {
 		}
 	}
 	return filtered
+}
+
+// combineFilterTitles keeps English fallback titles available to identity
+// filtering even when the localized query returned raw candidates. Fallback
+// titles remain separate from normal search queries so they do not consume the
+// configured alternate-query budget.
+func combineFilterTitles(titleLists ...[]string) []string {
+	seen := make(map[string]struct{})
+	var combined []string
+	for _, titles := range titleLists {
+		for _, title := range titles {
+			trimmed := strings.TrimSpace(title)
+			if trimmed == "" {
+				continue
+			}
+			key := strings.ToLower(trimmed)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			combined = append(combined, trimmed)
+		}
+	}
+	return combined
 }
 
 func isReleaseFriendlyTitle(value string) bool {
@@ -3464,6 +3616,300 @@ func normalizeToASCII(value string) string {
 	return ascii
 }
 
+const (
+	defaultMaxDailyUsenetQueries = 5
+	dailyUsenetPreferenceTTL     = 30 * 24 * time.Hour
+)
+
+type dailyUsenetCandidate struct {
+	key         string
+	description string
+	query       string
+	searchType  string
+	title       string
+	useID       bool
+	season      string
+	episode     string
+}
+
+func dailyUsenetCandidates(opts SearchOptions, parsed debrid.ParsedQuery, alternateTitles []string) []dailyUsenetCandidate {
+	airDate, err := time.Parse("2006-01-02", strings.TrimSpace(opts.TargetAirDate))
+	if err != nil {
+		return nil
+	}
+
+	canonical := strings.TrimSpace(parsed.Title)
+	if canonical == "" {
+		canonical = strings.TrimSpace(opts.Query)
+	}
+	season := strconv.Itoa(airDate.Year())
+	episode := airDate.Format("01/02")
+
+	var candidates []dailyUsenetCandidate
+	seen := make(map[string]struct{})
+	add := func(candidate dailyUsenetCandidate) {
+		if candidate.key == "" {
+			return
+		}
+		if _, exists := seen[candidate.key]; exists {
+			return
+		}
+		seen[candidate.key] = struct{}{}
+		candidates = append(candidates, candidate)
+	}
+
+	if opts.TVDBID > 0 || strings.TrimSpace(opts.IMDBID) != "" {
+		add(dailyUsenetCandidate{
+			key:         "structured-id-date",
+			description: "structured ID + air date",
+			query:       opts.Query,
+			searchType:  "tvsearch",
+			useID:       true,
+			season:      season,
+			episode:     episode,
+		})
+	}
+
+	if canonical != "" {
+		add(dailyUsenetCandidate{
+			key:         "structured-title-date:" + strings.ToLower(canonical),
+			description: "canonical title + structured air date",
+			query:       opts.Query,
+			searchType:  "tvsearch",
+			title:       canonical,
+			season:      season,
+			episode:     episode,
+		})
+		// Some indexers tokenize human broadcast dates differently from numeric
+		// Newznab TV parameters. Keep both common forms inside the bounded tier
+		// budget, and remember whichever one succeeds for later episodes.
+		add(dailyUsenetCandidate{
+			key:         "text-ordinal-date:" + strings.ToLower(canonical),
+			description: "canonical title + ordinal human date",
+			query:       fmt.Sprintf("%s %s %s %d", canonical, ordinalDay(airDate.Day()), airDate.Format("Jan"), airDate.Year()),
+			searchType:  "search",
+		})
+		add(dailyUsenetCandidate{
+			key:         "text-human-date:" + strings.ToLower(canonical),
+			description: "canonical title + human date",
+			query:       fmt.Sprintf("%s %d %s %d", canonical, airDate.Day(), airDate.Format("Jan"), airDate.Year()),
+			searchType:  "search",
+		})
+		add(dailyUsenetCandidate{
+			key:         "text-season-episode:" + strings.ToLower(canonical),
+			description: "canonical title + season/episode",
+			query:       composeQueryForSearch(canonical, opts, parsed),
+			searchType:  "search",
+		})
+	}
+
+	for _, alternate := range alternateTitles {
+		alternate = strings.TrimSpace(alternate)
+		if alternate == "" {
+			continue
+		}
+		add(dailyUsenetCandidate{
+			key:         "structured-title-date:" + strings.ToLower(alternate),
+			description: "alternate title + structured air date",
+			query:       opts.Query,
+			searchType:  "tvsearch",
+			title:       alternate,
+			season:      season,
+			episode:     episode,
+		})
+		add(dailyUsenetCandidate{
+			key:         "text-season-episode:" + strings.ToLower(alternate),
+			description: "alternate title + season/episode",
+			query:       composeQueryForSearch(alternate, opts, parsed),
+			searchType:  "search",
+		})
+	}
+
+	return candidates
+}
+
+func dailyUsenetSeriesKey(opts SearchOptions, parsed debrid.ParsedQuery) string {
+	if opts.TVDBID > 0 {
+		return "tvdb:" + strconv.FormatInt(opts.TVDBID, 10)
+	}
+	if imdbID := strings.ToLower(strings.TrimSpace(opts.IMDBID)); imdbID != "" {
+		return "imdb:" + imdbID
+	}
+	title := strings.TrimSpace(parsed.Title)
+	if title == "" {
+		title = strings.TrimSpace(opts.Query)
+	}
+	return "title:" + normalizedUsenetReleaseTitle(title)
+}
+
+func dailyUsenetPreferenceKey(idx config.IndexerConfig, opts SearchOptions, parsed debrid.ParsedQuery) string {
+	indexerID := strings.ToLower(strings.TrimSpace(idx.Name)) + "|" + strings.ToLower(strings.TrimSpace(idx.URL))
+	return indexerID + "|" + dailyUsenetSeriesKey(opts, parsed)
+}
+
+func (s *Service) preferredDailyUsenetCandidate(key string) string {
+	s.dailyUsenetMu.RLock()
+	preference, ok := s.dailyUsenetPreferences[key]
+	s.dailyUsenetMu.RUnlock()
+	if !ok || time.Since(preference.updatedAt) > dailyUsenetPreferenceTTL {
+		return ""
+	}
+	return preference.candidateKey
+}
+
+func (s *Service) rememberDailyUsenetCandidate(key, candidateKey string) {
+	s.dailyUsenetMu.Lock()
+	if s.dailyUsenetPreferences == nil {
+		s.dailyUsenetPreferences = make(map[string]dailyUsenetPreference)
+	}
+	s.dailyUsenetPreferences[key] = dailyUsenetPreference{candidateKey: candidateKey, updatedAt: time.Now()}
+	s.dailyUsenetMu.Unlock()
+}
+
+func prioritizeDailyUsenetCandidate(candidates []dailyUsenetCandidate, preferred string) []dailyUsenetCandidate {
+	if preferred == "" {
+		return candidates
+	}
+	for i := range candidates {
+		if candidates[i].key != preferred || i == 0 {
+			continue
+		}
+		ordered := make([]dailyUsenetCandidate, 0, len(candidates))
+		ordered = append(ordered, candidates[i])
+		ordered = append(ordered, candidates[:i]...)
+		ordered = append(ordered, candidates[i+1:]...)
+		return ordered
+	}
+	return candidates
+}
+
+// searchDailyUsenet runs bounded, per-indexer tiers for daily episodes. A tier
+// is successful only when at least one result survives normal filtering. When
+// returnRaw is true the successful tier's raw results are returned for the
+// split scoring path, while filtering is still used to select the tier.
+func (s *Service) searchDailyUsenet(ctx context.Context, settings config.Settings, opts SearchOptions, parsed debrid.ParsedQuery, alternateTitles []string, filterSettings models.FilterSettings, returnRaw bool) ([]models.NZBResult, error) {
+	candidates := dailyUsenetCandidates(opts, parsed, alternateTitles)
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	maxAttempts := settings.Streaming.MaxDailyUsenetQueries
+	if maxAttempts <= 0 {
+		maxAttempts = defaultMaxDailyUsenetQueries
+	}
+
+	var enabled []config.IndexerConfig
+	for _, idx := range settings.Indexers {
+		if !idx.Enabled {
+			continue
+		}
+		t := strings.ToLower(strings.TrimSpace(idx.Type))
+		if t == "" || t == "newznab" || t == "torznab" {
+			enabled = append(enabled, idx)
+		}
+	}
+	if len(enabled) == 0 {
+		return nil, nil
+	}
+
+	type indexerResult struct {
+		results []models.NZBResult
+		err     error
+	}
+	resultsChan := make(chan indexerResult, len(enabled))
+	for _, idx := range enabled {
+		go func(ix config.IndexerConfig) {
+			preferenceKey := dailyUsenetPreferenceKey(ix, opts, parsed)
+			ordered := prioritizeDailyUsenetCandidate(candidates, s.preferredDailyUsenetCandidate(preferenceKey))
+			if len(ordered) > maxAttempts {
+				ordered = ordered[:maxAttempts]
+			}
+
+			var lastErr error
+			successfulCalls := 0
+			for attempt, candidate := range ordered {
+				queryOpts := opts
+				queryOpts.Query = candidate.query
+				queryOpts.usenetSearchType = candidate.searchType
+				queryOpts.usenetTitle = candidate.title
+				queryOpts.usenetSeason = candidate.season
+				queryOpts.usenetEpisode = candidate.episode
+				queryOpts.usenetUseID = candidate.useID
+				queryOpts.disableSeasonFallback = true
+
+				log.Printf("[indexer/usenet] daily tier attempt %d/%d indexer=%q format=%q", attempt+1, len(ordered), ix.Name, candidate.description)
+				raw, err := s.searchTorznab(ctx, ix, queryOpts)
+				if err != nil {
+					lastErr = err
+					continue
+				}
+				successfulCalls++
+				if len(raw) == 0 {
+					continue
+				}
+
+				filtered := s.applyUsenetFilteringWithSettings(raw, opts, parsed, debrid.ParseQuery(candidate.query), alternateTitles, filterSettings)
+				if opts.SkipFilter {
+					filtered = raw
+				}
+				if len(filtered) == 0 {
+					continue
+				}
+
+				s.rememberDailyUsenetCandidate(preferenceKey, candidate.key)
+				log.Printf("[indexer/usenet] daily tier succeeded indexer=%q format=%q raw=%d usable=%d", ix.Name, candidate.description, len(raw), len(filtered))
+				if returnRaw {
+					resultsChan <- indexerResult{results: raw}
+				} else {
+					resultsChan <- indexerResult{results: filtered}
+				}
+				return
+			}
+
+			if successfulCalls == 0 && lastErr != nil {
+				resultsChan <- indexerResult{err: lastErr}
+				return
+			}
+			resultsChan <- indexerResult{}
+		}(idx)
+	}
+
+	var merged []models.NZBResult
+	var lastErr error
+	successes := 0
+	for range enabled {
+		result := <-resultsChan
+		if result.err != nil {
+			lastErr = result.err
+			continue
+		}
+		successes++
+		merged = append(merged, result.results...)
+	}
+	if len(merged) == 0 && successes == 0 && lastErr != nil {
+		return nil, lastErr
+	}
+	return dedupeUsenetResults(merged), nil
+}
+
+func dedupeUsenetResults(results []models.NZBResult) []models.NZBResult {
+	seen := make(map[string]struct{}, len(results))
+	deduped := make([]models.NZBResult, 0, len(results))
+	for _, result := range results {
+		key := usenetResultDedupKey(result)
+		if key == "" {
+			deduped = append(deduped, result)
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, result)
+	}
+	return deduped
+}
+
 func isASCIIString(value string) bool {
 	for _, r := range value {
 		if r > unicode.MaxASCII {
@@ -3475,6 +3921,10 @@ func isASCIIString(value string) bool {
 
 // searchUsenetWithFilter performs usenet search with explicit filter settings (for per-user filtering)
 func (s *Service) searchUsenetWithFilter(ctx context.Context, settings config.Settings, opts SearchOptions, baseParsed debrid.ParsedQuery, alternateTitles []string, searchQueries []string, filterSettings models.FilterSettings) ([]models.NZBResult, error) {
+	if opts.IsDaily && strings.TrimSpace(opts.TargetAirDate) != "" {
+		return s.searchDailyUsenet(ctx, settings, opts, baseParsed, alternateTitles, filterSettings, false)
+	}
+
 	// Filter out empty queries
 	var validQueries []string
 	for _, query := range searchQueries {
@@ -3894,14 +4344,32 @@ func (s *Service) searchTorznab(ctx context.Context, idx config.IndexerConfig, o
 
 	params := url.Values{}
 	params.Set("apikey", idx.APIKey)
-	params.Set("t", "search")
-	if opts.Query != "" {
+	searchType := strings.TrimSpace(opts.usenetSearchType)
+	if searchType == "" {
+		searchType = "search"
+	}
+	params.Set("t", searchType)
+	if opts.usenetUseID && searchType == "tvsearch" {
+		if opts.TVDBID > 0 {
+			params.Set("tvdbid", strconv.FormatInt(opts.TVDBID, 10))
+		} else if imdbID := strings.TrimSpace(opts.IMDBID); imdbID != "" {
+			params.Set("imdbid", imdbID)
+		}
+	} else if title := strings.TrimSpace(opts.usenetTitle); title != "" {
+		params.Set("q", sanitizeNewznabQuery(title))
+	} else if opts.Query != "" {
 		// Sanitize query to remove special characters that break newznab/torznab searches
 		sanitizedQuery := sanitizeNewznabQuery(opts.Query)
 		params.Set("q", sanitizedQuery)
 		if sanitizedQuery != opts.Query {
 			log.Printf("[indexer/newznab] sanitized query for %s: %q -> %q", idx.Name, opts.Query, sanitizedQuery)
 		}
+	}
+	if season := strings.TrimSpace(opts.usenetSeason); season != "" {
+		params.Set("season", season)
+	}
+	if episode := strings.TrimSpace(opts.usenetEpisode); episode != "" {
+		params.Set("ep", episode)
 	}
 	// Use indexer-specific categories if configured, otherwise fall back to search options
 	if cats := strings.TrimSpace(idx.Categories); cats != "" {
@@ -3995,7 +4463,7 @@ func (s *Service) searchTorznab(ctx context.Context, idx config.IndexerConfig, o
 		results = append(results, result)
 	}
 
-	if len(results) == 0 && opts.EpisodeReleased {
+	if len(results) == 0 && opts.EpisodeReleased && !opts.disableSeasonFallback {
 		parsed := debrid.ParseQuery(opts.Query)
 		if parsed.Season > 0 && parsed.Episode > 0 &&
 			(strings.EqualFold(strings.TrimSpace(opts.MediaType), "series") || parsed.MediaType == debrid.MediaTypeSeries) {

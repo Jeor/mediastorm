@@ -630,13 +630,13 @@ func (s *Service) GetTopTenWorkerStatus() TopTenWorkerStatus {
 
 	var allItems, movieItems, tvItems []models.TrendingItem
 	if ok, _ := s.cache.get(topTenCacheKey("all", nil, s.client.language), &allItems); ok {
-		status.AllCached = len(allItems)
+		status.AllCached = len(selectDailyTopTen(allItems, "all"))
 	}
 	if ok, _ := s.cache.get(topTenCacheKey("movie", nil, s.client.language), &movieItems); ok {
-		status.MoviesCached = len(movieItems)
+		status.MoviesCached = len(selectDailyTopTen(movieItems, "movie"))
 	}
 	if ok, _ := s.cache.get(topTenCacheKey("tv", nil, s.client.language), &tvItems); ok {
-		status.TVCached = len(tvItems)
+		status.TVCached = len(selectDailyTopTen(tvItems, "tv"))
 	}
 
 	return status
@@ -670,7 +670,7 @@ func topTenCacheKey(mediaType string, customListURLs []string, language string) 
 	}
 	sort.Strings(trimmed)
 
-	parts := []string{"topten", "v2", normalized, language}
+	parts := []string{"topten", "tmdb-daily-v2", normalized, language}
 	parts = append(parts, trimmed...)
 	return cacheKey(parts...)
 }
@@ -768,7 +768,7 @@ func (s *Service) refreshTopTenCache(ctx context.Context, mediaType string, cust
 		close(call.done)
 	}()
 
-	items, debug, err := s.getTopTenUncached(ctx, mediaType, customListURLs)
+	items, err := s.getDailyTopTenCandidates(ctx, mediaType)
 	if err != nil {
 		call.err = err
 		return nil, nil, err
@@ -779,8 +779,7 @@ func (s *Service) refreshTopTenCache(ctx context.Context, mediaType string, cust
 		}
 	}
 	call.items = items
-	call.debug = debug
-	return items, debug, nil
+	return items, nil, nil
 }
 
 // warmTrendingCache pre-fetches and enriches trending data and custom MDBList lists.
@@ -1409,7 +1408,7 @@ func seriesDetailsCacheKey(lang string, tvdbID int64, seasonType string) string 
 	if st == "" {
 		st = "default"
 	}
-	return cacheKey("tvdb", "series", "details", "v16", lang, strconv.FormatInt(tvdbID, 10), st)
+	return cacheKey("tvdb", "series", "details", "v17", lang, strconv.FormatInt(tvdbID, 10), st)
 }
 
 func applyTVDBSeriesIdentity(title *models.Title, extended tvdbSeriesExtendedData) {
@@ -3899,15 +3898,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		// Date-based release detection depends on genres, so run after parallel block.
-		if !cached.Title.IsDaily && len(cached.Title.Genres) > 0 {
-			for _, genre := range cached.Title.Genres {
-				if isDateBasedSeriesClassification(genre) {
-					cached.Title.IsDaily = true
-					log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
-					cacheUpdated = true
-					break
-				}
-			}
+		if changed, genre := applyDateBasedSeriesClassification(&cached.Title); changed {
+			log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
+			cacheUpdated = true
 		}
 
 		if cacheUpdated {
@@ -4416,14 +4409,8 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			log.Printf("[metadata] fetched %d genres for series tmdbId=%d", len(genres), tmdbIDForEnrichment)
 
 			// Also check for genres that commonly use date-based episode naming.
-			if !seriesTitle.IsDaily {
-				for _, genre := range genres {
-					if isDateBasedSeriesClassification(genre) {
-						seriesTitle.IsDaily = true
-						log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
-						break
-					}
-				}
+			if changed, genre := applyDateBasedSeriesClassification(&seriesTitle); changed {
+				log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
 			}
 			details.Title = seriesTitle
 		} else if err != nil {
@@ -4441,6 +4428,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 
 	populateAiredDateTimeUTC(&details)
 	seriesTitle.Status = models.SeriesReleaseStatusFromSeasons(details.Seasons)
+	if changed, genre := applyDateBasedSeriesClassification(&seriesTitle); changed {
+		log.Printf("[metadata] series marked for date-based episode matching from final genres tvdbId=%d genre=%q", tvdbID, genre)
+	}
 	details.Title = seriesTitle
 
 	// If we fell back to a parent series (e.g. "Company Retreat" → "Jury Duty"),
@@ -4736,7 +4726,7 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	if liteSeasonType == "" {
 		liteSeasonType = "default"
 	}
-	cacheID := cacheKey("tvdb", "series", "details", "v15-lite", s.client.language, strconv.FormatInt(tvdbID, 10), liteSeasonType)
+	cacheID := cacheKey("tvdb", "series", "details", "v16-lite", s.client.language, strconv.FormatInt(tvdbID, 10), liteSeasonType)
 	var cached models.SeriesDetails
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached.Seasons) > 0 {
 		normalizeSeriesDetailsReleaseStatus(&cached)
@@ -4897,6 +4887,10 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	applyAirTimeFromTVDB(&seriesTitle, extended.AirsTime, extended.OriginalNetwork.Name, extended.OriginalNetwork.Country)
 	if extended.Status.Name != "" {
 		seriesTitle.LifecycleStatus = extended.Status.Name
+	}
+	if isDateBasedSeriesClassification(extended.Type) {
+		seriesTitle.IsDaily = true
+		log.Printf("[metadata] lite series marked for date-based episode matching based on TVDB type tvdbId=%d type=%q", tvdbID, extended.Type)
 	}
 
 	// Artwork: poster + backdrop
@@ -10080,13 +10074,21 @@ type TopTenDebugEntry struct {
 	FinalScore          float64  `json:"finalScore"`
 }
 
-// GetTopTen aggregates content from trending lists, all streaming network lists,
-// and TMDB genre discovery, then scores each unique item by cross-list frequency,
-// rank, and "today" recency signals. It returns the top 10 results.
-//
-// mediaType: "all" (default), "movie", or "tv"
-// customListURLs: optional additional MDBList /json URLs (e.g. from user settings)
+// GetTopTen returns TMDB's daily trending chart. The mixed variant takes the
+// first five eligible movies and shows and interleaves them in source order.
+// customListURLs remains in the interface for compatibility with the retired
+// multi-source implementation and is intentionally ignored by the daily chart.
 func (s *Service) GetTopTen(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, error) {
+	items, err := s.GetTopTenCandidates(ctx, mediaType, customListURLs)
+	if err != nil {
+		return nil, err
+	}
+	return selectDailyTopTen(items, mediaType), nil
+}
+
+// GetTopTenCandidates returns enough ordered daily-trending candidates for the
+// HTTP handler to apply profile visibility rules before choosing the final ten.
+func (s *Service) GetTopTenCandidates(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, error) {
 	var cached []models.TrendingItem
 	cacheID := topTenCacheKey(mediaType, customListURLs, s.client.language)
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
@@ -10098,10 +10100,177 @@ func (s *Service) GetTopTen(ctx context.Context, mediaType string, customListURL
 }
 
 func (s *Service) GetTopTenDebug(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
-	return s.getTopTenUncached(ctx, mediaType, customListURLs)
+	items, err := s.GetTopTen(ctx, mediaType, customListURLs)
+	return items, nil, err
 }
 
-func (s *Service) getTopTenUncached(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
+func (s *Service) getDailyTopTenCandidates(ctx context.Context, mediaType string) ([]models.TrendingItem, error) {
+	normalized := normalizeTopTenMediaType(mediaType)
+	if s.tmdb == nil || !s.tmdb.isConfigured() {
+		return nil, errors.New("tmdb api key not configured")
+	}
+
+	if normalized == "movie" || normalized == "tv" {
+		if normalized == "movie" {
+			return s.releasedDailyTrendingMovies(ctx, 20)
+		}
+		return s.tmdb.trendingDaily(ctx, normalized)
+	}
+
+	type result struct {
+		mediaType string
+		items     []models.TrendingItem
+		err       error
+	}
+	results := make(chan result, 2)
+	for _, kind := range []string{"movie", "tv"} {
+		kind := kind
+		go func() {
+			var items []models.TrendingItem
+			var err error
+			if kind == "movie" {
+				items, err = s.releasedDailyTrendingMovies(ctx, 20)
+			} else {
+				items, err = s.tmdb.trendingDaily(ctx, kind)
+			}
+			results <- result{mediaType: kind, items: items, err: err}
+		}()
+	}
+
+	var movies, shows []models.TrendingItem
+	for range 2 {
+		result := <-results
+		if result.err != nil {
+			return nil, result.err
+		}
+		if result.mediaType == "movie" {
+			movies = result.items
+		} else {
+			shows = result.items
+		}
+	}
+	return interleaveDailyTrending(movies, shows, 0), nil
+}
+
+func (s *Service) releasedDailyTrendingMovies(ctx context.Context, target int) ([]models.TrendingItem, error) {
+	if target < 1 {
+		target = 10
+	}
+	const maxPages = 3
+	released := make([]models.TrendingItem, 0, target)
+	seen := make(map[int64]struct{}, target)
+	for page := 1; page <= maxPages && len(released) < target; page++ {
+		items, err := s.tmdb.trendingDailyPage(ctx, "movie", page)
+		if err != nil {
+			if page == 1 {
+				return nil, err
+			}
+			log.Printf("[topten] daily movie backfill page %d skipped: %v", page, err)
+			break
+		}
+		items = s.filterReleasedDailyTrendingMovies(ctx, items)
+		for _, item := range items {
+			if _, ok := seen[item.Title.TMDBID]; ok {
+				continue
+			}
+			seen[item.Title.TMDBID] = struct{}{}
+			released = append(released, item)
+		}
+	}
+	for i := range released {
+		released[i].Rank = i + 1
+	}
+	return released, nil
+}
+
+func (s *Service) filterReleasedDailyTrendingMovies(ctx context.Context, items []models.TrendingItem) []models.TrendingItem {
+	const maxConcurrent = 5
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	for i := range items {
+		if items[i].Title.TMDBID <= 0 {
+			continue
+		}
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			s.enrichMovieReleases(ctx, &items[index].Title, items[index].Title.TMDBID)
+		}(i)
+	}
+	wg.Wait()
+
+	released := make([]models.TrendingItem, 0, len(items))
+	for _, item := range items {
+		status := models.MovieReleaseStatus(item.Title)
+		item.Title.Status = status
+		if status == models.MovieReleaseStatusReleased {
+			released = append(released, item)
+		}
+	}
+	return released
+}
+
+func normalizeTopTenMediaType(mediaType string) string {
+	switch strings.ToLower(strings.TrimSpace(mediaType)) {
+	case "movie", "movies":
+		return "movie"
+	case "tv", "series", "show", "shows":
+		return "tv"
+	default:
+		return "all"
+	}
+}
+
+func selectDailyTopTen(items []models.TrendingItem, mediaType string) []models.TrendingItem {
+	if normalizeTopTenMediaType(mediaType) != "all" {
+		limit := minInt(10, len(items))
+		selected := append([]models.TrendingItem(nil), items[:limit]...)
+		for i := range selected {
+			selected[i].Rank = i + 1
+		}
+		return selected
+	}
+
+	movies := make([]models.TrendingItem, 0, 5)
+	shows := make([]models.TrendingItem, 0, 5)
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Title.MediaType), "movie") {
+			movies = append(movies, item)
+		} else if isTopTenTVTitle(item.Title) {
+			shows = append(shows, item)
+		}
+	}
+	return interleaveDailyTrending(movies, shows, 5)
+}
+
+func interleaveDailyTrending(movies, shows []models.TrendingItem, perTypeLimit int) []models.TrendingItem {
+	if perTypeLimit <= 0 {
+		perTypeLimit = maxInt(len(movies), len(shows))
+	}
+	result := make([]models.TrendingItem, 0, minInt(perTypeLimit, len(movies))+minInt(perTypeLimit, len(shows)))
+	for i := 0; i < perTypeLimit; i++ {
+		if i < len(movies) {
+			result = append(result, movies[i])
+		}
+		if i < len(shows) {
+			result = append(result, shows[i])
+		}
+	}
+	for i := range result {
+		result[i].Rank = i + 1
+	}
+	return result
+}
+
+// GetLegacyTopTenDebug preserves the original multi-source scoring engine for
+// evaluation or a future rollback without keeping it on the production path.
+func (s *Service) GetLegacyTopTenDebug(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
+	return s.getLegacyTopTenUncached(ctx, mediaType, customListURLs)
+}
+
+func (s *Service) getLegacyTopTenUncached(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
 	normalized := strings.ToLower(strings.TrimSpace(mediaType))
 	switch normalized {
 	case "movie", "movies":
@@ -10765,4 +10934,17 @@ func isDateBasedSeriesClassification(value string) bool {
 	default:
 		return false
 	}
+}
+
+func applyDateBasedSeriesClassification(title *models.Title) (bool, string) {
+	if title == nil || title.IsDaily {
+		return false, ""
+	}
+	for _, genre := range title.Genres {
+		if isDateBasedSeriesClassification(genre) {
+			title.IsDaily = true
+			return true, genre
+		}
+	}
+	return false, ""
 }

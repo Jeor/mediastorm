@@ -1,0 +1,245 @@
+package metadata
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"novastream/models"
+)
+
+const releasedEpisodeCountCacheVersion = "v1"
+
+var (
+	releasedEpisodeCountWarmInFlight sync.Map
+	releasedEpisodeCountWarmSlots    = make(chan struct{}, 4)
+)
+
+type releasedEpisodeCountCacheEntry struct {
+	Count       int       `json:"count"`
+	Unavailable bool      `json:"unavailable,omitempty"`
+	RetryAfter  time.Time `json:"retryAfter,omitempty"`
+}
+
+// GetCachedReleasedEpisodeCount returns a locally cached count without making
+// any provider requests. A true result with count zero represents a cached
+// upcoming/empty series and prevents repeated background warming.
+func (s *Service) GetCachedReleasedEpisodeCount(req models.SeriesDetailsQuery) (int, bool) {
+	if s == nil || s.cache == nil {
+		return 0, false
+	}
+	for _, key := range releasedEpisodeCountCacheKeys(req) {
+		var entry releasedEpisodeCountCacheEntry
+		if ok, _ := s.cache.get(key, &entry); ok {
+			if entry.Unavailable {
+				if entry.RetryAfter.IsZero() || time.Now().Before(entry.RetryAfter) {
+					return 0, true
+				}
+				continue
+			}
+			if entry.Count >= 0 {
+				return entry.Count, true
+			}
+		}
+	}
+	if count, ok := s.releasedEpisodeCountFromCachedDetails(req); ok {
+		s.cacheReleasedEpisodeCount(req, count)
+		return count, true
+	}
+	return 0, false
+}
+
+// WarmReleasedEpisodeCount schedules a bounded, deduplicated background lookup.
+// It deliberately does not block the response that discovered the cache miss.
+func (s *Service) WarmReleasedEpisodeCount(req models.SeriesDetailsQuery) {
+	if s == nil || s.cache == nil || s.client == nil {
+		return
+	}
+	if _, ok := s.GetCachedReleasedEpisodeCount(req); ok {
+		return
+	}
+
+	keys := releasedEpisodeCountCacheKeys(req)
+	if len(keys) == 0 {
+		return
+	}
+	warmKey := keys[0]
+	if _, loaded := releasedEpisodeCountWarmInFlight.LoadOrStore(warmKey, struct{}{}); loaded {
+		return
+	}
+
+	go func() {
+		defer releasedEpisodeCountWarmInFlight.Delete(warmKey)
+		releasedEpisodeCountWarmSlots <- struct{}{}
+		defer func() { <-releasedEpisodeCountWarmSlots }()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := s.warmReleasedEpisodeCount(ctx, req); err != nil {
+			s.cacheUnavailableReleasedEpisodeCount(req, 6*time.Hour)
+			log.Printf("[metadata] released episode count warm failed titleId=%q name=%q: %v", req.TitleID, req.Name, err)
+		}
+	}()
+}
+
+func (s *Service) warmReleasedEpisodeCount(ctx context.Context, req models.SeriesDetailsQuery) error {
+	req = normalizeSeriesDetailsQueryIDs(req)
+	tvdbID, err := s.resolveSeriesTVDBID(ctx, req)
+	if err != nil {
+		return err
+	}
+	if tvdbID <= 0 {
+		return fmt.Errorf("unable to resolve tvdb id")
+	}
+
+	// Match SeriesDetailsLite's extended-data cache key so details, continue
+	// watching, and count warming all share the same provider response.
+	extended, err := s.cachedSeriesExtended(tvdbID, []string{"episodes", "seasons", "artworks"})
+	if err != nil {
+		return err
+	}
+	count := countReleasedTVDBEpisodes(extended.Episodes, time.Now())
+	req.TVDBID = tvdbID
+	return s.cacheReleasedEpisodeCount(req, count)
+}
+
+func (s *Service) releasedEpisodeCountFromCachedDetails(req models.SeriesDetailsQuery) (int, bool) {
+	req = normalizeSeriesDetailsQueryIDs(req)
+	if s.client == nil || req.TVDBID <= 0 {
+		return 0, false
+	}
+
+	var details models.SeriesDetails
+	fullCacheID := seriesDetailsCacheKey(s.client.language, req.TVDBID, req.SeasonType)
+	if ok, _ := s.cache.get(fullCacheID, &details); ok && len(details.Seasons) > 0 {
+		return countReleasedSeriesDetails(&details, time.Now()), true
+	}
+
+	seasonType := strings.ToLower(strings.TrimSpace(req.SeasonType))
+	if seasonType == "" {
+		seasonType = "default"
+	}
+	liteCacheID := cacheKey(
+		"tvdb", "series", "details", "v15-lite", s.client.language,
+		strconv.FormatInt(req.TVDBID, 10), seasonType,
+	)
+	if ok, _ := s.cache.get(liteCacheID, &details); ok && len(details.Seasons) > 0 {
+		return countReleasedSeriesDetails(&details, time.Now()), true
+	}
+	return 0, false
+}
+
+func (s *Service) cacheReleasedEpisodeCount(req models.SeriesDetailsQuery, count int) error {
+	entry := releasedEpisodeCountCacheEntry{Count: count}
+	for _, key := range releasedEpisodeCountCacheKeys(req) {
+		if err := s.cache.set(key, entry); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) cacheUnavailableReleasedEpisodeCount(req models.SeriesDetailsQuery, retryAfter time.Duration) {
+	entry := releasedEpisodeCountCacheEntry{
+		Unavailable: true,
+		RetryAfter:  time.Now().Add(retryAfter),
+	}
+	for _, key := range releasedEpisodeCountCacheKeys(req) {
+		if err := s.cache.set(key, entry); err != nil {
+			log.Printf("[metadata] released episode count negative cache failed titleId=%q: %v", req.TitleID, err)
+			return
+		}
+	}
+}
+
+func releasedEpisodeCountCacheKeys(req models.SeriesDetailsQuery) []string {
+	req = normalizeSeriesDetailsQueryIDs(req)
+	values := make([]string, 0, 5)
+	add := func(kind, value string) {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			return
+		}
+		key := cacheKey("metadata", "series", "released-episode-count", releasedEpisodeCountCacheVersion, kind, value)
+		for _, existing := range values {
+			if existing == key {
+				return
+			}
+		}
+		values = append(values, key)
+	}
+	if req.TVDBID > 0 {
+		add("tvdb", strconv.FormatInt(req.TVDBID, 10))
+	}
+	if req.TMDBID > 0 {
+		add("tmdb", strconv.FormatInt(req.TMDBID, 10))
+	}
+	add("imdb", req.IMDBID)
+	add("title", req.TitleID)
+	if len(values) == 0 && strings.TrimSpace(req.Name) != "" {
+		add("name-year", fmt.Sprintf("%s:%d", req.Name, req.Year))
+	}
+	return values
+}
+
+func countReleasedTVDBEpisodes(episodes []tvdbEpisode, now time.Time) int {
+	today := now.UTC().Truncate(24 * time.Hour)
+	latestSeason, latestEpisode := 0, 0
+	for _, episode := range episodes {
+		if episode.SeasonNumber <= 0 || strings.TrimSpace(episode.Aired) == "" {
+			continue
+		}
+		airDate, err := time.Parse("2006-01-02", strings.TrimSpace(episode.Aired))
+		if err != nil {
+			continue
+		}
+		if airDate.After(today) {
+			continue
+		}
+		if episode.SeasonNumber > latestSeason ||
+			(episode.SeasonNumber == latestSeason && episode.Number > latestEpisode) {
+			latestSeason, latestEpisode = episode.SeasonNumber, episode.Number
+		}
+	}
+
+	seen := make(map[string]struct{}, len(episodes))
+	for _, episode := range episodes {
+		if episode.SeasonNumber <= 0 || episode.Number <= 0 {
+			continue
+		}
+		released := false
+		if aired := strings.TrimSpace(episode.Aired); aired != "" {
+			if airDate, err := time.Parse("2006-01-02", aired); err != nil || !airDate.After(today) {
+				released = true
+			}
+		} else if latestSeason == 0 || episode.SeasonNumber < latestSeason ||
+			(episode.SeasonNumber == latestSeason && episode.Number <= latestEpisode) {
+			released = true
+		}
+		if released {
+			seen[fmt.Sprintf("%d:%d", episode.SeasonNumber, episode.Number)] = struct{}{}
+		}
+	}
+	return len(seen)
+}
+
+func countReleasedSeriesDetails(details *models.SeriesDetails, now time.Time) int {
+	if details == nil {
+		return 0
+	}
+	episodes := make([]tvdbEpisode, 0)
+	for _, season := range details.Seasons {
+		for _, episode := range season.Episodes {
+			episodes = append(episodes, tvdbEpisode{
+				SeasonNumber: episode.SeasonNumber,
+				Number:       episode.EpisodeNumber,
+				Aired:        episode.AiredDate,
+			})
+		}
+	}
+	return countReleasedTVDBEpisodes(episodes, now)
+}

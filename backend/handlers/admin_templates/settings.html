@@ -950,7 +950,7 @@
 
 .settings-home {
     display: grid;
-    gap: 1rem;
+    gap: 1.25rem;
 }
 
 .settings-attention-banner {
@@ -977,46 +977,48 @@
 }
 
 .settings-home-heading {
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
 }
 
 .settings-home-heading h2 {
-    margin: 0 0 0.25rem;
-    font-size: 1.1875rem;
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+    line-height: 1.2;
 }
 
 .settings-home-heading p {
     margin: 0;
-    color: var(--text-muted);
-    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 
 .settings-category-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 1.25rem;
 }
 
 .settings-category-card {
     position: relative;
     display: grid;
-    min-height: 132px;
+    min-height: 164px;
     align-content: start;
-    gap: 0.55rem;
-    padding: 1rem 3.25rem 1rem 1rem;
+    gap: 0.7rem;
+    padding: 1.5rem 4rem 1.4rem 1.5rem;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     background: var(--bg-secondary);
     color: var(--text-primary);
     text-align: left;
     cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .settings-category-card:hover {
-    border-color: rgba(99, 102, 241, 0.65);
-    background: rgba(99, 102, 241, 0.08);
+    border-color: var(--accent);
+    background: var(--bg-hover);
     transform: translateY(-1px);
+    box-shadow: 0 10px 24px var(--shadow);
 }
 
 .settings-category-card:focus-visible {
@@ -1024,31 +1026,91 @@
     outline-offset: 2px;
 }
 
+.settings-category-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.settings-category-card-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-category-card-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.settings-category-card:hover .settings-category-card-icon,
+.settings-category-card:focus-visible .settings-category-card-icon {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-hover);
+}
+
 .settings-category-card-title {
-    font-size: 1rem;
+    min-width: 0;
+    font-size: 1.0625rem;
     font-weight: 650;
+    line-height: 1.25;
 }
 
 .settings-category-card-description,
 .settings-category-card-meta {
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     line-height: 1.45;
 }
 
 .settings-category-card-meta {
     margin-top: auto;
+    color: var(--accent-hover);
     font-size: 0.6875rem;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
 }
 
 .settings-category-card-arrow {
     position: absolute;
     top: 50%;
-    right: 1rem;
-    color: var(--accent-hover);
-    font-size: 1.25rem;
+    right: 1.4rem;
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
     transform: translateY(-50%);
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.settings-category-card-arrow svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.settings-category-card:hover .settings-category-card-arrow,
+.settings-category-card:focus-visible .settings-category-card-arrow {
+    color: var(--accent-hover);
+    transform: translate(2px, -50%);
 }
 
 .settings-workspace {
@@ -1899,7 +1961,15 @@
     }
 
     .settings-category-card {
-        min-height: 118px;
+        min-height: 132px;
+        gap: 0.6rem;
+        padding: 1rem 3.25rem 1rem 1rem;
+    }
+
+    .settings-category-card-icon {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
     }
 
     .settings-category-header {
@@ -2368,6 +2438,7 @@
         { id: 'metadata', label: 'Metadata', description: 'Movie and show information, languages, ratings, artwork, and metadata providers.' },
         { id: 'server', label: 'Server & Network', description: 'Server, storage, WebDAV, networking, and maintenance.' }
     ];
+    const settingsLandingArrowIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
     const settingsOverviewSectionOrder = new Map([
         'indexers', 'debridProviders', 'torrentScrapers', 'usenet', 'usenetEngines', 'live', 'liveTV',
         'streaming', 'filtering', 'animeFiltering', 'ranking',
@@ -2792,10 +2863,10 @@
             cards.innerHTML = settingsLandingGroups
                 .filter(group => settingsAvailableSectionsForOverview(group.id).length > 0)
                 .map(group => '<button type="button" class="settings-category-card" onclick="setSettingsGroup(\''+group.id+'\')">' +
-                    '<span class="settings-category-card-title">'+escapeHtml(group.label)+'</span>' +
+                    '<span class="settings-category-card-heading"><span class="settings-category-card-icon">'+settingsLandingIcon(group.id)+'</span><span class="settings-category-card-title">'+escapeHtml(group.label)+'</span></span>' +
                     '<span class="settings-category-card-description">'+escapeHtml(group.description)+'</span>' +
                     '<span class="settings-category-card-meta">'+escapeHtml(settingsCategoryMeta(group.id))+'</span>' +
-                    '<span class="settings-category-card-arrow" aria-hidden="true">→</span>' +
+                    '<span class="settings-category-card-arrow" aria-hidden="true">'+settingsLandingArrowIcon+'</span>' +
                 '</button>').join('');
         }
 
@@ -3074,6 +3145,14 @@
             expandedSettingsHouseholds.add(householdId);
         }
         renderSettingsScopeTree();
+    }
+
+    function settingsLandingIcon(groupId) {
+        const sidebarIcon = document.querySelector('[data-settings-destination="'+groupId+'"] .sidebar-nav-icon');
+        if (!sidebarIcon) return '';
+        const icon = sidebarIcon.cloneNode(true);
+        icon.removeAttribute('class');
+        return icon.outerHTML;
     }
 
     function toggleSettingsServer(event) {

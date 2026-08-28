@@ -1328,13 +1328,30 @@ type UISettings struct {
 	NavigationTabVisibilityIncludesWatchlist  bool `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
 	// UserEditableSettings is the server-owner allowlist of global setting paths
 	// that may be presented in authenticated client settings screens.
-	UserEditableSettings        []string `json:"userEditableSettings,omitempty"`
-	OnboardingCompleted         bool     `json:"onboardingCompleted,omitempty"`
-	OnboardingSkipped           bool     `json:"onboardingSkipped,omitempty"`
-	OnboardingCompletedAt       string   `json:"onboardingCompletedAt,omitempty"`
-	OnboardingSkippedAt         string   `json:"onboardingSkippedAt,omitempty"`
-	AdminWalkthroughDismissed   bool     `json:"adminWalkthroughDismissed,omitempty"`
-	AdminWalkthroughDismissedAt string   `json:"adminWalkthroughDismissedAt,omitempty"`
+	UserEditableSettings        []string              `json:"userEditableSettings,omitempty"`
+	OnboardingCompleted         bool                  `json:"onboardingCompleted,omitempty"`
+	OnboardingSkipped           bool                  `json:"onboardingSkipped,omitempty"`
+	OnboardingCompletedAt       string                `json:"onboardingCompletedAt,omitempty"`
+	OnboardingSkippedAt         string                `json:"onboardingSkippedAt,omitempty"`
+	AdminWalkthroughDismissed   bool                  `json:"adminWalkthroughDismissed,omitempty"`
+	AdminWalkthroughDismissedAt string                `json:"adminWalkthroughDismissedAt,omitempty"`
+	AdminDashboardLayout        *AdminDashboardLayout `json:"adminDashboardLayout,omitempty"`
+}
+
+// AdminDashboardLayout stores the shared administrator dashboard arrangement.
+// Module identities and size constraints are validated by the admin handler.
+type AdminDashboardLayout struct {
+	Version int                          `json:"version"`
+	Modules []AdminDashboardLayoutModule `json:"modules"`
+}
+
+// AdminDashboardLayoutModule is one card's position in the 12-column dashboard grid.
+type AdminDashboardLayoutModule struct {
+	ID string `json:"id"`
+	X  int    `json:"x"`
+	Y  int    `json:"y"`
+	W  int    `json:"w"`
+	H  int    `json:"h"`
 }
 
 // DisplaySettings controls UI display preferences.

@@ -237,8 +237,8 @@
 <details class="maintenance-tool-details" id="maintenanceToolDetails">
     <summary>
         <span>
-            <strong>Maintenance controls</strong>
-            <small>Open cache, update, worker, messaging, and troubleshooting tools.</small>
+            <strong>Advanced controls</strong>
+            <small>Open actions and live tools that need additional input.</small>
         </span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="6 9 12 15 18 9"/>
@@ -1928,6 +1928,10 @@
     {{else}}
     #scheduledTasksSection { display: none; }
     #integrationsGroup { display: none; }
+    #hiddenItemsSection,
+    #badStreamsSection,
+    #resolvedNZBsSection,
+    #shareLinksSection { display: none; }
     {{end}}
     .task-toolbar {
         display: grid;

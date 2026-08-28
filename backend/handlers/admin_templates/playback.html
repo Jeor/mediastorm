@@ -3,9 +3,12 @@
 {{define "title"}}Playback - mediastorm{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <h1>Playback</h1>
-    <p>Browse shelves, resume watching, and launch streams from the web UI</p>
+<div class="page-header" data-page-group="Media &amp; playback">
+    <div class="page-header-copy">
+        <div class="page-kicker">Media &amp; playback</div>
+        <h1>Playback</h1>
+        <p>Choose a profile, browse media or live channels, and start watching.</p>
+    </div>
 </div>
 
 {{if .NoProfiles}}
@@ -26,7 +29,7 @@
             <button id="iptvModeButton" class="playback-mode-option" type="button" onclick="setPlaybackMode('iptv')" role="tab" aria-selected="false">IPTV</button>
         </div>
         <section id="shelvesPanel">
-            <div class="toolbar search-toolbar">
+            <div class="toolbar search-toolbar page-toolbar" aria-label="Media search controls">
                 <input type="text" id="searchQuery" class="form-input search-input" placeholder="Search movies or shows" onkeydown="if(event.key==='Enter') searchMedia()">
                 <select id="searchType" class="form-select compact-select">
                     <option value="all">All</option>
@@ -55,7 +58,7 @@
         </section>
 
         <section id="iptvPanel" class="iptv-panel" style="display: none;">
-            <div class="toolbar search-toolbar iptv-toolbar">
+            <div class="toolbar search-toolbar iptv-toolbar page-toolbar" aria-label="Live TV filters">
                 <input type="text" id="iptvSearchQuery" class="form-input search-input" placeholder="Search channels" oninput="renderIptvChannels()">
                 <select id="iptvGroupFilter" class="form-select compact-select" onchange="renderIptvChannels()">
                     <option value="">All Groups</option>

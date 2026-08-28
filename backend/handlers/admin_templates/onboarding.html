@@ -62,12 +62,15 @@
 {{end}}
 
 {{define "content"}}
-<div class="page-header" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-    <div>
+<div class="page-header" data-page-group="Entry &amp; setup">
+    <div class="page-header-copy">
+        <div class="page-kicker">Entry &amp; setup</div>
         <h1>Admin Onboarding</h1>
         <p>Finish the core setup needed for accounts, profiles, and playback.</p>
     </div>
-    <button class="btn btn-secondary" onclick="skipOnboarding()">Skip for now</button>
+    <div class="page-header-actions">
+        <button class="btn btn-secondary" onclick="skipOnboarding()">Skip for now</button>
+    </div>
 </div>
 
 <div class="onboarding-shell">

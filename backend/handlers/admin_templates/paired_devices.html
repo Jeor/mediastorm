@@ -35,7 +35,6 @@
 
 {{define "scripts"}}
 <script>
-const basePath = '{{.BasePath}}';
 const escapePaired = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const formatPairedTime = value => value ? new Date(value).toLocaleString() : 'Never';
 

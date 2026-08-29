@@ -3150,11 +3150,19 @@ func TestFilterReleasedDailyTrendingMoviesRequiresReleasedHomeWindow(t *testing.
 }
 
 func TestGetTopTenUsesCachedTMDBDailyCandidates(t *testing.T) {
-	var movieRequests, tvRequests int
+	var movieRequests, tvRequests, imageRequests int
 	httpc := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if strings.HasSuffix(req.URL.Path, "/release_dates") {
 			body := `{"results":[{"iso_3166_1":"US","release_dates":[{"type":4,"release_date":"2020-01-02T00:00:00Z"}]}]}`
 			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}
+		if strings.HasSuffix(req.URL.Path, "/images") {
+			imageRequests++
+			body := `{"backdrops":[{"file_path":"/primary.jpg","vote_average":9},{"file_path":"/alternate-1.jpg","vote_average":8},{"file_path":"/alternate-2.jpg","vote_average":7}]}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}
+		if req.URL.Host == "image.tmdb.org" {
+			return &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
 		}
 		mediaType := "movie"
 		name := "Movie"
@@ -3199,9 +3207,17 @@ func TestGetTopTenUsesCachedTMDBDailyCandidates(t *testing.T) {
 		if len(items) != 10 || items[0].Title.Name != "Movie 1" || items[1].Title.Name != "Show 1" || items[9].Title.Name != "Show 5" {
 			t.Fatalf("unexpected daily top ten: %#v", items)
 		}
+		for _, item := range items {
+			if len(item.Title.Backdrops) < 2 {
+				t.Fatalf("top ten artwork for %q has %d alternate backdrops, want at least 2", item.Title.Name, len(item.Title.Backdrops))
+			}
+		}
 	}
 	if movieRequests != 1 || tvRequests != 1 {
 		t.Fatalf("TMDB requests = movies %d tv %d, want one request per chart after cache hit", movieRequests, tvRequests)
+	}
+	if imageRequests != 40 {
+		t.Fatalf("TMDB image requests = %d, want one per cached daily candidate", imageRequests)
 	}
 }
 

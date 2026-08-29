@@ -670,7 +670,7 @@ func topTenCacheKey(mediaType string, customListURLs []string, language string) 
 	}
 	sort.Strings(trimmed)
 
-	parts := []string{"topten", "tmdb-daily-v2", normalized, language}
+	parts := []string{"topten", "tmdb-daily-v3", normalized, language}
 	parts = append(parts, trimmed...)
 	return cacheKey(parts...)
 }
@@ -773,6 +773,38 @@ func (s *Service) refreshTopTenCache(ctx context.Context, mediaType string, cust
 		call.err = err
 		return nil, nil, err
 	}
+	s.enrichShelfArtwork(ctx, items, len(items))
+	rotatingArtwork, singleArtwork, missingArtwork := 0, 0, 0
+	for i := range items {
+		seenArtwork := make(map[string]struct{})
+		if items[i].Title.Backdrop != nil {
+			if key := comparableArtworkURL(items[i].Title.Backdrop.URL); key != "" {
+				seenArtwork[key] = struct{}{}
+			}
+		}
+		for _, backdrop := range items[i].Title.Backdrops {
+			if key := comparableArtworkURL(backdrop.URL); key != "" {
+				seenArtwork[key] = struct{}{}
+			}
+		}
+		artworkCount := len(seenArtwork)
+		switch {
+		case artworkCount > 1:
+			rotatingArtwork++
+		case artworkCount == 1:
+			singleArtwork++
+		default:
+			missingArtwork++
+		}
+	}
+	log.Printf(
+		"[topten] artwork enrichment mediaType=%s items=%d rotating=%d single=%d missing=%d",
+		mediaType,
+		len(items),
+		rotatingArtwork,
+		singleArtwork,
+		missingArtwork,
+	)
 	if len(items) > 0 {
 		if err := s.cache.set(cacheID, items); err != nil {
 			log.Printf("[topten] failed to cache results mediaType=%s: %v", mediaType, err)

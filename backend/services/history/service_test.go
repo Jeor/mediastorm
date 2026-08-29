@@ -3773,7 +3773,13 @@ func TestUpdatePlaybackProgress_NewEpisodeClearsHiddenMarker(t *testing.T) {
 			SeriesName:    "Record of Ragnarok",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,
-			ExternalIDs:   map[string]string{"imdb": "tt13676344", "tvdb": "393810", "tmdb": "114868"},
+			ExternalIDs: map[string]string{
+				"imdb":            "tt13676344",
+				"tvdb":            "393810",
+				"tmdb":            "114868",
+				"episodeTvdb":     "100001",
+				"absoluteEpisode": "1",
+			},
 		},
 	})
 	if err != nil {
@@ -3794,7 +3800,13 @@ func TestUpdatePlaybackProgress_NewEpisodeClearsHiddenMarker(t *testing.T) {
 		SeriesName:     "Record of Ragnarok",
 		SeasonNumber:   1,
 		EpisodeNumber:  2,
-		ExternalIDs:    map[string]string{"imdb": "tt13676344", "tvdb": "393810", "tmdb": "114868"},
+		ExternalIDs: map[string]string{
+			"imdb":            "tt13676344",
+			"tvdb":            "393810",
+			"tmdb":            "114868",
+			"episodeTvdb":     "100002",
+			"absoluteEpisode": "2",
+		},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
@@ -3809,6 +3821,107 @@ func TestUpdatePlaybackProgress_NewEpisodeClearsHiddenMarker(t *testing.T) {
 		if p.ItemID == seriesID && p.SeriesID == seriesID {
 			t.Fatal("expected hidden series marker to be removed when a genuinely new episode gets progress")
 		}
+	}
+}
+
+func TestUpdatePlaybackProgress_CompletedEpisodeThenNextEpisodeClearsHiddenMarker(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	const (
+		userID   = "user-1"
+		seriesID = "tmdb:tv:91249"
+		duration = 498.048
+	)
+	episodeIDs := func(episode int) map[string]string {
+		return map[string]string{
+			"imdb":            "tt10659366",
+			"tvdb":            "367015",
+			"tmdb":            "91249",
+			"titleId":         seriesID,
+			"episodeTvdb":     map[int]string{1: "7362761", 2: "7429165"}[episode],
+			"absoluteEpisode": strconv.Itoa(episode),
+		}
+	}
+	updateEpisode := func(episode int, position float64, ended bool) {
+		t.Helper()
+		_, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+			MediaType:     "episode",
+			ItemID:        fmt.Sprintf("%s:s01e%02d", seriesID, episode),
+			Position:      position,
+			Duration:      duration,
+			PlaybackEnded: ended,
+			SeriesID:      seriesID,
+			SeriesName:    "Snoopy in Space",
+			SeasonNumber:  1,
+			EpisodeNumber: episode,
+			EpisodeName:   fmt.Sprintf("Mission %d", episode),
+			ExternalIDs:   episodeIDs(episode),
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlaybackProgress(S01E%02d) error = %v", episode, err)
+		}
+	}
+
+	updateEpisode(1, 28, false)
+	if err := svc.HideFromContinueWatching(userID, seriesID); err != nil {
+		t.Fatalf("HideFromContinueWatching() error = %v", err)
+	}
+	updateEpisode(1, 250, false)
+	updateEpisode(1, 497.8, true)
+	updateEpisode(2, 54.054, false)
+
+	progress, err := svc.ListPlaybackProgress(userID)
+	if err != nil {
+		t.Fatalf("ListPlaybackProgress() error = %v", err)
+	}
+	for _, p := range progress {
+		if p.HiddenFromContinueWatching && p.ItemID == seriesID && p.SeriesID == seriesID {
+			t.Fatal("expected stale Snoopy series marker to be removed after S01E02 progress")
+		}
+	}
+}
+
+func TestClearSupersededSeriesHiddenMarkersFromStoredProgress(t *testing.T) {
+	hiddenAt := time.Date(2026, 8, 28, 20, 38, 2, 0, time.UTC)
+	progressAt := time.Date(2026, 8, 28, 23, 55, 51, 0, time.UTC)
+	seriesID := "tmdb:tv:91249"
+	perUser := map[string]models.PlaybackProgress{
+		"episode:" + seriesID: {
+			ID:                         "episode:" + seriesID,
+			MediaType:                  "episode",
+			ItemID:                     seriesID,
+			SeriesID:                   seriesID,
+			ExternalIDs:                map[string]string{"imdb": "tt10659366", "tmdb": "91249", "tvdb": "367015"},
+			UpdatedAt:                  hiddenAt,
+			HiddenFromContinueWatching: true,
+		},
+		"episode:" + seriesID + ":s01e02": {
+			ID:             "episode:" + seriesID + ":s01e02",
+			MediaType:      "episode",
+			ItemID:         seriesID + ":s01e02",
+			SeriesID:       seriesID,
+			SeasonNumber:   1,
+			EpisodeNumber:  2,
+			Position:       54.054,
+			Duration:       498.048,
+			PercentWatched: 10.85,
+			ExternalIDs:    map[string]string{"episodeTvdb": "7429165", "imdb": "tt10659366", "tmdb": "91249", "tvdb": "367015"},
+			UpdatedAt:      progressAt,
+		},
+	}
+
+	if removed := clearSupersededSeriesHiddenMarkersFromStoredProgress(perUser); removed != 1 {
+		t.Fatalf("removed %d stale markers, want 1", removed)
+	}
+	if _, exists := perUser["episode:"+seriesID]; exists {
+		t.Fatal("stale series-level hidden marker still exists")
+	}
+	if _, exists := perUser["episode:"+seriesID+":s01e02"]; !exists {
+		t.Fatal("newer episode progress was removed")
 	}
 }
 

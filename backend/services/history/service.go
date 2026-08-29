@@ -1000,16 +1000,27 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 		})
 	}
 
-	// Build set of hidden series IDs from progress items
-	hiddenSeriesIDs := make(map[string]bool)
+	// Track the newest hidden marker per series. A marker only suppresses activity
+	// at or before the hide time; playback that happened later must make the
+	// series visible again even if a legacy/stale marker row survived persistence.
+	hiddenSeriesAt := make(map[string]time.Time)
+	markHidden := func(seriesID string, hiddenAt time.Time) {
+		seriesID = resolveCanonicalID(canonicalSeriesID, seriesID)
+		if seriesID == "" {
+			return
+		}
+		if existing, ok := hiddenSeriesAt[seriesID]; !ok || hiddenAt.After(existing) {
+			hiddenSeriesAt[seriesID] = hiddenAt
+		}
+	}
 	for _, prog := range progressItems {
 		if prog.HiddenFromContinueWatching {
 			// Add both the itemID (for movies) and seriesID (for episodes)
 			if prog.ItemID != "" {
-				hiddenSeriesIDs[prog.ItemID] = true
+				markHidden(prog.ItemID, prog.UpdatedAt)
 			}
 			if prog.SeriesID != "" {
-				hiddenSeriesIDs[resolveCanonicalID(canonicalSeriesID, prog.SeriesID)] = true
+				markHidden(prog.SeriesID, prog.UpdatedAt)
 			}
 			// Also extract series ID from episode itemId (format: "tvdb:series:12345:S01E01")
 			// This handles cases where seriesId wasn't stored but can be inferred
@@ -1020,7 +1031,7 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 					if strings.HasPrefix(parts[i], "S") && len(parts[i]) > 1 {
 						inferredSeriesID := strings.Join(parts[:i], ":")
 						if inferredSeriesID != "" {
-							hiddenSeriesIDs[resolveCanonicalID(canonicalSeriesID, inferredSeriesID)] = true
+							markHidden(inferredSeriesID, prog.UpdatedAt)
 						}
 						break
 					}
@@ -1072,7 +1083,8 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 		// Resolve to canonical ID so player and Trakt entries merge
 		seriesID = resolveCanonicalID(canonicalSeriesID, seriesID)
 
-		if isEpisode && seriesID != "" && prog.PercentWatched < 90 && !hiddenSeriesIDs[seriesID] {
+		hiddenAt, hidden := hiddenSeriesAt[seriesID]
+		if isEpisode && seriesID != "" && prog.PercentWatched < 90 && (!hidden || prog.UpdatedAt.After(hiddenAt)) {
 			// Keep the most recently updated in-progress episode per series
 			existing := inProgressBySeriesCache[seriesID]
 			if existing == nil || prog.UpdatedAt.After(existing.UpdatedAt) {
@@ -1102,8 +1114,9 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 	for _, item := range items {
 		if item.MediaType == "episode" && item.SeriesID != "" {
 			resolvedID := resolveCanonicalID(canonicalSeriesID, item.SeriesID)
-			// Skip hidden series
-			if hiddenSeriesIDs[resolvedID] {
+			// Skip a series only when its hide marker is at least as recent as
+			// this history activity. Newer viewing must supersede the marker.
+			if hiddenAt, hidden := hiddenSeriesAt[resolvedID]; hidden && !watchHistoryActivityTime(item).After(hiddenAt) {
 				continue
 			}
 			activityAt := watchHistoryActivityTime(item)
@@ -5053,6 +5066,12 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 		}
 	}
 	perUser[canonicalKey] = progress
+	if !staleWatchedEpisodeUpdate {
+		if removed := clearSupersededSeriesHiddenMarkers(perUser, progress); removed > 0 {
+			watchStateChanged = true
+			log.Printf("[history] removed %d stale hidden marker(s) after newer playback user=%s itemID=%s", removed, userID, progress.ItemID)
+		}
+	}
 
 	// Mirror the heartbeat into the active-progress map so the active-stream
 	// dashboard can keep tracking position even after the row above is cleared by
@@ -5643,6 +5662,16 @@ func (s *Service) loadPlaybackProgress() error {
 			s.playbackProgress[userID] = perUser
 		}
 		s.persistedPlaybackProgress = persisted
+		staleMarkersRemoved := 0
+		for _, perUser := range s.playbackProgress {
+			staleMarkersRemoved += clearSupersededSeriesHiddenMarkersFromStoredProgress(perUser)
+		}
+		if staleMarkersRemoved > 0 {
+			if err := s.syncProgressToDBContext(ctx); err != nil {
+				return fmt.Errorf("remove stale playback-progress hide markers: %w", err)
+			}
+			log.Printf("[history] removed %d stale hidden marker(s) during startup load", staleMarkersRemoved)
+		}
 		log.Printf("[history] Startup load completed table=playback_progress rows=%d users=%d query=%s processing=%s total=%s",
 			rowCount, len(allItems), queryDuration, time.Since(processingStarted), time.Since(loadStarted))
 		return nil
@@ -5708,6 +5737,11 @@ func (s *Service) loadPlaybackProgress() error {
 			}
 		}
 		s.playbackProgress[userID] = perUser
+	}
+	for _, perUser := range s.playbackProgress {
+		if clearSupersededSeriesHiddenMarkersFromStoredProgress(perUser) > 0 {
+			needsSave = true
+		}
 	}
 
 	// Save if we normalized any keys or merged duplicates
@@ -6658,6 +6692,42 @@ func isSeriesLevelPlaybackMarker(progress models.PlaybackProgress) bool {
 		progress.ItemID == progress.SeriesID &&
 		progress.SeasonNumber == 0 &&
 		progress.EpisodeNumber == 0
+}
+
+// clearSupersededSeriesHiddenMarkers removes series-level hide markers older
+// than a concrete, visible episode progress row for the same series. New
+// playback is the documented unhide signal; comparing timestamps also repairs
+// legacy rows where the write-side marker deletion was missed.
+func clearSupersededSeriesHiddenMarkers(perUser map[string]models.PlaybackProgress, candidate models.PlaybackProgress) int {
+	if candidate.HiddenFromContinueWatching || isSeriesLevelPlaybackMarker(candidate) ||
+		!strings.EqualFold(strings.TrimSpace(candidate.MediaType), "episode") ||
+		candidate.SeasonNumber <= 0 || candidate.EpisodeNumber <= 0 || candidate.UpdatedAt.IsZero() {
+		return 0
+	}
+
+	target := mediaidentity.Resolve(mediaidentity.Input{
+		MediaType:   "series",
+		ID:          candidate.SeriesID,
+		ExternalIDs: canonicalSeriesExternalIDs(candidate.SeriesID, candidate.ItemID, candidate.ExternalIDs),
+	})
+	removed := 0
+	for key, marker := range perUser {
+		if !marker.HiddenFromContinueWatching || !isSeriesLevelPlaybackMarker(marker) ||
+			!candidate.UpdatedAt.After(marker.UpdatedAt) || !progressSeriesMatchesIdentity(marker, target) {
+			continue
+		}
+		delete(perUser, key)
+		removed++
+	}
+	return removed
+}
+
+func clearSupersededSeriesHiddenMarkersFromStoredProgress(perUser map[string]models.PlaybackProgress) int {
+	removed := 0
+	for _, progress := range perUser {
+		removed += clearSupersededSeriesHiddenMarkers(perUser, progress)
+	}
+	return removed
 }
 
 func dedupeContinueWatchingEntries(items []models.SeriesWatchState) []models.SeriesWatchState {

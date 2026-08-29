@@ -24,6 +24,30 @@ func NewRemoteAccessHandler(service *remoteaccess.Service) *RemoteAccessHandler 
 	return &RemoteAccessHandler{service: service}
 }
 
+// RemoteAccessRevocationMiddleware rejects app requests that arrive through
+// the trusted Iroh host proxy after their stable device ID has been revoked.
+func RemoteAccessRevocationMiddleware(service *remoteaccess.Service) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Mediastorm-Iroh-Proxy") != "1" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			revoked, err := service.IsPeerRevoked(r.Context(), r.Header.Get("X-Client-ID"))
+			if err != nil {
+				log.Printf("remote access revocation check failed: %v", err)
+				next.ServeHTTP(w, r)
+				return
+			}
+			if revoked {
+				writeJSONError(w, "device access has been revoked", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 type createRemoteAccessInviteRequest struct {
 	PeerName       string `json:"peerName"`
 	ExpiresInHours int    `json:"expiresInHours"`

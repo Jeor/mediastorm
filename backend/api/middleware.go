@@ -131,6 +131,9 @@ func AccountAuthMiddleware(sessionsSvc *sessions.Service, accountsSvc *accounts.
 				json.NewEncoder(w).Encode(map[string]string{"error": "invalid or expired session"})
 				return
 			}
+			if session.ClientID == "" {
+				_ = sessionsSvc.BindClient(token, r.Header.Get("X-Client-ID"))
+			}
 
 			// Check if the account has expired
 			if accountsSvc != nil && accountsSvc.IsExpired(session.AccountID) {

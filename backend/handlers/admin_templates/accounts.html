@@ -223,6 +223,8 @@
                 Connection invites start the shared Iroh host while at least one invite is active. Revoking or expiry of the last active invite stops it.
             </p>
         </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn btn-secondary" href="{{.BasePath}}/paired-devices">Manage Paired Devices</a>
         <button class="btn btn-primary" onclick="showCreateConnectionInviteModal()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -230,6 +232,7 @@
             </svg>
             Create Connection Invite
         </button>
+        </div>
     </div>
     <div id="connection-invites-list"></div>
 </div>
@@ -296,6 +299,7 @@ function switchTab(tab) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
     document.getElementById('content-' + tab).classList.add('active');
+	if (window.location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
 }
 
 async function loadData() {
@@ -1989,6 +1993,8 @@ function escapeHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const requestedTab = window.location.hash.replace(/^#/, '');
+if (requestedTab && document.getElementById('tab-' + requestedTab)) switchTab(requestedTab);
 loadData();
 </script>
 {{end}}

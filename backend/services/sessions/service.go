@@ -112,9 +112,19 @@ func (s *Service) Create(accountID string, isMaster bool, userAgent, ipAddress s
 	return s.CreateWithDuration(accountID, isMaster, userAgent, ipAddress, s.sessionDuration)
 }
 
+// CreateForClient generates a session bound to a stable app device ID.
+func (s *Service) CreateForClient(accountID string, isMaster bool, userAgent, ipAddress, clientID string) (models.Session, error) {
+	return s.createScopedWithResource(accountID, isMaster, userAgent, ipAddress, s.sessionDuration, "", "", clientID)
+}
+
 // CreatePersistent generates a longer-lived, bounded session for the given account.
 func (s *Service) CreatePersistent(accountID string, isMaster bool, userAgent, ipAddress string) (models.Session, error) {
 	return s.CreateWithDuration(accountID, isMaster, userAgent, ipAddress, PersistentSessionDuration)
+}
+
+// CreatePersistentForClient generates a persistent session bound to an app device.
+func (s *Service) CreatePersistentForClient(accountID string, isMaster bool, userAgent, ipAddress, clientID string) (models.Session, error) {
+	return s.createScopedWithResource(accountID, isMaster, userAgent, ipAddress, PersistentSessionDuration, "", "", clientID)
 }
 
 // CreateWithDuration generates a new session with a custom duration.
@@ -133,6 +143,10 @@ func (s *Service) CreateScoped(accountID string, isMaster bool, userAgent, ipAdd
 // source resource. Stream-scoped share sessions use this to prevent a shared
 // token from being reused against unrelated media/live URLs.
 func (s *Service) CreateScopedWithResource(accountID string, isMaster bool, userAgent, ipAddress string, duration time.Duration, scope string, scopeResource string) (models.Session, error) {
+	return s.createScopedWithResource(accountID, isMaster, userAgent, ipAddress, duration, scope, scopeResource, "")
+}
+
+func (s *Service) createScopedWithResource(accountID string, isMaster bool, userAgent, ipAddress string, duration time.Duration, scope string, scopeResource string, clientID string) (models.Session, error) {
 	token, err := generateToken()
 	if err != nil {
 		return models.Session{}, err
@@ -149,6 +163,7 @@ func (s *Service) CreateScopedWithResource(accountID string, isMaster bool, user
 		IPAddress:     ipAddress,
 		Scope:         scope,
 		ScopeResource: scopeResource,
+		ClientID:      strings.TrimSpace(clientID),
 	}
 
 	s.mu.Lock()
@@ -171,6 +186,79 @@ func (s *Service) CreateScopedWithResource(accountID string, isMaster bool, user
 	s.mu.Unlock()
 
 	return session, nil
+}
+
+// RevokeAllForClient invalidates every session issued to a physical app device.
+func (s *Service) RevokeAllForClient(clientID string) int {
+	clientID = strings.TrimSpace(clientID)
+	if clientID == "" {
+		return 0
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var tokens []string
+	for token, session := range s.sessions {
+		if session.ClientID == clientID {
+			delete(s.sessions, token)
+			tokens = append(tokens, token)
+		}
+	}
+	if s.useDB() {
+		for _, token := range tokens {
+			_ = s.store.Sessions().Delete(context.Background(), token)
+		}
+	} else if len(tokens) > 0 {
+		_ = s.saveLocked()
+	}
+	return len(tokens)
+}
+
+// GetSessionsForClient returns all active sessions bound to an app device.
+func (s *Service) GetSessionsForClient(clientID string) []models.Session {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []models.Session
+	for _, session := range s.sessions {
+		if session.ClientID == clientID && !session.IsExpired() {
+			result = append(result, session)
+		}
+	}
+	return result
+}
+
+// BindClient attaches a legacy unbound session to the first app device that
+// presents it. Existing bindings are immutable so a caller cannot move another
+// device's session merely by changing the header.
+func (s *Service) BindClient(token, clientID string) error {
+	clientID = strings.TrimSpace(clientID)
+	if clientID == "" {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session, ok := s.sessions[token]
+	if !ok {
+		return ErrSessionNotFound
+	}
+	if session.ClientID != "" {
+		return nil
+	}
+	session.ClientID = clientID
+	if s.useDB() {
+		if err := s.store.Sessions().Update(context.Background(), &session); err != nil {
+			return err
+		}
+		s.sessions[token] = session
+		return nil
+	}
+	s.sessions[token] = session
+	if err := s.saveLocked(); err != nil {
+		session.ClientID = ""
+		s.sessions[token] = session
+		return err
+	}
+	return nil
 }
 
 // Validate checks if a token is valid and returns the associated session.
@@ -304,6 +392,11 @@ func (s *Service) GetSessionsForAccount(accountID string) []models.Session {
 // Refresh rotates the token and extends a normal account session. Scoped share
 // sessions have an absolute expiry and cannot be refreshed.
 func (s *Service) Refresh(token string) (models.Session, error) {
+	return s.RefreshForClient(token, "")
+}
+
+// RefreshForClient rotates a session while binding it to the requesting device.
+func (s *Service) RefreshForClient(token, clientID string) (models.Session, error) {
 	newToken, err := generateToken()
 	if err != nil {
 		return models.Session{}, err
@@ -336,6 +429,9 @@ func (s *Service) Refresh(token string) (models.Session, error) {
 	oldToken := session.Token
 	session.Token = newToken
 	session.ExpiresAt = time.Now().UTC().Add(s.sessionDuration)
+	if clientID = strings.TrimSpace(clientID); clientID != "" && session.ClientID == "" {
+		session.ClientID = clientID
+	}
 	if s.useDB() {
 		if err := s.store.Sessions().Create(context.Background(), &session); err != nil {
 			return models.Session{}, err

@@ -683,6 +683,9 @@ fn force_connection_close(request: &[u8], host: &str, port: u16) -> Vec<u8> {
         {
             continue;
         }
+        if name.eq_ignore_ascii_case("x-mediastorm-iroh-proxy") {
+            continue;
+        }
         if name.eq_ignore_ascii_case("host") {
             saw_host = true;
             rewritten.push_str("Host: ");
@@ -707,6 +710,7 @@ fn force_connection_close(request: &[u8], host: &str, port: u16) -> Vec<u8> {
         }
         rewritten.push_str("\r\n");
     }
+    rewritten.push_str("X-Mediastorm-Iroh-Proxy: 1\r\n");
     rewritten.push_str("Connection: close\r\n\r\n");
 
     let mut out = rewritten.into_bytes();
@@ -758,6 +762,17 @@ fn parse_speed_request(first_line: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn proxy_marks_requests_with_trusted_iroh_header() {
+        let request =
+            b"GET /api/status HTTP/1.1\r\nHost: attacker\r\nX-Mediastorm-Iroh-Proxy: 0\r\n\r\n";
+        let rewritten =
+            String::from_utf8(force_connection_close(request, "127.0.0.1", 7777)).unwrap();
+        assert!(rewritten.contains("X-Mediastorm-Iroh-Proxy: 1\r\n"));
+        assert!(!rewritten.contains("X-Mediastorm-Iroh-Proxy: 0"));
+        assert_eq!(rewritten.matches("X-Mediastorm-Iroh-Proxy:").count(), 1);
+    }
 
     // A persisted secret key must round-trip: the second load returns the same identity,
     // which is what keeps the host's node ID stable across restarts.

@@ -1524,6 +1524,7 @@ type AdminUIHandler struct {
 	loginTemplate         *template.Template
 	registerTemplate      *template.Template
 	accountsTemplate      *template.Template
+	pairedDevicesTemplate *template.Template
 	libraryTemplate       *template.Template
 	kidsSettingsTemplate  *template.Template
 	backupTemplate        *template.Template
@@ -1875,6 +1876,7 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		loginTemplate:         loginTmpl,
 		registerTemplate:      registerTmpl,
 		accountsTemplate:      createPageTemplate("accounts.html"),
+		pairedDevicesTemplate: createPageTemplate("paired_devices.html"),
 		libraryTemplate:       createPageTemplate("library.html"),
 		kidsSettingsTemplate:  createPageTemplate("kids_settings.html"),
 		backupTemplate:        createPageTemplate("backup.html"),

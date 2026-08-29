@@ -172,6 +172,63 @@ func (s *Service) RevokeInvite(ctx context.Context, id string) error {
 	return err
 }
 
+// RevokePeer revokes every claimed invite associated with a paired device.
+// A device can have more than one historical invite, so revoking only the row
+// selected in the UI could otherwise leave another pairing active.
+func (s *Service) RevokePeer(ctx context.Context, peerID string) (int, error) {
+	peerID = strings.TrimSpace(peerID)
+	if peerID == "" {
+		return 0, ErrInviteNotFound
+	}
+	invites, err := s.invites.List(ctx)
+	if err != nil {
+		return 0, err
+	}
+	now := s.now()
+	count := 0
+	for i := range invites {
+		inv := &invites[i]
+		if inv.UsedAt == nil || inv.UsedByPeerID != peerID || inv.RevokedAt != nil {
+			continue
+		}
+		inv.RevokedAt = &now
+		if err := s.invites.Update(ctx, inv); err != nil {
+			return count, err
+		}
+		count++
+	}
+	if count == 0 {
+		return 0, nil
+	}
+	_, err = s.Supervise(ctx)
+	return count, err
+}
+
+// IsPeerRevoked reports whether a device has claimed pairings but no remaining
+// active pairing. It is used to reject requests arriving over the Iroh proxy
+// after an administrator revokes device access.
+func (s *Service) IsPeerRevoked(ctx context.Context, peerID string) (bool, error) {
+	peerID = strings.TrimSpace(peerID)
+	if peerID == "" {
+		return false, nil
+	}
+	invites, err := s.invites.List(ctx)
+	if err != nil {
+		return false, err
+	}
+	hasRevoked := false
+	for _, inv := range invites {
+		if inv.UsedAt == nil || inv.UsedByPeerID != peerID {
+			continue
+		}
+		if inv.RevokedAt == nil {
+			return false, nil
+		}
+		hasRevoked = true
+	}
+	return hasRevoked, nil
+}
+
 // (Supervise rewrites the rendezvous file, so RevokeInvite relies on it via the call above.)
 
 func (s *Service) ClaimInvite(ctx context.Context, token, peerID string) (models.RemoteAccessInvite, error) {

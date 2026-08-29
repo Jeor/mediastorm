@@ -119,11 +119,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Create session
 	userAgent := r.Header.Get("User-Agent")
 	ipAddress := getClientIPAddress(r)
+	clientID := strings.TrimSpace(r.Header.Get("X-Client-ID"))
 	var session models.Session
 	if req.RememberMe {
-		session, err = h.sessions.CreatePersistent(account.ID, account.IsMaster, userAgent, ipAddress)
+		session, err = h.sessions.CreatePersistentForClient(account.ID, account.IsMaster, userAgent, ipAddress, clientID)
 	} else {
-		session, err = h.sessions.Create(account.ID, account.IsMaster, userAgent, ipAddress)
+		session, err = h.sessions.CreateForClient(account.ID, account.IsMaster, userAgent, ipAddress, clientID)
 	}
 	if err != nil {
 		log.Printf("[auth] login session create failed accountID=%s ip=%s err=%v", account.ID, ipAddress, err)
@@ -205,7 +206,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessions.Refresh(token)
+	session, err := h.sessions.RefreshForClient(token, r.Header.Get("X-Client-ID"))
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)

@@ -131,6 +131,42 @@ func (r *fakeInviteRepo) Count(ctx context.Context) (int64, error) {
 	return int64(len(r.byID)), nil
 }
 
+func TestRevokePeerRevokesEveryClaimedInviteForDevice(t *testing.T) {
+	repo := newFakeInviteRepo()
+	host := &fakeHost{}
+	svc := NewService(repo, host)
+	now := time.Now().UTC()
+	for _, inv := range []models.RemoteAccessInvite{
+		{ID: "one", UsedAt: &now, UsedByPeerID: "device-1", ExpiresAt: now.Add(time.Hour)},
+		{ID: "two", UsedAt: &now, UsedByPeerID: "device-1", ExpiresAt: now.Add(time.Hour)},
+		{ID: "other", UsedAt: &now, UsedByPeerID: "device-2", ExpiresAt: now.Add(time.Hour)},
+	} {
+		copy := inv
+		repo.byID[inv.ID] = copy
+	}
+	count, err := svc.RevokePeer(context.Background(), "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatalf("RevokePeer() = %d, want 2", count)
+	}
+	if repo.byID["one"].RevokedAt == nil || repo.byID["two"].RevokedAt == nil {
+		t.Fatal("matching claimed invites were not revoked")
+	}
+	if repo.byID["other"].RevokedAt != nil {
+		t.Fatal("unrelated device invite was revoked")
+	}
+	revoked, err := svc.IsPeerRevoked(context.Background(), "device-1")
+	if err != nil || !revoked {
+		t.Fatalf("IsPeerRevoked() = %v, %v; want true, nil", revoked, err)
+	}
+	otherRevoked, err := svc.IsPeerRevoked(context.Background(), "device-2")
+	if err != nil || otherRevoked {
+		t.Fatalf("other IsPeerRevoked() = %v, %v; want false, nil", otherRevoked, err)
+	}
+}
+
 func TestCreateInviteStartsSharedIrohHost(t *testing.T) {
 	repo := newFakeInviteRepo()
 	host := &fakeHost{}

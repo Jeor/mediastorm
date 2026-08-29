@@ -441,6 +441,7 @@ func main() {
 		remoteAccessHost = remoteaccess.NewIrohHostManager("", settings.Cache.Directory, settings.Server.Port)
 		remoteAccessService = remoteaccess.NewService(store.RemoteAccessInvites(), remoteAccessHost)
 		remoteAccessHandler = handlers.NewRemoteAccessHandler(remoteAccessService)
+		r.Use(handlers.RemoteAccessRevocationMiddleware(remoteAccessService))
 		defer func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
@@ -1104,6 +1105,7 @@ func main() {
 	r.HandleFunc("/admin/search", adminUIHandler.RequireAuth(adminUIHandler.SearchPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/playback", adminUIHandler.RequireAuth(adminUIHandler.PlaybackPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/accounts", adminUIHandler.RequireAuth(adminUIHandler.AccountsPage)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/paired-devices", adminUIHandler.RequireMasterAuth(adminUIHandler.PairedDevicesPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/notifications", adminUIHandler.RequireAuth(adminUIHandler.NotificationsPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/library", adminUIHandler.RequireAuth(adminUIHandler.LibraryPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/kids-settings", adminUIHandler.RequireAuth(adminUIHandler.KidsSettingsPage)).Methods(http.MethodGet)
@@ -1292,6 +1294,8 @@ func main() {
 		r.HandleFunc("/admin/api/remote-access/invites", adminUIHandler.RequireMasterAuth(remoteAccessHandler.ListInvites)).Methods(http.MethodGet)
 		r.HandleFunc("/admin/api/remote-access/invites", adminUIHandler.RequireMasterAuth(remoteAccessHandler.CreateInvite)).Methods(http.MethodPost)
 		r.HandleFunc("/admin/api/remote-access/invites/{inviteID}", adminUIHandler.RequireMasterAuth(remoteAccessHandler.RevokeInvite)).Methods(http.MethodDelete)
+		r.HandleFunc("/admin/api/remote-access/paired-devices", adminUIHandler.RequireMasterAuth(adminUIHandler.GetPairedDevices)).Methods(http.MethodGet)
+		r.HandleFunc("/admin/api/remote-access/paired-devices/{inviteID}", adminUIHandler.RequireMasterAuth(adminUIHandler.RevokePairedDevice)).Methods(http.MethodDelete)
 	}
 
 	// Public registration endpoints (no auth required)

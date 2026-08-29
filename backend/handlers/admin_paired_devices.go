@@ -131,11 +131,11 @@ func (h *AdminUIHandler) RevokePairedDevice(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	revokedInvites, err := h.remoteAccessService.RevokePeer(r.Context(), peerID)
+	revokedSessions := h.sessionsService.RevokeAllForClient(peerID)
 	if err != nil {
 		http.Error(w, `{"error":"failed to revoke paired device"}`, http.StatusInternalServerError)
 		return
 	}
-	revokedSessions := h.sessionsService.RevokeAllForClient(peerID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"ok": true, "peerId": peerID, "revokedInvites": revokedInvites, "revokedSessions": revokedSessions,

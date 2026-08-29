@@ -23,11 +23,11 @@
 //!     observed for the full unclaimed window.
 //!   - Single-use + expiring codes: enforced by the backend.
 //!   - Claimed codes stop being published: the backend lists only *pending* codes in the
-//!     rendezvous file, so on claim this publisher stops republishing the code and its DHT
-//!     record lapses at TTL. The lingering record is harmless — the code is single-use, so a
-//!     forged record has no victim: the already-paired client reconnects by dialing the
-//!     host's stable iroh NodeID (n0 discovery resolves current addressing), never by
-//!     re-resolving the code, and no new client resolves a used code.
+//!     rendezvous file. Mainline DHT nodes may retain the final mutable item, so resolvers
+//!     explicitly reject records whose signed timestamp is older than the one-hour TTL.
+//!     The backend separately requires a consumed, non-revoked device pairing on every
+//!     proxied request. Already-paired clients reconnect via the host's stable iroh NodeID
+//!     and never re-resolve the connection code.
 //!
 //! Residual risk: a first-contact MITM during the unclaimed window (an attacker who wins the
 //! offline crack before the legitimate client claims — infeasible at ~90 bits, but the window
@@ -54,6 +54,9 @@ const INVITE_PREFIX: &str = "mshost-iroh-";
 const TXT_PAYLOAD_CHUNK: usize = 240;
 /// Time-to-live for published records (seconds). The host republishes well before this.
 pub const RENDEZVOUS_TTL_SECS: u32 = 60 * 60;
+/// Small allowance for ordinary host/client wall-clock skew. Records beyond
+/// this future window are invalid rather than being accepted indefinitely.
+const RENDEZVOUS_CLOCK_SKEW_SECS: u64 = 5 * 60;
 
 /// Deterministically derive an ed25519 secret key from a connection code.
 ///
@@ -145,6 +148,16 @@ fn mutable_item_to_signed_packet(item: &MutableItem) -> Result<SignedPacket> {
     .map_err(|err| anyhow!("decode signed packet: {err}"))
 }
 
+fn packet_is_fresh_at(packet: &SignedPacket, now_micros: u64) -> bool {
+    let published_micros = packet.timestamp().as_micros();
+    let skew_micros = RENDEZVOUS_CLOCK_SKEW_SECS * 1_000_000;
+    if published_micros > now_micros.saturating_add(skew_micros) {
+        return false;
+    }
+    let max_age_micros = u64::from(RENDEZVOUS_TTL_SECS) * 1_000_000;
+    now_micros.saturating_sub(published_micros) <= max_age_micros
+}
+
 /// Publish (or refresh) the rendezvous record for `code` pointing at `invite`.
 pub async fn publish(dht: &Dht, code: &str, invite: &str) -> Result<()> {
     let packet = build_packet(code, invite)?;
@@ -172,6 +185,9 @@ pub async fn resolve(dht: &Dht, code: &str) -> Result<Option<String>> {
         return Ok(None);
     };
     let packet = mutable_item_to_signed_packet(&item)?;
+    if !packet_is_fresh_at(&packet, Timestamp::now().as_micros()) {
+        return Ok(None);
+    }
     let invite = invite_from_packet(&packet)?;
     Ok(Some(invite))
 }
@@ -221,5 +237,20 @@ mod tests {
         // `decode_invite` with "invite must start with mshost-iroh-".
         let packet = build_packet("mshost-424242-131313", "not-a-real-invite-blob").expect("build");
         assert!(invite_from_packet(&packet).is_err());
+    }
+
+    #[test]
+    fn stale_or_implausibly_future_packets_are_rejected() {
+        let packet = build_packet("mshost-424242-131313", "mshost-iroh-test").expect("build");
+        let published = packet.timestamp().as_micros();
+        let ttl_micros = u64::from(RENDEZVOUS_TTL_SECS) * 1_000_000;
+        let skew_micros = RENDEZVOUS_CLOCK_SKEW_SECS * 1_000_000;
+
+        assert!(packet_is_fresh_at(&packet, published + ttl_micros));
+        assert!(!packet_is_fresh_at(&packet, published + ttl_micros + 1));
+        assert!(!packet_is_fresh_at(
+            &packet,
+            published.saturating_sub(skew_micros + 1)
+        ));
     }
 }

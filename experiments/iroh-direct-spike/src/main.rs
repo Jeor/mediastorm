@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, RwLock,
+    },
     time::{Duration, Instant},
 };
 
@@ -32,6 +35,9 @@ const LEGACY_INVITE_PREFIX: &str = "mshost-iroh-direct-";
 const MAX_REQUEST_BYTES: usize = 16 * 1024 * 1024;
 const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
 const SPEED_CHUNK_BYTES: usize = 1024 * 1024;
+// The speed probe is reachable before a device claims its pairing. Bound one request so
+// an old invite cannot be turned into an unbounded bandwidth-amplification stream.
+const MAX_SPEED_RESPONSE_BYTES: u64 = 64 * 1024 * 1024;
 const STREAM_CHUNK_BYTES: usize = 64 * 1024;
 const MAX_LOG_HEADER_BYTES: usize = 128 * 1024;
 
@@ -399,7 +405,7 @@ async fn run_client(invite: &str) -> Result<()> {
     let connected_in = started.elapsed();
     let (mut send, mut recv) = conn.open_bi().await?;
 
-    send.write_all(b"GET /settings HTTP/1.1\r\nHost: strmr.local\r\n\r\n")
+    send.write_all(b"GET /health HTTP/1.1\r\nHost: strmr.local\r\n\r\n")
         .await?;
     send.finish()?;
 
@@ -410,9 +416,27 @@ async fn run_client(invite: &str) -> Result<()> {
     println!("response_bytes={}", response.len());
     println!("{}", String::from_utf8_lossy(&response));
 
+    if !http_response_is_success(&response) {
+        anyhow::bail!("iroh health probe returned a non-success HTTP response");
+    }
+
     conn.close(0u32.into(), b"done");
     endpoint.close().await;
     Ok(())
+}
+
+fn http_response_is_success(response: &[u8]) -> bool {
+    let status_line = response
+        .split(|byte| *byte == b'\n')
+        .next()
+        .unwrap_or_default();
+    let status_line = String::from_utf8_lossy(status_line);
+    let mut fields = status_line.split_whitespace();
+    matches!(fields.next(), Some("HTTP/1.0" | "HTTP/1.1" | "HTTP/2"))
+        && fields
+            .next()
+            .and_then(|status| status.parse::<u16>().ok())
+            .is_some_and(|status| (200..300).contains(&status))
 }
 
 async fn run_speed_client(invite: &str, bytes: u64) -> Result<()> {
@@ -485,6 +509,10 @@ struct HttpProbe {
 impl ProtocolHandler for HttpProbe {
     async fn accept(&self, connection: Connection) -> std::result::Result<(), AcceptError> {
         let remote = connection.remote_id();
+        // React Native resource loaders (images and native media stacks) cannot always
+        // attach application headers. Remember the first valid device identity observed
+        // on this authenticated Iroh connection and apply it to later headerless streams.
+        let connection_client_id = Arc::new(RwLock::new(None));
         println!("accepted remote_id={remote}");
 
         loop {
@@ -496,8 +524,11 @@ impl ProtocolHandler for HttpProbe {
                 }
             };
             let origin = self.origin.clone();
+            let connection_client_id = Arc::clone(&connection_client_id);
             tokio::spawn(async move {
-                if let Err(err) = handle_iroh_http_stream(send, recv, origin, remote).await {
+                if let Err(err) =
+                    handle_iroh_http_stream(send, recv, origin, remote, connection_client_id).await
+                {
                     eprintln!("stream_error remote_id={remote} error={err}");
                 }
             });
@@ -512,12 +543,14 @@ async fn handle_iroh_http_stream(
     mut recv: RecvStream,
     origin: Option<String>,
     remote: iroh::PublicKey,
+    connection_client_id: Arc<RwLock<Option<String>>>,
 ) -> Result<()> {
     let request_id = HTTP_REQUEST_ID.fetch_add(1, Ordering::Relaxed);
     let started = Instant::now();
     let request = recv.read_to_end(MAX_REQUEST_BYTES).await.anyerr()?;
     let request_text = String::from_utf8_lossy(&request);
     let first_line = request_text.lines().next().unwrap_or("<empty>");
+    let client_id = connection_client_id_for_request(&request_text, &connection_client_id);
     let request_bytes = request.len();
     println!(
         "request id={request_id} remote_id={remote} line={first_line:?} bytes={request_bytes} content_length={} range={}",
@@ -548,7 +581,15 @@ async fn handle_iroh_http_stream(
     }
 
     if let Some(origin) = &origin {
-        if let Err(err) = proxy_raw_http_stream(request_id, origin, &request, &mut send).await {
+        if let Err(err) = proxy_raw_http_stream(
+            request_id,
+            origin,
+            &request,
+            client_id.as_deref(),
+            &mut send,
+        )
+        .await
+        {
             eprintln!(
                 "proxy_error id={request_id} elapsed_ms={} error={err}",
                 started.elapsed().as_millis()
@@ -579,6 +620,7 @@ async fn proxy_raw_http_stream(
     request_id: u64,
     origin: &str,
     request: &[u8],
+    client_id: Option<&str>,
     send: &mut SendStream,
 ) -> Result<()> {
     let started = Instant::now();
@@ -589,7 +631,7 @@ async fn proxy_raw_http_stream(
         "proxy_connected id={request_id} elapsed_ms={}",
         started.elapsed().as_millis()
     );
-    let upstream_request = force_connection_close(request, &host, port);
+    let upstream_request = force_connection_close(request, &host, port, client_id);
     upstream.write_all(&upstream_request).await?;
     println!(
         "proxy_request_sent id={request_id} bytes={} elapsed_ms={}",
@@ -653,7 +695,12 @@ async fn proxy_raw_http_stream(
     }
 }
 
-fn force_connection_close(request: &[u8], host: &str, port: u16) -> Vec<u8> {
+fn force_connection_close(
+    request: &[u8],
+    host: &str,
+    port: u16,
+    client_id: Option<&str>,
+) -> Vec<u8> {
     let Some(header_end) = find_header_end(request) else {
         return request.to_vec();
     };
@@ -683,7 +730,9 @@ fn force_connection_close(request: &[u8], host: &str, port: u16) -> Vec<u8> {
         {
             continue;
         }
-        if name.eq_ignore_ascii_case("x-mediastorm-iroh-proxy") {
+        if name.eq_ignore_ascii_case("x-mediastorm-iroh-proxy")
+            || name.eq_ignore_ascii_case("x-client-id")
+        {
             continue;
         }
         if name.eq_ignore_ascii_case("host") {
@@ -711,11 +760,43 @@ fn force_connection_close(request: &[u8], host: &str, port: u16) -> Vec<u8> {
         rewritten.push_str("\r\n");
     }
     rewritten.push_str("X-Mediastorm-Iroh-Proxy: 1\r\n");
+    if let Some(client_id) = client_id {
+        rewritten.push_str("X-Client-ID: ");
+        rewritten.push_str(client_id);
+        rewritten.push_str("\r\n");
+    }
     rewritten.push_str("Connection: close\r\n\r\n");
 
     let mut out = rewritten.into_bytes();
     out.extend_from_slice(body);
     out
+}
+
+fn normalized_client_id(headers: &str) -> Option<String> {
+    let client_id = header_value(headers, "x-client-id")?.trim();
+    (!client_id.is_empty()
+        && client_id.len() <= 256
+        && client_id.bytes().all(|byte| byte.is_ascii_graphic()))
+    .then(|| client_id.to_owned())
+}
+
+fn connection_client_id_for_request(
+    headers: &str,
+    connection_client_id: &RwLock<Option<String>>,
+) -> Option<String> {
+    if let Some(observed) = normalized_client_id(headers) {
+        let mut remembered = connection_client_id
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if remembered.is_none() {
+            *remembered = Some(observed);
+        }
+        return remembered.clone();
+    }
+    connection_client_id
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
 }
 
 fn find_header_end(buf: &[u8]) -> Option<usize> {
@@ -753,7 +834,10 @@ fn parse_speed_request(first_line: &str) -> Option<u64> {
     for part in query.split('&') {
         let (key, value) = part.split_once('=')?;
         if key == "bytes" {
-            return value.parse::<u64>().ok();
+            let bytes = value.parse::<u64>().ok()?;
+            return (1..=MAX_SPEED_RESPONSE_BYTES)
+                .contains(&bytes)
+                .then_some(bytes);
         }
     }
     None
@@ -768,10 +852,64 @@ mod tests {
         let request =
             b"GET /api/status HTTP/1.1\r\nHost: attacker\r\nX-Mediastorm-Iroh-Proxy: 0\r\n\r\n";
         let rewritten =
-            String::from_utf8(force_connection_close(request, "127.0.0.1", 7777)).unwrap();
+            String::from_utf8(force_connection_close(request, "127.0.0.1", 7777, None)).unwrap();
         assert!(rewritten.contains("X-Mediastorm-Iroh-Proxy: 1\r\n"));
         assert!(!rewritten.contains("X-Mediastorm-Iroh-Proxy: 0"));
         assert_eq!(rewritten.matches("X-Mediastorm-Iroh-Proxy:").count(), 1);
+    }
+
+    #[test]
+    fn proxy_propagates_one_connection_device_identity_to_headerless_resources() {
+        let remembered = RwLock::new(None);
+        let identified = connection_client_id_for_request(
+            "GET /api/settings HTTP/1.1\r\nX-Client-ID: device-1\r\n\r\n",
+            &remembered,
+        );
+        assert_eq!(identified.as_deref(), Some("device-1"));
+
+        let inherited =
+            connection_client_id_for_request("GET /api/images/proxy HTTP/1.1\r\n\r\n", &remembered);
+        assert_eq!(inherited.as_deref(), Some("device-1"));
+
+        // Identity is fixed for the life of the authenticated Iroh connection.
+        let conflicting = connection_client_id_for_request(
+            "GET /api/settings HTTP/1.1\r\nX-Client-ID: device-2\r\n\r\n",
+            &remembered,
+        );
+        assert_eq!(conflicting.as_deref(), Some("device-1"));
+
+        let request = b"GET /api/images/proxy HTTP/1.1\r\nX-Client-ID: attacker\r\n\r\n";
+        let rewritten = String::from_utf8(force_connection_close(
+            request,
+            "127.0.0.1",
+            7777,
+            inherited.as_deref(),
+        ))
+        .unwrap();
+        assert!(rewritten.contains("X-Client-ID: device-1\r\n"));
+        assert!(!rewritten.contains("X-Client-ID: attacker"));
+        assert_eq!(rewritten.matches("X-Client-ID:").count(), 1);
+    }
+
+    #[test]
+    fn client_probe_requires_a_successful_http_status() {
+        assert!(http_response_is_success(b"HTTP/1.1 200 OK\r\n\r\nhealthy"));
+        assert!(http_response_is_success(b"HTTP/1.0 204 No Content\r\n\r\n"));
+        assert!(!http_response_is_success(b"HTTP/1.1 404 Not Found\r\n\r\n"));
+        assert!(!http_response_is_success(b"not http"));
+    }
+
+    #[test]
+    fn speed_probe_rejects_zero_and_oversized_responses() {
+        assert_eq!(
+            parse_speed_request("GET /speed?bytes=4194304 HTTP/1.1"),
+            Some(4 * 1024 * 1024)
+        );
+        assert_eq!(parse_speed_request("GET /speed?bytes=0 HTTP/1.1"), None);
+        assert_eq!(
+            parse_speed_request("GET /speed?bytes=67108865 HTTP/1.1"),
+            None
+        );
     }
 
     // A persisted secret key must round-trip: the second load returns the same identity,

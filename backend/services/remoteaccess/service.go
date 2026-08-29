@@ -25,6 +25,7 @@ var (
 	ErrInviteUsed     = errors.New("remote access invite has already been used")
 	ErrInviteRevoked  = errors.New("remote access invite has been revoked")
 	ErrInvalidToken   = errors.New("invalid remote access invite token")
+	ErrInvalidPeerID  = errors.New("invalid remote access peer id")
 )
 
 const (
@@ -229,6 +230,26 @@ func (s *Service) IsPeerRevoked(ctx context.Context, peerID string) (bool, error
 	return hasRevoked, nil
 }
 
+// IsPeerAuthorized reports whether a device has at least one consumed,
+// non-revoked pairing. Expiry only limits the initial claim; a consumed pairing
+// remains valid until an administrator explicitly revokes it.
+func (s *Service) IsPeerAuthorized(ctx context.Context, peerID string) (bool, error) {
+	peerID = strings.TrimSpace(peerID)
+	if peerID == "" {
+		return false, nil
+	}
+	invites, err := s.invites.List(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, inv := range invites {
+		if inv.UsedAt != nil && inv.RevokedAt == nil && inv.UsedByPeerID == peerID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // (Supervise rewrites the rendezvous file, so RevokeInvite relies on it via the call above.)
 
 func (s *Service) ClaimInvite(ctx context.Context, token, peerID string) (models.RemoteAccessInvite, error) {
@@ -236,9 +257,13 @@ func (s *Service) ClaimInvite(ctx context.Context, token, peerID string) (models
 	if token == "" {
 		return models.RemoteAccessInvite{}, ErrInvalidToken
 	}
+	peerID = strings.TrimSpace(peerID)
+	if peerID == "" || len(peerID) > 256 {
+		return models.RemoteAccessInvite{}, ErrInvalidPeerID
+	}
 	tokenHash := HashInviteToken(token)
 	now := s.now()
-	inv, err := s.invites.ClaimByTokenHash(ctx, tokenHash, strings.TrimSpace(peerID), now)
+	inv, err := s.invites.ClaimByTokenHash(ctx, tokenHash, peerID, now)
 	if err != nil {
 		return models.RemoteAccessInvite{}, err
 	}
@@ -432,8 +457,9 @@ func (s *Service) syncRendezvousCodes(ctx context.Context) error {
 	}
 	// Only publish codes for invites still awaiting their first claim. Once an invite is
 	// claimed, the paired client reconnects via the host's stable iroh NodeID rather than
-	// re-resolving the code, so we drop the record to stop exposing the code-derived DHT
-	// key to an offline brute-force for the life of the pairing.
+	// re-resolving the code. Removing it here stops future republishing; public DHT nodes
+	// may retain the last item until clients reject its signed timestamp at the rendezvous
+	// TTL.
 	publishable := filterPublishableInvites(invites, s.now())
 
 	var b strings.Builder

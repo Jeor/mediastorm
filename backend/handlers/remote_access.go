@@ -24,8 +24,9 @@ func NewRemoteAccessHandler(service *remoteaccess.Service) *RemoteAccessHandler 
 	return &RemoteAccessHandler{service: service}
 }
 
-// RemoteAccessRevocationMiddleware rejects app requests that arrive through
-// the trusted Iroh host proxy after their stable device ID has been revoked.
+// RemoteAccessRevocationMiddleware gates requests arriving through the trusted
+// Iroh host proxy to devices with a consumed, non-revoked pairing. Health and
+// the one-time claim operation must remain reachable before pairing completes.
 func RemoteAccessRevocationMiddleware(service *remoteaccess.Service) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -33,19 +34,30 @@ func RemoteAccessRevocationMiddleware(service *remoteaccess.Service) mux.Middlew
 				next.ServeHTTP(w, r)
 				return
 			}
-			revoked, err := service.IsPeerRevoked(r.Context(), r.Header.Get("X-Client-ID"))
-			if err != nil {
-				log.Printf("remote access revocation check failed: %v", err)
+			if remoteAccessPrePairingPathAllowed(r) {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if revoked {
-				writeJSONError(w, "device access has been revoked", http.StatusForbidden)
+			authorized, err := service.IsPeerAuthorized(r.Context(), r.Header.Get("X-Client-ID"))
+			if err != nil {
+				log.Printf("remote access pairing check failed: %v", err)
+				writeJSONError(w, "remote access pairing check unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			if !authorized {
+				writeJSONError(w, "device is not paired or access has been revoked", http.StatusForbidden)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func remoteAccessPrePairingPathAllowed(r *http.Request) bool {
+	if r.Method == http.MethodOptions || r.URL.Path == "/health" {
+		return true
+	}
+	return r.Method == http.MethodPost && r.URL.Path == "/api/remote-access/invites/claim"
 }
 
 type createRemoteAccessInviteRequest struct {
@@ -173,7 +185,12 @@ func (h *RemoteAccessHandler) ClaimInvite(w http.ResponseWriter, r *http.Request
 		writeJSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	inv, err := h.service.ClaimInvite(r.Context(), req.Token, req.PeerID)
+	peerID := strings.TrimSpace(req.PeerID)
+	if headerPeerID := strings.TrimSpace(r.Header.Get("X-Client-ID")); headerPeerID == "" || headerPeerID != peerID {
+		writeJSONError(w, remoteaccess.ErrInvalidPeerID.Error(), http.StatusBadRequest)
+		return
+	}
+	inv, err := h.service.ClaimInvite(r.Context(), req.Token, peerID)
 	if err != nil {
 		writeJSONError(w, err.Error(), remoteAccessErrorStatus(err))
 		return
@@ -188,7 +205,7 @@ func (h *RemoteAccessHandler) ClaimInvite(w http.ResponseWriter, r *http.Request
 
 func (h *RemoteAccessHandler) Options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-PIN")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-PIN, X-Client-ID")
 	w.Header().Set("Access-Control-Max-Age", strconv.Itoa(86400))
 	w.WriteHeader(http.StatusOK)
 }
@@ -217,7 +234,7 @@ func remoteAccessErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, remoteaccess.ErrInviteNotFound):
 		return http.StatusNotFound
-	case errors.Is(err, remoteaccess.ErrInviteExpired), errors.Is(err, remoteaccess.ErrInviteUsed), errors.Is(err, remoteaccess.ErrInviteRevoked), errors.Is(err, remoteaccess.ErrInvalidToken):
+	case errors.Is(err, remoteaccess.ErrInviteExpired), errors.Is(err, remoteaccess.ErrInviteUsed), errors.Is(err, remoteaccess.ErrInviteRevoked), errors.Is(err, remoteaccess.ErrInvalidToken), errors.Is(err, remoteaccess.ErrInvalidPeerID):
 		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError

@@ -190,3 +190,26 @@ func TestScanOutputIgnoresRendezvousLogWithoutInvite(t *testing.T) {
 		t.Fatalf("invite = %q, want empty (no invite line present)", m.invite)
 	}
 }
+
+func TestRedactIrohLogLineRemovesInviteAndRendezvousIdentifiers(t *testing.T) {
+	const invite = "mshost-iroh-sensitive"
+	const code = "mshost-SENSITIVE-CODE"
+	const codeKey = "sensitive-derived-key"
+
+	if got := redactIrohLogLine("invite=" + invite); got != "invite=[redacted]" {
+		t.Fatalf("redacted invite = %q", got)
+	}
+	got := redactIrohLogLine("rendezvous_published code=" + code + " code_key=" + codeKey)
+	if strings.Contains(got, invite) || strings.Contains(got, code) || strings.Contains(got, codeKey) {
+		t.Fatalf("redacted rendezvous line still contains sensitive material: %q", got)
+	}
+	if got != "rendezvous_published code=[redacted] code_key=[redacted]" {
+		t.Fatalf("redacted rendezvous line = %q", got)
+	}
+
+	m := &IrohHostManager{state: "starting"}
+	m.scanOutput(strings.NewReader("rendezvous_publish_error code_key="+codeKey+" error=boom\n"), true)
+	if strings.Contains(m.lastErr, codeKey) || !strings.Contains(m.lastErr, "code_key=[redacted]") {
+		t.Fatalf("stored iroh error was not redacted: %q", m.lastErr)
+	}
+}

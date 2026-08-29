@@ -144,6 +144,10 @@ func TestRevokePeerRevokesEveryClaimedInviteForDevice(t *testing.T) {
 		copy := inv
 		repo.byID[inv.ID] = copy
 	}
+	authorized, err := svc.IsPeerAuthorized(context.Background(), "device-1")
+	if err != nil || !authorized {
+		t.Fatalf("IsPeerAuthorized() before revoke = %v, %v; want true, nil", authorized, err)
+	}
 	count, err := svc.RevokePeer(context.Background(), "device-1")
 	if err != nil {
 		t.Fatal(err)
@@ -164,6 +168,30 @@ func TestRevokePeerRevokesEveryClaimedInviteForDevice(t *testing.T) {
 	otherRevoked, err := svc.IsPeerRevoked(context.Background(), "device-2")
 	if err != nil || otherRevoked {
 		t.Fatalf("other IsPeerRevoked() = %v, %v; want false, nil", otherRevoked, err)
+	}
+	authorized, err = svc.IsPeerAuthorized(context.Background(), "device-1")
+	if err != nil || authorized {
+		t.Fatalf("IsPeerAuthorized() after revoke = %v, %v; want false, nil", authorized, err)
+	}
+	otherAuthorized, err := svc.IsPeerAuthorized(context.Background(), "device-2")
+	if err != nil || !otherAuthorized {
+		t.Fatalf("other IsPeerAuthorized() = %v, %v; want true, nil", otherAuthorized, err)
+	}
+}
+
+func TestClaimInviteRejectsMissingOrOversizedPeerID(t *testing.T) {
+	repo := newFakeInviteRepo()
+	svc := NewService(repo, &fakeHost{})
+
+	for name, peerID := range map[string]string{
+		"missing":   "   ",
+		"oversized": strings.Repeat("x", 257),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := svc.ClaimInvite(context.Background(), "mshost-ABCDEF-GHJKMN-PQRSTV", peerID); err != ErrInvalidPeerID {
+				t.Fatalf("ClaimInvite() error = %v, want ErrInvalidPeerID", err)
+			}
+		})
 	}
 }
 
@@ -296,6 +324,37 @@ func TestResolveInviteRejectsClaimedInvite(t *testing.T) {
 
 	if _, err := svc.ResolveInvite(context.Background(), inv.Token); err != ErrInviteUsed {
 		t.Fatalf("ResolveInvite error = %v, want ErrInviteUsed", err)
+	}
+}
+
+func TestClaimInviteRetryIsIdempotentOnlyForTheSameDevice(t *testing.T) {
+	repo := newFakeInviteRepo()
+	svc := NewService(repo, &fakeHost{})
+	now := time.Date(2026, 5, 28, 12, 0, 0, 0, time.UTC)
+	svc.now = func() time.Time { return now }
+
+	inv, err := svc.CreateInvite(context.Background(), "account-1", CreateInviteRequest{ExpiresIn: time.Hour})
+	if err != nil {
+		t.Fatalf("CreateInvite returned error: %v", err)
+	}
+	first, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1")
+	if err != nil {
+		t.Fatalf("first ClaimInvite returned error: %v", err)
+	}
+
+	// Simulate a retry after the phone received the server response but failed to
+	// persist its local connection state. The same stable device may recover.
+	now = now.Add(2 * time.Hour)
+	retry, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1")
+	if err != nil {
+		t.Fatalf("same-device retry returned error: %v", err)
+	}
+	if retry.ID != first.ID || retry.UsedByPeerID != "device-1" {
+		t.Fatalf("same-device retry = %+v, want original pairing", retry)
+	}
+
+	if _, err := svc.ClaimInvite(context.Background(), inv.Token, "device-2"); err != ErrInviteExpired {
+		t.Fatalf("different-device retry error = %v, want ErrInviteExpired", err)
 	}
 }
 

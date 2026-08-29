@@ -150,9 +150,9 @@ func (m *IrohHostManager) publishRendezvousRecord(ctx context.Context, code, inv
 		if msg == "" {
 			msg = err.Error()
 		}
-		return fmt.Errorf("publish rendezvous code %s: %s", code, msg)
+		return fmt.Errorf("publish rendezvous record: %s", redactIrohLogLine(msg))
 	}
-	log.Printf("[remote-access][iroh] rendezvous published code=%s", code)
+	log.Printf("[remote-access][iroh] rendezvous published")
 	return nil
 }
 
@@ -263,7 +263,7 @@ func (m *IrohHostManager) scanOutput(output io.Reader, isErr bool) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if shouldLogIrohLine(line, isErr) {
-			log.Printf("[remote-access][iroh] %s", line)
+			log.Printf("[remote-access][iroh] %s", redactIrohLogLine(line))
 		}
 		m.mu.Lock()
 		// Only the host's "invite=<blob>" line carries the invite. Match the prefix
@@ -278,10 +278,28 @@ func (m *IrohHostManager) scanOutput(output io.Reader, isErr bool) {
 			}
 		}
 		if isErr && shouldRecordIrohError(line) {
-			m.lastErr = line
+			m.lastErr = redactIrohLogLine(line)
 		}
 		m.mu.Unlock()
 	}
+}
+
+func redactIrohLogLine(line string) string {
+	line = strings.TrimSpace(line)
+	if strings.HasPrefix(line, "invite=") {
+		return "invite=[redacted]"
+	}
+	for _, field := range []string{"code=", "code_key="} {
+		if index := strings.Index(line, field); index >= 0 {
+			valueStart := index + len(field)
+			valueEnd := valueStart
+			for valueEnd < len(line) && line[valueEnd] != ' ' {
+				valueEnd++
+			}
+			line = line[:valueStart] + "[redacted]" + line[valueEnd:]
+		}
+	}
+	return line
 }
 
 func shouldLogIrohLine(line string, isErr bool) bool {

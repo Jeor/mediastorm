@@ -13,10 +13,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"novastream/internal/pool"
 	"github.com/javi11/nzbparser"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"novastream/internal/pool"
 )
 
 // Deobfuscator handles filename deobfuscation for NZB files
@@ -146,6 +146,7 @@ func (d *Deobfuscator) extractFilenameFromPar2(par2File nzbparser.NzbFile, targe
 		d.log.Debug("Failed to get body reader for PAR2 extraction", "error", err)
 		return ""
 	}
+	r = guardNNTPBodyReader(r)
 	defer r.Close()
 
 	d.log.Debug("Attempting to parse PAR2 file content",
@@ -205,6 +206,7 @@ func (d *Deobfuscator) extractFromYencHeaders(file nzbparser.NzbFile) string {
 		d.log.Debug("Failed to get body reader for yEnc extraction", "error", err)
 		return ""
 	}
+	r = guardNNTPBodyReader(r)
 	defer r.Close()
 
 	// Get yenc headers
@@ -649,9 +651,9 @@ func (d *Deobfuscator) removePar2VolumeIndicators(filename string) string {
 	// - .vol01, .vol001, .vol0001
 	// - .part01, .part001
 	patterns := []string{
-		`\.vol-\d+$`,     // .vol-01, .vol-001, etc.
-		`\.vol\d+$`,      // .vol01, .vol001, etc.
-		`\.part-?\d+$`,   // .part01, .part-01, etc.
+		`\.vol-\d+$`,   // .vol-01, .vol-001, etc.
+		`\.vol\d+$`,    // .vol01, .vol001, etc.
+		`\.part-?\d+$`, // .part01, .part-01, etc.
 	}
 
 	cleaned := baseName

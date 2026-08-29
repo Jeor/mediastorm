@@ -695,6 +695,7 @@ func (p *Parser) fetchActualFileSizeFromYencHeader(file nzbparser.NzbFile) (int6
 	if err != nil {
 		return 0, fmt.Errorf("failed to get body reader: %w", err)
 	}
+	r = guardNNTPBodyReader(r)
 	if r == nil {
 		return 0, fmt.Errorf("pool returned a nil body reader for segment %s", firstSegment.ID)
 	}
@@ -742,6 +743,7 @@ func (p *Parser) fetchYencHeaders(ctx context.Context, segment nzbparser.NzbSegm
 				}
 				return fmt.Errorf("failed to get body reader: %w", err)
 			}
+			r = guardNNTPBodyReader(r)
 			if r == nil {
 				return fmt.Errorf("pool returned a nil body reader for segment %s", segment.ID)
 			}

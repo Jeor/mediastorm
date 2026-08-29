@@ -16,10 +16,22 @@ import (
 // behaviors surfaced by upstream nntppool's BodyReader race.
 type fakePoolReader struct {
 	panicOnHeaders bool
+	panicOnRead    bool
+	panicOnClose   bool
 }
 
-func (f *fakePoolReader) Read(p []byte) (int, error) { return 0, io.EOF }
-func (f *fakePoolReader) Close() error               { return nil }
+func (f *fakePoolReader) Read(p []byte) (int, error) {
+	if f.panicOnRead {
+		panic("nil internal reader")
+	}
+	return 0, io.EOF
+}
+func (f *fakePoolReader) Close() error {
+	if f.panicOnClose {
+		panic("nil internal reader")
+	}
+	return nil
+}
 func (f *fakePoolReader) GetYencHeaders() (nntpcli.YencHeaders, error) {
 	if f.panicOnHeaders {
 		// Mimic nntppool v1.5.5 returning a wrapper whose inner reader is a
@@ -141,5 +153,25 @@ func TestFetchActualFileSizePanickingReaderNoCrash(t *testing.T) {
 	_, err := p.fetchActualFileSizeFromYencHeader(file)
 	if err == nil {
 		t.Fatal("expected an error from the panicking reader")
+	}
+}
+
+func TestGuardedNNTPBodyReaderContainsReadAndClosePanics(t *testing.T) {
+	reader := guardNNTPBodyReader(&fakePoolReader{panicOnRead: true, panicOnClose: true})
+
+	if _, err := reader.Read(make([]byte, 64)); err == nil {
+		t.Fatal("expected the guarded reader to convert a Read panic into an error")
+	}
+	if err := reader.Close(); err == nil {
+		t.Fatal("expected the guarded reader to convert a Close panic into an error")
+	}
+}
+
+func TestStreamParsePAR2PanickingPoolReaderNoCrash(t *testing.T) {
+	d := NewDeobfuscator(nil)
+	reader := guardNNTPBodyReader(&fakePoolReader{panicOnRead: true})
+
+	if got := d.streamParsePAR2(reader, "obfuscated.bin"); got != "" {
+		t.Fatalf("streamParsePAR2() = %q, want empty fallback", got)
 	}
 }

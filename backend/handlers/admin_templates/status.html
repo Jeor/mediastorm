@@ -258,10 +258,9 @@
     margin: -0.625rem;
 }
 
-.dashboard-grid .grid-stack-item-content {
+.dashboard-grid.grid-stack > .grid-stack-item > .grid-stack-item-content {
     inset: 0.625rem;
-    overflow: hidden;
-    border-radius: var(--radius-lg);
+    overflow: visible;
 }
 
 .dashboard-module {
@@ -312,7 +311,7 @@
     display: inline-flex;
 }
 
-.dashboard-layout-editing .grid-stack-item-content {
+.dashboard-layout-editing .dashboard-module {
     outline: 1px dashed rgba(129, 140, 248, 0.6);
     outline-offset: -1px;
 }

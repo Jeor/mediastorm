@@ -46,6 +46,7 @@ import (
 	"novastream/services/calendar"
 	"novastream/services/debrid"
 	"novastream/services/history"
+	"novastream/services/homedesigner"
 	"novastream/services/invitations"
 	"novastream/services/libraryaccess"
 	"novastream/services/localmedia"
@@ -1527,11 +1528,13 @@ type AdminUIHandler struct {
 	recordingsTemplate    *template.Template
 	onboardingTemplate    *template.Template
 	notificationsTemplate *template.Template
+	homeDesignerTemplate  *template.Template
 	settingsPath          string
 	logFile               string
 	hlsManager            *HLSManager
 	usersService          *users.Service
 	userSettingsService   *user_settings.Service
+	homeDesignerService   *homedesigner.Service
 	usenetPoolManager     internalpool.Manager
 	historyService        *history.Service
 	watchlistService      *watchlist.Service
@@ -1878,11 +1881,13 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		recordingsTemplate:    createPageTemplate("recordings.html"),
 		onboardingTemplate:    createPageTemplate("onboarding.html"),
 		notificationsTemplate: createPageTemplate("notifications.html"),
+		homeDesignerTemplate:  createPageTemplate("home_designer.html"),
 		settingsPath:          settingsPath,
 		logFile:               logFile,
 		hlsManager:            hlsManager,
 		usersService:          usersService,
 		userSettingsService:   userSettingsService,
+		homeDesignerService:   homedesigner.New(configManager, userSettingsService, usersService),
 		configManager:         configManager,
 		plexClient:            plex.NewClient(plex.GenerateClientID()),
 		traktClient:           trakt.NewClient("", ""), // Will be updated with credentials from settings

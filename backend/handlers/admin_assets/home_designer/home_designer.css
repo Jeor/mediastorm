@@ -1,0 +1,22 @@
+.home-designer {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.home-designer-loading,
+.home-designer-empty-state {
+    max-width: 680px;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+
+.home-designer-empty-state {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.home-designer-error {
+    color: var(--danger);
+}

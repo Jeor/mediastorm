@@ -1,0 +1,28 @@
+{{define "title"}}Home Designer · Mediastorm{{end}}
+
+{{define "styles"}}
+<link rel="stylesheet" href="{{.BasePath}}/assets/home-designer/home_designer.css">
+{{end}}
+
+{{define "content"}}
+<section id="homeDesignerRoot" class="home-designer" data-base-path="{{.BasePath}}" data-is-admin="{{.IsAdmin}}" data-profile-id="{{if .Users}}{{(index .Users 0).ID}}{{end}}">
+    <header class="page-header">
+        <div>
+            <h1>Home Designer</h1>
+            <p>Arrange your home experience and appearance. Changes are saved only when you apply them.</p>
+        </div>
+    </header>
+    {{if .NoProfiles}}
+    <section class="home-designer-empty-state" role="status">
+        <h2>Create a profile first</h2>
+        <p>Home Designer is ready when this account has a profile to customize.</p>
+        <a class="btn btn-primary" href="{{.BasePath}}/accounts">Create a profile</a>
+    </section>
+    {{else}}
+    <section class="home-designer-loading" aria-live="polite">
+        <p>Loading Home Designer…</p>
+    </section>
+    {{end}}
+</section>
+<script type="module" src="{{.BasePath}}/assets/home-designer/app.js"></script>
+{{end}}

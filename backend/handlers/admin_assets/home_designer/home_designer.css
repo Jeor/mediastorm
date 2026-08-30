@@ -96,9 +96,21 @@
     outline-offset: 2px;
 }
 
-.home-designer-outline-list.is-drop-target {
-    outline: 2px dashed var(--primary);
-    outline-offset: 4px;
+.home-designer-outline-row.is-drop-before {
+    border-top: 3px solid var(--primary);
+}
+
+.home-designer-outline-row.is-drop-after {
+    border-bottom: 3px solid var(--primary);
+}
+
+.home-designer-drop-indicator {
+    height: 3px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-radius: 999px;
+    background: var(--primary);
 }
 
 .home-designer-row-state,

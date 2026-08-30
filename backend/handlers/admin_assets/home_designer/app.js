@@ -92,15 +92,33 @@ if (root && status) {
         const customize = document.createElement('button');
         customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.textContent = 'Customize rows';
         customize.disabled = state.rowsMode === 'custom';
-        customize.addEventListener('click', () => store.dispatch({ type: 'rows/customize' }));
+        customize.addEventListener('click', () => {
+            store.dispatch({ type: 'rows/customize' });
+            editor.querySelector('[data-home-designer-live]').textContent = 'Rows now use a custom configuration.';
+            requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button')?.focus());
+        });
         controls.append(message, customize);
         if (state.scope?.kind !== 'global') {
             const reset = document.createElement('button');
             reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.textContent = 'Reset to inherited';
             reset.disabled = state.rowsMode === 'inherit';
-            reset.addEventListener('click', () => store.dispatch({ type: 'rows/reset' }));
+            reset.addEventListener('click', () => {
+                store.dispatch({ type: 'rows/reset' });
+                editor.querySelector('[data-home-designer-live]').textContent = 'Rows reset to the inherited configuration.';
+                requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button')?.focus());
+            });
             controls.append(reset);
         }
+    };
+
+    const configureCatalog = (entry, index) => {
+        store.dispatch({ type: 'catalog/configure', token: entry.type, index, values: {} });
+        requestAnimationFrame(() => editor?.querySelector('[data-home-designer-inspector] [data-field-path]')?.focus());
+    };
+
+    const handleAddedRow = (id, entry) => {
+        selectRow(id);
+        if ((entry.fields || []).length) requestAnimationFrame(() => editor?.querySelector('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
     const renderEditor = async () => {
@@ -108,23 +126,48 @@ if (root && status) {
         if (!editorModules) editorModules = Promise.all([import('./library.js'), import('./outline.js')]);
         const [library, outline] = await editorModules;
         if (!store) return;
+        const active = document.activeElement;
+        const focusPath = active?.closest?.('[data-home-designer-editor]') ? active.dataset?.fieldPath : null;
+        const focusStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
+        const focusEnd = typeof active?.selectionEnd === 'number' ? active.selectionEnd : null;
         const state = store.getState();
         renderRowsMode(state);
         library.renderLibrary(editor.querySelector('[data-home-designer-library]'), {
             state, dispatch: store.dispatch,
-            onAdd: (id, entry) => {
-                selectRow(id);
-                if ((entry.fields || []).length) requestAnimationFrame(() => editor.querySelector('[data-field-path]')?.focus());
-            },
+            onAdd: handleAddedRow,
+            onConfigure: configureCatalog,
         });
         outline.renderOutline(editor.querySelector('[data-home-designer-outline]'), {
             state, dispatch: store.dispatch, liveRegion: editor.querySelector('[data-home-designer-live]'), onSelect: selectRow,
+            onConfigure: configureCatalog, onAdd: handleAddedRow,
         });
         outline.renderInspector(editor.querySelector('[data-home-designer-inspector]'), {
             state, dispatch: store.dispatch, onSelect: selectRow,
+            onCatalogSubmit: (entry, values) => {
+                const rows = library.createCatalogRows(entry, state.rows, values);
+                const index = Number.isInteger(state.catalogSelection?.index) ? state.catalogSelection.index : state.rows.length;
+                rows.forEach((row, offset) => store.dispatch({ type: 'rows/add', row, index: index + offset }));
+                store.dispatch({ type: 'catalog/cancel' });
+                if (rows[0]) {
+                    selectRow(rows[0].id);
+                    requestAnimationFrame(() => editor.querySelector('[data-home-designer-inspector] [data-field-path]')?.focus());
+                }
+            },
         });
         renderPreviewPlaceholder(state);
+        const applyButton = root.querySelector('[data-home-designer-apply]');
+        if (applyButton) {
+            const valid = store.isApplyValid?.() ?? true;
+            applyButton.disabled = !valid;
+            applyButton.setAttribute('aria-invalid', String(!valid));
+            applyButton.setAttribute('aria-disabled', String(!valid));
+        }
         editor.hidden = false;
+        if (focusPath) requestAnimationFrame(() => {
+            const replacement = editor.querySelector(`[data-field-path="${CSS.escape(focusPath)}"]`);
+            replacement?.focus();
+            if (focusStart !== null && typeof replacement?.setSelectionRange === 'function') replacement.setSelectionRange(focusStart, focusEnd);
+        });
     };
 
     const connectEditor = () => {

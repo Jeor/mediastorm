@@ -48,7 +48,7 @@ const sectionEqual = (mode, value, baselineMode, baselineValue) => mode === base
     mode === 'inherit' || equal(value, baselineValue)
 );
 
-const stateFrom = (baseline, working, selectionId = null) => ({
+const stateFrom = (baseline, working, selectionId = null, catalogSelection = null) => ({
     envelope: clone(baseline.envelope),
     scope: clone(baseline.scope),
     revision: baseline.revision,
@@ -59,6 +59,7 @@ const stateFrom = (baseline, working, selectionId = null) => ({
     rowsMode: working.rowsMode,
     themeMode: working.themeMode,
     selectionId,
+    catalogSelection,
 });
 
 const publicState = (state) => ({
@@ -66,6 +67,8 @@ const publicState = (state) => ({
     ...clone(state),
     rows: clone(state.rows.shelves),
     rowsSettings: clone(state.rows),
+    catalogSelection: clone(state.catalogSelection),
+    rowValidation: clone(rowValidation(state.rows.shelves, state.envelope.catalog)),
 });
 
 const updateField = (target, path, value) => {
@@ -103,10 +106,45 @@ const rowValidation = (rows, catalog) => {
                 rowErrors.push({ path: field.path, message: `${field.label || field.path} is required` });
             }
         });
+        if (row?.type === 'collection-hub') {
+            const itemIDs = new Set();
+            const names = new Set();
+            const sources = new Set();
+            (Array.isArray(row.collectionItems) ? row.collectionItems : []).forEach((item, index) => {
+                const prefix = `collectionItems.${index}`;
+                const itemID = String(item?.id ?? '').trim();
+                const name = String(item?.name ?? '').trim();
+                const sourceID = String(item?.sourceShelfId ?? '').trim();
+                const nested = (path, message) => rowErrors.push({ path: `${prefix}.${path}`, message });
+                if (!itemID) nested('id', 'Item ID is required');
+                else if (itemIDs.has(itemID)) nested('id', 'Item ID must be unique');
+                itemIDs.add(itemID);
+                if (!name) nested('name', 'Name is required');
+                else if (names.has(name)) nested('name', 'Name must be unique');
+                names.add(name);
+                const source = rows.find((candidate) => candidate?.id === sourceID);
+                if (!sourceID || !source || source.id === row.id || source.type === 'collection-hub' || source.id === 'streaming-services') nested('sourceShelfId', 'Source must reference another configured shelf');
+                else if (sources.has(sourceID)) nested('sourceShelfId', 'A source shelf may only be used once');
+                sources.add(sourceID);
+                if (textURL(item?.logoUrl) === false) nested('logoUrl', 'Must be an http or https URL');
+                if (textURL(item?.heroArtUrl) === false) nested('heroArtUrl', 'Must be an http or https URL');
+                const scale = Number(item?.logoScale ?? 0);
+                if (scale !== 0 && (!Number.isFinite(scale) || scale < 0.5 || scale > 2)) nested('logoScale', 'Logo scale must be between 0.5 and 2.0');
+                if (item?.tintColor && !validTint(item.tintColor)) nested('tintColor', 'Color must use #RRGGBB or rgba(...)');
+            });
+        }
         if (rowErrors.length) errors[id] = rowErrors;
     });
     return errors;
 };
+
+const textURL = (value) => {
+    const source = String(value ?? '').trim();
+    if (!source) return true;
+    try { const url = new URL(source); return url.protocol === 'http:' || url.protocol === 'https:'; } catch { return false; }
+};
+
+const validTint = (value) => /^#[0-9a-f]{6}$/i.test(String(value)) || /^rgba\(\s*(?:25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(?:0?(?:\.\d+)|0|1(?:\.0+)?)\s*\)$/i.test(String(value));
 
 const nextRowID = (candidate, rows) => {
     const wanted = String(candidate?.id ?? '').trim();
@@ -179,6 +217,21 @@ export const createStore = (document) => {
                 notify();
                 return true;
             }
+            if (action.type === 'catalog/configure') {
+                state.catalogSelection = { token: String(action.token ?? ''), index: Number.isInteger(action.index) ? action.index : state.rows.shelves.length, values: clone(action.values ?? {}) };
+                notify();
+                return true;
+            }
+            if (action.type === 'catalog/field' && state.catalogSelection) {
+                updateField(state.catalogSelection.values, action.path, action.value);
+                notify();
+                return true;
+            }
+            if (action.type === 'catalog/cancel') {
+                state.catalogSelection = null;
+                notify();
+                return true;
+            }
             return commit(() => {
                 const row = state.rows.shelves.find((candidate) => candidate.id === action.id);
                 switch (action.type) {
@@ -223,6 +276,16 @@ export const createStore = (document) => {
                     case 'rows/field':
                         if (row) {
                             state.rowsMode = 'custom';
+                            if (action.path === 'id') {
+                                const previousID = row.id;
+                                const nextID = String(action.value ?? '').trim();
+                                state.rows.shelves.forEach((candidate) => {
+                                    (candidate.collectionItems || []).forEach((item) => {
+                                        if (item.sourceShelfId === previousID) item.sourceShelfId = nextID;
+                                    });
+                                });
+                                if (state.selectionId === previousID) state.selectionId = nextID;
+                            }
                             updateField(row, action.path, action.value);
                         }
                         break;

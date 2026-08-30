@@ -92,6 +92,54 @@ test('catalog additions keep built-ins unique and mark incomplete configured row
     assert.equal(store.isApplyValid(), true);
 });
 
+test('row validation is public and an ID rename preserves selection plus collection references', async () => {
+    // Break caught: locally-invalid collection hubs appearing apply-ready or an ID edit closing the active inspector and orphaning its hub source.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore({
+        ...documentFixture(),
+        catalog: [{ type: 'collection-hub', available: true, fields: [{ path: 'collectionItems', type: 'collection' }] }],
+        rows: { inherited: false, effective: { shelves: [
+            { id: 'source', name: 'Source', type: 'genre', enabled: true, order: 0 },
+            { id: 'hub', name: 'Hub', type: 'collection-hub', enabled: true, order: 1, collectionItems: [{ id: 'item-1', name: 'One', sourceShelfId: 'source', enabled: true, order: 0 }] },
+        ] } },
+    });
+    store.dispatch({ type: 'selection/select', id: 'source' });
+    store.dispatch({ type: 'rows/field', id: 'source', path: 'id', value: 'renamed-source' });
+    assert.equal(store.getState().selectionId, 'renamed-source');
+    assert.equal(store.getState().rows[1].collectionItems[0].sourceShelfId, 'renamed-source');
+
+    store.dispatch({ type: 'rows/field', id: 'hub', path: 'collectionItems', value: [{ id: '', name: '', sourceShelfId: '', logoUrl: 'bad', heroArtUrl: 'https://ok.example/art.png', logoScale: 3, tintColor: 'blue' }] });
+    const validation = store.getState().rowValidation;
+    assert.equal(store.isApplyValid(), false);
+    assert.ok(validation.hub.some((error) => error.path === 'collectionItems.0.id'));
+    assert.ok(validation.hub.some((error) => error.path === 'collectionItems.0.sourceShelfId'));
+    assert.ok(validation.hub.some((error) => error.path === 'collectionItems.0.logoUrl'));
+    assert.ok(validation.hub.some((error) => error.path === 'collectionItems.0.logoScale'));
+    assert.ok(validation.hub.some((error) => error.path === 'collectionItems.0.tintColor'));
+});
+
+test('collection hubs reject duplicate or forbidden local sources before Apply', async () => {
+    // Break caught: collection controls accepting duplicate sources or the reserved streaming-services shelf until the server rejects Apply.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore({
+        ...documentFixture(),
+        catalog: [{ type: 'collection-hub', available: true, fields: [{ path: 'collectionItems', type: 'collection' }] }],
+        rows: { inherited: false, effective: { shelves: [
+            { id: 'streaming-services', name: 'Services', type: 'builtin', enabled: true, order: 0 },
+            { id: 'source', name: 'Source', type: 'genre', enabled: true, order: 1 },
+            { id: 'hub', name: 'Hub', type: 'collection-hub', enabled: true, order: 2, collectionItems: [
+                { id: 'first', name: 'First', sourceShelfId: 'source', enabled: true, order: 0 },
+                { id: 'second', name: 'Second', sourceShelfId: 'source', enabled: true, order: 1 },
+                { id: 'third', name: 'Third', sourceShelfId: 'streaming-services', enabled: true, order: 2 },
+            ] },
+        ] } },
+    });
+    const errors = store.getState().rowValidation.hub;
+    assert.ok(errors.some((error) => error.path === 'collectionItems.1.sourceShelfId'));
+    assert.ok(errors.some((error) => error.path === 'collectionItems.2.sourceShelfId'));
+    assert.equal(store.isApplyValid(), false);
+});
+
 test('row addition inserts at the requested index or appends independently of template order', async () => {
     // Break caught: catalog template order changing where a new row lands or leaving selection on another row.
     const { createStore } = await moduleFromFile('store.js');

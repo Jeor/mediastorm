@@ -51,24 +51,27 @@ export const createCatalogInstance = (entry, rows = []) => {
     return row;
 };
 
-export const expandStreamingService = (entry, rows = []) => {
+export const expandStreamingService = (entry, rows = [], values = {}) => {
     const serviceField = entry?.fields?.find((field) => field.path === 'service');
     const mediaField = entry?.fields?.find((field) => field.path === 'media');
-    const service = serviceField?.options?.[0]?.value || 'netflix';
-    const media = mediaField?.options?.[0]?.value || 'movies';
+    const service = values.service || serviceField?.options?.[0]?.value || 'netflix';
+    const media = values.media || mediaField?.options?.[0]?.value || 'movies';
     const lists = streamingLists[service];
     if (!lists) return [];
     const label = optionLabel(serviceField, service);
-    const instance = nextID('streaming-service', rows);
     const wanted = media === 'both' ? [['movies', lists[0], 'Movies'], ['shows', lists[1], 'TV shows']] :
         media === 'shows' ? [['shows', lists[1], 'TV shows']] : [['movies', lists[0], 'Movies']];
+    const used = new Set(rows.map((row) => text(row.id)));
+    let instance = 'streaming-service';
+    let suffix = 2;
+    while (wanted.some(([kind]) => used.has(`${instance}-${kind}`))) instance = `streaming-service-${suffix++}`;
     return wanted.map(([kind, listURL, suffix], index) => ({
-        id: nextID(`${instance}-${kind}`, [...rows, ...wanted.slice(0, index).map((_, position) => ({ id: `${instance}-${wanted[position][0]}` }))]),
-        type: 'mdblist', name: wanted.length > 1 ? `${label} ${suffix}` : label, enabled: true, listURL,
+        id: `${instance}-${kind}`,
+        type: 'mdblist', name: wanted.length > 1 ? `${label} ${suffix}` : label, enabled: true, listUrl: listURL,
     }));
 };
 
-export const createCatalogRows = (entry, rows = []) => entry?.catalogOnly ? expandStreamingService(entry, rows) : [createCatalogInstance(entry, rows)].filter(Boolean);
+export const createCatalogRows = (entry, rows = [], values = {}) => entry?.catalogOnly ? expandStreamingService(entry, rows, values) : [createCatalogInstance(entry, rows)].filter(Boolean);
 
 export const filterCatalog = (catalog, query = '', category = 'All') => {
     const normalized = text(query).toLowerCase();
@@ -86,7 +89,7 @@ const button = (label, className = 'btn') => {
 
 // renderLibrary owns only its container. State changes flow through the supplied
 // store dispatcher, allowing app.js to re-render the complete editor surface.
-export const renderLibrary = (container, { state, dispatch, onAdd } = {}) => {
+export const renderLibrary = (container, { state, dispatch, onAdd, onConfigure } = {}) => {
     container.replaceChildren();
     const heading = document.createElement('h2');
     heading.textContent = 'Add a row';
@@ -124,6 +127,10 @@ export const renderLibrary = (container, { state, dispatch, onAdd } = {}) => {
                     event.dataTransfer.effectAllowed = 'copy';
                 });
                 add.addEventListener('click', () => {
+                    if (entry.catalogOnly) {
+                        onConfigure?.(entry, (state.rows || []).length);
+                        return;
+                    }
                     const current = state.rows || [];
                     const added = createCatalogRows(entry, current);
                     added.forEach((row, offset) => dispatch?.({ type: 'rows/add', row, index: current.length + offset }));

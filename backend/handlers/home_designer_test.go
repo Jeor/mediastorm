@@ -59,6 +59,8 @@ func TestHomeDesignerAssetsServeOnlyEmbeddedAllowlistEntries(t *testing.T) {
 		wantContentType string
 	}{
 		{name: "module", asset: "app.js", want: http.StatusOK, wantContentType: "text/javascript; charset=utf-8"},
+		{name: "document store module", asset: "store.js", want: http.StatusOK, wantContentType: "text/javascript; charset=utf-8"},
+		{name: "api module", asset: "api.js", want: http.StatusOK, wantContentType: "text/javascript; charset=utf-8"},
 		{name: "stylesheet", asset: "home_designer.css", want: http.StatusOK, wantContentType: "text/css; charset=utf-8"},
 		{name: "traversal", asset: "../app.js", want: http.StatusNotFound},
 		{name: "unknown", asset: "other.js", want: http.StatusNotFound},

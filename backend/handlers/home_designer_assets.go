@@ -13,7 +13,9 @@ var homeDesignerAssets embed.FS
 
 var homeDesignerAssetContentTypes = map[string]string{
 	"app.js":            "text/javascript; charset=utf-8",
+	"api.js":            "text/javascript; charset=utf-8",
 	"home_designer.css": "text/css; charset=utf-8",
+	"store.js":          "text/javascript; charset=utf-8",
 }
 
 // HomeDesignerAsset serves only the small, embedded editor bootstrap assets.

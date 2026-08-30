@@ -11,6 +11,16 @@ if (root && status) {
     let store = null;
     let activeScope = initialScope;
     let operation = 0;
+    let activeOperation = null;
+
+    const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
+    const beginOperation = () => {
+        activeOperation?.controller.abort();
+        const next = { token: ++operation, controller: new AbortController() };
+        activeOperation = next;
+        return next;
+    };
+    const isCurrent = (candidate) => activeOperation === candidate;
 
     const showMessage = (className, text) => {
         status.replaceChildren();
@@ -35,53 +45,58 @@ if (root && status) {
 
     const showReady = () => showMessage('home-designer-ready', 'Home Designer is ready.');
 
-    const load = async (scope, replaceWorkingCopy = false) => {
-        const token = ++operation;
-        const [{ loadDocument }, { createStore }] = await modules;
-        const saved = await loadDocument(basePath, scope);
-        if (token !== operation) return null;
-        if (store && !replaceWorkingCopy) store.replaceWithSaved(saved);
-        else store = createStore(saved);
-        return saved;
+    const load = async (scope) => {
+        const current = beginOperation();
+        try {
+            const [{ loadDocument }, { createStore }] = await modules;
+            const saved = await loadDocument(basePath, scope, { signal: current.controller.signal });
+            if (!isCurrent(current)) return null;
+            store = createStore(saved);
+            return { current, saved };
+        } catch (error) {
+            return isCurrent(current) ? { current, error } : null;
+        }
     };
 
     const bootstrap = async () => {
         if (!activeScope.kind || (activeScope.kind === 'profile' && !activeScope.profileId)) return;
-        try {
-            if (!await load(activeScope, true)) return;
-            showReady();
-        } catch {
-            showFailure();
-        }
+        const result = await load(activeScope);
+        if (!result || !isCurrent(result.current)) return;
+        if (result.error) showFailure();
+        else showReady();
     };
 
     const switchScope = async (scope) => {
         if (store?.isDirty() && typeof globalThis.confirm === 'function' && !globalThis.confirm('Discard unsaved Home Designer changes?')) return false;
-        activeScope = scope;
-        try {
-            if (!await load(activeScope, true)) return false;
-            showReady();
-            return true;
-        } catch {
+        activeScope = { ...scope };
+        const result = await load(activeScope);
+        if (!result || !isCurrent(result.current)) return false;
+        if (result.error) {
             showFailure();
             return false;
         }
+        showReady();
+        return true;
     };
 
     const apply = async () => {
         if (!store) return false;
         const request = store.buildApplyRequest();
         if (!request) return true;
-        const [{ applyDocument, APIError }] = await modules;
         const applyingStore = store;
-        const token = ++operation;
+        const current = beginOperation();
         try {
-            const saved = await applyDocument(basePath, request);
-            if (token !== operation || store !== applyingStore) return false;
+            const [{ applyDocument, APIError }] = await modules;
+            if (!isCurrent(current)) return false;
+            const saved = await applyDocument(basePath, request, { signal: current.controller.signal });
+            if (!isCurrent(current) || store !== applyingStore) return false;
             applyingStore.replaceWithSaved(saved);
             showReady();
             return true;
         } catch (error) {
+            if (!isCurrent(current)) return false;
+            const [{ APIError }] = await modules;
+            if (!isCurrent(current)) return false;
             if (error instanceof APIError && error.code === 'revision_conflict') {
                 status.replaceChildren();
                 const message = document.createElement('p');
@@ -92,12 +107,11 @@ if (root && status) {
                 reload.type = 'button';
                 reload.textContent = 'Reload latest';
                 reload.addEventListener('click', async () => {
-                    try {
-                        await load(request.scope, true);
-                        showReady();
-                    } catch {
-                        showFailure();
-                    }
+                    if (!isCurrent(current) || !sameScope(activeScope, request.scope)) return;
+                    const result = await load(activeScope);
+                    if (!result || !isCurrent(result.current)) return;
+                    if (result.error) showFailure();
+                    else showReady();
                 });
                 status.append(message, reload);
             } else {

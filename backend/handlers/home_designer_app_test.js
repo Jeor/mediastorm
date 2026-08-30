@@ -61,7 +61,7 @@ test('Home Designer Retry replaces a blocking failure after a successful reload'
         createElement: (tagName) => new Element(tagName),
     };
     vm.runInNewContext(source, {
-        document, Error, Promise,
+        document, Error, Promise, AbortController,
         homeDesignerAPI: {
             loadDocument: async () => {
                 if (loadAttempts++ === 0) throw new Error('offline');
@@ -115,7 +115,7 @@ test('Home Designer bootstrap exposes explicit apply without writing the loaded 
             applyDocument: async () => { applyCalls += 1; return { scope: { kind: 'profile', profileId: 'profile-1' }, revision: 'revision-2', rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }; },
             APIError: class APIError extends Error {},
     };
-    vm.runInNewContext(source, { document, Error, Promise, homeDesignerAPI, homeDesignerStore: { createStore: () => store } });
+    vm.runInNewContext(source, { document, Error, Promise, AbortController, homeDesignerAPI, homeDesignerStore: { createStore: () => store } });
 
     await settle();
     await settle();
@@ -140,7 +140,7 @@ test('Home Designer Retry keeps the scope selected before a failed reload', asyn
     let shouldFail = false;
     const document = { getElementById: () => root, createElement: (tagName) => new Element(tagName) };
     vm.runInNewContext(source, {
-        document, Error, Promise,
+        document, Error, Promise, AbortController,
         homeDesignerAPI: {
             loadDocument: async (_, scope) => {
                 scopes.push(scope.kind);
@@ -174,7 +174,7 @@ test('a stale Apply response cannot replace a newer scope store', async () => {
     const stores = [];
     const document = { getElementById: () => root, createElement: (tagName) => new Element(tagName) };
     vm.runInNewContext(source, {
-        document, Error, Promise,
+        document, Error, Promise, AbortController,
         homeDesignerAPI: {
             loadDocument: async (_, scope) => ({ scope, revision: `${scope.kind}-revision`, rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }),
             applyDocument: async () => applied,
@@ -193,4 +193,67 @@ test('a stale Apply response cannot replace a newer scope store', async () => {
     resolveApply({ scope: { kind: 'global' }, revision: 'global-new', rows: { inherited: false, effective: { shelves: [] } }, theme: { inherited: false, effective: {} } });
     await applying;
     assert.equal(stores[1].saved.length, 0);
+});
+
+test('a stale rejected load cannot replace a newer scope status', async () => {
+    // Break caught: a cancelled profile load showing its failure after global has become ready.
+    const source = await sourceWithModules();
+    const root = new Element('section');
+    root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div');
+    status.dataset.homeDesignerStatus = '';
+    root.append(status);
+    let rejectProfile;
+    const profileLoad = new Promise((_, reject) => { rejectProfile = reject; });
+    const document = { getElementById: () => root, createElement: (tagName) => new Element(tagName) };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        homeDesignerAPI: {
+            loadDocument: async (_, scope) => scope.kind === 'profile'
+                ? profileLoad
+                : { scope, revision: 'global', rows: { inherited: false, effective: { shelves: [] } }, theme: { inherited: false, effective: {} } },
+            applyDocument: async () => ({}),
+            APIError: class APIError extends Error {},
+        },
+        homeDesignerStore: { createStore: () => ({ isDirty: () => false, buildApplyRequest: () => null, replaceWithSaved: () => {}, discard: () => {} }) },
+    });
+    await settle(); await settle(); await settle(); await settle();
+    const profileSwitch = root.homeDesigner.switchScope({ kind: 'profile', profileId: 'profile-1' });
+    await settle();
+    assert.equal(await root.homeDesigner.switchScope({ kind: 'global' }), true);
+    rejectProfile(new Error('offline'));
+    assert.equal(await profileSwitch, false);
+    assert.deepEqual(status.children.map((child) => child.textContent), ['Home Designer is ready.']);
+});
+
+test('a stale conflict is cancelled and cannot expose Reload latest', async () => {
+    // Break caught: a conflict from the old scope replacing a newer ready scope with a stale reload action.
+    const source = await sourceWithModules();
+    const root = new Element('section');
+    root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div');
+    status.dataset.homeDesignerStatus = '';
+    root.append(status);
+    let rejectApply;
+    let applySignal;
+    const applied = new Promise((_, reject) => { rejectApply = reject; });
+    class ConflictError extends Error { constructor() { super('conflict'); this.code = 'revision_conflict'; } }
+    const document = { getElementById: () => root, createElement: (tagName) => new Element(tagName) };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        homeDesignerAPI: {
+            loadDocument: async (_, scope) => ({ scope, revision: scope.kind, rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }),
+            applyDocument: async (_, __, options) => { applySignal = options.signal; return applied; },
+            APIError: ConflictError,
+        },
+        homeDesignerStore: { createStore: (saved) => ({ isDirty: () => false, buildApplyRequest: () => ({ scope: saved.scope, expectedRevision: saved.revision, theme: { mode: 'custom', value: {} } }), replaceWithSaved: () => {}, discard: () => {} }) },
+    });
+    await settle(); await settle(); await settle(); await settle();
+    const applying = root.homeDesigner.apply();
+    await settle();
+    await root.homeDesigner.switchScope({ kind: 'profile', profileId: 'profile-1' });
+    assert.equal(applySignal.aborted, true);
+    rejectApply(new ConflictError());
+    assert.equal(await applying, false);
+    assert.deepEqual(status.children.map((child) => child.textContent), ['Home Designer is ready.']);
 });

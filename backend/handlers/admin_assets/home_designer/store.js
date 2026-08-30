@@ -18,16 +18,24 @@ const normalizeRows = (value) => {
 
 const sectionValue = (section) => clone(section?.override ?? section?.effective ?? {});
 
-const documentState = (document) => ({
-    scope: clone(document.scope),
-    revision: document.revision,
-    rows: normalizeRows(sectionValue(document.rows)),
-    rowsEffective: normalizeRows(document.rows?.effective ?? {}),
-    theme: sectionValue(document.theme),
-    themeEffective: clone(document.theme?.effective ?? {}),
-    rowsMode: document.rows?.inherited ? 'inherit' : 'custom',
-    themeMode: document.theme?.inherited ? 'inherit' : 'custom',
-});
+const documentState = (document) => {
+    const envelope = clone(document);
+    delete envelope.scope;
+    delete envelope.revision;
+    delete envelope.rows;
+    delete envelope.theme;
+    return {
+        envelope,
+        scope: clone(document.scope),
+        revision: document.revision,
+        rows: normalizeRows(sectionValue(document.rows)),
+        rowsEffective: normalizeRows(document.rows?.effective ?? {}),
+        theme: sectionValue(document.theme),
+        themeEffective: clone(document.theme?.effective ?? {}),
+        rowsMode: document.rows?.inherited ? 'inherit' : 'custom',
+        themeMode: document.theme?.inherited ? 'inherit' : 'custom',
+    };
+};
 
 const workingState = (state) => ({
     rows: normalizeRows(state.rows),
@@ -41,6 +49,7 @@ const sectionEqual = (mode, value, baselineMode, baselineValue) => mode === base
 );
 
 const stateFrom = (baseline, working, selectionId = null) => ({
+    envelope: clone(baseline.envelope),
     scope: clone(baseline.scope),
     revision: baseline.revision,
     rows: normalizeRows(working.rows),
@@ -53,6 +62,7 @@ const stateFrom = (baseline, working, selectionId = null) => ({
 });
 
 const publicState = (state) => ({
+    ...clone(state.envelope),
     ...clone(state),
     rows: clone(state.rows.shelves),
     rowsSettings: clone(state.rows),
@@ -140,12 +150,21 @@ export const createStore = (document) => {
                 switch (action.type) {
                     case 'rows/add':
                         state.rowsMode = 'custom';
-                        state.rows.shelves.push(clone(action.row ?? {}));
-                        state.selectionId = action.row?.id ?? null;
+                        {
+                            const next = clone(action.row ?? {});
+                            const index = Number.isInteger(action.index)
+                                ? Math.max(0, Math.min(action.index, state.rows.shelves.length))
+                                : state.rows.shelves.length;
+                            state.rows.shelves.splice(index, 0, next);
+                            state.rows.shelves.forEach((candidate, position) => { candidate.order = position; });
+                            state.selectionId = next.id ?? null;
+                        }
                         break;
                     case 'rows/remove':
-                        state.rowsMode = 'custom';
-                        state.rows.shelves = state.rows.shelves.filter((candidate) => candidate.id !== action.id);
+                        if (row) {
+                            state.rowsMode = 'custom';
+                            state.rows.shelves = state.rows.shelves.filter((candidate) => candidate.id !== action.id);
+                        }
                         break;
                     case 'rows/move': {
                         if (!row) break;
@@ -185,6 +204,10 @@ export const createStore = (document) => {
                         break;
                     case 'theme/customize':
                         state.themeMode = 'custom';
+                        break;
+                    case 'theme/replace':
+                        state.themeMode = 'custom';
+                        state.theme = clone(action.value ?? {});
                         break;
                     case 'theme/reset':
                         if (state.scope.kind !== 'global') {

@@ -67,6 +67,32 @@ test('row additions and invalid rows are local working state only', async () => 
     assert.equal(store.isDirty(), false);
 });
 
+test('row addition inserts at the requested index or appends independently of template order', async () => {
+    // Break caught: catalog template order changing where a new row lands or leaving selection on another row.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+    store.dispatch({ type: 'rows/add', index: 1, row: { id: 'catalog-row', name: 'Catalog row', enabled: true, order: 0 } });
+    assert.deepEqual(store.getState().rows.map((row) => row.id), ['top-ten', 'catalog-row', 'watchlist', 'trending']);
+    assert.deepEqual(store.getState().rows.map((row) => row.order), [0, 1, 2, 3]);
+    assert.equal(store.getState().selectionId, 'catalog-row');
+
+    store.dispatch({ type: 'rows/add', row: { id: 'appended', name: 'Appended', enabled: true, order: 0 } });
+    assert.equal(store.getState().rows.at(-1).id, 'appended');
+    assert.equal(store.getState().rows.at(-1).order, 4);
+    assert.equal(store.getState().selectionId, 'appended');
+});
+
+test('stale row removal is a true no-op', async () => {
+    // Break caught: an absent row ID turning inherited Rows into a dirty custom section.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+    store.dispatch({ type: 'selection/select', id: 'watchlist' });
+    assert.equal(store.dispatch({ type: 'rows/remove', id: 'missing' }), false);
+    assert.equal(store.isDirty(), false);
+    assert.equal(store.canUndo(), false);
+    assert.equal(store.getState().selectionId, 'watchlist');
+});
+
 test('Rows and Theme customize/reset modes are independent and apply only dirty sections', async () => {
     // Break caught: one section's inheritance action incorrectly changing the other section or emitting an incomplete apply request.
     const { createStore } = await moduleFromFile('store.js');
@@ -151,6 +177,42 @@ test('selection-only changes do not consume undo history and saved replacement r
     assert.equal(store.isDirty(), false);
     assert.equal(store.canUndo(), false);
     assert.equal(store.getState().revision, 'revision-2');
+});
+
+test('document envelope metadata stays cloned across load and saved replacement', async () => {
+    // Break caught: later catalog/preview/preset controls losing server-authoritative metadata or mutating the original response.
+    const { createStore } = await moduleFromFile('store.js');
+    const document = {
+        ...documentFixture(),
+        permissions: { canEdit: true, canEditGlobal: false },
+        previewProfiles: [{ id: 'profile-1', displayName: 'One' }],
+        catalog: [{ type: 'genre', name: 'Genre' }],
+        themePresets: [{ id: 'night', appearance: { accentColor: '#111111' } }],
+    };
+    const store = createStore(document);
+    const initial = store.getState();
+    initial.catalog[0].name = 'Mutated outside';
+    assert.equal(store.getState().catalog[0].name, 'Genre');
+
+    const saved = { ...document, revision: 'revision-2', catalog: [{ type: 'decade', name: 'Decade' }] };
+    store.replaceWithSaved(saved);
+    saved.catalog[0].name = 'Mutated response';
+    assert.equal(store.getState().revision, 'revision-2');
+    assert.equal(store.getState().catalog[0].name, 'Decade');
+    assert.deepEqual(store.getState().previewProfiles, [{ id: 'profile-1', displayName: 'One' }]);
+    assert.deepEqual(store.getState().themePresets, [{ id: 'night', appearance: { accentColor: '#111111' } }]);
+});
+
+test('whole-theme replacement is a single undoable semantic edit', async () => {
+    // Break caught: selecting a multi-field preset requiring several undo operations to reverse.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+    store.dispatch({ type: 'theme/replace', value: { accentColor: '#112233', buttonStyle: 'filled', buttonRadius: 'pill' } });
+    assert.deepEqual(store.getState().theme, { accentColor: '#112233', buttonStyle: 'filled', buttonRadius: 'pill' });
+    assert.equal(store.canUndo(), true);
+    store.undo();
+    assert.deepEqual(store.getState().theme, { accentColor: '#3f66ff', buttonStyle: 'soft' });
+    assert.equal(store.canUndo(), false);
 });
 
 test('API calls use the page base path, JSON headers, abort signals, and structured errors', async () => {

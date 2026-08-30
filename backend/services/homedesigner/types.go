@@ -67,6 +67,25 @@ type CatalogEntry struct {
 	PreviewKind       string             `json:"previewKind"`
 }
 
+// CatalogLibrary is the presentation-safe representation of a library the
+// caller is authorized to configure. Callers must not pass inaccessible
+// libraries or filesystem paths into this contract.
+type CatalogLibrary struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// CatalogContext carries the authorization and navigation context required to
+// construct a profile-safe catalog. Shared integrations are opt-in because an
+// empty owner is not by itself permission to expose an account.
+type CatalogContext struct {
+	Actor                 Actor            `json:"-"`
+	Profiles              []models.User    `json:"-"`
+	Libraries             []CatalogLibrary `json:"-"`
+	BasePath              string           `json:"-"`
+	IncludeSharedAccounts bool             `json:"-"`
+}
+
 type SectionMutation[T any] struct {
 	Mode  string `json:"mode"`
 	Value *T     `json:"value,omitempty"`
@@ -80,14 +99,57 @@ type ApplyRequest struct {
 }
 
 type PreviewRequest struct {
-	Scope Scope                                        `json:"scope"`
-	Rows  *SectionMutation[models.HomeShelvesSettings] `json:"rows,omitempty"`
-	Theme *SectionMutation[models.AppearanceSettings]  `json:"theme,omitempty"`
+	Scope            Scope                                        `json:"scope"`
+	PreviewProfileID string                                       `json:"previewProfileId"`
+	Platform         string                                       `json:"platform"`
+	Rows             *SectionMutation[models.HomeShelvesSettings] `json:"rows,omitempty"`
+	Theme            *SectionMutation[models.AppearanceSettings]  `json:"theme,omitempty"`
+}
+
+// PreviewRow intentionally includes only data a client may render. It never
+// mirrors source URLs, integration IDs, account IDs, or transport settings.
+type PreviewRow struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Enabled        bool   `json:"enabled"`
+	Order          int    `json:"order"`
+	Type           string `json:"type"`
+	Limit          int    `json:"limit,omitempty"`
+	HideUnreleased bool   `json:"hideUnreleased,omitempty"`
+}
+
+type PreviewTheme struct {
+	FontScale            *float64 `json:"fontScale,omitempty"`
+	AccentColor          string   `json:"accentColor,omitempty"`
+	TextColor            string   `json:"textColor,omitempty"`
+	SecondaryTextColor   string   `json:"secondaryTextColor,omitempty"`
+	BackgroundColor      string   `json:"backgroundColor,omitempty"`
+	ModalBackgroundColor string   `json:"modalBackgroundColor,omitempty"`
+	ButtonStyle          string   `json:"buttonStyle,omitempty"`
+	ButtonRadius         string   `json:"buttonRadius,omitempty"`
+	HighContrast         *bool    `json:"highContrast,omitempty"`
+	ReduceOverlays       *bool    `json:"reduceOverlays,omitempty"`
 }
 
 type PreviewResponse struct {
-	Rows  models.HomeShelvesSettings `json:"rows"`
-	Theme models.AppearanceSettings  `json:"theme"`
+	Scope     Scope        `json:"scope"`
+	ProfileID string       `json:"profileId"`
+	Platform  string       `json:"platform"`
+	Rows      []PreviewRow `json:"rows"`
+	Theme     PreviewTheme `json:"theme"`
+}
+
+// BuildPreviewResponse projects persisted settings into the deliberately
+// narrow preview response contract.
+func BuildPreviewResponse(request PreviewRequest, rows models.HomeShelvesSettings, theme models.AppearanceSettings) PreviewResponse {
+	previewRows := make([]PreviewRow, len(rows.Shelves))
+	for i, row := range rows.Shelves {
+		previewRows[i] = PreviewRow{ID: row.ID, Name: row.Name, Enabled: row.Enabled, Order: row.Order, Type: row.Type, Limit: row.Limit, HideUnreleased: row.HideUnreleased}
+	}
+	return PreviewResponse{
+		Scope: request.Scope, ProfileID: request.PreviewProfileID, Platform: request.Platform, Rows: previewRows,
+		Theme: PreviewTheme{FontScale: theme.FontScale, AccentColor: theme.AccentColor, TextColor: theme.TextColor, SecondaryTextColor: theme.SecondaryTextColor, BackgroundColor: theme.BackgroundColor, ModalBackgroundColor: theme.ModalBackgroundColor, ButtonStyle: theme.ButtonStyle, ButtonRadius: theme.ButtonRadius, HighContrast: theme.HighContrast, ReduceOverlays: theme.ReduceOverlays},
+	}
 }
 
 type FieldError struct {

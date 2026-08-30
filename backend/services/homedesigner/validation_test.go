@@ -54,16 +54,16 @@ func TestValidateHomeDesigner_NormalizesOrderAndWhitespace(t *testing.T) {
 	shelfScale := 1.4
 	heroScale := 0.25
 	rows := &models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
-		{ID: " second ", Name: " Second ", Type: "genre", Order: 8},
-		{ID: " first ", Name: " First ", Type: "genre", Order: 4},
+		{ID: " genre-35-movie ", Name: " Second ", Type: "genre", Order: 8},
+		{ID: " genre-16-movie ", Name: " First ", Type: "genre", Order: 4},
 	}, HomeShelfScale: &shelfScale, HomeHeroScale: &heroScale}
 	request := customRowsRequest(*rows)
 	if errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil)); len(errs) != 0 {
 		t.Fatalf("errors = %#v, want normalization without errors", errs)
 	}
 	got := request.Rows.Value
-	if got.Shelves[0].ID != "first" || got.Shelves[0].Name != "First" || got.Shelves[0].Order != 0 ||
-		got.Shelves[1].ID != "second" || got.Shelves[1].Name != "Second" || got.Shelves[1].Order != 1 {
+	if got.Shelves[0].ID != "genre-16-movie" || got.Shelves[0].Name != "First" || got.Shelves[0].Order != 0 ||
+		got.Shelves[1].ID != "genre-35-movie" || got.Shelves[1].Name != "Second" || got.Shelves[1].Order != 1 {
 		t.Fatalf("normalized shelves = %#v", got.Shelves)
 	}
 	if *got.HomeShelfScale != 1.0 || *got.HomeHeroScale != 0.5 {
@@ -76,6 +76,54 @@ func TestValidateHomeDesigner_RejectsGlobalInheritance(t *testing.T) {
 	errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil))
 	if !hasFieldError(errs, "rows", "", "mode") {
 		t.Fatalf("errors = %#v, want global inheritance error", errs)
+	}
+}
+
+func TestValidateHomeDesigner_RejectsDuplicateInstanceIDsForRepeatableTypes(t *testing.T) {
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "genre-16-movie", Name: "Animation", Type: "genre"},
+		{ID: "genre-16-movie", Name: "Animation again", Type: "genre"},
+	}})
+	errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil))
+	if !hasFieldError(errs, "rows", "genre-16-movie", "id") {
+		t.Fatalf("errors = %#v, want duplicate repeatable id error", errs)
+	}
+}
+
+func TestValidateHomeDesigner_RejectsUnavailableAndNonRenderableCatalogRows(t *testing.T) {
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "tmdb-1", Name: "TMDB", Type: "tmdb", TMDBSourceType: "public-list", TMDBSourceID: "1", TMDBMediaType: "movie"},
+		{ID: "streaming-1", Name: "Streaming", Type: "streaming-service"},
+	}})
+	errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil))
+	if !hasFieldError(errs, "rows", "tmdb-1", "type") || !hasFieldError(errs, "rows", "streaming-1", "type") {
+		t.Fatalf("errors = %#v, want unavailable and non-renderable type errors", errs)
+	}
+}
+
+func TestValidateHomeDesigner_EnforcesRenderableIdentifiersAndCatalogOptions(t *testing.T) {
+	cfg := config.DefaultSettings()
+	cfg.Metadata.TMDBAPIKey = "tmdb-key"
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "genre-not-a-number-movie", Name: "Genre", Type: "genre"},
+		{ID: "decade-1700-tv", Name: "Decade", Type: "decade"},
+		{ID: "tmdb-1", Name: "TMDB", Type: "tmdb", TMDBSourceType: "unsupported", TMDBSourceID: "1", TMDBMediaType: "series", TMDBDiscoverQuery: "%%", Sort: "made-up"},
+		{ID: "stremio-1", Name: "Stremio", Type: "stremio", AddonManifestURL: "not-a-url", AddonCatalogType: "podcast", AddonCatalogID: "catalog"},
+	}})
+	errs := ValidateApply(request, BuildCatalog(cfg, nil))
+	for _, want := range []struct{ rowID, path string }{
+		{"genre-not-a-number-movie", "id"}, {"decade-1700-tv", "id"}, {"tmdb-1", "tmdbSourceType"}, {"tmdb-1", "tmdbMediaType"}, {"tmdb-1", "tmdbDiscoverQuery"}, {"tmdb-1", "sort"}, {"stremio-1", "addonManifestUrl"}, {"stremio-1", "addonCatalogType"},
+	} {
+		if !hasFieldError(errs, "rows", want.rowID, want.path) {
+			t.Errorf("errors = %#v, want %s error for %s", errs, want.path, want.rowID)
+		}
+	}
+}
+
+func TestValidateHomeDesigner_AcceptsLegacyProfileDashboardBuiltIn(t *testing.T) {
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{{ID: "dashboard", Name: "Dashboard", Enabled: true}}})
+	if errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil)); len(errs) != 0 {
+		t.Fatalf("errors = %#v, want dashboard accepted as a legacy profile built-in", errs)
 	}
 }
 

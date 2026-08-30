@@ -1,8 +1,10 @@
 package homedesigner
 
 import (
+	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"novastream/models"
@@ -40,8 +42,8 @@ func validateRowsMutation(scope Scope, mutation *SectionMutation[models.HomeShel
 
 	rows := mutation.Value
 	normalizeRows(rows)
-	knownTypes, builtinIDs := catalogTypes(catalog)
-	seenBuiltins := make(map[string]struct{})
+	entriesByType, builtinIDs := catalogTypes(catalog)
+	seenRowIDs := make(map[string]struct{}, len(rows.Shelves))
 	for i := range rows.Shelves {
 		shelf := &rows.Shelves[i]
 		rowID := shelf.ID
@@ -50,25 +52,31 @@ func validateRowsMutation(scope Scope, mutation *SectionMutation[models.HomeShel
 		}
 		if rowID == "" {
 			errs = append(errs, rowError(rowID, "id", "id is required"))
+		} else if _, exists := seenRowIDs[rowID]; exists {
+			errs = append(errs, rowError(rowID, "id", "row id must be unique"))
+		} else {
+			seenRowIDs[rowID] = struct{}{}
 		}
 		if shelf.Type == "" && builtinIDs[rowID] {
 			shelf.Type = "builtin"
 		}
-		if !knownTypes[shelf.Type] {
+		entry, known := entriesByType[shelf.Type]
+		if !known {
 			errs = append(errs, rowError(rowID, "type", "unknown shelf type"))
+			continue
+		}
+		if !entry.Available {
+			errs = append(errs, rowError(rowID, "type", "shelf type is not available"))
 			continue
 		}
 		if shelf.Type == "builtin" {
 			if !builtinIDs[rowID] {
 				errs = append(errs, rowError(rowID, "id", "unknown built-in shelf"))
-			} else if _, exists := seenBuiltins[rowID]; exists {
-				errs = append(errs, rowError(rowID, "id", "built-in shelf may only be added once"))
-			} else {
-				seenBuiltins[rowID] = struct{}{}
 			}
 		}
-		errs = append(errs, validateShelf(rowID, *shelf)...)
+		errs = append(errs, validateShelf(rowID, *shelf, entry)...)
 	}
+	errs = append(errs, validateRowsSettings(*rows)...)
 	return errs
 }
 
@@ -168,10 +176,12 @@ func clampHomeScale(value *float64) *float64 {
 	return &next
 }
 
-func catalogTypes(catalog []CatalogEntry) (map[string]bool, map[string]bool) {
-	types, builtins := make(map[string]bool), make(map[string]bool)
+func catalogTypes(catalog []CatalogEntry) (map[string]CatalogEntry, map[string]bool) {
+	types, builtins := make(map[string]CatalogEntry), make(map[string]bool)
 	for _, entry := range catalog {
-		types[entry.Type] = true
+		if _, exists := types[entry.Type]; !exists {
+			types[entry.Type] = entry
+		}
 		if entry.Type == "builtin" {
 			builtins[entry.Default.ID] = true
 		}
@@ -179,7 +189,7 @@ func catalogTypes(catalog []CatalogEntry) (map[string]bool, map[string]bool) {
 	return types, builtins
 }
 
-func validateShelf(rowID string, shelf models.ShelfConfig) []FieldError {
+func validateShelf(rowID string, shelf models.ShelfConfig, entry CatalogEntry) []FieldError {
 	errs := make([]FieldError, 0)
 	require := func(path, value string) {
 		if value == "" {
@@ -189,17 +199,33 @@ func validateShelf(rowID string, shelf models.ShelfConfig) []FieldError {
 	if shelf.Limit < 0 || shelf.Limit > 500 {
 		errs = append(errs, rowError(rowID, "limit", "limit must be between 0 and 500"))
 	}
+	for _, field := range entry.Fields {
+		value := shelfFieldValue(shelf, field.Path)
+		if field.Required && value == "" {
+			errs = append(errs, rowError(rowID, field.Path, "field is required"))
+		}
+		if value != "" && len(field.Options) > 0 && !isCatalogOption(field.Options, value) {
+			errs = append(errs, rowError(rowID, field.Path, "value is not supported"))
+		}
+		if value != "" && field.Type == "url" && !isHTTPURL(value) {
+			errs = append(errs, rowError(rowID, field.Path, "must be an http or https URL"))
+		}
+	}
 	switch shelf.Type {
-	case "mdblist":
-		require("listUrl", shelf.ListURL)
-	case "stremio":
-		require("addonManifestUrl", shelf.AddonManifestURL)
-		require("addonCatalogType", shelf.AddonCatalogType)
-		require("addonCatalogId", shelf.AddonCatalogID)
+	case "genre":
+		if !validGenreShelfID(shelf.ID) {
+			errs = append(errs, rowError(rowID, "id", "genre id must use genre-<positive id>-<movie|tv>"))
+		}
+	case "decade":
+		if !validDecadeShelfID(shelf.ID) {
+			errs = append(errs, rowError(rowID, "id", "decade id must use decade-<year>-<movie|tv>"))
+		}
 	case "tmdb":
-		require("tmdbSourceType", shelf.TMDBSourceType)
-		if shelf.TMDBSourceType != "custom-discover" {
-			require("tmdbSourceId", shelf.TMDBSourceID)
+		if shelf.TMDBSourceType != "custom-discover" && !validTMDBSourceID(shelf.TMDBSourceID) {
+			errs = append(errs, rowError(rowID, "tmdbSourceId", "source id must be a positive integer or a URL containing one"))
+		}
+		if !validTMDBDiscoverQuery(shelf.TMDBDiscoverQuery) {
+			errs = append(errs, rowError(rowID, "tmdbDiscoverQuery", "discover query is invalid"))
 		}
 	case "trakt":
 		require("traktAccountId", shelf.TraktAccountID)
@@ -214,10 +240,147 @@ func validateShelf(rowID string, shelf models.ShelfConfig) []FieldError {
 		if shelf.LetterboxdListID == "" && shelf.LetterboxdListURL == "" {
 			errs = append(errs, rowError(rowID, "letterboxdListUrl", "a Letterboxd list is required"))
 		}
-	case "library":
-		require("libraryId", shelf.LibraryID)
 	}
 	return errs
+}
+
+func shelfFieldValue(shelf models.ShelfConfig, path string) string {
+	switch path {
+	case "id":
+		return shelf.ID
+	case "name":
+		return shelf.Name
+	case "listUrl":
+		return shelf.ListURL
+	case "addonManifestUrl":
+		return shelf.AddonManifestURL
+	case "addonCatalogType":
+		return shelf.AddonCatalogType
+	case "addonCatalogId":
+		return shelf.AddonCatalogID
+	case "tmdbSourceType":
+		return shelf.TMDBSourceType
+	case "tmdbSourceId":
+		return shelf.TMDBSourceID
+	case "tmdbMediaType":
+		return shelf.TMDBMediaType
+	case "sort":
+		return shelf.Sort
+	case "traktAccountId":
+		return shelf.TraktAccountID
+	case "traktListType":
+		return shelf.TraktListType
+	case "traktListId":
+		return shelf.TraktListID
+	case "simklAccountId":
+		return shelf.SimklAccountID
+	case "simklMediaType":
+		return shelf.SimklMediaType
+	case "simklListType":
+		return shelf.SimklListType
+	case "letterboxdListId":
+		return shelf.LetterboxdListID
+	case "letterboxdListUrl":
+		return shelf.LetterboxdListURL
+	case "libraryId":
+		return shelf.LibraryID
+	default:
+		return ""
+	}
+}
+
+func isCatalogOption(options []Option, value string) bool {
+	for _, option := range options {
+		if option.Value == value {
+			return true
+		}
+	}
+	return false
+}
+
+func isHTTPURL(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
+}
+
+func positiveInteger(value string) bool {
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	return err == nil && parsed > 0
+}
+
+func validTMDBSourceID(value string) bool {
+	if positiveInteger(value) {
+		return true
+	}
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return false
+	}
+	for _, part := range strings.FieldsFunc(parsed.Path, func(r rune) bool { return r == '/' || r == '-' }) {
+		if positiveInteger(part) {
+			return true
+		}
+	}
+	return false
+}
+
+func validTMDBDiscoverQuery(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return true
+	}
+	if index := strings.Index(value, "?"); index >= 0 {
+		value = value[index+1:]
+	}
+	_, err := url.ParseQuery(strings.TrimPrefix(value, "?"))
+	return err == nil
+}
+
+func validGenreShelfID(value string) bool {
+	parts := strings.Split(value, "-")
+	return len(parts) == 3 && parts[0] == "genre" && positiveInteger(parts[1]) && (parts[2] == "movie" || parts[2] == "tv")
+}
+
+func validDecadeShelfID(value string) bool {
+	parts := strings.Split(value, "-")
+	if len(parts) != 3 || parts[0] != "decade" || (parts[2] != "movie" && parts[2] != "tv") {
+		return false
+	}
+	decade, err := strconv.Atoi(parts[1])
+	return err == nil && decade >= 1800
+}
+
+func validateRowsSettings(rows models.HomeShelvesSettings) []FieldError {
+	errs := make([]FieldError, 0)
+	if rows.ExploreCardPosition != "" && rows.ExploreCardPosition != "front" && rows.ExploreCardPosition != "end" {
+		errs = append(errs, FieldError{Section: "rows", Path: "exploreCardPosition", Message: "explore card position must be front or end"})
+	}
+	if rows.ItemCap != 0 && (rows.ItemCap < 1 || rows.ItemCap > 100) {
+		errs = append(errs, FieldError{Section: "rows", Path: "itemCap", Message: "item cap must be between 1 and 100"})
+	}
+	ids := make(map[string]bool, len(rows.Shelves))
+	for _, shelf := range rows.Shelves {
+		ids[shelf.ID] = true
+	}
+	errs = append(errs, validateTopShelfMode("mobileTopShelfMode", "mobileTopShelfSourceId", rows.MobileTopShelfMode, rows.MobileTopShelfSourceID, ids)...)
+	errs = append(errs, validateTopShelfMode("tvTopShelfMode", "tvTopShelfSourceId", rows.TVTopShelfMode, rows.TVTopShelfSourceID, ids)...)
+	return errs
+}
+
+func validateTopShelfMode(modePath, sourcePath, mode, source string, ids map[string]bool) []FieldError {
+	if mode == "" || mode == "default" || mode == "disabled" {
+		if source != "" {
+			return []FieldError{{Section: "rows", Path: sourcePath, Message: "source is only valid when mode is shelf"}}
+		}
+		return nil
+	}
+	if mode != "shelf" {
+		return []FieldError{{Section: "rows", Path: modePath, Message: "mode must be default, disabled, or shelf"}}
+	}
+	if source == "" || !ids[source] {
+		return []FieldError{{Section: "rows", Path: sourcePath, Message: "source must reference a configured shelf"}}
+	}
+	return nil
 }
 
 func rowError(rowID, path, message string) FieldError {

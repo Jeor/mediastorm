@@ -3,6 +3,11 @@
     gap: 1.25rem;
 }
 
+.home-designer-status {
+    display: grid;
+    gap: 1rem;
+}
+
 .home-designer-loading,
 .home-designer-empty-state {
     max-width: 680px;

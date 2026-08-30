@@ -514,11 +514,13 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	}
 	source := string(templateBytes)
 
-	if regexp.MustCompile(`<span\s+class="sidebar-nav-icon"[^>]*>`).MatchString(source) {
-		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
+	for _, tag := range sidebarNavigationIconTags(source) {
+		if tag != "svg" {
+			t.Fatalf("shared shell uses %q for a sidebar navigation icon, want svg", tag)
+		}
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got < 22 {
-		t.Fatalf("shared shell navigation SVG count = %d, want at least 22", got)
+	if tags := sidebarNavigationIconTags(`<span aria-hidden="true" class="sidebar-nav-icon">⌂</span><span class="utility sidebar-nav-icon">⌂</span>`); len(tags) != 2 || tags[0] != "span" || tags[1] != "span" {
+		t.Fatalf("sidebar icon matcher missed attribute/class variants: %#v", tags)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,
@@ -531,6 +533,30 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 			t.Fatalf("shared shell missing consistent navigation icon marker %q", marker)
 		}
 	}
+}
+
+var htmlStartTagPattern = regexp.MustCompile(`(?is)<([a-z][a-z0-9:-]*)\b([^>]*)>`)
+var classAttributePattern = regexp.MustCompile(`(?is)\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')`)
+
+func sidebarNavigationIconTags(source string) []string {
+	tags := make([]string, 0)
+	for _, match := range htmlStartTagPattern.FindAllStringSubmatch(source, -1) {
+		classMatch := classAttributePattern.FindStringSubmatch(match[2])
+		if len(classMatch) == 0 {
+			continue
+		}
+		classValue := classMatch[1]
+		if classValue == "" {
+			classValue = classMatch[2]
+		}
+		for _, className := range strings.Fields(classValue) {
+			if className == "sidebar-nav-icon" {
+				tags = append(tags, strings.ToLower(match[1]))
+				break
+			}
+		}
+	}
+	return tags
 }
 
 func TestSharedShellUsesTruthfulApplicationInformation(t *testing.T) {

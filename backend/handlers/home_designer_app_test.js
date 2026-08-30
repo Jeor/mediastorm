@@ -31,6 +31,9 @@ class Element {
     }
 
     querySelector(selector) {
+        if (selector === '[data-home-designer-status]') {
+            return this.children.find((child) => Object.hasOwn(child.dataset, 'homeDesignerStatus')) || null;
+        }
         return this.children.find((child) => selector === `.${child.className}`) || null;
     }
 }
@@ -41,6 +44,15 @@ test('Home Designer Retry replaces a blocking failure after a successful reload'
     const source = await readFile(new URL('./admin_assets/home_designer/app.js', import.meta.url), 'utf8');
     const root = new Element('section');
     root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const header = new Element('header');
+    header.textContent = 'Home Designer';
+    const status = new Element('div');
+    status.dataset.homeDesignerStatus = '';
+    const loading = new Element('p');
+    loading.className = 'home-designer-loading';
+    loading.textContent = 'Loading Home Designer…';
+    status.append(loading);
+    root.append(header, status);
     const responses = [
         Promise.reject(new Error('offline')),
         Promise.resolve({ ok: true, json: async () => ({ revision: 'fresh' }) }),
@@ -53,12 +65,13 @@ test('Home Designer Retry replaces a blocking failure after a successful reload'
 
     await settle();
     await settle();
-    assert.equal(root.children[0].textContent, 'Home Designer could not load. Try again.');
-    assert.equal(root.children[1].textContent, 'Retry');
+    assert.equal(root.children[0], header);
+    assert.deepEqual(status.children.map((child) => child.textContent), ['Home Designer could not load. Try again.', 'Retry']);
 
-    root.children[1].click();
+    status.children[1].click();
     await settle();
     await settle();
 
-    assert.deepEqual(root.children.map((child) => child.textContent), ['Home Designer is ready.']);
+    assert.equal(root.children[0], header);
+    assert.deepEqual(status.children.map((child) => child.textContent), ['Home Designer is ready.']);
 });

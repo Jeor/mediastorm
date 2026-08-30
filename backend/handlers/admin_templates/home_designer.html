@@ -12,17 +12,19 @@
             <p>Arrange your home experience and appearance. Changes are saved only when you apply them.</p>
         </div>
     </header>
-    {{if .NoProfiles}}
-    <section class="home-designer-empty-state" role="status">
-        <h2>Create a profile first</h2>
-        <p>Home Designer is ready when this account has a profile to customize.</p>
-        <a class="btn btn-primary" href="{{.BasePath}}/accounts">Create a profile</a>
-    </section>
-    {{else}}
-    <section class="home-designer-loading" aria-live="polite">
-        <p>Loading Home Designer…</p>
-    </section>
-    {{end}}
+    <div class="home-designer-status" data-home-designer-status aria-live="polite">
+        {{if .NoProfiles}}
+        <section class="home-designer-empty-state" role="status">
+            <h2>Create a profile first</h2>
+            <p>Home Designer is ready when this account has a profile to customize.</p>
+            <a class="btn btn-primary" href="{{.BasePath}}/accounts">Create a profile</a>
+        </section>
+        {{else}}
+        <section class="home-designer-loading">
+            <p>Loading Home Designer…</p>
+        </section>
+        {{end}}
+    </div>
 </section>
 <script type="module" src="{{.BasePath}}/assets/home-designer/app.js"></script>
 {{end}}

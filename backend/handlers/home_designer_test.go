@@ -40,7 +40,7 @@ func TestHomeDesignerPageRendersForAdminAndAccount(t *testing.T) {
 			if recorder.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200: %s", recorder.Code, recorder.Body.String())
 			}
-			for _, marker := range []string{"Home Designer", test.want, "/assets/home-designer/app.js"} {
+			for _, marker := range []string{"Home Designer", test.want, `data-home-designer-status`, "/assets/home-designer/app.js"} {
 				if !strings.Contains(recorder.Body.String(), marker) {
 					t.Fatalf("page is missing %q", marker)
 				}

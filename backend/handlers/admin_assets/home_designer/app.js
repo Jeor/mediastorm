@@ -1,6 +1,7 @@
 const root = document.getElementById('homeDesignerRoot');
+const status = root?.querySelector('[data-home-designer-status]');
 
-if (root) {
+if (root && status) {
     const basePath = root.dataset.basePath || '';
     const isAdmin = root.dataset.isAdmin === 'true';
     const profileID = root.dataset.profileId || '';
@@ -18,7 +19,7 @@ if (root) {
     };
 
     const showFailure = () => {
-        root.replaceChildren();
+        status.replaceChildren();
         const message = document.createElement('p');
         message.className = 'home-designer-error';
         message.textContent = 'Home Designer could not load. Try again.';
@@ -27,15 +28,15 @@ if (root) {
         retry.type = 'button';
         retry.textContent = 'Retry';
         retry.addEventListener('click', bootstrap);
-        root.append(message, retry);
+        status.append(message, retry);
     };
 
     const showReady = () => {
-        root.replaceChildren();
+        status.replaceChildren();
         const message = document.createElement('p');
         message.className = 'home-designer-ready';
         message.textContent = 'Home Designer is ready.';
-        root.append(message);
+        status.append(message);
     };
 
     const bootstrap = async () => {

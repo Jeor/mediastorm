@@ -14,6 +14,13 @@ if (root && status) {
     let operation = 0;
     let activeOperation = null;
     let editorModules = null;
+    let previewModules = null;
+    let previewController = null;
+    let previewObserver = null;
+    let previewProfileId = '';
+    let previewPlatform = 'tv';
+    let previewResults = {};
+    let previewRenderToken = 0;
     let unsubscribe = null;
 
     const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
@@ -66,21 +73,34 @@ if (root && status) {
         requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(errors[0].path)}"]`)?.focus());
     };
 
-    const renderPreviewPlaceholder = (state) => {
+    const renderPreview = async (state, { schedule = true } = {}) => {
+        const token = ++previewRenderToken;
         const host = editor?.querySelector('[data-home-designer-preview-host]');
         if (!host) return;
-        host.replaceChildren();
-        (state.rows || []).forEach((row) => {
-            const rowButton = document.createElement('button');
-            rowButton.type = 'button';
-            rowButton.className = 'home-designer-preview-row';
-            rowButton.dataset.rowId = row.id;
-            rowButton.dataset.previewRowId = row.id;
-            rowButton.setAttribute('aria-current', String(state.selectionId === row.id));
-            rowButton.textContent = row.name || 'Untitled row';
-            rowButton.addEventListener('click', () => selectRow(row.id, 'preview'));
-            host.append(rowButton);
-        });
+        if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);
+        const [theme, preview] = await previewModules;
+        if (token !== previewRenderToken || !store || store.getState?.().revision !== state.revision) return;
+        const renderer = previewPlatform === 'mobile' ? preview.renderMobilePreview : preview.renderTVPreview;
+        renderer(host, state, { results: previewResults, onSelect: (id) => selectRow(id, 'preview'), onRetry: (id) => previewController?.retry(id) });
+        host.querySelector('.home-preview-device') && theme.applyThemeVariables(host.querySelector('.home-preview-device'), state.theme);
+        host.querySelectorAll('[data-preview-row-id]').forEach((row) => row.setAttribute('aria-current', String(state.selectionId === row.dataset.previewRowId)));
+        if (!schedule || !previewController) return;
+        previewObserver?.disconnect();
+        const scheduleVisible = () => {
+            const viewport = globalThis.innerHeight || Number.MAX_SAFE_INTEGER;
+            const visible = [...host.querySelectorAll('[data-preview-row-id]')].filter((element) => {
+                const bounds = element.getBoundingClientRect?.();
+                return !bounds || bounds.bottom >= 0 && bounds.top <= viewport;
+            }).map((element) => element.dataset.previewRowId);
+            previewController.schedule({ profileId: previewProfileId, platform: previewPlatform, rows: state.rows, visibleRowIds: visible, theme: state.theme });
+        };
+        if (typeof IntersectionObserver === 'function') {
+            previewObserver = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) scheduleVisible();
+            }, { root: host });
+            host.querySelectorAll('[data-preview-row-id]').forEach((row) => previewObserver.observe(row));
+        }
+        requestAnimationFrame(scheduleVisible);
     };
 
     const renderRowsMode = (state) => {
@@ -154,7 +174,37 @@ if (root && status) {
                 }
             },
         });
-        renderPreviewPlaceholder(state);
+        if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);
+        const [theme, preview] = await previewModules;
+        theme.renderTheme(editor.querySelector('[data-home-designer-theme]'), { state, dispatch: store.dispatch });
+        if (!previewController) {
+            previewController = preview.createPreviewController({
+                fetchPreview: (request, options) => modules.then(([api]) => api.loadPreview(basePath, request, options)),
+                onChange: (results) => { previewResults = results; void renderPreview(store?.getState?.() || state, { schedule: false }); },
+            });
+        }
+        previewProfileId ||= state.previewProfiles?.[0]?.id || state.scope?.profileId || '';
+        const profileSelect = editor.querySelector('[data-home-designer-preview-profile]');
+        if (profileSelect && !profileSelect.dataset.ready) {
+            profileSelect.dataset.ready = 'true';
+            profileSelect.addEventListener('change', () => {
+                previewProfileId = profileSelect.value;
+                previewResults = {};
+                previewController?.clear();
+                void renderPreview(store.getState());
+            });
+        }
+        if (profileSelect) {
+            profileSelect.replaceChildren();
+            (state.previewProfiles || []).forEach((profile) => { const option = document.createElement('option'); option.value = profile.id; option.textContent = profile.displayName || profile.id; option.selected = profile.id === previewProfileId; profileSelect.append(option); });
+        }
+        const platformSelect = editor.querySelector('[data-home-designer-preview-platform]');
+        if (platformSelect && !platformSelect.dataset.ready) {
+            platformSelect.dataset.ready = 'true';
+            platformSelect.addEventListener('change', () => { previewPlatform = platformSelect.value === 'mobile' ? 'mobile' : 'tv'; void renderPreview(store.getState()); });
+        }
+        if (platformSelect) platformSelect.value = previewPlatform;
+        void renderPreview(state);
         const applyButton = root.querySelector('[data-home-designer-apply]');
         if (applyButton) {
             const valid = store.isApplyValid?.() ?? true;
@@ -184,6 +234,8 @@ if (root && status) {
             const saved = await loadDocument(basePath, scope, { signal: current.controller.signal });
             if (!isCurrent(current)) return null;
             store = createStore(saved);
+            previewResults = {};
+            previewController?.clear();
             connectEditor();
             return { current, saved };
         } catch (error) {

@@ -29,6 +29,7 @@
     <section class="home-designer-editor" data-home-designer-editor hidden>
         <div class="home-designer-toolbar">
             <div data-home-designer-rows-controls></div>
+            <div data-home-designer-theme-controls></div>
             <div class="home-designer-toolbar-actions">
                 <button type="button" class="btn btn-secondary" data-home-designer-discard>Discard changes</button>
                 <button type="button" class="btn btn-primary" data-home-designer-apply>Apply changes</button>
@@ -40,9 +41,15 @@
             <section class="home-designer-outline" data-home-designer-outline aria-label="Composition outline"></section>
             <section class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector"></section>
         </div>
-        <section class="home-designer-preview-placeholder" aria-label="Composition preview">
-            <h2>Composition preview</h2>
-            <p>The detailed theme and device preview arrives in the next step. Select a row here or in the outline to keep both surfaces aligned.</p>
+        <section class="home-designer-preview" aria-label="Composition preview">
+            <div class="home-designer-preview-toolbar">
+                <div>
+                    <h2>Live preview</h2>
+                    <p>Theme and row edits are visible here but are not saved until you apply changes.</p>
+                </div>
+                <label>Preview as <select data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
+                <label>Device <select data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
+            </div>
             <div data-home-designer-preview-host></div>
         </section>
     </section>

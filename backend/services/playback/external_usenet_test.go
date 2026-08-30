@@ -227,6 +227,7 @@ func TestExternalQueueStatusRejectsMismatchedCompletedPath(t *testing.T) {
 	}
 
 	if externalOutputPathMatchesSubmitted(
+		"altmount",
 		"http://127.0.0.1:3313/webdav/Default/complete/Bluey.S02E19.The.Show/Bluey.S02E19.The.Show.mkv",
 		svc.externalJobs[42].SubmittedTitle,
 		svc.externalJobs[42].SourceNZBPath,
@@ -234,6 +235,7 @@ func TestExternalQueueStatusRejectsMismatchedCompletedPath(t *testing.T) {
 		t.Fatal("Bluey path matched Owl House submission")
 	}
 	if !externalOutputPathMatchesSubmitted(
+		"altmount",
 		"http://127.0.0.1:3313/webdav/Default/complete/The.Owl.House.S01E01.A.Lying.Witch.and.a.Warden.1080p.DSNP.WEB-DL.AAC2.0.H.264-LAZY/The.Owl.House.S01E01.mkv",
 		svc.externalJobs[42].SubmittedTitle,
 		svc.externalJobs[42].SourceNZBPath,
@@ -241,11 +243,112 @@ func TestExternalQueueStatusRejectsMismatchedCompletedPath(t *testing.T) {
 		t.Fatal("Owl House path did not match Owl House submission")
 	}
 	if !externalOutputPathMatchesSubmitted(
+		"altmount",
 		"http://127.0.0.1:3313/webdav/Default/complete/The.Owl.House.S01E01.A.Lying.Witch.and.a.Warden.1080p.DSNP.WEB-DL.AAC2.0.H.264-LAZY.mkv",
 		svc.externalJobs[42].SubmittedTitle,
 		svc.externalJobs[42].SourceNZBPath,
 	) {
 		t.Fatal("exact Owl House file path did not match Owl House submission")
+	}
+}
+
+func TestExternalOutputPathMatchesNZBDavDuplicateSuffix(t *testing.T) {
+	const release = "I.Love.Boosters.2026.2160p.WEB-DL.DV.HDR10+-Ben.The.Men"
+	outputPath := "/mnt/nzbdav/completed-symlinks/uncategorized/" + release + " (4)"
+
+	if !externalOutputPathMatchesSubmitted("nzbdav", outputPath, release, release+".nzb") {
+		t.Fatal("NZBDav duplicate-suffixed output did not match its submitted release")
+	}
+	if !externalOutputPathMatchesSubmitted("nzbdavex", outputPath, release, release+".nzb") {
+		t.Fatal("NZBDavEx duplicate-suffixed output did not match its submitted release")
+	}
+	if externalOutputPathMatchesSubmitted("altmount", outputPath, release, release+".nzb") {
+		t.Fatal("NZBDav duplicate suffix was accepted for an unrelated engine type")
+	}
+	if externalOutputPathMatchesSubmitted("nzbdav", strings.Replace(outputPath, " (4)", " (copy)", 1), release, release+".nzb") {
+		t.Fatal("non-numeric output suffix matched the submitted release")
+	}
+	if externalOutputPathMatchesSubmitted("nzbdav", "/mnt/nzbdav/completed-symlinks/uncategorized/Other.Release (4)", release, release+".nzb") {
+		t.Fatal("duplicate-suffixed output for another release matched the submission")
+	}
+}
+
+func TestExternalQueueStatusAcceptsNZBDavDuplicateSuffixedCompletedPath(t *testing.T) {
+	const release = "I.Love.Boosters.2026.2160p.WEB-DL.DV.HDR10+-Ben.The.Men"
+	const outputPath = "/mnt/nzbdav/completed-symlinks/uncategorized/" + release + " (4)"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api" && r.URL.Query().Get("mode") == "queue":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": true,
+				"queue":  map[string]any{"slots": []map[string]any{}},
+			})
+		case r.URL.Path == "/api" && r.URL.Query().Get("mode") == "history":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": true,
+				"history": map[string]any{
+					"slots": []map[string]any{{
+						"nzo_id":   "nzbdav-job",
+						"status":   "Completed",
+						"nzb_name": release + ".nzb",
+						"storage":  outputPath,
+					}},
+				},
+			})
+		case r.Method == "PROPFIND" && r.URL.Path == "/webdav/completed-symlinks/uncategorized/"+release+" (4)/":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusMultiStatus)
+			_, _ = io.WriteString(w, `<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>/webdav/completed-symlinks/uncategorized/`+release+`%20%284%29/</D:href>
+    <D:propstat><D:status>HTTP/1.1 200 OK</D:status><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/webdav/completed-symlinks/uncategorized/`+release+`%20%284%29/`+release+`.mkv</D:href>
+    <D:propstat><D:status>HTTP/1.1 200 OK</D:status><D:prop><D:displayname>`+release+`.mkv</D:displayname><D:getcontentlength>26592845524</D:getcontentlength></D:prop></D:propstat>
+  </D:response>
+</D:multistatus>`)
+		default:
+			t.Fatalf("unexpected request method=%q path=%q mode=%q", r.Method, r.URL.Path, r.URL.Query().Get("mode"))
+		}
+	}))
+	defer server.Close()
+
+	svc := NewService(config.NewManager(filepath.Join(t.TempDir(), "settings.json")), nil, nil)
+	svc.externalJobs[42] = &externalUsenetJob{
+		ID:             42,
+		EngineJobID:    "nzbdav-job",
+		SubmittedTitle: release,
+		SourceNZBPath:  release + ".nzb",
+		Engine: config.UsenetEngineSettings{
+			Name:          "NZBDav",
+			Type:          "nzbdav",
+			BaseURL:       server.URL,
+			APIPath:       "/api",
+			WebDAVBaseURL: server.URL + "/webdav",
+			Config: map[string]string{
+				"webdavPathPrefix": "/mnt/nzbdav",
+			},
+		},
+	}
+
+	res, handled, err := svc.externalQueueStatus(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("externalQueueStatus: %v", err)
+	}
+	if !handled {
+		t.Fatal("handled = false")
+	}
+	want := server.URL + "/webdav/completed-symlinks/uncategorized/" + release + "%20%284%29/" + release + ".mkv"
+	if res.WebDAVPath != want {
+		t.Fatalf("WebDAVPath = %q, want %q", res.WebDAVPath, want)
+	}
+	if res.HealthStatus != "healthy" {
+		t.Fatalf("HealthStatus = %q, want healthy", res.HealthStatus)
+	}
+	if svc.externalJobs[42] != nil {
+		t.Fatal("completed NZBDav job was not removed")
 	}
 }
 
@@ -1039,6 +1142,26 @@ func TestExternalFallbackBasePathsIncludesAltMountCompleteCategoryLayout(t *test
 		}
 	}
 	t.Fatalf("fallback paths = %#v, want %q", paths, want)
+}
+
+func TestExternalFallbackBasePathsIncludesNZBDavUncategorizedLayout(t *testing.T) {
+	paths := externalFallbackBasePaths(config.UsenetEngineSettings{Type: "nzbdav"})
+	for _, want := range []string{
+		"completed-symlinks/uncategorized",
+		"completed-downloads/uncategorized",
+		"content/uncategorized",
+	} {
+		found := false
+		for _, candidate := range paths {
+			if candidate == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("fallback paths = %#v, want %q", paths, want)
+		}
+	}
 }
 
 func TestExternalQueueStatusNormalizesAltMountJobPrefixAndCachesResolution(t *testing.T) {

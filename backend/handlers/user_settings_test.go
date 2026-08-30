@@ -359,3 +359,30 @@ func TestUserSettingsHandler_GetSettings_DefaultsIncludeDownloadPreferredTerms(t
 		t.Fatalf("requiredTerms defaults = %v, want [Multi French]", got)
 	}
 }
+
+func TestUserSettingsHandler_GetSettings_DefaultsPreserveStremioShelfFields(t *testing.T) {
+	settingsSvc := &fakeUserSettingsService{}
+	usersSvc := &fakeUserExistsService{exists: true}
+	cfgMgr := config.NewManager(t.TempDir() + "/settings.json")
+	settings := config.DefaultSettings()
+	settings.HomeShelves.Shelves = []config.ShelfConfig{{
+		ID: "stremio-1", Name: "Add-on catalog", Enabled: true, Order: 0, Type: "stremio",
+		AddonManifestURL: "https://addon.example/manifest.json", AddonCatalogType: "movie", AddonCatalogID: "catalog-1", AddonName: "Example Add-on",
+	}}
+	if err := cfgMgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	h := handlers.NewUserSettingsHandler(settingsSvc, usersSvc, cfgMgr)
+	w := httptest.NewRecorder()
+	h.GetSettings(w, userSettingsRequest(http.MethodGet, "/", nil, map[string]string{"userID": "u1"}))
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	if got := settingsSvc.lastDefaults.HomeShelves.Shelves; len(got) != 1 ||
+		got[0].AddonManifestURL != "https://addon.example/manifest.json" ||
+		got[0].AddonCatalogType != "movie" || got[0].AddonCatalogID != "catalog-1" || got[0].AddonName != "Example Add-on" {
+		t.Fatalf("stremio shelf = %#v, want all Stremio fields preserved", got)
+	}
+}

@@ -10,6 +10,7 @@ import (
 
 	"novastream/config"
 	"novastream/models"
+	"novastream/services/homedesigner"
 	user_settings "novastream/services/user_settings"
 
 	"github.com/gorilla/mux"
@@ -368,98 +369,5 @@ func (h *UserSettingsHandler) getDefaultsFromGlobal() models.UserSettings {
 
 // convertShelves converts config.ShelfConfig to models.ShelfConfig
 func convertShelves(configShelves []config.ShelfConfig) []models.ShelfConfig {
-	result := make([]models.ShelfConfig, len(configShelves))
-	for i, s := range configShelves {
-		result[i] = models.ShelfConfig{
-			ID:                     s.ID,
-			Name:                   s.Name,
-			Enabled:                s.Enabled,
-			Order:                  s.Order,
-			Type:                   s.Type,
-			LibraryID:              s.LibraryID,
-			ListURL:                s.ListURL,
-			TMDBSourceType:         s.TMDBSourceType,
-			TMDBSourceID:           s.TMDBSourceID,
-			TMDBSourceName:         s.TMDBSourceName,
-			TMDBMediaType:          s.TMDBMediaType,
-			TMDBDiscoverQuery:      s.TMDBDiscoverQuery,
-			StreamingServices:      convertStreamingServices(s.StreamingServices),
-			CollectionItems:        convertCollectionHubItems(s.CollectionItems),
-			TraktAccountID:         s.TraktAccountID,
-			TraktListType:          s.TraktListType,
-			TraktListID:            s.TraktListID,
-			SimklAccountID:         s.SimklAccountID,
-			SimklListType:          s.SimklListType,
-			SimklMediaType:         s.SimklMediaType,
-			LetterboxdListID:       s.LetterboxdListID,
-			LetterboxdListURL:      s.LetterboxdListURL,
-			Limit:                  s.Limit,
-			ActivityWindowDays:     s.ActivityWindowDays,
-			MinimumProfiles:        s.MinimumProfiles,
-			MaxItemsPerProfile:     s.MaxItemsPerProfile,
-			HideUnreleased:         s.HideUnreleased,
-			Sort:                   s.Sort,
-			AnimateLogoOnlyOnFocus: s.AnimateLogoOnlyOnFocus,
-			ShowCollectionTitles:   s.ShowCollectionTitles,
-			ShowCollectionCounts:   s.ShowCollectionCounts,
-			CalendarSources: models.CalendarSettings{
-				Watchlist:      s.CalendarSources.Watchlist,
-				History:        s.CalendarSources.History,
-				Trending:       s.CalendarSources.Trending,
-				TopTrending:    s.CalendarSources.TopTrending,
-				MDBLists:       s.CalendarSources.MDBLists,
-				MDBListShelves: s.CalendarSources.MDBListShelves,
-			},
-		}
-	}
-	return result
-}
-
-func convertCollectionHubItems(items []config.CollectionHubLink) []models.CollectionHubLink {
-	if len(items) == 0 {
-		return nil
-	}
-	result := make([]models.CollectionHubLink, len(items))
-	for i, item := range items {
-		result[i] = models.CollectionHubLink{
-			ID:            item.ID,
-			Name:          item.Name,
-			Enabled:       item.Enabled,
-			Order:         item.Order,
-			SourceShelfID: item.SourceShelfID,
-			LogoURL:       item.LogoURL,
-			HeroArtURL:    item.HeroArtURL,
-			LogoScale:     item.LogoScale,
-			TintColor:     item.TintColor,
-		}
-	}
-	return result
-}
-
-func convertStreamingServices(services []config.StreamingServiceLink) []models.StreamingServiceLink {
-	if len(services) == 0 {
-		return nil
-	}
-	result := make([]models.StreamingServiceLink, len(services))
-	for i, service := range services {
-		lists := make([]models.StreamingServiceListLink, len(service.Lists))
-		for j, list := range service.Lists {
-			lists[j] = models.StreamingServiceListLink{
-				Key:   list.Key,
-				Title: list.Title,
-				URL:   list.URL,
-			}
-		}
-		result[i] = models.StreamingServiceLink{
-			ID:        service.ID,
-			Name:      service.Name,
-			Enabled:   service.Enabled,
-			Order:     service.Order,
-			LogoURL:   service.LogoURL,
-			LogoScale: service.LogoScale,
-			TintColor: service.TintColor,
-			Lists:     lists,
-		}
-	}
-	return result
+	return homedesigner.ConfigShelvesToModels(configShelves)
 }

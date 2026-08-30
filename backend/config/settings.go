@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -2035,6 +2036,7 @@ func backfillUsenetEngineDefaults(existing []UsenetEngineSettings) []UsenetEngin
 // Manager loads and persists settings to a JSON file.
 type Manager struct {
 	path string
+	mu   sync.Mutex
 }
 
 func NewManager(configPath string) *Manager {
@@ -2088,13 +2090,19 @@ func (m *Manager) EnsureDir() error {
 
 // Load reads settings.json from disk or creates defaults if missing.
 func (m *Manager) Load() (Settings, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.loadUnlocked()
+}
+
+func (m *Manager) loadUnlocked() (Settings, error) {
 	if m.path == "" {
 		return Settings{}, errors.New("config path not set")
 	}
 	if _, err := os.Stat(m.path); errors.Is(err, fs.ErrNotExist) {
 		// create with defaults
 		defaults := DefaultSettings()
-		if err := m.Save(defaults); err != nil {
+		if err := m.saveUnlocked(defaults); err != nil {
 			return Settings{}, err
 		}
 		return defaults, nil
@@ -2928,6 +2936,12 @@ func isZeroRawValue(value interface{}) bool {
 
 // Save writes the provided settings to disk atomically.
 func (m *Manager) Save(s Settings) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.saveUnlocked(s)
+}
+
+func (m *Manager) saveUnlocked(s Settings) error {
 	if m.path == "" {
 		return errors.New("config path not set")
 	}
@@ -2970,4 +2984,19 @@ func (m *Manager) Save(s Settings) error {
 		return err
 	}
 	return os.Rename(tmp, m.path)
+}
+
+// Mutate serializes a read-modify-write operation against Load and Save.
+func (m *Manager) Mutate(fn func(*Settings) error) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	settings, err := m.loadUnlocked()
+	if err != nil {
+		return err
+	}
+	if err := fn(&settings); err != nil {
+		return err
+	}
+	return m.saveUnlocked(settings)
 }

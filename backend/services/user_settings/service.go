@@ -662,16 +662,7 @@ func (s *Service) Update(userID string, settings models.UserSettings) error {
 		return ErrUserIDRequired
 	}
 
-	// Sanitize language codes on save to prevent stray quotes from persisting
-	settings.Playback.PreferredAudioLanguage = sanitizeLanguageCode(settings.Playback.PreferredAudioLanguage)
-	settings.Playback.PreferredSubtitleLanguage = sanitizeLanguageCode(settings.Playback.PreferredSubtitleLanguage)
-	settings.Playback.AllowedTrackLanguages = sanitizeOptionalLanguageCodes(settings.Playback.AllowedTrackLanguages)
-	settings.Playback.PreferredSubtitleMode = strings.TrimSpace(strings.Trim(settings.Playback.PreferredSubtitleMode, "'\""))
-	settings.Metadata.PrimaryLanguage = sanitizeLanguageCode(settings.Metadata.PrimaryLanguage)
-	if len(settings.Display.NavigationTabVisibility) > 0 {
-		settings.Display.NavigationTabVisibilityIncludesSystemTabs = true
-		settings.Display.NavigationTabVisibilityIncludesWatchlist = true
-	}
+	settings = normalizeForStorage(settings)
 
 	log.Printf("[user-settings] Update(%q): subMode=%q, audioLang=%q, subLang=%q",
 		userID, settings.Playback.PreferredSubtitleMode, settings.Playback.PreferredAudioLanguage, settings.Playback.PreferredSubtitleLanguage)
@@ -689,6 +680,45 @@ func (s *Service) Update(userID string, settings models.UserSettings) error {
 	}
 
 	return s.saveLocked()
+}
+
+// Mutate serializes a profile settings read-modify-write operation against Update.
+func (s *Service) Mutate(userID string, fn func(*models.UserSettings) error) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return ErrUserIDRequired
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	settings := s.settings[userID]
+	if err := fn(&settings); err != nil {
+		return err
+	}
+	settings = normalizeForStorage(settings)
+
+	if isSettingsEmpty(settings) {
+		delete(s.settings, userID)
+	} else {
+		s.settings[userID] = settings
+	}
+
+	return s.saveLocked()
+}
+
+func normalizeForStorage(settings models.UserSettings) models.UserSettings {
+	// Sanitize language codes on save to prevent stray quotes from persisting.
+	settings.Playback.PreferredAudioLanguage = sanitizeLanguageCode(settings.Playback.PreferredAudioLanguage)
+	settings.Playback.PreferredSubtitleLanguage = sanitizeLanguageCode(settings.Playback.PreferredSubtitleLanguage)
+	settings.Playback.AllowedTrackLanguages = sanitizeOptionalLanguageCodes(settings.Playback.AllowedTrackLanguages)
+	settings.Playback.PreferredSubtitleMode = strings.TrimSpace(strings.Trim(settings.Playback.PreferredSubtitleMode, "'\""))
+	settings.Metadata.PrimaryLanguage = sanitizeLanguageCode(settings.Metadata.PrimaryLanguage)
+	if len(settings.Display.NavigationTabVisibility) > 0 {
+		settings.Display.NavigationTabVisibilityIncludesSystemTabs = true
+		settings.Display.NavigationTabVisibilityIncludesWatchlist = true
+	}
+	return settings
 }
 
 // hasExplicitPointerOverride makes pointer-backed settings automatically count

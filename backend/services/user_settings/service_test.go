@@ -1,6 +1,7 @@
 package user_settings
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +10,71 @@ import (
 
 	"novastream/models"
 )
+
+func TestMutatePreservesUnrelatedProfileSettings(t *testing.T) {
+	svc, err := NewService(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Update("p1", models.UserSettings{Playback: models.PlaybackSettings{PreferredPlayer: "vlc"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Mutate("p1", func(s *models.UserSettings) error {
+		s.HomeShelves.Shelves = []models.ShelfConfig{{ID: "watchlist", Name: "My List", Enabled: true}}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.Get("p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("profile settings missing after mutation")
+	}
+	if got.Playback.PreferredPlayer != "vlc" {
+		t.Fatalf("preferred player = %q", got.Playback.PreferredPlayer)
+	}
+}
+
+func TestMutateDoesNotPersistCallbackError(t *testing.T) {
+	svc, err := NewService(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Update("p1", models.UserSettings{Playback: models.PlaybackSettings{PreferredPlayer: "vlc"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	callbackErr := errors.New("stop mutation")
+	if err := svc.Mutate("p1", func(s *models.UserSettings) error {
+		s.Playback.PreferredPlayer = "native"
+		return callbackErr
+	}); !errors.Is(err, callbackErr) {
+		t.Fatalf("Mutate error = %v, want callback error", err)
+	}
+
+	got, err := svc.Get("p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("profile settings missing after callback error")
+	}
+	if got.Playback.PreferredPlayer != "vlc" {
+		t.Fatalf("preferred player = %q, want vlc", got.Playback.PreferredPlayer)
+	}
+}
+
+func TestMutateRejectsBlankUserID(t *testing.T) {
+	svc, err := NewService(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Mutate("  ", func(*models.UserSettings) error { return nil }); !errors.Is(err, ErrUserIDRequired) {
+		t.Fatalf("Mutate error = %v, want ErrUserIDRequired", err)
+	}
+}
 
 func TestUpdateSanitizesAllowedTrackLanguages(t *testing.T) {
 	dir := t.TempDir()

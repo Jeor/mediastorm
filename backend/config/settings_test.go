@@ -2,11 +2,110 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
+
+func TestManagerMutatePersistsCallbackChange(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	mgr := NewManager(path)
+	if err := mgr.Save(DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mgr.Mutate(func(s *Settings) error {
+		s.HomeShelves.Shelves[0].Name = "Pinned first"
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := mgr.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.HomeShelves.Shelves[0].Name != "Pinned first" {
+		t.Fatalf("name = %q", got.HomeShelves.Shelves[0].Name)
+	}
+}
+
+func TestManagerMutateDoesNotPersistCallbackError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	mgr := NewManager(path)
+	if err := mgr.Save(DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+
+	callbackErr := errors.New("stop mutation")
+	if err := mgr.Mutate(func(s *Settings) error {
+		s.Server.Host = "mutated-host"
+		return callbackErr
+	}); !errors.Is(err, callbackErr) {
+		t.Fatalf("Mutate error = %v, want callback error", err)
+	}
+
+	got, err := mgr.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Server.Host == "mutated-host" {
+		t.Fatal("callback changes persisted after callback error")
+	}
+}
+
+func TestManagerMutateSerializesConcurrentSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	mgr := NewManager(path)
+	if err := mgr.Save(DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+
+	mutationStarted := make(chan struct{})
+	releaseMutation := make(chan struct{})
+	mutateDone := make(chan error, 1)
+	go func() {
+		mutateDone <- mgr.Mutate(func(s *Settings) error {
+			s.HomeShelves.Shelves[0].Name = "Pinned first"
+			close(mutationStarted)
+			<-releaseMutation
+			return nil
+		})
+	}()
+	<-mutationStarted
+
+	saveDone := make(chan error, 1)
+	go func() {
+		settings := DefaultSettings()
+		settings.Server.Host = "saved-host"
+		saveDone <- mgr.Save(settings)
+	}()
+
+	select {
+	case err := <-saveDone:
+		t.Fatalf("Save returned before mutation finished: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(releaseMutation)
+	if err := <-mutateDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-saveDone; err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := mgr.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Server.Host != "saved-host" {
+		t.Fatalf("final host = %q, want saved-host", got.Server.Host)
+	}
+}
 
 func TestPlaybackSettingsNormalizeAllowedTrackLanguages(t *testing.T) {
 	playback := PlaybackSettings{AllowedTrackLanguages: []string{" ENG ", "'fra'", "eng", ""}}

@@ -22,7 +22,9 @@ const documentState = (document) => ({
     scope: clone(document.scope),
     revision: document.revision,
     rows: normalizeRows(sectionValue(document.rows)),
+    rowsEffective: normalizeRows(document.rows?.effective ?? {}),
     theme: sectionValue(document.theme),
+    themeEffective: clone(document.theme?.effective ?? {}),
     rowsMode: document.rows?.inherited ? 'inherit' : 'custom',
     themeMode: document.theme?.inherited ? 'inherit' : 'custom',
 });
@@ -42,7 +44,9 @@ const stateFrom = (baseline, working, selectionId = null) => ({
     scope: clone(baseline.scope),
     revision: baseline.revision,
     rows: normalizeRows(working.rows),
+    rowsEffective: normalizeRows(baseline.rowsEffective),
     theme: clone(working.theme),
+    themeEffective: clone(baseline.themeEffective),
     rowsMode: working.rowsMode,
     themeMode: working.themeMode,
     selectionId,
@@ -170,7 +174,10 @@ export const createStore = (document) => {
                         state.rowsMode = 'custom';
                         break;
                     case 'rows/reset':
-                        state.rowsMode = 'inherit';
+                        if (state.scope.kind !== 'global') {
+                            state.rowsMode = 'inherit';
+                            state.rows = normalizeRows(baseline.rowsEffective);
+                        }
                         break;
                     case 'theme/field':
                         state.themeMode = 'custom';
@@ -180,7 +187,10 @@ export const createStore = (document) => {
                         state.themeMode = 'custom';
                         break;
                     case 'theme/reset':
-                        state.themeMode = 'inherit';
+                        if (state.scope.kind !== 'global') {
+                            state.themeMode = 'inherit';
+                            state.theme = clone(baseline.themeEffective);
+                        }
                         break;
                     default:
                         break;

@@ -119,6 +119,25 @@ test('editing an inherited section creates a custom override and reset discards 
     assert.equal(store.buildApplyRequest(), null);
 });
 
+test('reset restores inherited effective values and global sections never emit inherit', async () => {
+    // Break caught: reset preserving a stale local override or sending an inherit mutation the global server contract rejects.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+    store.dispatch({ type: 'theme/field', path: 'accentColor', value: '#112233' });
+    store.dispatch({ type: 'theme/reset' });
+    store.dispatch({ type: 'theme/customize' });
+    assert.deepEqual(store.buildApplyRequest(), {
+        scope: { kind: 'profile', profileId: 'profile-1' },
+        expectedRevision: 'revision-1',
+        theme: { mode: 'custom', value: { accentColor: '#3f66ff', buttonStyle: 'soft' } },
+    });
+
+    const global = createStore({ ...documentFixture(), scope: { kind: 'global' }, rows: { inherited: false, effective: documentFixture().rows.effective }, theme: { inherited: false, effective: documentFixture().theme.effective } });
+    global.dispatch({ type: 'theme/reset' });
+    global.dispatch({ type: 'rows/reset' });
+    assert.equal(global.buildApplyRequest(), null);
+});
+
 test('selection-only changes do not consume undo history and saved replacement resets dirty state', async () => {
     // Break caught: selection clicks becoming undoable edits or a successful apply retaining stale history/revision.
     const { createStore } = await moduleFromFile('store.js');

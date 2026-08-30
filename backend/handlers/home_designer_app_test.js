@@ -160,3 +160,37 @@ test('Home Designer Retry keeps the scope selected before a failed reload', asyn
     await settle(); await settle(); await settle(); await settle();
     assert.deepEqual(scopes, ['global', 'profile', 'profile']);
 });
+
+test('a stale Apply response cannot replace a newer scope store', async () => {
+    // Break caught: an apply for the old scope replacing the current scope after a user switch.
+    const source = await sourceWithModules();
+    const root = new Element('section');
+    root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div');
+    status.dataset.homeDesignerStatus = '';
+    root.append(status);
+    let resolveApply;
+    const applied = new Promise((resolve) => { resolveApply = resolve; });
+    const stores = [];
+    const document = { getElementById: () => root, createElement: (tagName) => new Element(tagName) };
+    vm.runInNewContext(source, {
+        document, Error, Promise,
+        homeDesignerAPI: {
+            loadDocument: async (_, scope) => ({ scope, revision: `${scope.kind}-revision`, rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }),
+            applyDocument: async () => applied,
+            APIError: class APIError extends Error {},
+        },
+        homeDesignerStore: { createStore: (saved) => {
+            const store = { saved: [], isDirty: () => false, buildApplyRequest: () => ({ scope: saved.scope, expectedRevision: saved.revision, theme: { mode: 'custom', value: {} } }), replaceWithSaved: (next) => store.saved.push(next), discard: () => {} };
+            stores.push(store);
+            return store;
+        } },
+    });
+    await settle(); await settle(); await settle(); await settle();
+    const applying = root.homeDesigner.apply();
+    await settle();
+    await root.homeDesigner.switchScope({ kind: 'profile', profileId: 'profile-1' });
+    resolveApply({ scope: { kind: 'global' }, revision: 'global-new', rows: { inherited: false, effective: { shelves: [] } }, theme: { inherited: false, effective: {} } });
+    await applying;
+    assert.equal(stores[1].saved.length, 0);
+});

@@ -10,6 +10,7 @@ if (root && status) {
         .then(([api, editorStore]) => [api.default ?? api, editorStore.default ?? editorStore]);
     let store = null;
     let activeScope = initialScope;
+    let operation = 0;
 
     const showMessage = (className, text) => {
         status.replaceChildren();
@@ -35,8 +36,10 @@ if (root && status) {
     const showReady = () => showMessage('home-designer-ready', 'Home Designer is ready.');
 
     const load = async (scope, replaceWorkingCopy = false) => {
+        const token = ++operation;
         const [{ loadDocument }, { createStore }] = await modules;
         const saved = await loadDocument(basePath, scope);
+        if (token !== operation) return null;
         if (store && !replaceWorkingCopy) store.replaceWithSaved(saved);
         else store = createStore(saved);
         return saved;
@@ -45,7 +48,7 @@ if (root && status) {
     const bootstrap = async () => {
         if (!activeScope.kind || (activeScope.kind === 'profile' && !activeScope.profileId)) return;
         try {
-            await load(activeScope, true);
+            if (!await load(activeScope, true)) return;
             showReady();
         } catch {
             showFailure();
@@ -56,7 +59,7 @@ if (root && status) {
         if (store?.isDirty() && typeof globalThis.confirm === 'function' && !globalThis.confirm('Discard unsaved Home Designer changes?')) return false;
         activeScope = scope;
         try {
-            await load(activeScope, true);
+            if (!await load(activeScope, true)) return false;
             showReady();
             return true;
         } catch {
@@ -70,9 +73,12 @@ if (root && status) {
         const request = store.buildApplyRequest();
         if (!request) return true;
         const [{ applyDocument, APIError }] = await modules;
+        const applyingStore = store;
+        const token = ++operation;
         try {
             const saved = await applyDocument(basePath, request);
-            store.replaceWithSaved(saved);
+            if (token !== operation || store !== applyingStore) return false;
+            applyingStore.replaceWithSaved(saved);
             showReady();
             return true;
         } catch (error) {

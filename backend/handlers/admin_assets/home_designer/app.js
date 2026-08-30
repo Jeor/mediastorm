@@ -1,5 +1,6 @@
 const root = document.getElementById('homeDesignerRoot');
 const status = root?.querySelector('[data-home-designer-status]');
+const editor = root?.querySelector('[data-home-designer-editor]');
 
 if (root && status) {
     const basePath = root.dataset.basePath || '';
@@ -12,6 +13,8 @@ if (root && status) {
     let activeScope = initialScope;
     let operation = 0;
     let activeOperation = null;
+    let editorModules = null;
+    let unsubscribe = null;
 
     const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
     const beginOperation = () => {
@@ -45,6 +48,92 @@ if (root && status) {
 
     const showReady = () => showMessage('home-designer-ready', 'Home Designer is ready.');
 
+    const selectRow = (id, source = 'outline') => {
+        store?.dispatch({ type: 'selection/select', id });
+        requestAnimationFrame(() => {
+            const counterpart = source === 'outline'
+                ? editor?.querySelector(`[data-preview-row-id="${CSS.escape(id)}"]`)
+                : editor?.querySelector(`[data-outline-row-id="${CSS.escape(id)}"]`);
+            counterpart?.scrollIntoView({ block: 'nearest' });
+        });
+    };
+
+    const focusFirstInvalid = () => {
+        const validation = store?.getRowValidation?.() || {};
+        const [id, errors] = Object.entries(validation)[0] || [];
+        if (!id || !errors?.[0]) return;
+        selectRow(id);
+        requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(errors[0].path)}"]`)?.focus());
+    };
+
+    const renderPreviewPlaceholder = (state) => {
+        const host = editor?.querySelector('[data-home-designer-preview-host]');
+        if (!host) return;
+        host.replaceChildren();
+        (state.rows || []).forEach((row) => {
+            const rowButton = document.createElement('button');
+            rowButton.type = 'button';
+            rowButton.className = 'home-designer-preview-row';
+            rowButton.dataset.rowId = row.id;
+            rowButton.dataset.previewRowId = row.id;
+            rowButton.setAttribute('aria-current', String(state.selectionId === row.id));
+            rowButton.textContent = row.name || 'Untitled row';
+            rowButton.addEventListener('click', () => selectRow(row.id, 'preview'));
+            host.append(rowButton);
+        });
+    };
+
+    const renderRowsMode = (state) => {
+        const controls = editor?.querySelector('[data-home-designer-rows-controls]');
+        if (!controls) return;
+        controls.replaceChildren();
+        const message = document.createElement('p');
+        message.textContent = state.rowsMode === 'inherit' ? 'Rows inherit the global configuration.' : 'Rows use a custom configuration.';
+        const customize = document.createElement('button');
+        customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.textContent = 'Customize rows';
+        customize.disabled = state.rowsMode === 'custom';
+        customize.addEventListener('click', () => store.dispatch({ type: 'rows/customize' }));
+        controls.append(message, customize);
+        if (state.scope?.kind !== 'global') {
+            const reset = document.createElement('button');
+            reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.textContent = 'Reset to inherited';
+            reset.disabled = state.rowsMode === 'inherit';
+            reset.addEventListener('click', () => store.dispatch({ type: 'rows/reset' }));
+            controls.append(reset);
+        }
+    };
+
+    const renderEditor = async () => {
+        if (!editor || !store) return;
+        if (!editorModules) editorModules = Promise.all([import('./library.js'), import('./outline.js')]);
+        const [library, outline] = await editorModules;
+        if (!store) return;
+        const state = store.getState();
+        renderRowsMode(state);
+        library.renderLibrary(editor.querySelector('[data-home-designer-library]'), {
+            state, dispatch: store.dispatch,
+            onAdd: (id, entry) => {
+                selectRow(id);
+                if ((entry.fields || []).length) requestAnimationFrame(() => editor.querySelector('[data-field-path]')?.focus());
+            },
+        });
+        outline.renderOutline(editor.querySelector('[data-home-designer-outline]'), {
+            state, dispatch: store.dispatch, liveRegion: editor.querySelector('[data-home-designer-live]'), onSelect: selectRow,
+        });
+        outline.renderInspector(editor.querySelector('[data-home-designer-inspector]'), {
+            state, dispatch: store.dispatch, onSelect: selectRow,
+        });
+        renderPreviewPlaceholder(state);
+        editor.hidden = false;
+    };
+
+    const connectEditor = () => {
+        unsubscribe?.();
+        if (!store || !editor) return;
+        unsubscribe = store.subscribe(() => { renderEditor(); });
+        renderEditor();
+    };
+
     const load = async (scope) => {
         const current = beginOperation();
         try {
@@ -52,6 +141,7 @@ if (root && status) {
             const saved = await loadDocument(basePath, scope, { signal: current.controller.signal });
             if (!isCurrent(current)) return null;
             store = createStore(saved);
+            connectEditor();
             return { current, saved };
         } catch (error) {
             return isCurrent(current) ? { current, error } : null;
@@ -81,6 +171,11 @@ if (root && status) {
 
     const apply = async () => {
         if (!store) return false;
+        if (!(store.isApplyValid?.() ?? true)) {
+            showMessage('home-designer-error', 'Complete the highlighted row settings before applying.');
+            focusFirstInvalid();
+            return false;
+        }
         const request = store.buildApplyRequest();
         if (!request) return true;
         const applyingStore = store;
@@ -132,6 +227,9 @@ if (root && status) {
         },
         switchScope,
     };
+
+    root.querySelector('[data-home-designer-apply]')?.addEventListener('click', apply);
+    root.querySelector('[data-home-designer-discard]')?.addEventListener('click', () => root.homeDesigner.discard());
 
     if (initialScope.kind === 'global' || initialScope.profileId) bootstrap();
 }

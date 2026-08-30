@@ -25,3 +25,114 @@
 .home-designer-error {
     color: var(--danger);
 }
+
+.home-designer-editor,
+.home-designer-workspace,
+.home-designer-toolbar,
+.home-designer-toolbar-actions,
+.home-designer-library-filters,
+.home-designer-entry-actions,
+.home-designer-row-actions,
+.home-designer-preview-placeholder,
+.home-designer-preview-placeholder [data-home-designer-preview-host] {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.home-designer-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+
+.home-designer-toolbar-actions {
+    grid-auto-flow: column;
+}
+
+.home-designer-workspace {
+    grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 1.1fr) minmax(20rem, 1fr);
+    align-items: start;
+}
+
+.home-designer-library,
+.home-designer-outline,
+.home-designer-inspector,
+.home-designer-preview-placeholder {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+
+.home-designer-library-entries,
+.home-designer-outline-list,
+.home-designer-preview-placeholder [data-home-designer-preview-host] {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.home-designer-library-entry,
+.home-designer-outline-row,
+.home-designer-collection-item {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.home-designer-outline-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    cursor: grab;
+}
+
+.home-designer-outline-row[aria-current="true"],
+.home-designer-preview-row[aria-current="true"] {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.home-designer-outline-list.is-drop-target {
+    outline: 2px dashed var(--primary);
+    outline-offset: 4px;
+}
+
+.home-designer-row-state,
+.home-designer-unavailable,
+.home-designer-field-error {
+    color: var(--text-muted);
+}
+
+.home-designer-field-error,
+.home-designer-validation-summary {
+    color: var(--danger);
+}
+
+.home-designer-inspector form,
+.home-designer-inspector fieldset {
+    display: grid;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.home-designer-inspector fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.home-designer-preview-row {
+    padding: 0.65rem;
+    text-align: left;
+}
+
+@media (max-width: 1100px) {
+    .home-designer-workspace,
+    .home-designer-toolbar {
+        grid-template-columns: 1fr;
+    }
+}

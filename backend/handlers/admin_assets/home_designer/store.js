@@ -80,6 +80,45 @@ const updateField = (target, path, value) => {
     return true;
 };
 
+const pathValue = (target, path) => path.split('.').filter(Boolean).reduce((value, part) => value && typeof value === 'object' ? value[part] : undefined, target);
+
+const rowValidation = (rows, catalog) => {
+    const errors = {};
+    const catalogEntries = Array.isArray(catalog) ? catalog : [];
+    const builtins = new Map(catalogEntries.filter((entry) => entry?.type === 'builtin').map((entry) => [entry?.default?.id, entry]));
+    const entries = new Map(catalogEntries.filter((entry) => entry?.type && entry.type !== 'builtin').map((entry) => [entry.type, entry]));
+    const ids = new Set();
+    rows.forEach((row) => {
+        const id = String(row?.id ?? '').trim();
+        const rowErrors = [];
+        if (!id) rowErrors.push({ path: 'id', message: 'Row ID is required' });
+        else if (ids.has(id)) rowErrors.push({ path: 'id', message: 'Row ID must be unique' });
+        ids.add(id);
+        if (!String(row?.name ?? '').trim()) rowErrors.push({ path: 'name', message: 'Name is required' });
+        const entry = row?.type === 'builtin' ? builtins.get(id) : entries.get(row?.type);
+        (entry?.fields || []).forEach((field) => {
+            if (!field?.required) return;
+            const value = pathValue(row, field.path);
+            if (value === undefined || value === null || String(value).trim() === '') {
+                rowErrors.push({ path: field.path, message: `${field.label || field.path} is required` });
+            }
+        });
+        if (rowErrors.length) errors[id] = rowErrors;
+    });
+    return errors;
+};
+
+const nextRowID = (candidate, rows) => {
+    const wanted = String(candidate?.id ?? '').trim();
+    if (!wanted) return wanted;
+    const occupied = new Set(rows.map((row) => String(row?.id ?? '').trim()));
+    if (!occupied.has(wanted)) return wanted;
+    if (candidate?.type === 'builtin') return null;
+    let suffix = 2;
+    while (occupied.has(`${wanted}-${suffix}`)) suffix += 1;
+    return `${wanted}-${suffix}`;
+};
+
 export const createStore = (document) => {
     let baseline = documentState(clone(document));
     let state = stateFrom(baseline, baseline);
@@ -124,15 +163,10 @@ export const createStore = (document) => {
         isDirty: () => !sectionEqual(state.rowsMode, state.rows, baseline.rowsMode, baseline.rows) ||
             !sectionEqual(state.themeMode, state.theme, baseline.themeMode, baseline.theme),
         getInvalidRowIDs: () => {
-            const seen = new Set();
-            const invalid = [];
-            state.rows.shelves.forEach((row) => {
-                const id = String(row.id ?? '').trim();
-                if (!id || !String(row.name ?? '').trim() || seen.has(id)) invalid.push(id);
-                seen.add(id);
-            });
-            return invalid;
+            return Object.keys(rowValidation(state.rows.shelves, state.envelope.catalog));
         },
+        getRowValidation: () => clone(rowValidation(state.rows.shelves, state.envelope.catalog)),
+        isApplyValid: () => Object.keys(rowValidation(state.rows.shelves, state.envelope.catalog)).length === 0,
         dispatch: (action) => {
             if (!action || typeof action.type !== 'string') return false;
             if (action.type === 'selection/select') {
@@ -149,9 +183,12 @@ export const createStore = (document) => {
                 const row = state.rows.shelves.find((candidate) => candidate.id === action.id);
                 switch (action.type) {
                     case 'rows/add':
-                        state.rowsMode = 'custom';
                         {
                             const next = clone(action.row ?? {});
+                            const id = nextRowID(next, state.rows.shelves);
+                            if (id === null) break;
+                            state.rowsMode = 'custom';
+                            next.id = id;
                             const index = Number.isInteger(action.index)
                                 ? Math.max(0, Math.min(action.index, state.rows.shelves.length))
                                 : state.rows.shelves.length;

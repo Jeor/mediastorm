@@ -67,6 +67,31 @@ test('row additions and invalid rows are local working state only', async () => 
     assert.equal(store.isDirty(), false);
 });
 
+test('catalog additions keep built-ins unique and mark incomplete configured rows invalid until completed', async () => {
+    // Break caught: catalog actions duplicating a built-in or letting a required configuration reach Apply.
+    const { createStore } = await moduleFromFile('store.js');
+    const document = {
+        ...documentFixture(),
+        catalog: [
+            { type: 'builtin', available: true, default: { id: 'top-ten', name: 'Top Ten', type: 'builtin' }, fields: [{ path: 'name', required: true }] },
+            { type: 'mdblist', multiple: true, available: true, default: { type: 'mdblist' }, fields: [{ path: 'listUrl', label: 'MDBList URL', required: true, type: 'url' }] },
+        ],
+    };
+    const store = createStore(document);
+
+    assert.equal(store.dispatch({ type: 'rows/add', row: { id: 'top-ten', name: 'Top Ten', type: 'builtin', enabled: true } }), false);
+    store.dispatch({ type: 'rows/add', row: { id: 'mdblist', name: 'My list', type: 'mdblist', enabled: true } });
+    store.dispatch({ type: 'rows/add', row: { id: 'mdblist', name: 'Another list', type: 'mdblist', enabled: true } });
+    assert.deepEqual(store.getState().rows.slice(-2).map((row) => row.id), ['mdblist', 'mdblist-2']);
+    assert.deepEqual(store.getRowValidation().mdblist, [{ path: 'listUrl', message: 'MDBList URL is required' }]);
+    assert.equal(store.isApplyValid(), false);
+
+    store.dispatch({ type: 'rows/field', id: 'mdblist', path: 'listUrl', value: 'https://mdblist.com/lists/example/json' });
+    store.dispatch({ type: 'rows/field', id: 'mdblist-2', path: 'listUrl', value: 'https://mdblist.com/lists/another/json' });
+    assert.deepEqual(store.getRowValidation(), {});
+    assert.equal(store.isApplyValid(), true);
+});
+
 test('row addition inserts at the requested index or appends independently of template order', async () => {
     // Break caught: catalog template order changing where a new row lands or leaving selection on another row.
     const { createStore } = await moduleFromFile('store.js');

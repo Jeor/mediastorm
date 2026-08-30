@@ -15,6 +15,8 @@ var homeDesignerAssetContentTypes = map[string]string{
 	"app.js":            "text/javascript; charset=utf-8",
 	"api.js":            "text/javascript; charset=utf-8",
 	"home_designer.css": "text/css; charset=utf-8",
+	"library.js":        "text/javascript; charset=utf-8",
+	"outline.js":        "text/javascript; charset=utf-8",
 	"store.js":          "text/javascript; charset=utf-8",
 }
 

@@ -25,6 +25,28 @@
         </section>
         {{end}}
     </div>
+    {{if not .NoProfiles}}
+    <section class="home-designer-editor" data-home-designer-editor hidden>
+        <div class="home-designer-toolbar">
+            <div data-home-designer-rows-controls></div>
+            <div class="home-designer-toolbar-actions">
+                <button type="button" class="btn btn-secondary" data-home-designer-discard>Discard changes</button>
+                <button type="button" class="btn btn-primary" data-home-designer-apply>Apply changes</button>
+            </div>
+        </div>
+        <p class="sr-only" data-home-designer-live aria-live="polite"></p>
+        <div class="home-designer-workspace">
+            <aside class="home-designer-library" data-home-designer-library aria-label="Row library"></aside>
+            <section class="home-designer-outline" data-home-designer-outline aria-label="Composition outline"></section>
+            <section class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector"></section>
+        </div>
+        <section class="home-designer-preview-placeholder" aria-label="Composition preview">
+            <h2>Composition preview</h2>
+            <p>The detailed theme and device preview arrives in the next step. Select a row here or in the outline to keep both surfaces aligned.</p>
+            <div data-home-designer-preview-host></div>
+        </section>
+    </section>
+    {{end}}
 </section>
 <script type="module" src="{{.BasePath}}/assets/home-designer/app.js"></script>
 {{end}}

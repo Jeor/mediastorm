@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"novastream/models"
 	"novastream/services/homedesigner"
@@ -141,6 +143,98 @@ func TestHomeDesignerPreviewProjectionRejectsUnsafeArtworkLocations(t *testing.T
 	}
 }
 
+func TestSafePreviewArtworkURLRejectsPrivateAndCredentialBearingBypasses(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{name: "public artwork", url: "https://cdn.example/images/poster.jpg?width=300", want: true},
+		{name: "ipv4 loopback", url: "http://127.0.0.1:32400/poster.jpg"},
+		{name: "short ipv4 loopback", url: "http://127.1/poster.jpg"},
+		{name: "integer ipv4 loopback", url: "http://2130706433/poster.jpg"},
+		{name: "hex ipv4 loopback", url: "http://0x7f000001/poster.jpg"},
+		{name: "octal ipv4 loopback", url: "http://0177.0.0.1/poster.jpg"},
+		{name: "private ipv4", url: "https://10.0.0.8/poster.jpg"},
+		{name: "ipv6 loopback", url: "http://[::1]/poster.jpg"},
+		{name: "ipv4 mapped ipv6 loopback", url: "http://[::ffff:127.0.0.1]/poster.jpg"},
+		{name: "link local ipv6", url: "http://[fe80::1]/poster.jpg"},
+		{name: "link local ipv6 zone", url: "http://[fe80::1%25en0]/poster.jpg"},
+		{name: "unspecified ipv6", url: "http://[::]/poster.jpg"},
+		{name: "localhost", url: "https://localhost/poster.jpg"},
+		{name: "local hostname", url: "https://media.local/poster.jpg"},
+		{name: "lan hostname", url: "https://media.lan/poster.jpg"},
+		{name: "internal hostname", url: "https://image.internal/poster.jpg"},
+		{name: "userinfo", url: "https://user:secret@cdn.example/poster.jpg"},
+		{name: "access token", url: "https://cdn.example/poster.jpg?access_token=secret"},
+		{name: "plex token", url: "https://cdn.example/poster.jpg?X-Plex-Token=secret"},
+		{name: "aws credential", url: "https://cdn.example/poster.jpg?X-Amz-Credential=secret"},
+		{name: "fragment secret", url: "https://cdn.example/poster.jpg#token=secret"},
+		{name: "plex playback path", url: "https://cdn.example/library/metadata/1/thumb"},
+		{name: "playback path", url: "https://cdn.example/api/playback/1"},
+		{name: "stream path", url: "https://cdn.example/stream/source.m3u8"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := safePreviewArtworkURL(test.url) != ""; got != test.want {
+				t.Fatalf("safePreviewArtworkURL(%q) allowed = %v, want %v", test.url, got, test.want)
+			}
+		})
+	}
+}
+
+func TestHomeDesignerPreviewReturnsAtDeadlineWhenResolverBlocks(t *testing.T) {
+	var calls atomic.Int32
+	provider := newHomeDesignerPreviewProvider(&DisplayListHandler{WatchlistService: blockingPreviewWatchlist{calls: &calls}}, 40*time.Millisecond, make(chan struct{}, 1))
+	request := homedesigner.PreviewRequest{PreviewProfileID: "profile-a", Rows: &homedesigner.SectionMutation[models.HomeShelvesSettings]{Mode: homedesigner.ModeCustom, Value: &models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "watchlist", Name: "First", Enabled: true},
+		{ID: "watchlist", Name: "Second", Enabled: true},
+		{ID: "watchlist", Name: "Third", Enabled: true},
+	}}}}
+	started := time.Now()
+	response, err := provider.Preview(context.Background(), httptest.NewRequest(http.MethodPost, "/admin/api/home-designer/preview", nil), request)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed > 200*time.Millisecond {
+		t.Fatalf("preview took %v, want hard deadline despite blocked resolver", elapsed)
+	}
+	if got := []string{response.Rows[0].Name, response.Rows[1].Name, response.Rows[2].Name}; strings.Join(got, ",") != "First,Second,Third" {
+		t.Fatalf("row order = %v", got)
+	}
+	for _, row := range response.Rows {
+		if row.Status != "error" || len(row.Items) != 0 {
+			t.Fatalf("timed out row = %#v", row)
+		}
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("blocked resolver calls = %d, want global slot cap of 1", calls.Load())
+	}
+	_, _ = provider.Preview(context.Background(), httptest.NewRequest(http.MethodPost, "/admin/api/home-designer/preview", nil), request)
+	if calls.Load() != 1 {
+		t.Fatalf("second preview bypassed occupied resolver cap: calls = %d", calls.Load())
+	}
+}
+
+func TestHomeDesignerPreviewDoesNotSampleActivityRowsWithoutDependencies(t *testing.T) {
+	provider := NewHomeDesignerPreviewProvider(&DisplayListHandler{MetadataHandler: &MetadataHandler{}})
+	response, err := provider.Preview(context.Background(), httptest.NewRequest(http.MethodPost, "/admin/api/home-designer/preview", nil), homedesigner.PreviewRequest{
+		PreviewProfileID: "profile-a",
+		Rows: &homedesigner.SectionMutation[models.HomeShelvesSettings]{Mode: homedesigner.ModeCustom, Value: &models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+			{ID: "popular-on-server", Name: "Popular", Enabled: true},
+			{ID: "recently-watched", Name: "Recent", Enabled: true},
+		}}},
+	})
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	for _, row := range response.Rows {
+		if row.Status != "error" || len(row.Items) != 0 {
+			t.Fatalf("activity dependency failure = %#v, want error without samples", row)
+		}
+	}
+}
+
 func TestDisplayListQueryForShelfCoversBuiltinsAndProviderRows(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -200,6 +294,29 @@ type recordingHomeDesignerPreviewProvider struct {
 type previewWatchlistService struct {
 	items []models.WatchlistItem
 	err   error
+}
+
+type blockingPreviewWatchlist struct {
+	calls *atomic.Int32
+}
+
+func (s blockingPreviewWatchlist) List(string) ([]models.WatchlistItem, error) {
+	s.calls.Add(1)
+	select {}
+}
+
+func (s blockingPreviewWatchlist) AddOrUpdate(string, models.WatchlistUpsert) (models.WatchlistItem, error) {
+	return models.WatchlistItem{}, nil
+}
+
+func (s blockingPreviewWatchlist) UpdateState(string, string, string, *bool, interface{}) (models.WatchlistItem, error) {
+	return models.WatchlistItem{}, nil
+}
+
+func (s blockingPreviewWatchlist) Remove(string, string, string) (bool, error) { return false, nil }
+
+func (s blockingPreviewWatchlist) EnrichMissingArtwork([]string, watchlist.ArtworkMetadataProvider) int {
+	return 0
 }
 
 func (s *previewWatchlistService) List(string) ([]models.WatchlistItem, error) {

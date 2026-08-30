@@ -6,7 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +26,11 @@ const (
 	homeDesignerPreviewWorkers  = 4
 )
 
+// Resolver slots are intentionally process-wide. A provider that ignores
+// cancellation can occupy a slot indefinitely, but it cannot create an
+// unbounded goroutine buildup across repeated preview requests.
+var homeDesignerPreviewResolverSlots = make(chan struct{}, homeDesignerPreviewWorkers)
+
 // HomeDesignerPreviewProvider resolves an unsaved editor draft without
 // persisting it. Its result is restricted to homedesigner's render-only
 // preview contract.
@@ -32,14 +39,20 @@ type HomeDesignerPreviewProvider interface {
 }
 
 type homeDesignerPreviewProvider struct {
-	displayList *DisplayListHandler
+	displayList   *DisplayListHandler
+	timeout       time.Duration
+	resolverSlots chan struct{}
 }
 
 // NewHomeDesignerPreviewProvider reuses the display-list boundary that also
 // powers startup and prewarm. The shared shelf mapper keeps provider selection
 // and per-profile behavior aligned without exposing its internal request data.
 func NewHomeDesignerPreviewProvider(displayList *DisplayListHandler) HomeDesignerPreviewProvider {
-	return &homeDesignerPreviewProvider{displayList: displayList}
+	return newHomeDesignerPreviewProvider(displayList, homeDesignerPreviewTimeout, homeDesignerPreviewResolverSlots)
+}
+
+func newHomeDesignerPreviewProvider(displayList *DisplayListHandler, timeout time.Duration, resolverSlots chan struct{}) *homeDesignerPreviewProvider {
+	return &homeDesignerPreviewProvider{displayList: displayList, timeout: timeout, resolverSlots: resolverSlots}
 }
 
 // Preview resolves independent rows concurrently. Individual resolver
@@ -61,28 +74,61 @@ func (p *homeDesignerPreviewProvider) Preview(ctx context.Context, sourceReq *ht
 		Rows:      make([]homedesigner.PreviewRow, len(rows)),
 		Theme:     previewTheme(request.Theme),
 	}
-	previewCtx, cancel := context.WithTimeout(ctx, homeDesignerPreviewTimeout)
+	timeout := p.timeout
+	if timeout <= 0 {
+		timeout = homeDesignerPreviewTimeout
+	}
+	previewCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	group, groupCtx := errgroup.WithContext(previewCtx)
-	semaphore := make(chan struct{}, homeDesignerPreviewWorkers)
+	type rowResult struct {
+		index int
+		row   homedesigner.PreviewRow
+	}
+	results := make(chan rowResult, len(rows))
+	pending := make([]bool, len(rows))
+	remaining := 0
 	for index, shelf := range rows {
 		index, shelf := index, shelf
 		response.Rows[index] = initialPreviewRow(shelf)
+		if !shelf.Enabled {
+			continue
+		}
+		pending[index] = true
+		remaining++
 		group.Go(func() error {
 			select {
-			case semaphore <- struct{}{}:
+			case p.resolverSlots <- struct{}{}:
 			case <-groupCtx.Done():
-				response.Rows[index] = previewErrorRow(shelf)
+				results <- rowResult{index: index, row: previewTimeoutRow(shelf)}
 				return nil
 			}
-			defer func() { <-semaphore }()
+			defer func() { <-p.resolverSlots }()
 
-			response.Rows[index] = p.resolveRow(groupCtx, sourceReq, request.PreviewProfileID, shelf)
+			results <- rowResult{index: index, row: p.resolveRow(groupCtx, sourceReq, request.PreviewProfileID, shelf)}
 			return nil
 		})
 	}
-	_ = group.Wait() // resolution errors are deliberately contained in their row
+	for remaining > 0 {
+		select {
+		case result := <-results:
+			if pending[result.index] {
+				response.Rows[result.index] = result.row
+				pending[result.index] = false
+				remaining--
+			}
+		case <-previewCtx.Done():
+			for index, shelf := range rows {
+				if pending[index] {
+					response.Rows[index] = previewTimeoutRow(shelf)
+				}
+			}
+			// Do not wait for group.Wait: a legacy resolver can ignore request
+			// cancellation. Its globally capped slot prevents further buildup.
+			return response, nil
+		}
+	}
 	return response, nil
 }
 
@@ -141,6 +187,9 @@ func (p *homeDesignerPreviewProvider) resolveRow(ctx context.Context, sourceReq 
 	if !ok {
 		return previewErrorRow(shelf)
 	}
+	if !p.displayListSourceAvailable(query.Get("source")) {
+		return previewErrorRow(shelf)
+	}
 
 	req := previewDisplayListRequest(ctx, sourceReq, profileID, query)
 	rec := httptest.NewRecorder()
@@ -186,6 +235,26 @@ func previewErrorRow(shelf models.ShelfConfig) homedesigner.PreviewRow {
 	return homedesigner.PreviewRow{
 		ID: shelf.ID, Name: shelf.Name, Layout: previewLayout(shelf), Status: "error",
 		Message: "Content is unavailable for this row.", Items: []homedesigner.PreviewItem{},
+	}
+}
+
+func previewTimeoutRow(shelf models.ShelfConfig) homedesigner.PreviewRow {
+	row := previewErrorRow(shelf)
+	row.Message = "Content timed out for this row."
+	return row
+}
+
+func (p *homeDesignerPreviewProvider) displayListSourceAvailable(source string) bool {
+	switch source {
+	case "popular-on-server", "recently-watched":
+		if p.displayList == nil || p.displayList.MetadataHandler == nil {
+			return false
+		}
+		_, historyOK := p.displayList.MetadataHandler.HistoryService.(sharedShelfHistoryService)
+		_, usersOK := p.displayList.MetadataHandler.UsersService.(sharedShelfUsersService)
+		return historyOK && usersOK
+	default:
+		return true
 	}
 }
 
@@ -265,21 +334,128 @@ func firstPreviewArtwork(values ...string) string {
 	return ""
 }
 
-// safePreviewArtworkURL permits only ordinary public image locations. It
-// avoids forwarding local paths, embedded credentials, and image-proxy query
-// parameters that can encode an upstream/provider URL or access secret.
+// safePreviewArtworkURL permits only public http(s) artwork locations without
+// credentials, local/private routing, or transport-shaped path/query details.
+// It does no DNS lookup: literal addresses and local naming conventions are
+// rejected deterministically before the browser can make a request.
 func safePreviewArtworkURL(value string) string {
 	parsed, err := url.Parse(strings.TrimSpace(value))
-	if err != nil || parsed == nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil {
+	if err != nil || parsed == nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
+		return ""
+	}
+	if previewArtworkHostIsLocal(parsed.Hostname()) || previewArtworkPathIsSensitive(parsed.EscapedPath()) {
 		return ""
 	}
 	for key := range parsed.Query() {
-		switch strings.ToLower(strings.TrimSpace(key)) {
-		case "url", "path", "token", "apikey", "api_key", "credential", "credentials", "password", "clientip", "client_ip", "signature", "sig":
+		if previewArtworkQueryKeyIsSensitive(key) {
 			return ""
 		}
 	}
 	return parsed.String()
+}
+
+func previewArtworkHostIsLocal(host string) bool {
+	host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
+	if host == "" || host == "localhost" || host == "local" || host == "internal" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".lan") || strings.HasSuffix(host, ".internal") {
+		return true
+	}
+	addressHost, _, _ := strings.Cut(host, "%")
+	if address, err := netip.ParseAddr(addressHost); err == nil {
+		return previewArtworkAddressIsLocal(address)
+	}
+	if address, ok := parseNonCanonicalIPv4(host); ok {
+		return previewArtworkAddressIsLocal(address)
+	}
+	return false
+}
+
+func previewArtworkAddressIsLocal(address netip.Addr) bool {
+	if address.Is4In6() {
+		address = address.Unmap()
+	}
+	return address.IsLoopback() || address.IsPrivate() || address.IsLinkLocalUnicast() || address.IsLinkLocalMulticast() || address.IsUnspecified()
+}
+
+// parseNonCanonicalIPv4 handles legacy integer, hexadecimal, octal, and
+// shortened dotted forms without treating them as DNS names.
+func parseNonCanonicalIPv4(host string) (netip.Addr, bool) {
+	parts := strings.Split(host, ".")
+	if len(parts) == 0 || len(parts) > 4 {
+		return netip.Addr{}, false
+	}
+	values := make([]uint64, len(parts))
+	for i, part := range parts {
+		if part == "" {
+			return netip.Addr{}, false
+		}
+		base := 10
+		input := part
+		if len(input) > 2 && (strings.HasPrefix(input, "0x") || strings.HasPrefix(input, "0X")) {
+			base, input = 16, input[2:]
+		} else if len(input) > 1 && strings.HasPrefix(input, "0") {
+			base, input = 8, input[1:]
+		}
+		value, err := strconv.ParseUint(input, base, 32)
+		if err != nil {
+			return netip.Addr{}, false
+		}
+		values[i] = value
+	}
+	var number uint64
+	switch len(values) {
+	case 1:
+		if values[0] > 0xffffffff {
+			return netip.Addr{}, false
+		}
+		number = values[0]
+	case 2:
+		if values[0] > 0xff || values[1] > 0xffffff {
+			return netip.Addr{}, false
+		}
+		number = values[0]<<24 | values[1]
+	case 3:
+		if values[0] > 0xff || values[1] > 0xff || values[2] > 0xffff {
+			return netip.Addr{}, false
+		}
+		number = values[0]<<24 | values[1]<<16 | values[2]
+	case 4:
+		for _, value := range values {
+			if value > 0xff {
+				return netip.Addr{}, false
+			}
+		}
+		number = values[0]<<24 | values[1]<<16 | values[2]<<8 | values[3]
+	}
+	return netip.AddrFrom4([4]byte{byte(number >> 24), byte(number >> 16), byte(number >> 8), byte(number)}), true
+}
+
+func previewArtworkQueryKeyIsSensitive(key string) bool {
+	normalized := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return -1
+	}, strings.ToLower(strings.TrimSpace(key)))
+	for _, marker := range []string{"url", "path", "token", "credential", "secret", "password", "apikey", "auth", "signature", "session", "clientip"} {
+		if strings.Contains(normalized, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func previewArtworkPathIsSensitive(rawPath string) bool {
+	path, err := url.PathUnescape(rawPath)
+	if err != nil {
+		return true
+	}
+	path = strings.ToLower(path)
+	for _, marker := range []string{"/library/metadata/", "/playback", "/play/", "/stream", "/source", "/hls", "/manifest", "/download", "/transcode"} {
+		if strings.Contains(path, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func previewYearSubtitle(year int) string {

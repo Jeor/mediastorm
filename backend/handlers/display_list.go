@@ -83,6 +83,10 @@ func (h *DisplayListHandler) SetPrequeueStore(store persistentPrequeueStore) {
 }
 
 func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
+	if err := r.Context().Err(); err != nil {
+		http.Error(w, "display list request cancelled", http.StatusRequestTimeout)
+		return
+	}
 	userID, ok := h.requireUser(w, r)
 	if !ok {
 		return
@@ -115,6 +119,10 @@ func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		items, err = h.WatchlistService.List(userID)
+		if r.Context().Err() != nil {
+			http.Error(w, "display list request cancelled", http.StatusRequestTimeout)
+			return
+		}
 	case "custom-list", "custom_user_list", "custom-user-list":
 		source = "custom-list"
 		if h.CustomListsService == nil {

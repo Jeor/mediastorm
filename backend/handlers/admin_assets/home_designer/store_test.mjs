@@ -170,6 +170,23 @@ test('an occupied row ID rename is a true no-op that preserves selection and hub
     assert.equal(store.getState().rows[2].collectionItems[0].sourceShelfId, 'second');
 });
 
+test('a whitespace-bearing row ID rename uses one canonical identity for row selection and collection references', async () => {
+    // Break caught: trimming only selection/reference migration while saving the raw ID and orphaning the selected source.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore({
+        ...documentFixture(), rows: { inherited: false, effective: { shelves: [
+            { id: 'source', name: 'Source', type: 'genre', enabled: true, order: 0 },
+            { id: 'hub', name: 'Hub', type: 'collection-hub', enabled: true, order: 1, collectionItems: [{ id: 'item', name: 'Item', sourceShelfId: 'source', enabled: true, order: 0 }] },
+        ] } },
+    });
+    store.dispatch({ type: 'selection/select', id: 'source' });
+    store.dispatch({ type: 'rows/field', id: 'source', path: 'id', value: ' renamed ' });
+    assert.equal(store.getState().rows[0].id, 'renamed');
+    assert.equal(store.getState().selectionId, 'renamed');
+    assert.equal(store.getState().rows[1].collectionItems[0].sourceShelfId, 'renamed');
+    assert.equal(store.isApplyValid(), true);
+});
+
 test('row addition inserts at the requested index or appends independently of template order', async () => {
     // Break caught: catalog template order changing where a new row lands or leaving selection on another row.
     const { createStore } = await moduleFromFile('store.js');

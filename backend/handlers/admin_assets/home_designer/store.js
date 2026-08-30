@@ -291,7 +291,7 @@ export const createStore = (document) => {
                             } else {
                                 state.rowsMode = 'custom';
                             }
-                            updateField(row, action.path, action.value);
+                            updateField(row, action.path, action.path === 'id' ? String(action.value ?? '').trim() : action.value);
                         }
                         break;
                     case 'rows/customize':

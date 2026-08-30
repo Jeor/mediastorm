@@ -334,10 +334,10 @@ func firstPreviewArtwork(values ...string) string {
 	return ""
 }
 
-// safePreviewArtworkURL permits only public http(s) artwork locations without
-// credentials, local/private routing, or transport-shaped path/query details.
-// It does no DNS lookup: literal addresses and local naming conventions are
-// rejected deterministically before the browser can make a request.
+// safePreviewArtworkURL permits only public-FQDN http(s) artwork locations
+// without credentials, local/private routing, or transport-shaped path/query
+// details. It does no DNS lookup: every literal address is rejected before the
+// browser can make a request.
 func safePreviewArtworkURL(value string) string {
 	parsed, err := url.Parse(strings.TrimSpace(value))
 	if err != nil || parsed == nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
@@ -357,64 +357,36 @@ func previewArtworkHostIsPublic(host string) bool {
 	if host == "" || strings.Contains(host, "%") || host == "localhost" || host == "local" || host == "internal" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".lan") || strings.HasSuffix(host, ".internal") || strings.HasSuffix(host, ".localdomain") || strings.HasSuffix(host, ".home") || strings.HasSuffix(host, ".corp") {
 		return false
 	}
-	if address, err := netip.ParseAddr(host); err == nil {
-		return previewArtworkAddressIsPublic(address)
+	if _, err := netip.ParseAddr(host); err == nil {
+		return false
 	}
-	if address, ok := parseNonCanonicalIPv4(host); ok {
-		return previewArtworkAddressIsPublic(address)
+	if _, ok := parseNonCanonicalIPv4(host); ok {
+		return false
 	}
 	return previewArtworkFQDNIsPublic(host)
 }
-
-func previewArtworkAddressIsPublic(address netip.Addr) bool {
-	if address.Is4In6() {
-		address = address.Unmap()
-	}
-	if address.Is4() {
-		for _, reserved := range previewArtworkReservedIPv4 {
-			if reserved.Contains(address) {
-				return false
-			}
-		}
-		return true
-	}
-	if !previewArtworkGlobalIPv6.Contains(address) {
-		return false
-	}
-	for _, reserved := range previewArtworkReservedIPv6 {
-		if reserved.Contains(address) {
-			return false
-		}
-	}
-	return true
-}
-
-var previewArtworkReservedIPv4 = []netip.Prefix{
-	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("100.64.0.0/10"),
-	netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("169.254.0.0/16"), netip.MustParsePrefix("172.16.0.0/12"),
-	netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("192.0.2.0/24"), netip.MustParsePrefix("192.88.99.0/24"),
-	netip.MustParsePrefix("192.168.0.0/16"), netip.MustParsePrefix("198.18.0.0/15"), netip.MustParsePrefix("198.51.100.0/24"),
-	netip.MustParsePrefix("203.0.113.0/24"), netip.MustParsePrefix("224.0.0.0/4"), netip.MustParsePrefix("240.0.0.0/4"),
-}
-
-var (
-	previewArtworkGlobalIPv6   = netip.MustParsePrefix("2000::/3")
-	previewArtworkReservedIPv6 = []netip.Prefix{netip.MustParsePrefix("2001:db8::/32"), netip.MustParsePrefix("2001:10::/28")}
-)
 
 func previewArtworkFQDNIsPublic(host string) bool {
 	labels := strings.Split(host, ".")
 	if len(labels) < 2 {
 		return false
 	}
-	for _, label := range labels {
+	for index, label := range labels {
 		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
 			return false
 		}
+		hasLetter := false
 		for _, character := range label {
-			if !(character >= 'a' && character <= 'z') && !(character >= '0' && character <= '9') && character != '-' {
+			if character >= 'a' && character <= 'z' {
+				hasLetter = true
+				continue
+			}
+			if !(character >= '0' && character <= '9') && character != '-' {
 				return false
 			}
+		}
+		if index == len(labels)-1 && !hasLetter {
+			return false
 		}
 	}
 	return true

@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isHomeDesignerDrop, insertionIndex } from './outline.js';
+import { isHomeDesignerDrop, insertionIndex, removalFocusTarget, renderInspector } from './outline.js';
+
+class Element {
+    constructor() { this.children = []; this.dataset = {}; this.classList = { add() {}, remove() {}, toggle() {} }; }
+    append(...children) { this.children.push(...children); }
+    replaceChildren(...children) { this.children = children; }
+    addEventListener() {}
+    setAttribute() {}
+}
+
+const findText = (element, value) => {
+    if (element.textContent === value) return element;
+    for (const child of element.children) {
+        const found = findText(child, value);
+        if (found) return found;
+    }
+    return undefined;
+};
 
 test('native drag recognition uses advertised types without reading protected drag data', () => {
     // Break caught: dragover reading getData and failing to make a native catalog or row drag droppable.
@@ -15,4 +32,38 @@ test('insertion index identifies the exact before or after row slot', () => {
     assert.equal(insertionIndex(rows, 'two', false), 1);
     assert.equal(insertionIndex(rows, 'two', true), 2);
     assert.equal(insertionIndex(rows, '', false), 3);
+});
+
+test('row removal has a deterministic neighbor or empty-outline focus target', () => {
+    // Break caught: removing the sole row leaving focus on a detached control.
+    assert.equal(removalFocusTarget([{ id: 'only' }], 0), 'empty-outline');
+    assert.equal(removalFocusTarget([{ id: 'first' }, { id: 'second' }], 0), 'second');
+    assert.equal(removalFocusTarget([{ id: 'first' }, { id: 'second' }], 1), 'first');
+});
+
+test('collection inspector renders an existing item without appending stray globals', () => {
+    // Break caught: collection rendering throwing for an undeclared name or moving controls twice.
+    const originalDocument = globalThis.document;
+    globalThis.document = { createElement: () => new Element() };
+    const container = new Element();
+    assert.doesNotThrow(() => renderInspector(container, {
+        state: {
+            selectionId: 'hub', rowValidation: {}, catalog: [{ type: 'collection-hub', fields: [{ path: 'collectionItems', type: 'collection', label: 'Collections' }] }],
+            rows: [{ id: 'source', name: 'Source', type: 'genre' }, { id: 'hub', name: 'Hub', type: 'collection-hub', collectionItems: [{ id: 'item', name: 'Item', sourceShelfId: 'source', enabled: true }] }],
+        }, dispatch() {}, onSelect() {},
+    }));
+    globalThis.document = originalDocument;
+    assert.equal(container.children.length, 2);
+});
+
+test('collection inspector disables Add collection at the twenty-item cap', () => {
+    // Break caught: the UI offering a 21st collection item after the local Apply gate has rejected the hub.
+    const originalDocument = globalThis.document;
+    globalThis.document = { createElement: () => new Element() };
+    const items = Array.from({ length: 20 }, (_, index) => ({ id: `item-${index}`, name: `Item ${index}`, sourceShelfId: `source-${index}`, enabled: true }));
+    const rows = [...items.map((_, index) => ({ id: `source-${index}`, name: `Source ${index}`, type: 'genre' })), { id: 'hub', name: 'Hub', type: 'collection-hub', collectionItems: items }];
+    const container = new Element();
+    renderInspector(container, { state: { selectionId: 'hub', rowValidation: {}, catalog: [{ type: 'collection-hub', fields: [{ path: 'collectionItems', type: 'collection' }] }], rows }, dispatch() {} });
+    globalThis.document = originalDocument;
+    assert.equal(findText(container, 'Add collection').disabled, true);
 });

@@ -95,7 +95,7 @@ if (root && status) {
         customize.addEventListener('click', () => {
             store.dispatch({ type: 'rows/customize' });
             editor.querySelector('[data-home-designer-live]').textContent = 'Rows now use a custom configuration.';
-            requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button')?.focus());
+            requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button:not([disabled])')?.focus());
         });
         controls.append(message, customize);
         if (state.scope?.kind !== 'global') {
@@ -105,7 +105,7 @@ if (root && status) {
             reset.addEventListener('click', () => {
                 store.dispatch({ type: 'rows/reset' });
                 editor.querySelector('[data-home-designer-live]').textContent = 'Rows reset to the inherited configuration.';
-                requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button')?.focus());
+                requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button:not([disabled])')?.focus());
             });
             controls.append(reset);
         }

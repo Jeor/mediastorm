@@ -25,6 +25,8 @@ export const insertionIndex = (rows, targetID, after) => {
     return index < 0 ? (rows || []).length : index + (after ? 1 : 0);
 };
 
+export const removalFocusTarget = (rows, index) => rows[index + 1]?.id || rows[index - 1]?.id || 'empty-outline';
+
 const focusRow = (container, id) => requestAnimationFrame(() => container.querySelector(`[data-outline-row-id="${CSS.escape(id)}"]`)?.focus());
 
 const moveRow = (container, dispatch, rows, id, to, liveRegion) => {
@@ -140,12 +142,14 @@ export const renderOutline = (container, { state, dispatch, liveRegion, onSelect
         const remove = button('Remove');
         remove.addEventListener('click', (event) => {
             event.stopPropagation();
-            const next = rows[index + 1] || rows[index - 1];
+            const target = removalFocusTarget(rows, index);
             dispatch({ type: 'rows/remove', id: row.id });
             announce(liveRegion, `${row.name || 'Row'} removed.`);
-            if (next) {
-                onSelect?.(next.id);
-                focusRow(container, next.id);
+            if (target !== 'empty-outline') {
+                onSelect?.(target);
+                focusRow(container, target);
+            } else {
+                requestAnimationFrame(() => container.querySelector('[data-outline-empty]')?.focus());
             }
         });
         controls.append(select, visibility, up, down, remove);
@@ -154,6 +158,8 @@ export const renderOutline = (container, { state, dispatch, liveRegion, onSelect
     });
     if (!rows.length) {
         const empty = document.createElement('p');
+        empty.dataset.outlineEmpty = '';
+        empty.tabIndex = -1;
         empty.textContent = 'Add a row from the library to begin composing this home screen.';
         container.append(heading, empty, list);
         return;
@@ -240,10 +246,11 @@ const collectionEditor = (fieldset, row, rows, dispatch, errors = []) => {
         const down = button('Move down'); down.disabled = index === items.length - 1;
         down.addEventListener('click', () => { const next = copy(items); [next[index], next[index + 1]] = [next[index + 1], next[index]]; update(next); });
         const remove = button('Remove'); remove.addEventListener('click', () => update(items.filter((_, position) => position !== index)));
-        line.append(name, source, up, down, remove);
+        line.append(up, down, remove);
         fieldset.append(line);
     });
     const add = button('Add collection');
+    add.disabled = items.length >= 20;
     add.addEventListener('click', () => {
         const ids = new Set(items.map((item) => text(item.id)));
         let suffix = 1;
@@ -306,6 +313,7 @@ export const renderInspector = (container, { state, dispatch, onSelect, onCatalo
         const label = document.createElement('label'); label.textContent = field.label || field.path;
         if (field.type === 'collection') {
             fieldset.append(label);
+            fieldError(fieldset, errors.find((error) => error.path === field.path));
             collectionEditor(fieldset, row, state.rows || [], dispatch, errors);
         } else {
             const control = fieldControl(field, row[field.path]);

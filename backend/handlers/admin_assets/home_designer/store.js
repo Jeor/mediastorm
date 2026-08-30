@@ -110,7 +110,9 @@ const rowValidation = (rows, catalog) => {
             const itemIDs = new Set();
             const names = new Set();
             const sources = new Set();
-            (Array.isArray(row.collectionItems) ? row.collectionItems : []).forEach((item, index) => {
+            const items = Array.isArray(row.collectionItems) ? row.collectionItems : [];
+            if (items.length > 20) rowErrors.push({ path: 'collectionItems', message: 'Collection hubs support at most 20 items' });
+            items.forEach((item, index) => {
                 const prefix = `collectionItems.${index}`;
                 const itemID = String(item?.id ?? '').trim();
                 const name = String(item?.name ?? '').trim();
@@ -275,16 +277,19 @@ export const createStore = (document) => {
                         break;
                     case 'rows/field':
                         if (row) {
-                            state.rowsMode = 'custom';
                             if (action.path === 'id') {
                                 const previousID = row.id;
                                 const nextID = String(action.value ?? '').trim();
+                                if (nextID !== previousID && state.rows.shelves.some((candidate) => candidate !== row && candidate.id === nextID)) break;
+                                state.rowsMode = 'custom';
                                 state.rows.shelves.forEach((candidate) => {
                                     (candidate.collectionItems || []).forEach((item) => {
                                         if (item.sourceShelfId === previousID) item.sourceShelfId = nextID;
                                     });
                                 });
                                 if (state.selectionId === previousID) state.selectionId = nextID;
+                            } else {
+                                state.rowsMode = 'custom';
                             }
                             updateField(row, action.path, action.value);
                         }

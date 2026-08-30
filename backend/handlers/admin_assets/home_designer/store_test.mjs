@@ -140,6 +140,36 @@ test('collection hubs reject duplicate or forbidden local sources before Apply',
     assert.equal(store.isApplyValid(), false);
 });
 
+test('collection hubs block Apply when loaded with more than twenty valid items', async () => {
+    // Break caught: an over-cap hub appearing locally valid even though the persisted Home Designer contract rejects it.
+    const { createStore } = await moduleFromFile('store.js');
+    const sources = Array.from({ length: 21 }, (_, index) => ({ id: `source-${index}`, name: `Source ${index}`, type: 'genre', enabled: true, order: index }));
+    const items = Array.from({ length: 21 }, (_, index) => ({ id: `item-${index}`, name: `Item ${index}`, sourceShelfId: `source-${index}`, enabled: true, order: index }));
+    const store = createStore({
+        ...documentFixture(), catalog: [{ type: 'collection-hub', available: true, fields: [{ path: 'collectionItems', type: 'collection' }] }],
+        rows: { inherited: false, effective: { shelves: [...sources, { id: 'hub', name: 'Hub', type: 'collection-hub', enabled: true, order: 21, collectionItems: items }] } },
+    });
+    assert.equal(store.isApplyValid(), false);
+    assert.ok(store.getState().rowValidation.hub.some((error) => error.path === 'collectionItems' && error.message.includes('at most 20')));
+});
+
+test('an occupied row ID rename is a true no-op that preserves selection and hub references', async () => {
+    // Break caught: a colliding identity edit selecting a different row and rewriting collection references ambiguously.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore({
+        ...documentFixture(), rows: { inherited: false, effective: { shelves: [
+            { id: 'first', name: 'First', type: 'genre', enabled: true, order: 0 },
+            { id: 'second', name: 'Second', type: 'genre', enabled: true, order: 1 },
+            { id: 'hub', name: 'Hub', type: 'collection-hub', enabled: true, order: 2, collectionItems: [{ id: 'item', name: 'Item', sourceShelfId: 'second', enabled: true, order: 0 }] },
+        ] } },
+    });
+    store.dispatch({ type: 'selection/select', id: 'second' });
+    assert.equal(store.dispatch({ type: 'rows/field', id: 'second', path: 'id', value: 'first' }), false);
+    assert.equal(store.getState().selectionId, 'second');
+    assert.deepEqual(store.getState().rows.map((row) => row.id), ['first', 'second', 'hub']);
+    assert.equal(store.getState().rows[2].collectionItems[0].sourceShelfId, 'second');
+});
+
 test('row addition inserts at the requested index or appends independently of template order', async () => {
     // Break caught: catalog template order changing where a new row lands or leaving selection on another row.
     const { createStore } = await moduleFromFile('store.js');

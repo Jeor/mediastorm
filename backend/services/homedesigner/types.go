@@ -1,6 +1,10 @@
 package homedesigner
 
-import "novastream/models"
+import (
+	"context"
+
+	"novastream/models"
+)
 
 const (
 	ModeCustom  = "custom"
@@ -33,11 +37,37 @@ type ThemeSection struct {
 
 // Document is the stable Home Designer response returned to editor clients.
 type Document struct {
-	Scope    Scope          `json:"scope"`
-	Revision string         `json:"revision"`
-	Rows     RowsSection    `json:"rows"`
-	Theme    ThemeSection   `json:"theme"`
-	Catalog  []CatalogEntry `json:"catalog"`
+	Scope           Scope            `json:"scope"`
+	Permissions     ScopePermissions `json:"permissions"`
+	PreviewProfiles []PreviewProfile `json:"previewProfiles"`
+	Revision        string           `json:"revision"`
+	Rows            RowsSection      `json:"rows"`
+	Theme           ThemeSection     `json:"theme"`
+	Catalog         []CatalogEntry   `json:"catalog"`
+	ThemePresets    []ThemePreset    `json:"themePresets"`
+}
+
+// ScopePermissions tells the editor which scope transitions the current actor
+// can make without exposing the underlying account or profile records.
+type ScopePermissions struct {
+	CanEdit         bool `json:"canEdit"`
+	CanEditGlobal   bool `json:"canEditGlobal"`
+	CanEditProfiles bool `json:"canEditProfiles"`
+}
+
+// PreviewProfile is the presentation-safe profile selector entry returned to
+// the editor. It intentionally omits icon paths and linked integration IDs.
+type PreviewProfile struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
+}
+
+// ThemePreset is a normalized, non-persisted appearance quick-select.
+type ThemePreset struct {
+	ID          string                    `json:"id"`
+	Name        string                    `json:"name"`
+	Description string                    `json:"description"`
+	Appearance  models.AppearanceSettings `json:"appearance"`
 }
 
 type Option struct {
@@ -112,6 +142,21 @@ type CatalogContext struct {
 type CatalogAccountAuthorization struct {
 	Provider  string `json:"provider"`
 	AccountID string `json:"accountId"`
+}
+
+// CatalogCapabilities are the explicit safe authorization results needed to
+// build a caller-specific catalog. The service never infers them from profile
+// links or provider configuration.
+type CatalogCapabilities struct {
+	Libraries          []CatalogLibrary
+	AuthorizedAccounts []CatalogAccountAuthorization
+	BasePath           string
+}
+
+// CatalogCapabilityProvider resolves provider-specific authorization outside
+// this package, where complete ownership and sharing policy is available.
+type CatalogCapabilityProvider interface {
+	CatalogCapabilities(context.Context, Actor, Scope) CatalogCapabilities
 }
 
 type SectionMutation[T any] struct {

@@ -465,6 +465,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 				settings.HomeShelves.ItemCap = 20
 			}
 		}
+		if settings.HomeShelves.ExcludeUpcomingFromContinue == nil {
+			settings.HomeShelves.ExcludeUpcomingFromContinue = defaults.HomeShelves.ExcludeUpcomingFromContinue
+		}
 		if settings.HomeShelves.MobileTopShelfMode == "" {
 			settings.HomeShelves.MobileTopShelfMode = defaults.HomeShelves.MobileTopShelfMode
 		}

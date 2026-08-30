@@ -2,9 +2,11 @@ package homedesigner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"novastream/config"
@@ -55,10 +57,19 @@ func newServiceLoadTest(t *testing.T) (*Service, *config.Manager, *user_settings
 		t.Fatal(err)
 	}
 	directory := serviceTestDirectory{users: map[string]models.User{
-		"owned":   {ID: "owned", AccountID: "account-a"},
-		"unowned": {ID: "unowned", AccountID: "account-b"},
+		"owned":       {ID: "owned", AccountID: "account-a", Name: "Owner", IconURL: "/private/owner.png", TraktAccountID: "linked-foreign"},
+		"owned-other": {ID: "owned-other", AccountID: "account-a", Name: "Other owner"},
+		"unowned":     {ID: "unowned", AccountID: "account-b", Name: "Foreign", IconURL: "/private/foreign.png", TraktAccountID: "foreign"},
 	}}
 	return New(manager, profiles, directory), manager, profiles
+}
+
+type serviceTestCatalogProvider struct {
+	capabilities CatalogCapabilities
+}
+
+func (p serviceTestCatalogProvider) CatalogCapabilities(context.Context, Actor, Scope) CatalogCapabilities {
+	return p.capabilities
 }
 
 func TestServiceLoadAllowsAdministratorGlobalAccess(t *testing.T) {
@@ -76,6 +87,77 @@ func TestServiceLoadAllowsAdministratorGlobalAccess(t *testing.T) {
 	}
 	if document.Rows.Override == nil || document.Theme.Override == nil {
 		t.Fatal("global document must expose its persisted rows and theme")
+	}
+}
+
+func TestServiceLoadReturnsSafeScopeEnvelopeForActor(t *testing.T) {
+	service, _, _ := newServiceLoadTest(t)
+
+	document, err := service.Load(context.Background(), Actor{AccountID: "account-a"}, Scope{Kind: "profile", ProfileID: "owned"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !document.Permissions.CanEdit || document.Permissions.CanEditGlobal || !document.Permissions.CanEditProfiles {
+		t.Fatalf("permissions = %#v, want account profile-only editor permissions", document.Permissions)
+	}
+	if len(document.PreviewProfiles) != 2 || !hasPreviewProfile(document.PreviewProfiles, "owned", "Owner") || !hasPreviewProfile(document.PreviewProfiles, "owned-other", "Other owner") || hasPreviewProfile(document.PreviewProfiles, "unowned", "Foreign") {
+		t.Fatalf("preview profiles = %#v, want account-a profiles only", document.PreviewProfiles)
+	}
+	if len(document.ThemePresets) == 0 || document.ThemePresets[0].ID != "default-dark" || document.ThemePresets[0].Appearance.AccentColor != "#3f66ff" || document.ThemePresets[0].Appearance.FontScale == nil || *document.ThemePresets[0].Appearance.FontScale != 1 {
+		t.Fatalf("theme presets = %#v, want normalized Default Dark", document.ThemePresets)
+	}
+	encoded, err := json.Marshal(document.PreviewProfiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "iconUrl") || strings.Contains(string(encoded), "traktAccountId") || strings.Contains(string(encoded), "/private/") {
+		t.Fatalf("preview profiles leaked profile data: %s", encoded)
+	}
+}
+
+func TestServiceLoadAdministratorMayPreviewAllProfiles(t *testing.T) {
+	service, _, _ := newServiceLoadTest(t)
+
+	document, err := service.Load(context.Background(), Actor{IsAdmin: true}, Scope{Kind: "global"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !document.Permissions.CanEditGlobal || !document.Permissions.CanEditProfiles || len(document.PreviewProfiles) != 3 || !hasPreviewProfile(document.PreviewProfiles, "unowned", "Foreign") {
+		t.Fatalf("administrator envelope = %#v, want all safe profile choices", document)
+	}
+}
+
+func TestServiceUsesExplicitCatalogCapabilitiesForLoadAndApply(t *testing.T) {
+	service, manager, _ := newServiceLoadTest(t)
+	provider := serviceTestCatalogProvider{capabilities: CatalogCapabilities{
+		BasePath:           "/mediastorm",
+		AuthorizedAccounts: []CatalogAccountAuthorization{{Provider: "trakt", AccountID: "trakt-owned"}},
+		Libraries:          []CatalogLibrary{{ID: "library-owned", Name: "Owned library"}},
+	}}
+	service = NewWithCatalogCapabilities(manager, service.profiles, service.directory, provider)
+	if err := manager.Mutate(func(settings *config.Settings) error {
+		settings.Trakt.Accounts = []config.TraktAccount{{ID: "trakt-owned", Name: "Owned"}, {ID: "foreign", Name: "Foreign"}}
+		settings.HomeShelves.Shelves = []config.ShelfConfig{{ID: "trakt-row", Name: "Owned list", Enabled: true, Order: 0, Type: "trakt", TraktAccountID: "trakt-owned", TraktListType: "watchlist"}}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	before, err := service.Load(context.Background(), Actor{AccountID: "account-a"}, Scope{Kind: "profile", ProfileID: "owned"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byType := catalogByType(before.Catalog)
+	if !hasOption(byType["trakt"].Fields, "traktAccountId", "trakt-owned") || hasOption(byType["trakt"].Fields, "traktAccountId", "foreign") || !hasOption(byType["library"].Fields, "libraryId", "library-owned") {
+		t.Fatalf("catalog = %#v, want only explicitly authorized capabilities", byType)
+	}
+	rows := before.Rows.Effective
+	rows.Shelves[0].Name = "Renamed list"
+	if _, err := service.Apply(context.Background(), Actor{AccountID: "account-a"}, ApplyRequest{
+		Scope: before.Scope, ExpectedRevision: before.Revision,
+		Rows: &SectionMutation[models.HomeShelvesSettings]{Mode: ModeCustom, Value: &rows},
+	}); err != nil {
+		t.Fatalf("Apply rejected an authorized existing integration row: %v", err)
 	}
 }
 
@@ -156,6 +238,9 @@ func TestServiceApplyGlobalRowsOnlyPreservesTheme(t *testing.T) {
 	}
 	if !reflect.DeepEqual(after.Theme.Effective, before.Theme.Effective) {
 		t.Fatalf("theme changed from %#v to %#v", before.Theme.Effective, after.Theme.Effective)
+	}
+	if len(after.PreviewProfiles) != 3 || len(after.ThemePresets) == 0 || !after.Permissions.CanEditGlobal {
+		t.Fatalf("Apply reload omitted editor envelope: %#v", after)
 	}
 }
 
@@ -315,4 +400,13 @@ func TestServiceApplyRejectsInvalidRequestWithoutWriting(t *testing.T) {
 	if after.Revision != before.Revision {
 		t.Fatalf("invalid apply wrote revision %q, want %q", after.Revision, before.Revision)
 	}
+}
+
+func hasPreviewProfile(profiles []PreviewProfile, id, displayName string) bool {
+	for _, profile := range profiles {
+		if profile.ID == id && profile.DisplayName == displayName {
+			return true
+		}
+	}
+	return false
 }

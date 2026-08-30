@@ -147,6 +147,26 @@ func TestMutateRejectsBlankUserID(t *testing.T) {
 	}
 }
 
+func TestGetWithDefaultsInheritsExcludeUpcomingFromContinueWithOtherOverrides(t *testing.T) {
+	svc, err := NewService(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Update("profile", models.UserSettings{Playback: models.PlaybackSettings{PreferredPlayer: "vlc"}}); err != nil {
+		t.Fatal(err)
+	}
+	defaults := models.DefaultUserSettings()
+	defaults.HomeShelves.ExcludeUpcomingFromContinue = models.BoolPtr(true)
+
+	effective, err := svc.GetWithDefaults("profile", defaults)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if effective.HomeShelves.ExcludeUpcomingFromContinue == nil || !*effective.HomeShelves.ExcludeUpcomingFromContinue {
+		t.Fatalf("effective excludeUpcomingFromContinue = %#v, want inherited true", effective.HomeShelves.ExcludeUpcomingFromContinue)
+	}
+}
+
 func TestUpdateSanitizesAllowedTrackLanguages(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)

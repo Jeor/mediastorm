@@ -13,7 +13,7 @@ func TestHomeDesignerCatalog_ContainsUniqueBuiltinsAndRepeatableTemplates(t *tes
 	cfg.Metadata.TMDBAPIKey = "tmdb-key"
 	cfg.Trakt.Accounts = []config.TraktAccount{{ID: "trakt-1", Name: "Shared Trakt"}}
 	cfg.Plex.Accounts = []config.PlexAccount{{ID: "plex-1", Name: "Home Plex"}}
-	entries := BuildCatalog(cfg, []models.User{{ID: "profile-1", Name: "Avery", TraktAccountID: "trakt-1"}})
+	entries := BuildCatalogForContext(cfg, CatalogContext{AuthorizedAccounts: []CatalogAccountAuthorization{{Provider: "trakt", AccountID: "trakt-1"}}})
 
 	seenBuiltinIDs := map[string]bool{}
 	byType := map[string]CatalogEntry{}
@@ -31,7 +31,7 @@ func TestHomeDesignerCatalog_ContainsUniqueBuiltinsAndRepeatableTemplates(t *tes
 	if len(seenBuiltinIDs) == 0 {
 		t.Fatal("catalog did not include built-in shelves")
 	}
-	for _, shelfType := range []string{"genre", "decade", "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "collection-hub", "library"} {
+	for _, shelfType := range []string{"genre", "decade", "streaming-service", "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "collection-hub", "library"} {
 		entry, ok := byType[shelfType]
 		if !ok {
 			t.Fatalf("catalog missing %q template", shelfType)
@@ -40,8 +40,9 @@ func TestHomeDesignerCatalog_ContainsUniqueBuiltinsAndRepeatableTemplates(t *tes
 			t.Errorf("%q template Multiple = false, want true", shelfType)
 		}
 	}
-	if _, exists := byType["streaming-service"]; exists {
-		t.Fatal("catalog exposes streaming-service as a non-renderable persisted row")
+	streaming := byType["streaming-service"]
+	if !streaming.CatalogOnly || streaming.Expansion == nil || streaming.Expansion.OutputType != "mdblist" || streaming.Expansion.MinRows != 1 || streaming.Expansion.MaxRows != 2 || !hasOption(streaming.Fields, "media", "both") || !hasOption(streaming.Fields, "service", "netflix") {
+		t.Fatalf("streaming-service template = %#v, want catalog-only MDBList expansion", streaming)
 	}
 	trakt := byType["trakt"]
 	if !hasOption(trakt.Fields, "traktAccountId", "trakt-1") {
@@ -57,7 +58,7 @@ func TestHomeDesignerCatalog_MarksMissingCapabilitiesUnavailableWithSetupLinks(t
 			byType[entry.Type] = entry
 		}
 	}
-	for _, shelfType := range []string{"trakt", "tmdb", "library"} {
+	for _, shelfType := range []string{"trakt", "library"} {
 		entry, ok := byType[shelfType]
 		if !ok {
 			t.Fatalf("catalog missing %q template", shelfType)
@@ -71,6 +72,9 @@ func TestHomeDesignerCatalog_MarksMissingCapabilitiesUnavailableWithSetupLinks(t
 		if strings.TrimSpace(entry.SetupPath) == "" {
 			t.Errorf("%q SetupPath is empty", shelfType)
 		}
+	}
+	if got := byType["tmdb"]; got.Available || got.SetupPath != "" || !strings.Contains(strings.ToLower(got.UnavailableReason), "administrator") {
+		t.Fatalf("account TMDB template = %#v, want administrator guidance without unusable action", got)
 	}
 }
 
@@ -86,8 +90,8 @@ func TestHomeDesignerCatalog_DoesNotExposeForeignIntegrationAccounts(t *testing.
 		{ID: "foreign-simkl", Name: "Foreign Simkl", OwnerAccountID: "account-b"},
 	}
 	context := CatalogContext{
-		Actor:    Actor{AccountID: "account-a"},
-		Profiles: []models.User{{ID: "profile-a", AccountID: "account-a", Name: "Avery", TraktAccountID: "owned", SimklAccountID: "owned-simkl"}},
+		Actor:              Actor{AccountID: "account-a"},
+		AuthorizedAccounts: []CatalogAccountAuthorization{{Provider: "trakt", AccountID: "owned"}, {Provider: "simkl", AccountID: "owned-simkl"}},
 	}
 	entries := BuildCatalogForContext(cfg, context)
 	byType := catalogByType(entries)
@@ -98,10 +102,48 @@ func TestHomeDesignerCatalog_DoesNotExposeForeignIntegrationAccounts(t *testing.
 		t.Fatalf("Simkl options = %#v, want owned only", byType["simkl"].Fields)
 	}
 
-	context.IncludeSharedAccounts = true
+	if hasOption(byType["trakt"].Fields, "traktAccountId", "shared") {
+		t.Fatal("ownerless account leaked without an explicit provider authorization")
+	}
+	context.AuthorizedAccounts = append(context.AuthorizedAccounts, CatalogAccountAuthorization{Provider: "trakt", AccountID: "shared"})
 	entries = BuildCatalogForContext(cfg, context)
 	if !hasOption(catalogByType(entries)["trakt"].Fields, "traktAccountId", "shared") {
-		t.Fatal("intentionally authorized shared account was not included")
+		t.Fatal("explicitly authorized account was not included")
+	}
+}
+
+func TestHomeDesignerCatalog_ProfileLinksNeverAuthorizeForeignOrCrossLoginAccounts(t *testing.T) {
+	cfg := config.DefaultSettings()
+	cfg.Trakt.Accounts = []config.TraktAccount{{ID: "foreign", Name: "Foreign", OwnerAccountID: "account-b"}, {ID: "ownerless", Name: "Ownerless"}}
+	entries := BuildCatalog(cfg, []models.User{
+		{ID: "a-foreign", AccountID: "account-a", TraktAccountID: "foreign"},
+		{ID: "a-ownerless", AccountID: "account-a", TraktAccountID: "ownerless"},
+		{ID: "b-ownerless", AccountID: "account-b", TraktAccountID: "ownerless"},
+	})
+	trakt := catalogByType(entries)["trakt"]
+	if hasOption(trakt.Fields, "traktAccountId", "foreign") || hasOption(trakt.Fields, "traktAccountId", "ownerless") {
+		t.Fatalf("profile links authorized integration accounts: %#v", trakt.Fields)
+	}
+}
+
+func TestHomeDesignerCatalog_AdminMaySeeUnlinkedForeignAccounts(t *testing.T) {
+	cfg := config.DefaultSettings()
+	cfg.Trakt.Accounts = []config.TraktAccount{{ID: "foreign", Name: "Foreign", OwnerAccountID: "account-b"}}
+	entries := BuildCatalogForContext(cfg, CatalogContext{Actor: Actor{IsAdmin: true, AccountID: "admin"}})
+	if !hasOption(catalogByType(entries)["trakt"].Fields, "traktAccountId", "foreign") {
+		t.Fatal("admin catalog omitted authorized unlinked foreign account")
+	}
+}
+
+func TestHomeDesignerCatalog_ExpandsStreamingServiceIntoRenderableMDBListRows(t *testing.T) {
+	rows, errs := ExpandStreamingServiceSelection(StreamingServiceSelection{InstanceID: "netflix-a", Service: "netflix", Media: "both", Limit: 20})
+	if len(errs) != 0 || len(rows) != 2 {
+		t.Fatalf("expansion = %#v, %#v; want two rows without errors", rows, errs)
+	}
+	for _, row := range rows {
+		if row.Type != "mdblist" || !strings.HasPrefix(row.ListURL, "https://mdblist.com/") || row.ID == "streaming-service" {
+			t.Fatalf("expanded row = %#v, want renderable MDBList row", row)
+		}
 	}
 }
 
@@ -127,6 +169,9 @@ func TestHomeDesignerCatalog_UsesAuthorizedLibrariesAndRoleAwareSetupPaths(t *te
 	byType = catalogByType(entries)
 	if got := byType["library"].SetupPath; got != "/mediastorm/admin/library" {
 		t.Fatalf("admin library setup path = %q, want /mediastorm/admin/library", got)
+	}
+	if got := byType["tmdb"].SetupPath; got != "/mediastorm/admin/settings" {
+		t.Fatalf("admin TMDB setup path = %q, want /mediastorm/admin/settings", got)
 	}
 }
 

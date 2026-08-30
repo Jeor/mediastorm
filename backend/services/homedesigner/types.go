@@ -65,6 +65,28 @@ type CatalogEntry struct {
 	Default           models.ShelfConfig `json:"default"`
 	Fields            []CatalogField     `json:"fields"`
 	PreviewKind       string             `json:"previewKind"`
+	// CatalogOnly entries are editor templates which expand into persisted rows.
+	CatalogOnly bool              `json:"catalogOnly,omitempty"`
+	Expansion   *CatalogExpansion `json:"expansion,omitempty"`
+}
+
+// CatalogExpansion describes the persisted rows emitted by a catalog-only
+// template. Its type is intentionally not accepted as a persisted shelf type.
+type CatalogExpansion struct {
+	OutputType string `json:"outputType"`
+	MinRows    int    `json:"minRows"`
+	MaxRows    int    `json:"maxRows"`
+}
+
+// StreamingServiceSelection is the catalog-only input used to expand a
+// streaming-service template into renderable MDBList shelves.
+type StreamingServiceSelection struct {
+	InstanceID     string `json:"instanceId"`
+	Service        string `json:"service"`
+	Media          string `json:"media"`
+	Name           string `json:"name,omitempty"`
+	Limit          int    `json:"limit,omitempty"`
+	HideUnreleased bool   `json:"hideUnreleased,omitempty"`
 }
 
 // CatalogLibrary is the presentation-safe representation of a library the
@@ -79,11 +101,17 @@ type CatalogLibrary struct {
 // construct a profile-safe catalog. Shared integrations are opt-in because an
 // empty owner is not by itself permission to expose an account.
 type CatalogContext struct {
-	Actor                 Actor            `json:"-"`
-	Profiles              []models.User    `json:"-"`
-	Libraries             []CatalogLibrary `json:"-"`
-	BasePath              string           `json:"-"`
-	IncludeSharedAccounts bool             `json:"-"`
+	Actor              Actor                         `json:"-"`
+	Libraries          []CatalogLibrary              `json:"-"`
+	AuthorizedAccounts []CatalogAccountAuthorization `json:"-"`
+	BasePath           string                        `json:"-"`
+}
+
+// CatalogAccountAuthorization is an explicit result of provider-specific
+// ownership authorization. It is the only non-admin account-access input.
+type CatalogAccountAuthorization struct {
+	Provider  string `json:"provider"`
+	AccountID string `json:"accountId"`
 }
 
 type SectionMutation[T any] struct {
@@ -155,6 +183,7 @@ func BuildPreviewResponse(request PreviewRequest, rows models.HomeShelvesSetting
 type FieldError struct {
 	Section string `json:"section"`
 	RowID   string `json:"rowId,omitempty"`
+	ItemID  string `json:"itemId,omitempty"`
 	Path    string `json:"path"`
 	Message string `json:"message"`
 }

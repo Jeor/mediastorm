@@ -127,6 +127,41 @@ func TestValidateHomeDesigner_AcceptsLegacyProfileDashboardBuiltIn(t *testing.T)
 	}
 }
 
+func TestValidateHomeDesigner_NormalizesCollectionHubItems(t *testing.T) {
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "genre-1-movie", Name: "Source A", Type: "genre"},
+		{ID: "genre-2-movie", Name: "Source B", Type: "genre"},
+		{ID: "hub", Name: "Hub", Type: "collection-hub", CollectionItems: []models.CollectionHubLink{
+			{ID: " item-b ", Name: " B ", SourceShelfID: " genre-2-movie ", Order: 8, LogoURL: "https://example.test/b.png", HeroArtURL: "https://example.test/b.jpg", LogoScale: 1.2, TintColor: " #112233 "},
+			{ID: " item-a ", Name: " A ", SourceShelfID: " genre-1-movie ", Order: 4},
+		}},
+	}})
+	if errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil)); len(errs) != 0 {
+		t.Fatalf("errors = %#v, want valid normalized collection hub", errs)
+	}
+	items := request.Rows.Value.Shelves[2].CollectionItems
+	if items[0].ID != "item-a" || items[0].Name != "A" || items[0].SourceShelfID != "genre-1-movie" || items[0].Order != 0 || items[1].ID != "item-b" || items[1].Order != 1 || items[1].TintColor != "#112233" {
+		t.Fatalf("normalized collection items = %#v", items)
+	}
+}
+
+func TestValidateHomeDesigner_RejectsMalformedCollectionHubItems(t *testing.T) {
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "genre-1-movie", Name: "Source", Type: "genre"},
+		{ID: "hub", Name: "Hub", Type: "collection-hub", CollectionItems: []models.CollectionHubLink{
+			{ID: " ", Name: "", SourceShelfID: "missing", Order: 0, LogoURL: "bad-url", LogoScale: 3, TintColor: "blue"},
+			{ID: "same", Name: "Same", SourceShelfID: "genre-1-movie", Order: 1},
+			{ID: "same", Name: "Same", SourceShelfID: "genre-1-movie", Order: 2},
+		}},
+	}})
+	errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil))
+	for _, want := range []struct{ itemID, path string }{{"", "id"}, {"", "name"}, {"", "sourceShelfId"}, {"", "logoUrl"}, {"", "logoScale"}, {"", "tintColor"}, {"same", "id"}, {"same", "name"}, {"same", "sourceShelfId"}} {
+		if !hasCollectionItemError(errs, "hub", want.itemID, want.path) {
+			t.Errorf("errors = %#v, want item %q %s error", errs, want.itemID, want.path)
+		}
+	}
+}
+
 func customRowsRequest(rows models.HomeShelvesSettings) ApplyRequest {
 	return ApplyRequest{Scope: Scope{Kind: "profile", ProfileID: "profile-1"}, Rows: &SectionMutation[models.HomeShelvesSettings]{Mode: ModeCustom, Value: &rows}}
 }
@@ -134,6 +169,15 @@ func customRowsRequest(rows models.HomeShelvesSettings) ApplyRequest {
 func hasFieldError(errs []FieldError, section, rowID, path string) bool {
 	for _, err := range errs {
 		if err.Section == section && err.RowID == rowID && err.Path == path {
+			return true
+		}
+	}
+	return false
+}
+
+func hasCollectionItemError(errs []FieldError, rowID, itemID, path string) bool {
+	for _, err := range errs {
+		if err.Section == "rows" && err.RowID == rowID && err.ItemID == itemID && err.Path == path {
 			return true
 		}
 	}

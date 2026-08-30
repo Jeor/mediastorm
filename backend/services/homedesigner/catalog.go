@@ -9,29 +9,29 @@ import (
 )
 
 // BuildCatalog preserves the original simple API while defaulting to the
-// strictest safe behavior: only integrations explicitly linked to supplied
-// profiles are exposed. Use BuildCatalogForContext when actor, libraries, or
-// intentionally shared integrations need to be represented.
-func BuildCatalog(settings config.Settings, users []models.User) []CatalogEntry {
-	return BuildCatalogForContext(settings, CatalogContext{Profiles: users})
+// strictest safe behavior: no integrations are exposed. Use
+// BuildCatalogForContext with explicit provider authorization decisions.
+func BuildCatalog(settings config.Settings, _ []models.User) []CatalogEntry {
+	return BuildCatalogForContext(settings, CatalogContext{})
 }
 
 // BuildCatalogForContext returns templates that the supplied actor and profile
 // set may actually configure. It exposes no credentials, source URLs, or
 // accounts belonging to another account owner.
 func BuildCatalogForContext(settings config.Settings, context CatalogContext) []CatalogEntry {
-	profiles := authorizedProfiles(context)
 	entries := builtInCatalogEntries()
-	traktOptions := traktAccountOptions(settings.Trakt.Accounts, profiles, context)
-	simklOptions := simklAccountOptions(settings.Simkl.Accounts, profiles, context)
+	traktOptions := traktAccountOptions(settings.Trakt.Accounts, context)
+	simklOptions := simklAccountOptions(settings.Simkl.Accounts, context)
 	libraryOptions := libraryOptions(context.Libraries)
+	tmdbAvailable, tmdbReason, tmdbSetupPath := tmdbAvailability(settings, context)
 
 	entries = append(entries,
 		repeatableEntry("genre", "Genre", "Browse a movie or TV genre.", "Discovery", models.ShelfConfig{Type: "genre"}, []CatalogField{{Path: "id", Type: "text", Label: "Genre row ID", Required: true}}, "shelf"),
 		repeatableEntry("decade", "Decade", "Browse a movie or TV decade.", "Discovery", models.ShelfConfig{Type: "decade"}, []CatalogField{{Path: "id", Type: "text", Label: "Decade row ID", Required: true}}, "shelf"),
+		streamingServiceEntry(),
 		repeatableEntry("mdblist", "MDBList", "Show an MDBList URL.", "Lists", models.ShelfConfig{Type: "mdblist"}, []CatalogField{{Path: "listUrl", Type: "url", Label: "MDBList URL", Required: true}, limitField()}, "shelf"),
 		repeatableEntry("stremio", "Stremio add-on", "Show a catalog from a Stremio add-on.", "Lists", models.ShelfConfig{Type: "stremio"}, []CatalogField{{Path: "addonManifestUrl", Type: "url", Label: "Manifest URL", Required: true}, {Path: "addonCatalogType", Type: "select", Label: "Catalog type", Required: true, Options: []Option{{Value: "movie", Label: "Movies"}, {Value: "series", Label: "Series"}}}, {Path: "addonCatalogId", Type: "text", Label: "Catalog", Required: true}}, "shelf"),
-		withAvailability(repeatableEntry("tmdb", "TMDB", "Build a shelf from TMDB.", "Discovery", models.ShelfConfig{Type: "tmdb"}, []CatalogField{{Path: "tmdbSourceType", Type: "select", Label: "Source type", Required: true, Options: tmdbSourceTypeOptions()}, {Path: "tmdbSourceId", Type: "text", Label: "Source"}, {Path: "tmdbMediaType", Type: "select", Label: "Content", Required: true, Options: []Option{{Value: "movie", Label: "Movies"}, {Value: "tv", Label: "TV shows"}, {Value: "all", Label: "Movies and TV shows"}}}, {Path: "sort", Type: "select", Label: "Sort", Options: sortOptions()}}, "shelf"), strings.TrimSpace(settings.Metadata.TMDBAPIKey) != "", "TMDB API access is not configured.", setupPath(settings, context, "settings")),
+		withAvailability(repeatableEntry("tmdb", "TMDB", "Build a shelf from TMDB.", "Discovery", models.ShelfConfig{Type: "tmdb"}, []CatalogField{{Path: "tmdbSourceType", Type: "select", Label: "Source type", Required: true, Options: tmdbSourceTypeOptions()}, {Path: "tmdbSourceId", Type: "text", Label: "Source"}, {Path: "tmdbMediaType", Type: "select", Label: "Content", Required: true, Options: []Option{{Value: "movie", Label: "Movies"}, {Value: "tv", Label: "TV shows"}, {Value: "all", Label: "Movies and TV shows"}}}, {Path: "sort", Type: "select", Label: "Sort", Options: sortOptions()}}, "shelf"), tmdbAvailable, tmdbReason, tmdbSetupPath),
 		withAvailability(repeatableEntry("trakt", "Trakt", "Show a Trakt watchlist or custom list.", "Lists", models.ShelfConfig{Type: "trakt"}, []CatalogField{{Path: "traktAccountId", Type: "select", Label: "Trakt account", Required: true, Options: traktOptions}, {Path: "traktListType", Type: "select", Label: "List type", Required: true, Options: []Option{{Value: "watchlist", Label: "Watchlist"}, {Value: "custom", Label: "Custom list"}}}, {Path: "traktListId", Type: "text", Label: "Custom list"}}, "shelf"), len(traktOptions) > 0, "Connect a Trakt account before adding this shelf.", setupPath(settings, context, "tools")),
 		withAvailability(repeatableEntry("simkl", "Simkl", "Show a Simkl list.", "Lists", models.ShelfConfig{Type: "simkl"}, []CatalogField{{Path: "simklAccountId", Type: "select", Label: "Simkl account", Required: true, Options: simklOptions}, {Path: "simklMediaType", Type: "select", Label: "Content", Required: true, Options: []Option{{Value: "movies", Label: "Movies"}, {Value: "shows", Label: "Shows"}, {Value: "anime", Label: "Anime"}}}, {Path: "simklListType", Type: "select", Label: "List", Options: []Option{{Value: "plantowatch", Label: "Plan to watch"}, {Value: "watching", Label: "Watching"}, {Value: "completed", Label: "Completed"}, {Value: "hold", Label: "On hold"}, {Value: "dropped", Label: "Dropped"}}}}, "shelf"), len(simklOptions) > 0, "Connect a Simkl account before adding this shelf.", setupPath(settings, context, "tools")),
 		repeatableEntry("letterboxd", "Letterboxd", "Show a public Letterboxd list.", "Lists", models.ShelfConfig{Type: "letterboxd"}, []CatalogField{{Path: "letterboxdListUrl", Type: "url", Label: "Public list URL"}, {Path: "letterboxdListId", Type: "text", Label: "Imported list ID"}}, "shelf"),
@@ -75,6 +75,88 @@ func withAvailability(entry CatalogEntry, available bool, reason, setupPath stri
 	return entry
 }
 
+func tmdbAvailability(settings config.Settings, context CatalogContext) (bool, string, string) {
+	if strings.TrimSpace(settings.Metadata.TMDBAPIKey) != "" {
+		return true, "", ""
+	}
+	if !context.Actor.IsAdmin {
+		return false, "TMDB API access must be configured by an administrator.", ""
+	}
+	return false, "TMDB API access is not configured.", setupPath(settings, context, "settings")
+}
+
+func streamingServiceEntry() CatalogEntry {
+	return CatalogEntry{
+		Type: "streaming-service", Name: "Streaming service", Description: "Expand a streaming provider into MDBList movie and TV shelves.", Category: "Lists", Multiple: true, Available: true,
+		Default: models.ShelfConfig{Type: "mdblist"}, Fields: []CatalogField{
+			{Path: "service", Type: "select", Label: "Service", Required: true, Options: streamingServiceOptions()},
+			{Path: "media", Type: "select", Label: "Content", Required: true, Options: []Option{{Value: "movies", Label: "Movies"}, {Value: "shows", Label: "TV shows"}, {Value: "both", Label: "Movies and TV shows"}}},
+		}, PreviewKind: "shelf", CatalogOnly: true, Expansion: &CatalogExpansion{OutputType: "mdblist", MinRows: 1, MaxRows: 2},
+	}
+}
+
+func streamingServiceOptions() []Option {
+	return []Option{{Value: "netflix", Label: "Netflix"}, {Value: "disney", Label: "Disney+"}, {Value: "amazon", Label: "Amazon Prime"}, {Value: "appletv", Label: "Apple TV+"}, {Value: "paramount", Label: "Paramount+"}, {Value: "hbomax", Label: "HBO Max"}, {Value: "hulu", Label: "Hulu"}, {Value: "crunchyroll", Label: "Crunchyroll"}}
+}
+
+type streamingServiceLists struct{ movies, shows string }
+
+var streamingServiceMDBLists = map[string]streamingServiceLists{
+	"netflix":     {"https://mdblist.com/lists/snoak/netflix-top-10-movies/json", "https://mdblist.com/lists/snoak/netflix-top-10-shows/json"},
+	"disney":      {"https://mdblist.com/lists/snoak/disney-plus-top-10-movies/json", "https://mdblist.com/lists/snoak/disney-plus-top-10-tv-shows/json"},
+	"amazon":      {"https://mdblist.com/lists/snoak/amazon-prime-top-10-shows/json", "https://mdblist.com/lists/snoak/amazon-prime-top-10-tv-shows/json"},
+	"appletv":     {"https://mdblist.com/lists/snoak/apple-tv-top-10-movies/json", "https://mdblist.com/lists/snoak/apple-tv-top-10-tv-shows/json"},
+	"paramount":   {"https://mdblist.com/lists/snoak/paramount-plus-top-10-movies/json", "https://mdblist.com/lists/snoak/paramount-plus-top-10-tv-shows/json"},
+	"hbomax":      {"https://mdblist.com/lists/snoak/hbo-top-10-movies-2/json", "https://mdblist.com/lists/snoak/hbo-top-10-tv-shows/json"},
+	"hulu":        {"https://mdblist.com/lists/snoak/top-hulu-movies/json", "https://mdblist.com/lists/snoak/top-tv-shows-hulu/json"},
+	"crunchyroll": {"https://mdblist.com/lists/snoak/trending-anime-movies/json", "https://mdblist.com/lists/snoak/trending-anime-shows/json"},
+}
+
+// ExpandStreamingServiceSelection creates one or two renderable MDBList
+// shelves. Callers supply a stable instance ID so the generated row IDs remain
+// distinct when a service is added more than once.
+func ExpandStreamingServiceSelection(selection StreamingServiceSelection) ([]models.ShelfConfig, []FieldError) {
+	selection.InstanceID = strings.TrimSpace(selection.InstanceID)
+	selection.Service = strings.TrimSpace(selection.Service)
+	selection.Media = strings.TrimSpace(selection.Media)
+	lists, found := streamingServiceMDBLists[selection.Service]
+	if selection.InstanceID == "" {
+		return nil, []FieldError{{Section: "rows", Path: "instanceId", Message: "instance id is required"}}
+	}
+	if !found {
+		return nil, []FieldError{{Section: "rows", Path: "service", Message: "service is not supported"}}
+	}
+	if selection.Media != "movies" && selection.Media != "shows" && selection.Media != "both" {
+		return nil, []FieldError{{Section: "rows", Path: "media", Message: "media must be movies, shows, or both"}}
+	}
+	if selection.Limit < 0 || selection.Limit > 500 {
+		return nil, []FieldError{{Section: "rows", Path: "limit", Message: "limit must be between 0 and 500"}}
+	}
+	name := strings.TrimSpace(selection.Name)
+	serviceName := selection.Service
+	for _, option := range streamingServiceOptions() {
+		if option.Value == selection.Service {
+			serviceName = option.Label
+			break
+		}
+	}
+	rows := make([]models.ShelfConfig, 0, 2)
+	add := func(media, label, listURL string) {
+		rowName := name
+		if rowName == "" || selection.Media == "both" {
+			rowName = serviceName + " " + label
+		}
+		rows = append(rows, models.ShelfConfig{ID: "streaming-service-" + selection.InstanceID + "-" + media, Name: rowName, Enabled: true, Order: len(rows), Type: "mdblist", ListURL: listURL, Limit: selection.Limit, HideUnreleased: selection.HideUnreleased})
+	}
+	if selection.Media == "movies" || selection.Media == "both" {
+		add("movies", "Movies", lists.movies)
+	}
+	if selection.Media == "shows" || selection.Media == "both" {
+		add("shows", "TV shows", lists.shows)
+	}
+	return rows, nil
+}
+
 func limitField() CatalogField {
 	return CatalogField{Path: "limit", Type: "number", Label: "Item limit"}
 }
@@ -92,59 +174,35 @@ func sortOptions() []Option {
 	return options
 }
 
-func authorizedProfiles(context CatalogContext) []models.User {
-	profiles := make([]models.User, 0, len(context.Profiles))
-	for _, profile := range context.Profiles {
-		if context.Actor.AccountID != "" && !context.Actor.IsAdmin && profile.AccountID != context.Actor.AccountID {
-			continue
-		}
-		profiles = append(profiles, profile)
-	}
-	return profiles
-}
-
-func traktAccountOptions(accounts []config.TraktAccount, profiles []models.User, context CatalogContext) []Option {
-	return accountOptions(accounts, profiles, context, func(user models.User) string { return user.TraktAccountID }, func(account config.TraktAccount) (string, string, string) {
-		return account.ID, account.Name, account.OwnerAccountID
+func traktAccountOptions(accounts []config.TraktAccount, context CatalogContext) []Option {
+	return accountOptions(accounts, "trakt", context, func(account config.TraktAccount) (string, string) {
+		return account.ID, account.Name
 	})
 }
 
-func simklAccountOptions(accounts []config.SimklAccount, profiles []models.User, context CatalogContext) []Option {
-	return accountOptions(accounts, profiles, context, func(user models.User) string { return user.SimklAccountID }, func(account config.SimklAccount) (string, string, string) {
-		return account.ID, account.Name, account.OwnerAccountID
+func simklAccountOptions(accounts []config.SimklAccount, context CatalogContext) []Option {
+	return accountOptions(accounts, "simkl", context, func(account config.SimklAccount) (string, string) {
+		return account.ID, account.Name
 	})
 }
 
-func accountOptions[T any](accounts []T, profiles []models.User, context CatalogContext, profileAccountID func(models.User) string, details func(T) (id, name, ownerID string)) []Option {
-	linkedNames := make(map[string][]string)
-	for _, profile := range profiles {
-		if id := strings.TrimSpace(profileAccountID(profile)); id != "" {
-			linkedNames[id] = append(linkedNames[id], strings.TrimSpace(profile.Name))
+func accountOptions[T any](accounts []T, provider string, context CatalogContext, details func(T) (id, name string)) []Option {
+	authorized := make(map[string]bool, len(context.AuthorizedAccounts))
+	for _, account := range context.AuthorizedAccounts {
+		if strings.EqualFold(strings.TrimSpace(account.Provider), provider) {
+			authorized[strings.TrimSpace(account.AccountID)] = true
 		}
 	}
 	options := make([]Option, 0, len(accounts))
 	for _, account := range accounts {
-		id, name, ownerID := details(account)
-		id, ownerID = strings.TrimSpace(id), strings.TrimSpace(ownerID)
-		if id == "" || !accountAllowed(id, ownerID, linkedNames, context) {
+		id, name := details(account)
+		id = strings.TrimSpace(id)
+		if id == "" || (!context.Actor.IsAdmin && !authorized[id]) {
 			continue
-		}
-		if linked := linkedNames[id]; len(linked) > 0 {
-			name = strings.Join(linked, ", ") + " · " + name
 		}
 		options = append(options, Option{Value: id, Label: strings.TrimSpace(name)})
 	}
 	return options
-}
-
-func accountAllowed(id, ownerID string, linkedNames map[string][]string, context CatalogContext) bool {
-	if len(linkedNames[id]) > 0 {
-		return true
-	}
-	if context.Actor.AccountID != "" && ownerID == context.Actor.AccountID {
-		return true
-	}
-	return ownerID == "" && context.IncludeSharedAccounts
 }
 
 func libraryOptions(libraries []CatalogLibrary) []Option {

@@ -43,6 +43,12 @@ func validateRowsMutation(scope Scope, mutation *SectionMutation[models.HomeShel
 	rows := mutation.Value
 	normalizeRows(rows)
 	entriesByType, builtinIDs := catalogTypes(catalog)
+	rowIDs := make(map[string]bool, len(rows.Shelves))
+	for _, shelf := range rows.Shelves {
+		if shelf.ID != "" {
+			rowIDs[shelf.ID] = true
+		}
+	}
 	seenRowIDs := make(map[string]struct{}, len(rows.Shelves))
 	for i := range rows.Shelves {
 		shelf := &rows.Shelves[i]
@@ -75,6 +81,9 @@ func validateRowsMutation(scope Scope, mutation *SectionMutation[models.HomeShel
 			}
 		}
 		errs = append(errs, validateShelf(rowID, *shelf, entry)...)
+		if shelf.Type == "collection-hub" {
+			errs = append(errs, validateCollectionItems(rowID, shelf.CollectionItems, rowIDs)...)
+		}
 	}
 	errs = append(errs, validateRowsSettings(*rows)...)
 	return errs
@@ -152,6 +161,7 @@ func normalizeRows(rows *models.HomeShelvesSettings) {
 		shelf.SimklMediaType = strings.TrimSpace(shelf.SimklMediaType)
 		shelf.LetterboxdListID = strings.TrimSpace(shelf.LetterboxdListID)
 		shelf.LetterboxdListURL = strings.TrimSpace(shelf.LetterboxdListURL)
+		normalizeCollectionItems(shelf.CollectionItems)
 	}
 	sort.SliceStable(rows.Shelves, func(i, j int) bool { return rows.Shelves[i].Order < rows.Shelves[j].Order })
 	for i := range rows.Shelves {
@@ -179,6 +189,9 @@ func clampHomeScale(value *float64) *float64 {
 func catalogTypes(catalog []CatalogEntry) (map[string]CatalogEntry, map[string]bool) {
 	types, builtins := make(map[string]CatalogEntry), make(map[string]bool)
 	for _, entry := range catalog {
+		if entry.CatalogOnly {
+			continue
+		}
 		if _, exists := types[entry.Type]; !exists {
 			types[entry.Type] = entry
 		}
@@ -187,6 +200,64 @@ func catalogTypes(catalog []CatalogEntry) (map[string]CatalogEntry, map[string]b
 		}
 	}
 	return types, builtins
+}
+
+func normalizeCollectionItems(items []models.CollectionHubLink) {
+	for i := range items {
+		item := &items[i]
+		item.ID = strings.TrimSpace(item.ID)
+		item.Name = strings.TrimSpace(item.Name)
+		item.SourceShelfID = strings.TrimSpace(item.SourceShelfID)
+		item.LogoURL = strings.TrimSpace(item.LogoURL)
+		item.HeroArtURL = strings.TrimSpace(item.HeroArtURL)
+		item.TintColor = strings.TrimSpace(item.TintColor)
+	}
+	sort.SliceStable(items, func(i, j int) bool { return items[i].Order < items[j].Order })
+	for i := range items {
+		items[i].Order = i
+	}
+}
+
+func validateCollectionItems(rowID string, items []models.CollectionHubLink, rowIDs map[string]bool) []FieldError {
+	errs := make([]FieldError, 0)
+	ids, names, sources := make(map[string]bool), make(map[string]bool), make(map[string]bool)
+	for _, item := range items {
+		itemID := item.ID
+		if itemID == "" {
+			errs = append(errs, collectionItemError(rowID, itemID, "id", "item id is required"))
+		} else if ids[itemID] {
+			errs = append(errs, collectionItemError(rowID, itemID, "id", "item id must be unique"))
+		} else {
+			ids[itemID] = true
+		}
+		if item.Name == "" {
+			errs = append(errs, collectionItemError(rowID, itemID, "name", "item name is required"))
+		} else if names[item.Name] {
+			errs = append(errs, collectionItemError(rowID, itemID, "name", "item name must be unique"))
+		} else {
+			names[item.Name] = true
+		}
+		if item.SourceShelfID == "" || !rowIDs[item.SourceShelfID] || item.SourceShelfID == rowID {
+			errs = append(errs, collectionItemError(rowID, itemID, "sourceShelfId", "source must reference another configured shelf"))
+		} else if sources[item.SourceShelfID] {
+			errs = append(errs, collectionItemError(rowID, itemID, "sourceShelfId", "source shelf may only be used once"))
+		} else {
+			sources[item.SourceShelfID] = true
+		}
+		if item.LogoURL != "" && !isHTTPURL(item.LogoURL) {
+			errs = append(errs, collectionItemError(rowID, itemID, "logoUrl", "must be an http or https URL"))
+		}
+		if item.HeroArtURL != "" && !isHTTPURL(item.HeroArtURL) {
+			errs = append(errs, collectionItemError(rowID, itemID, "heroArtUrl", "must be an http or https URL"))
+		}
+		if item.LogoScale != 0 && (item.LogoScale < 0.5 || item.LogoScale > 2.0) {
+			errs = append(errs, collectionItemError(rowID, itemID, "logoScale", "logo scale must be between 0.5 and 2.0"))
+		}
+		if item.TintColor != "" && !hexColorPattern.MatchString(item.TintColor) {
+			errs = append(errs, collectionItemError(rowID, itemID, "tintColor", "color must use #RRGGBB"))
+		}
+	}
+	return errs
 }
 
 func validateShelf(rowID string, shelf models.ShelfConfig, entry CatalogEntry) []FieldError {
@@ -385,4 +456,8 @@ func validateTopShelfMode(modePath, sourcePath, mode, source string, ids map[str
 
 func rowError(rowID, path, message string) FieldError {
 	return FieldError{Section: "rows", RowID: rowID, Path: path, Message: message}
+}
+
+func collectionItemError(rowID, itemID, path, message string) FieldError {
+	return FieldError{Section: "rows", RowID: rowID, ItemID: itemID, Path: path, Message: message}
 }

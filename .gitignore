@@ -139,6 +139,8 @@ frontend/
 /ops/macos/
 .monitoring/
 monitor.sh
+.worktrees/
+.superpowers/
 
 # Backend scripts
 backend/scripts/build-docker.sh

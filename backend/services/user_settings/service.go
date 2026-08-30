@@ -692,7 +692,11 @@ func (s *Service) Mutate(userID string, fn func(*models.UserSettings) error) err
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	settings := s.settings[userID]
+	previous, existed := s.settings[userID]
+	settings, err := cloneUserSettings(previous)
+	if err != nil {
+		return err
+	}
 	if err := fn(&settings); err != nil {
 		return err
 	}
@@ -704,7 +708,27 @@ func (s *Service) Mutate(userID string, fn func(*models.UserSettings) error) err
 		s.settings[userID] = settings
 	}
 
-	return s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		if existed {
+			s.settings[userID] = previous
+		} else {
+			delete(s.settings, userID)
+		}
+		return err
+	}
+	return nil
+}
+
+func cloneUserSettings(settings models.UserSettings) (models.UserSettings, error) {
+	data, err := json.Marshal(settings)
+	if err != nil {
+		return models.UserSettings{}, fmt.Errorf("encode user settings clone: %w", err)
+	}
+	var clone models.UserSettings
+	if err := json.Unmarshal(data, &clone); err != nil {
+		return models.UserSettings{}, fmt.Errorf("decode user settings clone: %w", err)
+	}
+	return clone, nil
 }
 
 func normalizeForStorage(settings models.UserSettings) models.UserSettings {

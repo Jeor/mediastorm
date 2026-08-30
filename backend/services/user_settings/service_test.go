@@ -66,6 +66,77 @@ func TestMutateDoesNotPersistCallbackError(t *testing.T) {
 	}
 }
 
+func TestMutateDoesNotApplyNestedShelfChangeOnCallbackError(t *testing.T) {
+	svc, err := NewService(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Update("p1", models.UserSettings{HomeShelves: models.HomeShelvesSettings{
+		Shelves: []models.ShelfConfig{{ID: "watchlist", Name: "Original", Enabled: true}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	callbackErr := errors.New("stop mutation")
+	if err := svc.Mutate("p1", func(s *models.UserSettings) error {
+		s.HomeShelves.Shelves[0].Name = "Changed"
+		return callbackErr
+	}); !errors.Is(err, callbackErr) {
+		t.Fatalf("Mutate error = %v, want callback error", err)
+	}
+
+	got, err := svc.Get("p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("profile settings missing after callback error")
+	}
+	if got.HomeShelves.Shelves[0].Name != "Original" {
+		t.Fatalf("shelf name = %q, want Original", got.HomeShelves.Shelves[0].Name)
+	}
+}
+
+func TestMutateRollsBackWhenPersistenceFails(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Update("p1", models.UserSettings{Playback: models.PlaybackSettings{PreferredPlayer: "vlc"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// An existing directory cannot be replaced by the temp-file rename used by saveLocked.
+	svc.path = dir
+	if err := svc.Mutate("p1", func(s *models.UserSettings) error {
+		s.Playback.PreferredPlayer = "native"
+		return nil
+	}); err == nil {
+		t.Fatal("Mutate succeeded despite a non-replaceable storage target")
+	}
+
+	got, err := svc.Get("p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.Playback.PreferredPlayer != "vlc" {
+		t.Fatalf("in-memory preferred player = %#v, want vlc", got)
+	}
+
+	durable, err := NewService(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := durable.Get("p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored == nil || stored.Playback.PreferredPlayer != "vlc" {
+		t.Fatalf("durable preferred player = %#v, want vlc", stored)
+	}
+}
+
 func TestMutateRejectsBlankUserID(t *testing.T) {
 	svc, err := NewService(t.TempDir())
 	if err != nil {

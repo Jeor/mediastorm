@@ -343,37 +343,81 @@ func safePreviewArtworkURL(value string) string {
 	if err != nil || parsed == nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
 		return ""
 	}
-	if previewArtworkHostIsLocal(parsed.Hostname()) || previewArtworkPathIsSensitive(parsed.EscapedPath()) {
+	if !previewArtworkHostIsPublic(parsed.Hostname()) || previewArtworkPathIsSensitive(parsed.EscapedPath()) {
 		return ""
 	}
-	for key := range parsed.Query() {
-		if previewArtworkQueryKeyIsSensitive(key) {
-			return ""
-		}
+	if !previewArtworkQueryIsSafe(parsed.RawQuery) {
+		return ""
 	}
 	return parsed.String()
 }
 
-func previewArtworkHostIsLocal(host string) bool {
+func previewArtworkHostIsPublic(host string) bool {
 	host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
-	if host == "" || host == "localhost" || host == "local" || host == "internal" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".lan") || strings.HasSuffix(host, ".internal") {
-		return true
+	if host == "" || strings.Contains(host, "%") || host == "localhost" || host == "local" || host == "internal" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".lan") || strings.HasSuffix(host, ".internal") || strings.HasSuffix(host, ".localdomain") || strings.HasSuffix(host, ".home") || strings.HasSuffix(host, ".corp") {
+		return false
 	}
-	addressHost, _, _ := strings.Cut(host, "%")
-	if address, err := netip.ParseAddr(addressHost); err == nil {
-		return previewArtworkAddressIsLocal(address)
+	if address, err := netip.ParseAddr(host); err == nil {
+		return previewArtworkAddressIsPublic(address)
 	}
 	if address, ok := parseNonCanonicalIPv4(host); ok {
-		return previewArtworkAddressIsLocal(address)
+		return previewArtworkAddressIsPublic(address)
 	}
-	return false
+	return previewArtworkFQDNIsPublic(host)
 }
 
-func previewArtworkAddressIsLocal(address netip.Addr) bool {
+func previewArtworkAddressIsPublic(address netip.Addr) bool {
 	if address.Is4In6() {
 		address = address.Unmap()
 	}
-	return address.IsLoopback() || address.IsPrivate() || address.IsLinkLocalUnicast() || address.IsLinkLocalMulticast() || address.IsUnspecified()
+	if address.Is4() {
+		for _, reserved := range previewArtworkReservedIPv4 {
+			if reserved.Contains(address) {
+				return false
+			}
+		}
+		return true
+	}
+	if !previewArtworkGlobalIPv6.Contains(address) {
+		return false
+	}
+	for _, reserved := range previewArtworkReservedIPv6 {
+		if reserved.Contains(address) {
+			return false
+		}
+	}
+	return true
+}
+
+var previewArtworkReservedIPv4 = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("169.254.0.0/16"), netip.MustParsePrefix("172.16.0.0/12"),
+	netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("192.0.2.0/24"), netip.MustParsePrefix("192.88.99.0/24"),
+	netip.MustParsePrefix("192.168.0.0/16"), netip.MustParsePrefix("198.18.0.0/15"), netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"), netip.MustParsePrefix("224.0.0.0/4"), netip.MustParsePrefix("240.0.0.0/4"),
+}
+
+var (
+	previewArtworkGlobalIPv6   = netip.MustParsePrefix("2000::/3")
+	previewArtworkReservedIPv6 = []netip.Prefix{netip.MustParsePrefix("2001:db8::/32"), netip.MustParsePrefix("2001:10::/28")}
+)
+
+func previewArtworkFQDNIsPublic(host string) bool {
+	labels := strings.Split(host, ".")
+	if len(labels) < 2 {
+		return false
+	}
+	for _, label := range labels {
+		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, character := range label {
+			if !(character >= 'a' && character <= 'z') && !(character >= '0' && character <= '9') && character != '-' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // parseNonCanonicalIPv4 handles legacy integer, hexadecimal, octal, and
@@ -429,30 +473,72 @@ func parseNonCanonicalIPv4(host string) (netip.Addr, bool) {
 	return netip.AddrFrom4([4]byte{byte(number >> 24), byte(number >> 16), byte(number >> 8), byte(number)}), true
 }
 
-func previewArtworkQueryKeyIsSensitive(key string) bool {
-	normalized := strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
-			return r
-		}
-		return -1
-	}, strings.ToLower(strings.TrimSpace(key)))
-	for _, marker := range []string{"url", "path", "token", "credential", "secret", "password", "apikey", "auth", "signature", "session", "clientip"} {
-		if strings.Contains(normalized, marker) {
-			return true
+func previewArtworkQueryIsSafe(rawQuery string) bool {
+	if rawQuery == "" {
+		return true
+	}
+	if strings.Contains(rawQuery, ";") {
+		return false
+	}
+	values, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return false
+	}
+	for key, entries := range values {
+		if len(entries) != 1 || !previewArtworkTransformValueIsSafe(key, entries[0]) {
+			return false
 		}
 	}
-	return false
+	return true
+}
+
+func previewArtworkTransformValueIsSafe(key, value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	switch key {
+	case "width", "height", "w", "h", "quality", "q", "blur":
+		number, err := strconv.ParseUint(value, 10, 16)
+		if err != nil || number == 0 {
+			return false
+		}
+		if key == "quality" || key == "q" {
+			return number <= 100
+		}
+		return number <= 10000
+	case "dpr":
+		return value == "1" || value == "2" || value == "3" || value == "4"
+	case "fit":
+		return value == "cover" || value == "contain" || value == "fill" || value == "inside" || value == "outside" || value == "clip" || value == "crop"
+	case "format":
+		return value == "jpg" || value == "jpeg" || value == "png" || value == "webp" || value == "avif"
+	case "crop":
+		return value == "center" || value == "faces" || value == "entropy" || value == "attention"
+	default:
+		return false
+	}
 }
 
 func previewArtworkPathIsSensitive(rawPath string) bool {
 	path, err := url.PathUnescape(rawPath)
-	if err != nil {
+	if err != nil || strings.Contains(path, "%") {
 		return true
 	}
 	path = strings.ToLower(path)
 	for _, marker := range []string{"/library/metadata/", "/playback", "/play/", "/stream", "/source", "/hls", "/manifest", "/download", "/transcode"} {
 		if strings.Contains(path, marker) {
 			return true
+		}
+	}
+	for _, segment := range strings.Split(path, "/") {
+		normalized := strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+				return r
+			}
+			return -1
+		}, segment)
+		for _, marker := range []string{"token", "auth", "credential", "secret", "password", "apikey", "signature", "session", "sig"} {
+			if strings.Contains(normalized, marker) {
+				return true
+			}
 		}
 	}
 	return false

@@ -36,41 +36,67 @@ const field = (name, path, value, onChange, type = 'text', options = []) => {
     input.value = String(value ?? '');
     input.addEventListener('input', () => onChange(type === 'number' ? Number(input.value) : input.value));
     input.addEventListener('change', () => onChange(type === 'checkbox' ? input.checked : (type === 'number' ? Number(input.value) : input.value)));
+    item._themeInput = input;
     item.append(input);
     return item;
 };
 
 const checkbox = (name, path, value, onChange) => {
-    const item = label(name); const input = document.createElement('input'); input.type = 'checkbox'; input.dataset.themePath = path; input.checked = Boolean(value); input.addEventListener('change', () => onChange(input.checked)); item.append(input); return item;
+    const item = label(name); const input = document.createElement('input'); input.type = 'checkbox'; input.dataset.themePath = path; input.checked = Boolean(value); input.addEventListener('change', () => onChange(input.checked)); item._themeInput = input; item.append(input); return item;
+};
+
+const renderPresets = (host, presets, dispatch) => {
+    host.replaceChildren();
+    (Array.isArray(presets) ? presets : []).forEach((preset) => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'btn btn-secondary'; button.textContent = String(preset?.name || preset?.id || 'Preset');
+        button.addEventListener('click', () => dispatch?.({ type: 'theme/replace', value: structuredClone(preset?.appearance || {}) }));
+        host.append(button);
+    });
+};
+
+const reconcileTheme = (controls, state, dispatch) => {
+    controls.mode.textContent = state?.themeMode === 'inherit' ? 'Theme inherits the global appearance.' : 'Theme uses a custom appearance.';
+    controls.customize.disabled = state?.themeMode === 'custom';
+    if (controls.reset) controls.reset.disabled = state?.themeMode === 'inherit';
+    renderPresets(controls.presets, state?.themePresets, dispatch);
+    controls.inputs.forEach((input, path) => {
+        if (input === document.activeElement) return;
+        const value = themeValue(state?.theme, path);
+        if (input.type === 'checkbox') input.checked = Boolean(value);
+        else input.value = String(value ?? '');
+    });
 };
 
 export const renderTheme = (host, { state, dispatch } = {}) => {
     if (!host) return;
-    const scopeKey = `${state?.scope?.kind || ''}:${state?.scope?.profileId || ''}`;
-    if (host.dataset.themeScope === scopeKey && document.activeElement?.dataset?.themePath) return;
+    const documentKey = `${state?.scope?.kind || ''}:${state?.scope?.profileId || ''}:${state?.revision || ''}`;
+    if (host._homeDesignerTheme?.documentKey === documentKey) {
+        reconcileTheme(host._homeDesignerTheme, state, dispatch);
+        return;
+    }
     host.replaceChildren();
-    host.dataset.themeScope = scopeKey;
     const section = document.createElement('section'); section.className = 'home-designer-theme-controls';
     const heading = document.createElement('h2'); heading.textContent = 'Theme'; section.append(heading);
-    const mode = document.createElement('p'); mode.textContent = state?.themeMode === 'inherit' ? 'Theme inherits the global appearance.' : 'Theme uses a custom appearance.'; section.append(mode);
+    const mode = document.createElement('p'); mode.dataset.themeMode = ''; section.append(mode);
     const actions = document.createElement('div'); actions.className = 'home-designer-theme-actions';
-    const customize = document.createElement('button'); customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.textContent = 'Customize theme'; customize.disabled = state?.themeMode === 'custom'; customize.addEventListener('click', () => dispatch?.({ type: 'theme/customize' })); actions.append(customize);
-    if (state?.scope?.kind !== 'global') { const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.textContent = 'Reset to inherited'; reset.disabled = state?.themeMode === 'inherit'; reset.addEventListener('click', () => dispatch?.({ type: 'theme/reset' })); actions.append(reset); }
+    const customize = document.createElement('button'); customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.dataset.themeCustomize = ''; customize.textContent = 'Customize theme'; customize.addEventListener('click', () => dispatch?.({ type: 'theme/customize' })); actions.append(customize);
+    let reset = null;
+    if (state?.scope?.kind !== 'global') { reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.dataset.themeReset = ''; reset.textContent = 'Reset to inherited'; reset.addEventListener('click', () => dispatch?.({ type: 'theme/reset' })); actions.append(reset); }
     section.append(actions);
-    const presets = Array.isArray(state?.themePresets) ? state.themePresets : [];
-    if (presets.length) {
-        const presetList = document.createElement('div'); presetList.className = 'home-designer-theme-presets';
-        presets.forEach((preset) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-secondary'; button.textContent = String(preset?.name || preset?.id || 'Preset'); button.addEventListener('click', () => dispatch?.({ type: 'theme/replace', value: structuredClone(preset?.appearance || {}) })); presetList.append(button); });
-        section.append(presetList);
-    }
+    const presetList = document.createElement('div'); presetList.className = 'home-designer-theme-presets'; section.append(presetList);
     const fields = document.createElement('div'); fields.className = 'home-designer-theme-fields';
     const update = (path) => (value) => dispatch?.({ type: 'theme/field', path, value });
+    const inputs = new Map();
+    const addField = (path, control) => { inputs.set(path, control._themeInput); fields.append(control); };
     [['Accent color', 'accentColor'], ['Text color', 'textColor'], ['Secondary text', 'secondaryTextColor'], ['Background', 'backgroundColor'], ['Modal background', 'modalBackgroundColor']]
-        .forEach(([name, path]) => fields.append(field(name, path, themeValue(state?.theme, path), update(path), 'color')));
-    fields.append(field('Font scale', 'fontScale', themeValue(state?.theme, 'fontScale'), update('fontScale'), 'number'));
-    fields.append(field('Button style', 'buttonStyle', themeValue(state?.theme, 'buttonStyle'), update('buttonStyle'), 'select', [['soft', 'Soft'], ['outlined', 'Outlined'], ['filled', 'Filled']]));
-    fields.append(field('Button radius', 'buttonRadius', themeValue(state?.theme, 'buttonRadius'), update('buttonRadius'), 'select', [['square', 'Square'], ['rounded', 'Rounded'], ['pill', 'Pill']]));
-    fields.append(checkbox('High contrast', 'highContrast', themeValue(state?.theme, 'highContrast'), update('highContrast')));
-    fields.append(checkbox('Reduce overlays', 'reduceOverlays', themeValue(state?.theme, 'reduceOverlays'), update('reduceOverlays')));
+        .forEach(([name, path]) => addField(path, field(name, path, themeValue(state?.theme, path), update(path), 'color')));
+    addField('fontScale', field('Font scale', 'fontScale', themeValue(state?.theme, 'fontScale'), update('fontScale'), 'number'));
+    addField('buttonStyle', field('Button style', 'buttonStyle', themeValue(state?.theme, 'buttonStyle'), update('buttonStyle'), 'select', [['soft', 'Soft'], ['outlined', 'Outlined'], ['filled', 'Filled']]));
+    addField('buttonRadius', field('Button radius', 'buttonRadius', themeValue(state?.theme, 'buttonRadius'), update('buttonRadius'), 'select', [['square', 'Square'], ['rounded', 'Rounded'], ['pill', 'Pill']]));
+    addField('highContrast', checkbox('High contrast', 'highContrast', themeValue(state?.theme, 'highContrast'), update('highContrast')));
+    addField('reduceOverlays', checkbox('Reduce overlays', 'reduceOverlays', themeValue(state?.theme, 'reduceOverlays'), update('reduceOverlays')));
     section.append(fields); host.append(section);
+    host._homeDesignerTheme = { documentKey, mode, customize, reset, presets: presetList, inputs };
+    reconcileTheme(host._homeDesignerTheme, state, dispatch);
 };

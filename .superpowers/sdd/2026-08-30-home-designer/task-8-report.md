@@ -23,3 +23,7 @@ Verification:
 - TV and mobile now use distinct render plans over the same ordered Rows array. TV reads top-shelf/hero/shelf settings and uses collection-aware orientation; mobile uses its top-shelf carousel rule, portrait density, and bottom navigation.
 - Theme inputs carry stable paths and remain mounted while focused during continuous color/number edits. Button style now sets a preview-device data attribute with distinct soft, outlined, and filled treatments applied only inside the mock device.
 - Added regression coverage for request scope, visible-row scheduling, four transition invalidations, separate device plans, continuous Theme input focus, and button-style CSS consumption.
+
+## Final review follow-up
+
+- Theme controls now reconcile in place for a focused field rather than skipping the panel. An inherited profile edit immediately updates the mode text and Customize/Reset states while preserving the focused field node, its typed value, and its selection. The regression begins inherited and asserts the custom transition plus enabled Reset control.

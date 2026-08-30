@@ -216,9 +216,10 @@ test('continuous theme input retains the same focused control across a live rend
         replaceChildren(...children) { this.children = children; }
         addEventListener(type, listener) { this.listeners.set(type, listener); }
         querySelectorAll(selector) {
-            const match = selector.match(/^\[data-theme-path="(.+)"\]$/);
+            const match = selector.match(/^\[data-([a-z-]+)(?:="(.+)")?\]$/);
             const found = [];
-            const visit = (node) => { if (match && node.dataset?.themePath === match[1]) found.push(node); node.children?.forEach(visit); };
+            const datasetKey = match?.[1]?.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+            const visit = (node) => { if (match && Object.hasOwn(node.dataset || {}, datasetKey) && (!match[2] || node.dataset[datasetKey] === match[2])) found.push(node); node.children?.forEach(visit); };
             visit(this); return found;
         }
         focus() { document.activeElement = this; }
@@ -229,14 +230,17 @@ test('continuous theme input retains the same focused control across a live rend
     try {
         const host = new Element('div');
         const actions = [];
-        const base = { scope: { kind: 'profile', profileId: 'profile-a' }, themeMode: 'custom', theme: { fontScale: 1, accentColor: '#112233' }, themePresets: [] };
+        const base = { scope: { kind: 'profile', profileId: 'profile-a' }, revision: 'one', themeMode: 'inherit', theme: { fontScale: 1, accentColor: '#112233' }, themePresets: [] };
         renderTheme(host, { state: base, dispatch: (action) => actions.push(action) });
         const font = host.querySelectorAll('[data-theme-path="fontScale"]')[0];
         font.focus(); font.value = '1.2'; font.listeners.get('input')();
-        renderTheme(host, { state: { ...base, theme: { ...base.theme, fontScale: 1.2 } }, dispatch: () => {} });
+        renderTheme(host, { state: { ...base, themeMode: 'custom', theme: { ...base.theme, fontScale: 1.2 } }, dispatch: () => {} });
         assert.equal(actions[0].path, 'fontScale');
         assert.strictEqual(host.querySelectorAll('[data-theme-path="fontScale"]')[0], font);
         assert.strictEqual(document.activeElement, font);
+        assert.equal(host.querySelectorAll('[data-theme-mode]')[0].textContent, 'Theme uses a custom appearance.');
+        assert.equal(host.querySelectorAll('[data-theme-customize]')[0].disabled, true);
+        assert.equal(host.querySelectorAll('[data-theme-reset]')[0].disabled, false);
     } finally { globalThis.document = previousDocument; }
 });
 

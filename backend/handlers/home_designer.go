@@ -73,6 +73,48 @@ func (h *AdminUIHandler) PutHomeDesigner(w http.ResponseWriter, r *http.Request)
 	homeDesignerJSON(w, http.StatusOK, document)
 }
 
+// PreviewHomeDesigner resolves an unsaved document against an authorized
+// profile. It is intentionally read-only: content resolution never changes
+// the Home Designer document or the selected profile's settings.
+func (h *AdminUIHandler) PreviewHomeDesigner(w http.ResponseWriter, r *http.Request) {
+	request, err := decodeHomeDesignerPreview(w, r)
+	if err != nil {
+		return
+	}
+	if err := validateHomeDesignerPreviewRequest(request); err != nil {
+		homeDesignerServiceError(w, err)
+		return
+	}
+	// Reuse the editor service's scope authorization before invoking any
+	// provider, then separately verify the selected preview profile because it
+	// may intentionally differ from the edited scope for administrators.
+	if _, err := h.homeDesignerService.Load(r.Context(), h.homeDesignerActor(r), request.Scope); err != nil {
+		homeDesignerServiceError(w, err)
+		return
+	}
+	isAdmin, accountID, _, _ := h.getPageRoleInfo(r)
+	if h.usersService == nil {
+		homeDesignerError(w, http.StatusInternalServerError, "internal_error", "Home Designer preview is unavailable", nil)
+		return
+	}
+	if _, found := h.usersService.Get(request.PreviewProfileID); !found || (!isAdmin && !h.usersService.BelongsToAccount(request.PreviewProfileID, accountID)) {
+		homeDesignerError(w, http.StatusNotFound, "not_found", "Home Designer preview profile was not found", nil)
+		return
+	}
+	if h.homeDesignerPreview == nil {
+		homeDesignerError(w, http.StatusInternalServerError, "internal_error", "Home Designer preview is unavailable", nil)
+		return
+	}
+	response, err := h.homeDesignerPreview.Preview(r.Context(), r, request)
+	if err != nil {
+		// Resolver errors are deliberately generic: provider transport, source
+		// URLs, and authentication details must never escape this endpoint.
+		homeDesignerError(w, http.StatusInternalServerError, "internal_error", "Home Designer preview is unavailable", nil)
+		return
+	}
+	homeDesignerJSON(w, http.StatusOK, response)
+}
+
 func (h *AdminUIHandler) homeDesignerActor(r *http.Request) homedesigner.Actor {
 	isAdmin, accountID, _, _ := h.getPageRoleInfo(r)
 	return homedesigner.Actor{IsAdmin: isAdmin, AccountID: accountID}
@@ -101,6 +143,24 @@ func decodeHomeDesignerApply(w http.ResponseWriter, r *http.Request) (homedesign
 			err = errors.New("multiple JSON documents")
 		}
 		return homedesigner.ApplyRequest{}, err
+	}
+	return request, nil
+}
+
+func decodeHomeDesignerPreview(w http.ResponseWriter, r *http.Request) (homedesigner.PreviewRequest, error) {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	var request homedesigner.PreviewRequest
+	if err := decoder.Decode(&request); err != nil {
+		homeDesignerError(w, http.StatusBadRequest, "invalid_request", "request body must be a valid Home Designer preview", nil)
+		return homedesigner.PreviewRequest{}, err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		homeDesignerError(w, http.StatusBadRequest, "invalid_request", "request body must contain one JSON document", nil)
+		if err == nil {
+			err = errors.New("multiple JSON documents")
+		}
+		return homedesigner.PreviewRequest{}, err
 	}
 	return request, nil
 }

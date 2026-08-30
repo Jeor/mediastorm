@@ -1015,7 +1015,14 @@ func isStartupFetchableCustomShelf(shelf models.ShelfConfig) bool {
 }
 
 func startupDisplayListQueryForShelf(shelf models.ShelfConfig, homeShelfLimit int, hideWatched bool, clientID string) (url.Values, bool) {
-	limit := startupCustomShelfFetchLimit(shelf, homeShelfLimit)
+	return displayListQueryForShelf(shelf, startupCustomShelfFetchLimit(shelf, homeShelfLimit), homeShelfLimit, hideWatched, clientID)
+}
+
+// displayListQueryForShelf is the single translation from a persisted shelf
+// to the existing DisplayListHandler request boundary. It is shared by
+// startup, prewarm, and Home Designer previews so all three retain the same
+// provider selection and profile-scoped filtering behavior.
+func displayListQueryForShelf(shelf models.ShelfConfig, limit, homeShelfLimit int, hideWatched bool, clientID string) (url.Values, bool) {
 	query := url.Values{}
 	if limit > 0 {
 		query.Set("limit", strconv.Itoa(limit))
@@ -1095,6 +1102,31 @@ func startupDisplayListQueryForShelf(shelf models.ShelfConfig, homeShelfLimit in
 		query.Set("artworkLimit", strconv.Itoa(minInt(limit, homeShelfLimit+startupExploreCollageItemCount)))
 	default:
 		switch shelf.ID {
+		case "watchlist":
+			query.Set("source", "watchlist")
+			return query, true
+		case "continue-watching":
+			query.Set("source", "continue-watching")
+			return query, true
+		case "top-ten":
+			query.Set("source", "top-ten")
+			query.Set("mediaType", "all")
+			return query, true
+		case "trending-movies":
+			query.Set("source", "trending")
+			query.Set("mediaType", "movie")
+			return query, true
+		case "trending-tv":
+			query.Set("source", "trending")
+			query.Set("mediaType", "series")
+			return query, true
+		case "trending":
+			query.Set("source", "trending")
+			query.Set("mediaType", "all")
+			return query, true
+		case "my-recommended", "recommended":
+			query.Set("source", "personalized")
+			return query, true
 		case "popular-on-server":
 			query.Set("source", "popular-on-server")
 			if shelf.ActivityWindowDays > 0 {

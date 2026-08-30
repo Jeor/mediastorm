@@ -179,16 +179,30 @@ type PreviewRequest struct {
 	Theme            *SectionMutation[models.AppearanceSettings]  `json:"theme,omitempty"`
 }
 
+// PreviewItem is the deliberately narrow content-card contract used by the
+// Home Designer. ArtworkURL is selected from an already rendered title card;
+// it is never a provider endpoint, playback location, or configured source.
+type PreviewItem struct {
+	ID         string   `json:"id"`
+	Title      string   `json:"title"`
+	Subtitle   string   `json:"subtitle,omitempty"`
+	MediaType  string   `json:"mediaType"`
+	ArtworkURL string   `json:"artworkUrl,omitempty"`
+	Progress   *float64 `json:"progress,omitempty"`
+	Badges     []string `json:"badges,omitempty"`
+	Sample     bool     `json:"sample,omitempty"`
+}
+
 // PreviewRow intentionally includes only data a client may render. It never
 // mirrors source URLs, integration IDs, account IDs, or transport settings.
 type PreviewRow struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Enabled        bool   `json:"enabled"`
-	Order          int    `json:"order"`
-	Type           string `json:"type"`
-	Limit          int    `json:"limit,omitempty"`
-	HideUnreleased bool   `json:"hideUnreleased,omitempty"`
+	ID      string        `json:"id"`
+	Name    string        `json:"name"`
+	Layout  string        `json:"layout"`
+	Status  string        `json:"status"`
+	Message string        `json:"message,omitempty"`
+	Items   []PreviewItem `json:"items"`
+	Total   int           `json:"total"`
 }
 
 type PreviewTheme struct {
@@ -205,6 +219,8 @@ type PreviewTheme struct {
 }
 
 type PreviewResponse struct {
+	// Scope, ProfileID, Platform, and Theme retain the original editor context
+	// contract. They carry no provider configuration or transport details.
 	Scope     Scope        `json:"scope"`
 	ProfileID string       `json:"profileId"`
 	Platform  string       `json:"platform"`
@@ -217,7 +233,11 @@ type PreviewResponse struct {
 func BuildPreviewResponse(request PreviewRequest, rows models.HomeShelvesSettings, theme models.AppearanceSettings) PreviewResponse {
 	previewRows := make([]PreviewRow, len(rows.Shelves))
 	for i, row := range rows.Shelves {
-		previewRows[i] = PreviewRow{ID: row.ID, Name: row.Name, Enabled: row.Enabled, Order: row.Order, Type: row.Type, Limit: row.Limit, HideUnreleased: row.HideUnreleased}
+		status := "ready"
+		if !row.Enabled {
+			status = "disabled"
+		}
+		previewRows[i] = PreviewRow{ID: row.ID, Name: row.Name, Layout: "shelf", Status: status, Items: []PreviewItem{}}
 	}
 	return PreviewResponse{
 		Scope: request.Scope, ProfileID: request.PreviewProfileID, Platform: request.Platform, Rows: previewRows,

@@ -1535,6 +1535,7 @@ type AdminUIHandler struct {
 	usersService          *users.Service
 	userSettingsService   *user_settings.Service
 	homeDesignerService   *homedesigner.Service
+	homeDesignerPreview   HomeDesignerPreviewProvider
 	usenetPoolManager     internalpool.Manager
 	historyService        *history.Service
 	watchlistService      *watchlist.Service
@@ -1604,6 +1605,12 @@ type MetadataService interface {
 // SetMetadataService sets the metadata service for cache clearing and overview fetching
 func (h *AdminUIHandler) SetMetadataService(ms MetadataService) {
 	h.metadataService = ms
+}
+
+// SetHomeDesignerPreviewProvider injects the read-only resolver used by the
+// editor's unsaved draft preview endpoint.
+func (h *AdminUIHandler) SetHomeDesignerPreviewProvider(provider HomeDesignerPreviewProvider) {
+	h.homeDesignerPreview = provider
 }
 
 // SetDebridSearchService sets the debrid search service for scraper hot reloads.

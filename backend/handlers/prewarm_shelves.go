@@ -92,31 +92,21 @@ func (h *StartupHandler) ListPrewarmShelfItems(ctx context.Context, userID, shel
 }
 
 func prewarmDisplayListQuery(shelf models.ShelfConfig) (url.Values, bool) {
-	query := url.Values{}
 	switch shelf.ID {
-	case "watchlist":
-		query.Set("source", "watchlist")
-		return query, true
-	case "top-ten":
-		query.Set("source", "top-ten")
-		query.Set("mediaType", "all")
-		return query, true
-	case "trending-movies":
-		query.Set("source", "trending")
-		query.Set("mediaType", "movie")
-		return query, true
-	case "trending-tv":
-		query.Set("source", "trending")
-		query.Set("mediaType", "series")
-		return query, true
-	case "my-recommended", "recommended":
-		query.Set("source", "personalized")
-		return query, true
-	case "popular-on-server", "recently-watched", "permanent-prequeue":
+	case "continue-watching", "popular-on-server", "recently-watched", "permanent-prequeue":
 		return url.Values{}, false
 	}
 
-	query, ok := startupDisplayListQueryForShelf(shelf, defaultStartupShelfLimit, false, "")
+	limit := startupCustomShelfFetchLimit(shelf, defaultStartupShelfLimit)
+	if shelf.Type == "" {
+		// Prewarm historically left built-in query limits and display names to
+		// the worker's displayed/all-items policy. Keep that boundary intact.
+		limit = 0
+	}
+	query, ok := displayListQueryForShelf(shelf, limit, defaultStartupShelfLimit, false, "")
+	if shelf.Type == "" {
+		query.Del("name")
+	}
 	return query, ok
 }
 

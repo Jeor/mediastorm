@@ -1067,6 +1067,7 @@ func main() {
 	adminUIHandler.SetLocalMediaService(localMediaService)
 	adminUIHandler.SetRemoteMediaService(remoteMediaService)
 	adminUIHandler.SetLibraryAccessService(libraryAccessService)
+	adminUIHandler.SetHomeDesignerPreviewProvider(handlers.NewHomeDesignerPreviewProvider(displayListHandler))
 
 	var numbersStationHandler *handlers.NumbersStationHandler
 	if store != nil {
@@ -1094,6 +1095,7 @@ func main() {
 	r.HandleFunc("/admin/settings/home-designer", adminUIHandler.RequireAuth(adminUIHandler.HomeDesignerPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/home-designer", adminUIHandler.RequireAuth(adminUIHandler.GetHomeDesigner)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/home-designer", adminUIHandler.RequireAuth(adminUIHandler.PutHomeDesigner)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/api/home-designer/preview", adminUIHandler.RequireAuth(adminUIHandler.PreviewHomeDesigner)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/assets/home-designer/{asset:[A-Za-z0-9_.-]+}", adminUIHandler.RequireAuth(handlers.HomeDesignerAsset)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/status", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/history", adminUIHandler.RequireAuth(adminUIHandler.HistoryPage)).Methods(http.MethodGet)
@@ -1509,6 +1511,7 @@ func main() {
 	r.HandleFunc("/account/settings/home-designer", adminUIHandler.RequireAuth(adminUIHandler.HomeDesignerPage)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/home-designer", adminUIHandler.RequireAuth(adminUIHandler.GetHomeDesigner)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/home-designer", adminUIHandler.RequireAuth(adminUIHandler.PutHomeDesigner)).Methods(http.MethodPut)
+	r.HandleFunc("/account/api/home-designer/preview", adminUIHandler.RequireAuth(adminUIHandler.PreviewHomeDesigner)).Methods(http.MethodPost)
 	r.HandleFunc("/account/assets/home-designer/{asset:[A-Za-z0-9_.-]+}", adminUIHandler.RequireAuth(handlers.HomeDesignerAsset)).Methods(http.MethodGet)
 	r.HandleFunc("/account/history", adminUIHandler.RequireAuth(adminUIHandler.HistoryPage)).Methods(http.MethodGet)
 	r.HandleFunc("/account/tools", adminUIHandler.RequireAuth(adminUIHandler.ToolsPage)).Methods(http.MethodGet)

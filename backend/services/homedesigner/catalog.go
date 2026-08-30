@@ -104,7 +104,7 @@ type streamingServiceLists struct{ movies, shows string }
 var streamingServiceMDBLists = map[string]streamingServiceLists{
 	"netflix":     {"https://mdblist.com/lists/snoak/netflix-top-10-movies/json", "https://mdblist.com/lists/snoak/netflix-top-10-shows/json"},
 	"disney":      {"https://mdblist.com/lists/snoak/disney-plus-top-10-movies/json", "https://mdblist.com/lists/snoak/disney-plus-top-10-tv-shows/json"},
-	"amazon":      {"https://mdblist.com/lists/snoak/amazon-prime-top-10-shows/json", "https://mdblist.com/lists/snoak/amazon-prime-top-10-tv-shows/json"},
+	"amazon":      {"https://mdblist.com/lists/snoak/amazon-prime-top-10-movies/json", "https://mdblist.com/lists/snoak/amazon-prime-top-10-tv-shows/json"},
 	"appletv":     {"https://mdblist.com/lists/snoak/apple-tv-top-10-movies/json", "https://mdblist.com/lists/snoak/apple-tv-top-10-tv-shows/json"},
 	"paramount":   {"https://mdblist.com/lists/snoak/paramount-plus-top-10-movies/json", "https://mdblist.com/lists/snoak/paramount-plus-top-10-tv-shows/json"},
 	"hbomax":      {"https://mdblist.com/lists/snoak/hbo-top-10-movies-2/json", "https://mdblist.com/lists/snoak/hbo-top-10-tv-shows/json"},

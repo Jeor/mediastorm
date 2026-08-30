@@ -162,6 +162,39 @@ func TestValidateHomeDesigner_RejectsMalformedCollectionHubItems(t *testing.T) {
 	}
 }
 
+func TestValidateHomeDesigner_PreservesAdvancedCollectionHubDefaultTint(t *testing.T) {
+	const advancedDefaultTint = "rgba(148,163,184,0.18)"
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "genre-1-movie", Name: "Source", Type: "genre"},
+		{ID: "hub", Name: "Hub", Type: "collection-hub", CollectionItems: []models.CollectionHubLink{{ID: "collection-1", Name: "Collection", SourceShelfID: "genre-1-movie", TintColor: advancedDefaultTint}}},
+	}})
+	if errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil)); len(errs) != 0 {
+		t.Fatalf("errors = %#v, want persisted advanced default tint accepted", errs)
+	}
+	if got := request.Rows.Value.Shelves[1].CollectionItems[0].TintColor; got != advancedDefaultTint {
+		t.Fatalf("tint = %q, want lossless %q", got, advancedDefaultTint)
+	}
+}
+
+func TestValidateHomeDesigner_RejectsInvalidCollectionHubSourcesAndItemOverflow(t *testing.T) {
+	items := make([]models.CollectionHubLink, 0, 21)
+	for i := 0; i < 21; i++ {
+		items = append(items, models.CollectionHubLink{ID: "item-" + string(rune('a'+i)), Name: "Item " + string(rune('a'+i)), SourceShelfID: "genre-1-movie", Order: i})
+	}
+	request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{
+		{ID: "genre-1-movie", Name: "Source", Type: "genre"},
+		{ID: "streaming-services", Name: "Streaming Services", Type: "builtin"},
+		{ID: "hub-a", Name: "Hub A", Type: "collection-hub", CollectionItems: []models.CollectionHubLink{{ID: "from-hub", Name: "From hub", SourceShelfID: "hub-b"}}},
+		{ID: "hub-b", Name: "Hub B", Type: "collection-hub", CollectionItems: []models.CollectionHubLink{{ID: "cycle", Name: "Cycle", SourceShelfID: "hub-a"}}},
+		{ID: "hub-stream", Name: "Hub stream", Type: "collection-hub", CollectionItems: []models.CollectionHubLink{{ID: "from-streaming", Name: "From streaming", SourceShelfID: "streaming-services"}}},
+		{ID: "hub-overflow", Name: "Overflow", Type: "collection-hub", CollectionItems: items},
+	}})
+	errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil))
+	if !hasCollectionItemError(errs, "hub-a", "from-hub", "sourceShelfId") || !hasCollectionItemError(errs, "hub-b", "cycle", "sourceShelfId") || !hasCollectionItemError(errs, "hub-stream", "from-streaming", "sourceShelfId") || !hasCollectionItemError(errs, "hub-overflow", "", "collectionItems") {
+		t.Fatalf("errors = %#v, want invalid source-type and item-cap errors", errs)
+	}
+}
+
 func customRowsRequest(rows models.HomeShelvesSettings) ApplyRequest {
 	return ApplyRequest{Scope: Scope{Kind: "profile", ProfileID: "profile-1"}, Rows: &SectionMutation[models.HomeShelvesSettings]{Mode: ModeCustom, Value: &rows}}
 }

@@ -11,6 +11,7 @@ import (
 )
 
 var hexColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+var rgbaColorPattern = regexp.MustCompile(`(?i)^rgba\(\s*(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\s*,\s*(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\s*,\s*(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\s*,\s*(?:0?(?:\.\d+)|0|1(?:\.0+)?)\s*\)$`)
 
 // ValidateApply normalizes safe shelf edits and returns structured errors for
 // values that cannot be represented by the existing persisted settings.
@@ -43,10 +44,14 @@ func validateRowsMutation(scope Scope, mutation *SectionMutation[models.HomeShel
 	rows := mutation.Value
 	normalizeRows(rows)
 	entriesByType, builtinIDs := catalogTypes(catalog)
-	rowIDs := make(map[string]bool, len(rows.Shelves))
-	for _, shelf := range rows.Shelves {
+	rowSources := make(map[string]models.ShelfConfig, len(rows.Shelves))
+	for i := range rows.Shelves {
+		shelf := &rows.Shelves[i]
+		if shelf.Type == "" && builtinIDs[shelf.ID] {
+			shelf.Type = "builtin"
+		}
 		if shelf.ID != "" {
-			rowIDs[shelf.ID] = true
+			rowSources[shelf.ID] = *shelf
 		}
 	}
 	seenRowIDs := make(map[string]struct{}, len(rows.Shelves))
@@ -82,7 +87,7 @@ func validateRowsMutation(scope Scope, mutation *SectionMutation[models.HomeShel
 		}
 		errs = append(errs, validateShelf(rowID, *shelf, entry)...)
 		if shelf.Type == "collection-hub" {
-			errs = append(errs, validateCollectionItems(rowID, shelf.CollectionItems, rowIDs)...)
+			errs = append(errs, validateCollectionItems(rowID, shelf.CollectionItems, rowSources)...)
 		}
 	}
 	errs = append(errs, validateRowsSettings(*rows)...)
@@ -218,8 +223,11 @@ func normalizeCollectionItems(items []models.CollectionHubLink) {
 	}
 }
 
-func validateCollectionItems(rowID string, items []models.CollectionHubLink, rowIDs map[string]bool) []FieldError {
+func validateCollectionItems(rowID string, items []models.CollectionHubLink, rowSources map[string]models.ShelfConfig) []FieldError {
 	errs := make([]FieldError, 0)
+	if len(items) > 20 {
+		errs = append(errs, collectionItemError(rowID, "", "collectionItems", "collection hubs support at most 20 items"))
+	}
 	ids, names, sources := make(map[string]bool), make(map[string]bool), make(map[string]bool)
 	for _, item := range items {
 		itemID := item.ID
@@ -237,7 +245,8 @@ func validateCollectionItems(rowID string, items []models.CollectionHubLink, row
 		} else {
 			names[item.Name] = true
 		}
-		if item.SourceShelfID == "" || !rowIDs[item.SourceShelfID] || item.SourceShelfID == rowID {
+		source, found := rowSources[item.SourceShelfID]
+		if item.SourceShelfID == "" || !found || item.SourceShelfID == rowID || source.Type == "collection-hub" || source.ID == "streaming-services" {
 			errs = append(errs, collectionItemError(rowID, itemID, "sourceShelfId", "source must reference another configured shelf"))
 		} else if sources[item.SourceShelfID] {
 			errs = append(errs, collectionItemError(rowID, itemID, "sourceShelfId", "source shelf may only be used once"))
@@ -253,11 +262,15 @@ func validateCollectionItems(rowID string, items []models.CollectionHubLink, row
 		if item.LogoScale != 0 && (item.LogoScale < 0.5 || item.LogoScale > 2.0) {
 			errs = append(errs, collectionItemError(rowID, itemID, "logoScale", "logo scale must be between 0.5 and 2.0"))
 		}
-		if item.TintColor != "" && !hexColorPattern.MatchString(item.TintColor) {
-			errs = append(errs, collectionItemError(rowID, itemID, "tintColor", "color must use #RRGGBB"))
+		if item.TintColor != "" && !validCollectionTintColor(item.TintColor) {
+			errs = append(errs, collectionItemError(rowID, itemID, "tintColor", "color must use #RRGGBB or rgba(...)"))
 		}
 	}
 	return errs
+}
+
+func validCollectionTintColor(value string) bool {
+	return hexColorPattern.MatchString(value) || rgbaColorPattern.MatchString(value)
 }
 
 func validateShelf(rowID string, shelf models.ShelfConfig, entry CatalogEntry) []FieldError {

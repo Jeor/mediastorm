@@ -147,6 +147,19 @@ func TestHomeDesignerCatalog_ExpandsStreamingServiceIntoRenderableMDBListRows(t 
 	}
 }
 
+func TestHomeDesignerCatalog_ExpandsAmazonPrimeToCanonicalMovieAndTVLists(t *testing.T) {
+	rows, errs := ExpandStreamingServiceSelection(StreamingServiceSelection{InstanceID: "amazon-a", Service: "amazon", Media: "both"})
+	if len(errs) != 0 || len(rows) != 2 {
+		t.Fatalf("expansion = %#v, %#v; want Amazon movie and TV rows", rows, errs)
+	}
+	if got, want := rows[0].ListURL, "https://mdblist.com/lists/snoak/amazon-prime-top-10-movies/json"; got != want {
+		t.Fatalf("Amazon movie URL = %q, want %q", got, want)
+	}
+	if got, want := rows[1].ListURL, "https://mdblist.com/lists/snoak/amazon-prime-top-10-tv-shows/json"; got != want {
+		t.Fatalf("Amazon TV URL = %q, want %q", got, want)
+	}
+}
+
 func TestHomeDesignerCatalog_UsesAuthorizedLibrariesAndRoleAwareSetupPaths(t *testing.T) {
 	ctx := CatalogContext{
 		Actor:     Actor{AccountID: "account-a"},

@@ -586,13 +586,13 @@ Apply `--preview-accent`, text, secondary text, background, modal background, fo
 
 Request enabled visible rows lazily, maximum 12 items, and keep results keyed by row ID plus normalized configuration. Preserve successful rows while another row reloads or fails.
 
-- [ ] **Step 4: Implement common semantic media cards with realistic row density**
+- [ ] **Step 4: Implement common semantic media cards**
 
-Render artwork with safe DOM properties, title/subtitle, badges, progress, sample label, loading skeleton, empty state, and error Retry. Size poster cards and expanded-card information treatments relative to the mock device viewport so multiple cards remain visible in each row at once; expanded metadata must not turn a row into a single oversized card. Never insert server strings with `innerHTML`.
+Render artwork with safe DOM properties, title/subtitle, badges, progress, sample label, loading skeleton, empty state, and error Retry. Never insert server strings with `innerHTML`.
 
 - [ ] **Step 5: Implement separate TV and mobile layout renderers**
 
-TV uses a 16:9 stage, navigation rail, hero, landscape/portrait row rules, and TV density/scale. Mobile uses a phone viewport, mobile top carousel behavior, portrait density, and bottom navigation. Both consume the same ordered row array. Add renderer/CSS assertions covering ordinary poster rows and expanded-card/detail rows at representative TV and mobile widths, verifying that each shows multiple simultaneous items without clipping essential card information.
+TV uses a 16:9 stage, navigation rail, hero, landscape/portrait row rules, and TV density/scale. Mobile uses a phone viewport, mobile top carousel behavior, portrait density, and bottom navigation. Both consume the same ordered row array.
 
 - [ ] **Step 6: Honor reduced motion and high contrast independently**
 

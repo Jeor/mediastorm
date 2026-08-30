@@ -21,6 +21,7 @@ if (root && status) {
     let previewPlatform = 'tv';
     let previewResults = {};
     let previewRenderToken = 0;
+    let previewRowsSignature = '';
     let unsubscribe = null;
 
     const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
@@ -73,6 +74,14 @@ if (root && status) {
         requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(errors[0].path)}"]`)?.focus());
     };
 
+    const previewSignature = (state) => JSON.stringify({ scope: state?.scope || {}, rows: state?.rows || [] });
+    const invalidatePreview = () => {
+        previewRenderToken += 1;
+        previewResults = {};
+        previewObserver?.disconnect();
+        previewController?.invalidate();
+    };
+
     const renderPreview = async (state, { schedule = true } = {}) => {
         const token = ++previewRenderToken;
         const host = editor?.querySelector('[data-home-designer-preview-host]');
@@ -84,23 +93,23 @@ if (root && status) {
         renderer(host, state, { results: previewResults, onSelect: (id) => selectRow(id, 'preview'), onRetry: (id) => previewController?.retry(id) });
         host.querySelector('.home-preview-device') && theme.applyThemeVariables(host.querySelector('.home-preview-device'), state.theme);
         host.querySelectorAll('[data-preview-row-id]').forEach((row) => row.setAttribute('aria-current', String(state.selectionId === row.dataset.previewRowId)));
-        if (!schedule || !previewController) return;
         previewObserver?.disconnect();
         const scheduleVisible = () => {
-            const viewport = globalThis.innerHeight || Number.MAX_SAFE_INTEGER;
+            const viewport = host.querySelector('.home-preview-content');
+            const viewportBounds = viewport?.getBoundingClientRect?.();
             const visible = [...host.querySelectorAll('[data-preview-row-id]')].filter((element) => {
                 const bounds = element.getBoundingClientRect?.();
-                return !bounds || bounds.bottom >= 0 && bounds.top <= viewport;
+                return !bounds || !viewportBounds || bounds.bottom >= viewportBounds.top && bounds.top <= viewportBounds.bottom;
             }).map((element) => element.dataset.previewRowId);
-            previewController.schedule({ profileId: previewProfileId, platform: previewPlatform, rows: state.rows, visibleRowIds: visible, theme: state.theme });
+            previewController?.schedule({ scope: state.scope, profileId: previewProfileId, platform: previewPlatform, rows: state.rows, visibleRowIds: visible, theme: state.theme });
         };
         if (typeof IntersectionObserver === 'function') {
             previewObserver = new IntersectionObserver((entries) => {
                 if (entries.some((entry) => entry.isIntersecting)) scheduleVisible();
-            }, { root: host });
+            }, { root: host.querySelector('.home-preview-content') });
             host.querySelectorAll('[data-preview-row-id]').forEach((row) => previewObserver.observe(row));
         }
-        requestAnimationFrame(scheduleVisible);
+        if (schedule && previewController) requestAnimationFrame(scheduleVisible);
     };
 
     const renderRowsMode = (state) => {
@@ -148,6 +157,7 @@ if (root && status) {
         if (!store) return;
         const active = document.activeElement;
         const focusPath = active?.closest?.('[data-home-designer-editor]') ? active.dataset?.fieldPath : null;
+        const themePath = active?.closest?.('[data-home-designer-editor]') ? active.dataset?.themePath : null;
         const focusStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
         const focusEnd = typeof active?.selectionEnd === 'number' ? active.selectionEnd : null;
         const state = store.getState();
@@ -189,8 +199,7 @@ if (root && status) {
             profileSelect.dataset.ready = 'true';
             profileSelect.addEventListener('change', () => {
                 previewProfileId = profileSelect.value;
-                previewResults = {};
-                previewController?.clear();
+                invalidatePreview();
                 void renderPreview(store.getState());
             });
         }
@@ -201,7 +210,7 @@ if (root && status) {
         const platformSelect = editor.querySelector('[data-home-designer-preview-platform]');
         if (platformSelect && !platformSelect.dataset.ready) {
             platformSelect.dataset.ready = 'true';
-            platformSelect.addEventListener('change', () => { previewPlatform = platformSelect.value === 'mobile' ? 'mobile' : 'tv'; void renderPreview(store.getState()); });
+            platformSelect.addEventListener('change', () => { previewPlatform = platformSelect.value === 'mobile' ? 'mobile' : 'tv'; invalidatePreview(); void renderPreview(store.getState()); });
         }
         if (platformSelect) platformSelect.value = previewPlatform;
         void renderPreview(state);
@@ -213,8 +222,10 @@ if (root && status) {
             applyButton.setAttribute('aria-disabled', String(!valid));
         }
         editor.hidden = false;
-        if (focusPath) requestAnimationFrame(() => {
-            const replacement = editor.querySelector(`[data-field-path="${CSS.escape(focusPath)}"]`);
+        if (focusPath || themePath) requestAnimationFrame(() => {
+            const replacement = focusPath
+                ? editor.querySelector(`[data-field-path="${CSS.escape(focusPath)}"]`)
+                : editor.querySelector(`[data-theme-path="${CSS.escape(themePath)}"]`);
             replacement?.focus();
             if (focusStart !== null && typeof replacement?.setSelectionRange === 'function') replacement.setSelectionRange(focusStart, focusEnd);
         });
@@ -223,19 +234,27 @@ if (root && status) {
     const connectEditor = () => {
         unsubscribe?.();
         if (!store || !editor) return;
-        unsubscribe = store.subscribe(() => { renderEditor(); });
+        previewRowsSignature = previewSignature(store.getState());
+        unsubscribe = store.subscribe((state) => {
+            const nextSignature = previewSignature(state);
+            if (nextSignature !== previewRowsSignature) {
+                previewRowsSignature = nextSignature;
+                invalidatePreview();
+            }
+            renderEditor();
+        });
         renderEditor();
     };
 
     const load = async (scope) => {
+        invalidatePreview();
+        previewRowsSignature = '';
         const current = beginOperation();
         try {
             const [{ loadDocument }, { createStore }] = await modules;
             const saved = await loadDocument(basePath, scope, { signal: current.controller.signal });
             if (!isCurrent(current)) return null;
             store = createStore(saved);
-            previewResults = {};
-            previewController?.clear();
             connectEditor();
             return { current, saved };
         } catch (error) {

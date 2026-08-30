@@ -18,18 +18,21 @@ export const applyThemeVariables = (device, theme = {}) => {
     device.style.setProperty('--preview-modal-background', color(themeValue(theme, 'modalBackgroundColor'), defaults.modalBackgroundColor));
     device.style.setProperty('--preview-font-scale', String(scale));
     device.style.setProperty('--preview-button-radius', radius);
-    device.style.setProperty('--preview-button-style', String(themeValue(theme, 'buttonStyle')));
+    const buttonStyle = ['soft', 'outlined', 'filled'].includes(String(themeValue(theme, 'buttonStyle'))) ? String(themeValue(theme, 'buttonStyle')) : 'soft';
+    device.style.setProperty('--preview-button-style', buttonStyle);
+    if (device.dataset) device.dataset.previewButtonStyle = buttonStyle;
     device.style.setProperty('--preview-contrast', themeValue(theme, 'highContrast') ? '1.35' : '1');
     device.style.setProperty('--preview-overlay-opacity', themeValue(theme, 'reduceOverlays') ? '0' : '.52');
 };
 
 const label = (text) => { const item = document.createElement('label'); item.textContent = text; return item; };
 
-const field = (name, value, onChange, type = 'text', options = []) => {
+const field = (name, path, value, onChange, type = 'text', options = []) => {
     const item = label(name);
     const input = document.createElement(type === 'select' ? 'select' : 'input');
     if (type === 'select') options.forEach(([optionValue, optionLabel]) => { const option = document.createElement('option'); option.value = optionValue; option.textContent = optionLabel; input.append(option); });
     else input.type = type;
+    input.dataset.themePath = path;
     input.value = String(value ?? '');
     input.addEventListener('input', () => onChange(type === 'number' ? Number(input.value) : input.value));
     input.addEventListener('change', () => onChange(type === 'checkbox' ? input.checked : (type === 'number' ? Number(input.value) : input.value)));
@@ -37,13 +40,16 @@ const field = (name, value, onChange, type = 'text', options = []) => {
     return item;
 };
 
-const checkbox = (name, value, onChange) => {
-    const item = label(name); const input = document.createElement('input'); input.type = 'checkbox'; input.checked = Boolean(value); input.addEventListener('change', () => onChange(input.checked)); item.append(input); return item;
+const checkbox = (name, path, value, onChange) => {
+    const item = label(name); const input = document.createElement('input'); input.type = 'checkbox'; input.dataset.themePath = path; input.checked = Boolean(value); input.addEventListener('change', () => onChange(input.checked)); item.append(input); return item;
 };
 
 export const renderTheme = (host, { state, dispatch } = {}) => {
     if (!host) return;
+    const scopeKey = `${state?.scope?.kind || ''}:${state?.scope?.profileId || ''}`;
+    if (host.dataset.themeScope === scopeKey && document.activeElement?.dataset?.themePath) return;
     host.replaceChildren();
+    host.dataset.themeScope = scopeKey;
     const section = document.createElement('section'); section.className = 'home-designer-theme-controls';
     const heading = document.createElement('h2'); heading.textContent = 'Theme'; section.append(heading);
     const mode = document.createElement('p'); mode.textContent = state?.themeMode === 'inherit' ? 'Theme inherits the global appearance.' : 'Theme uses a custom appearance.'; section.append(mode);
@@ -60,11 +66,11 @@ export const renderTheme = (host, { state, dispatch } = {}) => {
     const fields = document.createElement('div'); fields.className = 'home-designer-theme-fields';
     const update = (path) => (value) => dispatch?.({ type: 'theme/field', path, value });
     [['Accent color', 'accentColor'], ['Text color', 'textColor'], ['Secondary text', 'secondaryTextColor'], ['Background', 'backgroundColor'], ['Modal background', 'modalBackgroundColor']]
-        .forEach(([name, path]) => fields.append(field(name, themeValue(state?.theme, path), update(path), 'color')));
-    fields.append(field('Font scale', themeValue(state?.theme, 'fontScale'), update('fontScale'), 'number'));
-    fields.append(field('Button style', themeValue(state?.theme, 'buttonStyle'), update('buttonStyle'), 'select', [['soft', 'Soft'], ['outlined', 'Outlined'], ['filled', 'Filled']]));
-    fields.append(field('Button radius', themeValue(state?.theme, 'buttonRadius'), update('buttonRadius'), 'select', [['square', 'Square'], ['rounded', 'Rounded'], ['pill', 'Pill']]));
-    fields.append(checkbox('High contrast', themeValue(state?.theme, 'highContrast'), update('highContrast')));
-    fields.append(checkbox('Reduce overlays', themeValue(state?.theme, 'reduceOverlays'), update('reduceOverlays')));
+        .forEach(([name, path]) => fields.append(field(name, path, themeValue(state?.theme, path), update(path), 'color')));
+    fields.append(field('Font scale', 'fontScale', themeValue(state?.theme, 'fontScale'), update('fontScale'), 'number'));
+    fields.append(field('Button style', 'buttonStyle', themeValue(state?.theme, 'buttonStyle'), update('buttonStyle'), 'select', [['soft', 'Soft'], ['outlined', 'Outlined'], ['filled', 'Filled']]));
+    fields.append(field('Button radius', 'buttonRadius', themeValue(state?.theme, 'buttonRadius'), update('buttonRadius'), 'select', [['square', 'Square'], ['rounded', 'Rounded'], ['pill', 'Pill']]));
+    fields.append(checkbox('High contrast', 'highContrast', themeValue(state?.theme, 'highContrast'), update('highContrast')));
+    fields.append(checkbox('Reduce overlays', 'reduceOverlays', themeValue(state?.theme, 'reduceOverlays'), update('reduceOverlays')));
     section.append(fields); host.append(section);
 };

@@ -15,3 +15,11 @@ Verification:
 - `node --test backend/handlers/home_designer_app_test.js` — PASS
 - `node --check backend/handlers/admin_assets/home_designer/app.js && node --check backend/handlers/admin_assets/home_designer/theme.js && node --check backend/handlers/admin_assets/home_designer/preview.js` — PASS
 - `podman run --rm --network=host -v /home/jeor/Documents/Mediastorm/Backend/mediastorm/.worktrees/home-designer:/src:Z -w /src/backend docker.io/library/golang:1.26.5 go test ./handlers -run 'HomeDesigner' -count=1` — PASS (exit 0)
+
+## Review follow-up
+
+- Preview POST bodies now include the exact edited scope, and scope participates in cache/context identity. The controller has no row-count cap: it lazily requests every enabled row that enters the preview-content viewport while retaining the 12-item row bound.
+- Preview invalidation is synchronous for row configuration, selected profile, platform, and scope transitions. It aborts pending work, clears rendered values, suppresses stale responses, and reconnects row observation after every render.
+- TV and mobile now use distinct render plans over the same ordered Rows array. TV reads top-shelf/hero/shelf settings and uses collection-aware orientation; mobile uses its top-shelf carousel rule, portrait density, and bottom navigation.
+- Theme inputs carry stable paths and remain mounted while focused during continuous color/number edits. Button style now sets a preview-device data attribute with distinct soft, outlined, and filled treatments applied only inside the mock device.
+- Added regression coverage for request scope, visible-row scheduling, four transition invalidations, separate device plans, continuous Theme input focus, and button-style CSS consumption.

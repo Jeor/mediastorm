@@ -39,7 +39,7 @@ test('preview controller debounces visible enabled rows and caps their items at 
         timers,
         fetchPreview: async (request) => { requests.push(request); return { rows: [{ id: request.rows.value.shelves[0].id, status: 'ready', items: [] }] }; },
     });
-    controller.schedule({ profileId: 'profile-a', platform: 'tv', rows: [row('first', { limit: 99 }), row('disabled', { enabled: false })], visibleRowIds: ['first', 'disabled'] });
+    controller.schedule({ scope: { kind: 'profile', profileId: 'profile-a' }, profileId: 'profile-a', platform: 'tv', rows: [row('first', { limit: 99 }), row('disabled', { enabled: false })], visibleRowIds: ['first', 'disabled'] });
     assert.equal(requests.length, 0);
     timers.tick(249);
     assert.equal(requests.length, 0);
@@ -47,6 +47,7 @@ test('preview controller debounces visible enabled rows and caps their items at 
     await settle();
     assert.equal(requests.length, 1);
     assert.equal(requests[0].rows.value.shelves[0].limit, 12);
+    assert.deepEqual(requests[0].scope, { kind: 'profile', profileId: 'profile-a' });
 });
 
 test('preview controller cancels superseded row requests and ignores their stale responses', async () => {
@@ -128,11 +129,122 @@ test('theme variables remain scoped to the preview device and map contrast plus 
     // Break caught: live theme editing recoloring the admin shell or ignoring the accessibility choices shown in the mock app.
     const { applyThemeVariables } = await moduleFromFile('theme.js');
     const values = new Map();
-    const device = { style: { setProperty: (name, value) => values.set(name, value) } };
-    applyThemeVariables(device, { accentColor: '#112233', fontScale: 1.2, highContrast: true, reduceOverlays: true, buttonRadius: 'pill' });
+    const device = { dataset: {}, style: { setProperty: (name, value) => values.set(name, value) } };
+    applyThemeVariables(device, { accentColor: '#112233', fontScale: 1.2, highContrast: true, reduceOverlays: true, buttonRadius: 'pill', buttonStyle: 'filled' });
     assert.equal(values.get('--preview-accent'), '#112233');
     assert.equal(values.get('--preview-font-scale'), '1.2');
     assert.equal(values.get('--preview-contrast'), '1.35');
     assert.equal(values.get('--preview-overlay-opacity'), '0');
     assert.equal(values.get('--preview-button-radius'), '999px');
+    assert.equal(device.dataset.previewButtonStyle, 'filled');
+});
+
+test('preview requests retain the exact edited scope and do not cap visible rows', async () => {
+    // Break caught: the authorization scope being omitted or an accidental 12-row limit hiding valid visible shelves.
+    const { createPreviewController } = await moduleFromFile('preview.js');
+    const timers = fakeTimers();
+    const requests = [];
+    const controller = createPreviewController({ timers, fetchPreview: async (request) => { requests.push(request); return { rows: [{ id: request.rows.value.shelves[0].id, status: 'ready', items: [] }] }; } });
+    const rows = Array.from({ length: 13 }, (_, index) => row(`row-${index}`));
+    const scope = { kind: 'profile', profileId: 'edited-scope' };
+    controller.schedule({ scope, profileId: 'profile-a', platform: 'tv', rows, visibleRowIds: rows.map((item) => item.id) });
+    timers.tick(250); await settle(); await settle();
+    assert.equal(requests.length, 13);
+    assert.deepEqual(requests[0].scope, scope);
+});
+
+test('preview controller schedules only a newly visible enabled row after another row has resolved', async () => {
+    // Break caught: losing the lazy observer lifecycle or re-fetching an already resolved visible row after a scroll.
+    const { createPreviewController } = await moduleFromFile('preview.js');
+    const timers = fakeTimers();
+    const calls = [];
+    const controller = createPreviewController({ timers, fetchPreview: async (request) => { calls.push(request.rows.value.shelves[0].id); return { rows: [{ id: calls.at(-1), status: 'ready', items: [] }] }; } });
+    const rows = [row('first'), row('second'), row('disabled', { enabled: false })];
+    const base = { scope: { kind: 'profile', profileId: 'scope-a' }, profileId: 'profile-a', platform: 'tv', rows };
+    controller.schedule({ ...base, visibleRowIds: ['first'] }); timers.tick(250); await settle();
+    controller.schedule({ ...base, visibleRowIds: ['first', 'second', 'disabled'] }); timers.tick(250); await settle();
+    assert.deepEqual(calls, ['first', 'second']);
+});
+
+test('preview invalidation aborts and suppresses deferred row results for row, profile, platform, and scope transitions', async () => {
+    // Break caught: old presentation data rendering during any of the four synchronous context transitions.
+    const { createPreviewController } = await moduleFromFile('preview.js');
+    const timers = fakeTimers();
+    const deferredRequests = [];
+    const controller = createPreviewController({ timers, fetchPreview: (_, { signal }) => { const request = deferred(); deferredRequests.push({ request, signal }); return request.promise; } });
+    const initial = { scope: { kind: 'profile', profileId: 'scope-a' }, profileId: 'profile-a', platform: 'tv', rows: [row('watchlist')], visibleRowIds: ['watchlist'] };
+    controller.schedule(initial); timers.tick(250); await settle();
+    const transitions = [
+        () => controller.invalidate(),
+        () => controller.schedule({ ...initial, profileId: 'profile-b' }),
+        () => controller.schedule({ ...initial, platform: 'mobile' }),
+        () => controller.schedule({ ...initial, scope: { kind: 'global' } }),
+    ];
+    for (const transition of transitions) {
+        transition();
+        const active = deferredRequests.at(-1);
+        assert.equal(active.signal.aborted, true);
+        active.request.resolve({ rows: [{ id: 'watchlist', status: 'ready', items: [{ title: 'stale' }] }] });
+        await settle();
+        assert.equal(controller.getRows().watchlist, undefined);
+        controller.schedule(initial); timers.tick(250); await settle();
+    }
+});
+
+test('TV and mobile plans keep row order while applying distinct top and card rules', async () => {
+    // Break caught: platform changes becoming a generic renderer alias or mutating the shared row order.
+    const { buildMobilePreviewPlan, buildTVPreviewPlan } = await moduleFromFile('preview.js');
+    const state = { rows: [row('first'), row('collection', { type: 'collection-hub', order: 1 }), row('third', { order: 2 })], rowsSettings: { tvTopShelfMode: 'source', tvTopShelfSourceId: 'third', mobileTopShelfSourceId: 'collection', homeShelfScale: 1.2, homeHeroScale: 1.3 } };
+    const tv = buildTVPreviewPlan(state, {});
+    const mobile = buildMobilePreviewPlan(state, {});
+    assert.deepEqual(tv.rows.map((item) => item.id), ['first', 'collection', 'third']);
+    assert.deepEqual(mobile.rows.map((item) => item.id), ['first', 'collection', 'third']);
+    assert.equal(tv.heroRowId, 'third');
+    assert.equal(tv.rows[0].cardLayout, 'landscape');
+    assert.equal(tv.rows[1].cardLayout, 'portrait');
+    assert.equal(tv.shelfScale, 1.2);
+    assert.equal(mobile.carouselRowId, 'collection');
+    assert.ok(mobile.rows.every((item) => item.cardLayout === 'portrait'));
+});
+
+test('continuous theme input retains the same focused control across a live render', async () => {
+    // Break caught: typing a number or using a color picker replacing its focused Theme control after each input event.
+    const { renderTheme } = await moduleFromFile('theme.js');
+    class Element {
+        constructor(tagName) { this.tagName = tagName; this.children = []; this.dataset = {}; this.listeners = new Map(); this.value = ''; this.checked = false; }
+        append(...children) { this.children.push(...children); }
+        replaceChildren(...children) { this.children = children; }
+        addEventListener(type, listener) { this.listeners.set(type, listener); }
+        querySelectorAll(selector) {
+            const match = selector.match(/^\[data-theme-path="(.+)"\]$/);
+            const found = [];
+            const visit = (node) => { if (match && node.dataset?.themePath === match[1]) found.push(node); node.children?.forEach(visit); };
+            visit(this); return found;
+        }
+        focus() { document.activeElement = this; }
+    }
+    const previousDocument = globalThis.document;
+    const document = { activeElement: null, createElement: (tagName) => new Element(tagName) };
+    globalThis.document = document;
+    try {
+        const host = new Element('div');
+        const actions = [];
+        const base = { scope: { kind: 'profile', profileId: 'profile-a' }, themeMode: 'custom', theme: { fontScale: 1, accentColor: '#112233' }, themePresets: [] };
+        renderTheme(host, { state: base, dispatch: (action) => actions.push(action) });
+        const font = host.querySelectorAll('[data-theme-path="fontScale"]')[0];
+        font.focus(); font.value = '1.2'; font.listeners.get('input')();
+        renderTheme(host, { state: { ...base, theme: { ...base.theme, fontScale: 1.2 } }, dispatch: () => {} });
+        assert.equal(actions[0].path, 'fontScale');
+        assert.strictEqual(host.querySelectorAll('[data-theme-path="fontScale"]')[0], font);
+        assert.strictEqual(document.activeElement, font);
+    } finally { globalThis.document = previousDocument; }
+});
+
+test('preview-only CSS gives each persisted button style a distinct card/control treatment', async () => {
+    // Break caught: buttonStyle being serialized into a variable but never consumed by the mock device.
+    const css = await readFile(new URL('./home_designer.css', import.meta.url), 'utf8');
+    for (const style of ['soft', 'outlined', 'filled']) {
+        assert.match(css, new RegExp(`\\.home-preview-device\\[data-preview-button-style="${style}"\\] \\.home-preview-card`));
+    }
+    assert.doesNotMatch(css, /\.btn\[data-preview-button-style/);
 });

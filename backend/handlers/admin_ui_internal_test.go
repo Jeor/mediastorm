@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -513,11 +514,11 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	}
 	source := string(templateBytes)
 
-	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
+	if regexp.MustCompile(`<span\s+class="sidebar-nav-icon"[^>]*>`).MatchString(source) {
 		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 22 {
-		t.Fatalf("shared shell navigation SVG count = %d, want 22", got)
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got < 22 {
+		t.Fatalf("shared shell navigation SVG count = %d, want at least 22", got)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,

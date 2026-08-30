@@ -30,11 +30,18 @@ if (root) {
         root.append(message, retry);
     };
 
+    const showReady = () => {
+        root.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'home-designer-ready';
+        message.textContent = 'Home Designer is ready.';
+        root.append(message);
+    };
+
     const bootstrap = async () => {
         try {
             await loadDocument();
-            const loading = root.querySelector('.home-designer-loading');
-            if (loading) loading.textContent = 'Home Designer is ready.';
+            showReady();
         } catch {
             showFailure();
         }

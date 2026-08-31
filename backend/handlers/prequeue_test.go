@@ -69,6 +69,57 @@ func TestHasReusablePreparationRequiresCompleteDolbyVisionConfiguration(t *testi
 	}
 }
 
+func TestAdaptiveThroughputDoesNotChangePrequeueScope(t *testing.T) {
+	base := prequeueScopeSignature{
+		Filtering: models.FilterSettings{
+			MaxSizeEpisodeGB: models.FloatPtr(0),
+			HDRDVPolicy:      models.HDRDVPolicyIncludeHDR,
+		},
+	}
+
+	fast := base
+	displayPolicy := models.HDRDVPolicyIncludeHDRDV
+	applyAdaptiveScopePolicy(&fast.Filtering, models.AdaptiveCaps{
+		MaxSizeEpisodeGB: models.FloatPtr(32),
+		HDRDVPolicy:      &displayPolicy,
+	})
+
+	slower := base
+	applyAdaptiveScopePolicy(&slower.Filtering, models.AdaptiveCaps{
+		MaxSizeEpisodeGB: models.FloatPtr(8),
+		HDRDVPolicy:      &displayPolicy,
+	})
+
+	if got, want := prequeueScopeHash(fast), prequeueScopeHash(slower); got != want {
+		t.Fatalf("throughput-only cap change altered scope: fast=%s slower=%s", got, want)
+	}
+
+	sdr := base
+	sdrPolicy := models.HDRDVPolicyNoExclusion
+	applyAdaptiveScopePolicy(&sdr.Filtering, models.AdaptiveCaps{HDRDVPolicy: &sdrPolicy})
+	if prequeueScopeHash(fast) == prequeueScopeHash(sdr) {
+		t.Fatal("display compatibility change should still alter scope")
+	}
+}
+
+func TestReadyEntryFitsAdaptiveCaps(t *testing.T) {
+	const gib = int64(1024 * 1024 * 1024)
+
+	episode := &playback.PrequeueEntry{MediaType: "series", FileSize: 6 * gib}
+	if !readyEntryFitsAdaptiveCaps(episode, models.AdaptiveCaps{MaxSizeEpisodeGB: models.FloatPtr(8)}) {
+		t.Fatal("ready episode below the new throughput cap should remain reusable")
+	}
+	if readyEntryFitsAdaptiveCaps(episode, models.AdaptiveCaps{MaxSizeEpisodeGB: models.FloatPtr(5)}) {
+		t.Fatal("ready episode above the new throughput cap should require fresh resolution")
+	}
+	if readyEntryFitsAdaptiveCaps(&playback.PrequeueEntry{MediaType: "series"}, models.AdaptiveCaps{MaxSizeEpisodeGB: models.FloatPtr(8)}) {
+		t.Fatal("entry with unknown size cannot be proven safe under an adaptive cap")
+	}
+	if !readyEntryFitsAdaptiveCaps(episode, models.AdaptiveCaps{}) {
+		t.Fatal("entry should remain reusable when adaptive throughput supplies no size cap")
+	}
+}
+
 type prequeueRoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f prequeueRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {

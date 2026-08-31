@@ -578,8 +578,39 @@ func prequeueScopeHash(sig prequeueScopeSignature) string {
 	return "scope_" + hex.EncodeToString(sum[:])[:16]
 }
 
-func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID string) string {
+// applyAdaptiveScopePolicy keeps capability changes that alter what the prepared
+// stream can play (HDR/DV) in the cache identity. Throughput-derived size caps
+// are deliberately excluded: a new speed sample should not invalidate a ready
+// stream that is still small enough for the new cap.
+func applyAdaptiveScopePolicy(filtering *models.FilterSettings, caps models.AdaptiveCaps) {
+	if filtering == nil || caps.HDRDVPolicy == nil {
+		return
+	}
+	filtering.HDRDVPolicy = *caps.HDRDVPolicy
+}
+
+func readyEntryFitsAdaptiveCaps(entry *playback.PrequeueEntry, caps models.AdaptiveCaps) bool {
+	if entry == nil {
+		return false
+	}
+	var capGB *float64
+	if strings.EqualFold(entry.MediaType, "movie") {
+		capGB = caps.MaxSizeMovieGB
+	} else {
+		capGB = caps.MaxSizeEpisodeGB
+	}
+	if capGB == nil || *capGB <= 0 {
+		return true
+	}
+	if entry.FileSize <= 0 {
+		return false
+	}
+	return float64(entry.FileSize)/(1024*1024*1024) <= *capGB
+}
+
+func (h *PrequeueHandler) prequeueSettingsScope(userID, clientID, titleID string) (string, models.AdaptiveCaps) {
 	var global prequeueScopeSignature
+	var adaptiveCaps models.AdaptiveCaps
 	defaults := models.UserSettings{}
 	if h.configManager != nil {
 		if globalSettings, err := h.configManager.Load(); err == nil {
@@ -634,22 +665,23 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 		}
 	}
 
-	// Fold adaptive playback caps into the scope so cached prequeues are keyed by
-	// the same effective size/HDR limits the search will apply for this device.
-	// Without this, two devices that differ only by measured speed/display would
-	// share a cache entry (and prewarm would skip warming the second).
+	// Display capability remains part of the scope because it can change the
+	// prepared stream format. Throughput caps are checked against a ready entry's
+	// actual file size at reuse time, allowing harmless speed changes to retain a
+	// valid prewarm while still rejecting entries that are now too large.
 	if h.configManager != nil {
 		if globalSettings, err := h.configManager.Load(); err == nil {
 			var adaptive *models.AdaptivePlaybackSettings
 			if clientSettings != nil {
 				adaptive = clientSettings.AdaptivePlayback
 			}
-			models.ComputeAdaptiveCaps(
+			adaptiveCaps = models.ComputeAdaptiveCaps(
 				models.BoolVal(effective.Filtering.AdaptivePlaybackEnabled, globalSettings.Filtering.AdaptivePlaybackEnabled),
 				models.FloatVal(effective.Filtering.AdaptiveTargetBufferFactor, globalSettings.Filtering.AdaptiveTargetBufferFactor),
 				adaptive,
 				time.Now(),
-			).ApplyTo(&effective.Filtering)
+			)
+			applyAdaptiveScopePolicy(&effective.Filtering, adaptiveCaps)
 		}
 	}
 
@@ -662,9 +694,14 @@ func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID str
 	}
 
 	if reflect.DeepEqual(effective, global) {
-		return playback.DefaultPrequeueSettingsScopeKey
+		return playback.DefaultPrequeueSettingsScopeKey, adaptiveCaps
 	}
-	return prequeueScopeHash(effective)
+	return prequeueScopeHash(effective), adaptiveCaps
+}
+
+func (h *PrequeueHandler) prequeueSettingsScopeKey(userID, clientID, titleID string) string {
+	scopeKey, _ := h.prequeueSettingsScope(userID, clientID, titleID)
+	return scopeKey
 }
 
 // PrequeueSettingsScopeKey returns the effective prequeue settings scope for a profile/client/title.
@@ -1039,14 +1076,17 @@ func (h *PrequeueHandler) Prequeue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	settingsScopeKey := h.prequeueSettingsScopeKey(req.UserID, clientID, req.TitleID)
+	settingsScopeKey, adaptiveCaps := h.prequeueSettingsScope(req.UserID, clientID, req.TitleID)
 	log.Printf("[prequeue] Effective settings scope for title=%s user=%s client=%s: %s", req.TitleID, req.UserID, clientID, settingsScopeKey)
 
 	// Check for pre-warmed entry before creating a new one
 	if h.prewarmSvc != nil {
 		if warm := h.prewarmSvc.GetWarmScoped(req.TitleID, req.UserID, settingsScopeKey); warm != nil && warm.PrequeueID != "" {
 			if warmEntry, ok := h.store.Get(warm.PrequeueID); ok && warmEntry.Status == playback.PrequeueStatusReady && hasReusablePreparation(warmEntry) {
-				if err := h.validateReadyEntryForReuse(r.Context(), warmEntry); err != nil {
+				if !readyEntryFitsAdaptiveCaps(warmEntry, adaptiveCaps) {
+					log.Printf("[prequeue] Ignoring pre-warmed entry %s: file size %d exceeds current adaptive throughput cap, resolving fresh",
+						warm.PrequeueID, warmEntry.FileSize)
+				} else if err := h.validateReadyEntryForReuse(r.Context(), warmEntry); err != nil {
 					log.Printf("[prequeue] Ignoring pre-warmed entry %s: stale external stream (%v), resolving fresh",
 						warm.PrequeueID, err)
 					h.store.Delete(warm.PrequeueID)
@@ -1096,7 +1136,10 @@ func (h *PrequeueHandler) Prequeue(w http.ResponseWriter, r *http.Request) {
 				existing.ID, existing.TargetEpisode, targetEpisode)
 		} else if existing.Status == playback.PrequeueStatusReady {
 			if existing.StreamPath != "" && hasReusablePreparation(existing) {
-				if err := h.validateReadyEntryForReuse(r.Context(), existing); err != nil {
+				if !readyEntryFitsAdaptiveCaps(existing, adaptiveCaps) {
+					log.Printf("[prequeue] Discarding ready entry %s: file size %d exceeds current adaptive throughput cap, resolving fresh",
+						existing.ID, existing.FileSize)
+				} else if err := h.validateReadyEntryForReuse(r.Context(), existing); err != nil {
 					log.Printf("[prequeue] Discarding ready entry %s: stale external stream (%v), resolving fresh",
 						existing.ID, err)
 					h.store.Delete(existing.ID)

@@ -864,6 +864,13 @@ func TestPrewarmFailureRetryDelay_NoResultsUsesReleaseWindow(t *testing.T) {
 			year: now.Year(),
 			want: prewarmNoResultsCurrentYearRetryDelay,
 		},
+		{
+			name:          "cancelled worker retries promptly",
+			err:           fmt.Errorf("prequeue failed: cancelled"),
+			targetEpisode: &models.EpisodeReference{SeasonNumber: 1, EpisodeNumber: 5},
+			year:          now.Year(),
+			want:          prewarmTransientFailureRetryDelay,
+		},
 	}
 
 	for _, tt := range tests {
@@ -873,6 +880,22 @@ func TestPrewarmFailureRetryDelay_NoResultsUsesReleaseWindow(t *testing.T) {
 				t.Fatalf("prewarmFailureRetryDelayAt() = %s, want %s", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTransientPrewarmFailureReadyOverridesLegacyLongBackoff(t *testing.T) {
+	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	entry := &WarmEntry{
+		Error:       "prequeue failed: cancelled",
+		LastResolve: now.Add(-2 * time.Minute),
+		ExpiresAt:   now.Add(24 * time.Hour),
+	}
+	if !transientPrewarmFailureReady(entry, now) {
+		t.Fatal("legacy cancellation should retry after the transient delay despite its persisted long expiry")
+	}
+	entry.LastResolve = now.Add(-30 * time.Second)
+	if transientPrewarmFailureReady(entry, now) {
+		t.Fatal("recent cancellation should retain the short retry delay")
 	}
 }
 

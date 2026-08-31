@@ -79,6 +79,7 @@ const prewarmStableReResolveMinDays = 1
 const prewarmStableReResolveMaxDays = 30
 const prewarmRenewalLead = 8 * time.Minute
 const prewarmWorkerTimeout = 15 * time.Minute
+const prewarmTransientFailureRetryDelay = time.Minute
 
 const (
 	PrewarmShelfSelectionsConfigKey = "shelfSelections"
@@ -402,7 +403,7 @@ func (s *Service) warmContinueWatchingScope(
 			log.Printf("[prewarm] Re-warming %q for user %s scope=%s: next-up episode advanced (warm=%s, next=%s)",
 				state.SeriesTitle, user.Name, settingsScopeKey,
 				episodeRefLabel(entry.TargetEpisode), episodeRefLabel(targetEpisode))
-		} else if existing.Error != "" && time.Now().Before(existing.ExpiresAt) {
+		} else if existing.Error != "" && time.Now().Before(existing.ExpiresAt) && !transientPrewarmFailureReady(existing, time.Now()) {
 			log.Printf("[prewarm] Skipping %q for user %s scope=%s: previous failure retry at %v (%s)",
 				state.SeriesTitle, user.Name, settingsScopeKey, existing.ExpiresAt, existing.Error)
 			result.Skipped++
@@ -1497,6 +1498,9 @@ func prewarmFailureRetryDelay(err error, targetEpisode *models.EpisodeReference,
 }
 
 func prewarmFailureRetryDelayAt(err error, targetEpisode *models.EpisodeReference, year int, mediaType string, now time.Time) time.Duration {
+	if isTransientPrewarmFailure(err) {
+		return prewarmTransientFailureRetryDelay
+	}
 	baseTTL := playback.DynamicTTL(
 		targetEpisodeAirDate(targetEpisode),
 		targetEpisodeAirDateTimeUTC(targetEpisode),
@@ -1517,6 +1521,28 @@ func prewarmFailureRetryDelayAt(err error, targetEpisode *models.EpisodeReferenc
 		return prewarmNoResultsCurrentYearRetryDelay
 	}
 	return baseTTL
+}
+
+func isTransientPrewarmFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	errText := strings.ToLower(err.Error())
+	return strings.Contains(errText, "cancelled") ||
+		strings.Contains(errText, "canceled") ||
+		strings.Contains(errText, "deadline exceeded") ||
+		strings.Contains(errText, "timed out") ||
+		strings.Contains(errText, "timeout")
+}
+
+func transientPrewarmFailureReady(entry *WarmEntry, now time.Time) bool {
+	if entry == nil || !isTransientPrewarmFailure(errors.New(entry.Error)) {
+		return false
+	}
+	return entry.LastResolve.IsZero() || !now.Before(entry.LastResolve.Add(prewarmTransientFailureRetryDelay))
 }
 
 func isNoResultsPrewarmFailure(err error) bool {

@@ -380,9 +380,17 @@ func TestUserSettingsHandler_GetSettings_DefaultsPreserveStremioShelfFields(t *t
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
 	}
-	if got := settingsSvc.lastDefaults.HomeShelves.Shelves; len(got) != 1 ||
-		got[0].AddonManifestURL != "https://addon.example/manifest.json" ||
-		got[0].AddonCatalogType != "movie" || got[0].AddonCatalogID != "catalog-1" || got[0].AddonName != "Example Add-on" {
-		t.Fatalf("stremio shelf = %#v, want all Stremio fields preserved", got)
+	var stremio *models.ShelfConfig
+	for i := range settingsSvc.lastDefaults.HomeShelves.Shelves {
+		shelf := &settingsSvc.lastDefaults.HomeShelves.Shelves[i]
+		if shelf.ID == "stremio-1" {
+			stremio = shelf
+			break
+		}
+	}
+	if stremio == nil ||
+		stremio.AddonManifestURL != "https://addon.example/manifest.json" ||
+		stremio.AddonCatalogType != "movie" || stremio.AddonCatalogID != "catalog-1" || stremio.AddonName != "Example Add-on" {
+		t.Fatalf("stremio shelf = %#v, want all Stremio fields preserved", stremio)
 	}
 }

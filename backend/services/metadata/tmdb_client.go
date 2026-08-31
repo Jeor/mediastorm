@@ -473,6 +473,8 @@ func (c *tmdbClient) fetchImages(ctx context.Context, mediaType string, tmdbID i
 		if selectedLogo, ok := c.selectLogoCandidate(ctx, payload.Logos, preferredLang); ok {
 			result.Logo = buildTMDBImage(selectedLogo.FilePath, tmdbLogoSize, "logo")
 			if result.Logo != nil {
+				result.Logo.Width = selectedLogo.Width
+				result.Logo.Height = selectedLogo.Height
 				result.Logo.Language = selectedLogo.ISO6391
 				result.Logo.IsFallbackLanguage = selectedLogo.ISO6391 != preferredLang
 				result.Logo.IsDark = c.isImageDark(ctx, result.Logo.URL)

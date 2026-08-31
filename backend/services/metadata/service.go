@@ -1155,7 +1155,7 @@ func (s *Service) GetCachedArtworkURLs(mediaType string, tmdbID int64, tvdbID in
 			if ok, _ := s.cache.get(cacheID, &cached); ok {
 				mergeTitle(cached)
 			}
-			imagesKey := cacheKey("tmdb", "images", "v9", s.client.language, "movie", fmt.Sprintf("%d", tmdbID))
+			imagesKey := cacheKey("tmdb", "images", "v10", s.client.language, "movie", fmt.Sprintf("%d", tmdbID))
 			var images tmdbImagesResult
 			if ok, _ := s.cache.get(imagesKey, &images); ok {
 				mergeImages(images)
@@ -1195,7 +1195,7 @@ func (s *Service) GetCachedArtworkURLs(mediaType string, tmdbID int64, tvdbID in
 			}
 		}
 		if tmdbID > 0 {
-			imagesKey := cacheKey("tmdb", "images", "v9", s.client.language, "series", fmt.Sprintf("%d", tmdbID))
+			imagesKey := cacheKey("tmdb", "images", "v10", s.client.language, "series", fmt.Sprintf("%d", tmdbID))
 			var images tmdbImagesResult
 			if ok, _ := s.cache.get(imagesKey, &images); ok {
 				mergeImages(images)
@@ -3801,7 +3801,7 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			}()
 		}
 
-		if cached.Title.Logo == nil && tmdbOK {
+		if logoNeedsIntrinsicDimensions(cached.Title.Logo) && tmdbOK {
 			enrichWg.Add(1)
 			go func() {
 				defer enrichWg.Done()
@@ -4748,6 +4748,16 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 		if !fullCached.EpisodeTMDBEnriched && s.enrichCachedTMDBEpisodeMetadata(ctx, &fullCached, req.TMDBID) {
 			cacheChanged = true
 		}
+		logoTMDBID := fullCached.Title.TMDBID
+		if logoTMDBID == 0 {
+			logoTMDBID = req.TMDBID
+		}
+		if logoNeedsIntrinsicDimensions(fullCached.Title.Logo) && logoTMDBID > 0 {
+			if images, imageErr := s.cachedFetchImages(ctx, "series", logoTMDBID); imageErr == nil && images != nil && images.Logo != nil {
+				fullCached.Title.Logo = images.Logo
+				cacheChanged = true
+			}
+		}
 		if cacheChanged {
 			_ = s.cache.set(fullCacheID, fullCached)
 		}
@@ -4774,6 +4784,16 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 		}
 		if !cached.EpisodeTMDBEnriched && s.enrichCachedTMDBEpisodeMetadata(ctx, &cached, req.TMDBID) {
 			cacheChanged = true
+		}
+		logoTMDBID := cached.Title.TMDBID
+		if logoTMDBID == 0 {
+			logoTMDBID = req.TMDBID
+		}
+		if logoNeedsIntrinsicDimensions(cached.Title.Logo) && logoTMDBID > 0 {
+			if images, imageErr := s.cachedFetchImages(ctx, "series", logoTMDBID); imageErr == nil && images != nil && images.Logo != nil {
+				cached.Title.Logo = images.Logo
+				cacheChanged = true
+			}
 		}
 		if cacheChanged {
 			_ = s.cache.set(cacheID, cached)
@@ -8105,7 +8125,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	if s.tmdb == nil || !s.tmdb.isConfigured() {
 		return nil, errors.New("tmdb api key not configured")
 	}
-	key := cacheKey("tmdb", "images", "v9", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
+	key := cacheKey("tmdb", "images", "v10", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, nil
@@ -8139,7 +8159,7 @@ func (s *Service) cachedTMDBImagesOnly(mediaType string, tmdbID int64) (*tmdbIma
 	if s.client != nil {
 		language = s.client.language
 	}
-	key := cacheKey("tmdb", "images", "v9", language, mediaType, fmt.Sprintf("%d", tmdbID))
+	key := cacheKey("tmdb", "images", "v10", language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, true
@@ -8190,6 +8210,10 @@ func applyTMDBImagesToTitle(title *models.Title, images *tmdbImagesResult) bool 
 		updated = true
 	}
 	return updated
+}
+
+func logoNeedsIntrinsicDimensions(logo *models.Image) bool {
+	return logo == nil || logo.Width <= 0 || logo.Height <= 0
 }
 
 func (s *Service) applyCachedTMDBImages(ctx context.Context, title *models.Title, mediaType string, tmdbID int64) bool {

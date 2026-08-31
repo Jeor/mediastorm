@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -363,7 +364,10 @@ func TestAdminSettingsDesktopCommandBarKeepsAllDetailLabelsVisible(t *testing.T)
 	for _, marker := range []string{
 		`.settings-command-bar {`,
 		`display: flex;`,
-		`flex: 0 0 240px;`,
+		`grid-template-columns: repeat(3, max-content);`,
+		`width: max-content;`,
+		`min-width: max-content;`,
+		`white-space: nowrap;`,
 		`flex: 1 1 160px;`,
 		`.settings-command-bar .settings-context-trigger-desktop > span { min-width: 0; }`,
 		`id="settingsEssentialBtn"`,
@@ -683,6 +687,41 @@ func TestSharedShellHighlightsMaintenanceLeafWithoutSelectingParent(t *testing.T
 	}
 }
 
+func TestMaintenanceSubpagesReportTheirOwnCurrentPath(t *testing.T) {
+	pathTemplate := template.Must(template.New("base").Parse(`{{define "base"}}{{.CurrentPath}}{{end}}`))
+	handler := &AdminUIHandler{
+		shareLinksTemplate:  pathTemplate,
+		resolvedNZBTemplate: pathTemplate,
+		badStreamsTemplate:  pathTemplate,
+		prequeueTemplate:    pathTemplate,
+	}
+
+	tests := []struct {
+		name string
+		path string
+		page http.HandlerFunc
+		want string
+	}{
+		{name: "share links", path: "/admin/tools/share-links", page: handler.ShareLinksPage, want: "/admin/tools/share-links"},
+		{name: "resolved NZBs", path: "/admin/tools/resolved-nzbs", page: handler.ResolvedNZBsPage, want: "/admin/tools/resolved-nzbs"},
+		{name: "bad streams", path: "/admin/tools/bad-streams", page: handler.BadStreamsPage, want: "/admin/tools/bad-streams"},
+		{name: "prequeue", path: "/admin/prequeue", page: handler.PrequeuePage, want: "/admin/prequeue"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			tt.page(recorder, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+			}
+			if got := strings.TrimSpace(recorder.Body.String()); got != tt.want {
+				t.Fatalf("CurrentPath = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSharedShellUsesTruthfulApplicationInformation(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
 	if err != nil {
@@ -819,12 +858,13 @@ func TestAdminSearchSwitchesBetweenExclusiveWorkspaces(t *testing.T) {
 	}
 	source := string(templateBytes)
 	for _, marker := range []string{
-		`id="searchDiagnostics" class="card search-diagnostics-card" aria-labelledby="searchDiagnosticsHeading" hidden`,
+		`.search-workspace-hidden { display: none !important; }`,
+		`id="searchDiagnostics" class="card search-diagnostics-card search-workspace-hidden" aria-labelledby="searchDiagnosticsHeading"`,
 		`function syncSearchWorkspaceDestination()`,
-		`contentSearch.hidden = showDiagnostics;`,
-		`selected.hidden = showDiagnostics;`,
-		`scrapeResults.hidden = showDiagnostics;`,
-		`diagnostics.hidden = !showDiagnostics;`,
+		`contentSearch.classList.toggle('search-workspace-hidden', showDiagnostics);`,
+		`selected.classList.toggle('search-workspace-hidden', showDiagnostics);`,
+		`scrapeResults.classList.toggle('search-workspace-hidden', showDiagnostics);`,
+		`diagnostics.classList.toggle('search-workspace-hidden', !showDiagnostics);`,
 		`window.addEventListener('hashchange', syncSearchWorkspaceDestination);`,
 	} {
 		if !strings.Contains(source, marker) {

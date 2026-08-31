@@ -274,7 +274,7 @@
 
 .dashboard-page-header h1 {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.65rem;
     margin-bottom: 0.25rem;
 }
@@ -433,13 +433,16 @@
 
 .numbers-station-signal {
     display: inline-flex;
+    align-self: center;
     align-items: center;
     gap: 0.35rem;
     padding: 0;
     border: 0;
     background: transparent;
     color: var(--text-muted);
-    font: inherit;
+    font: 700 0.6875rem/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
     opacity: 0;
     cursor: pointer;
     transition: opacity 1.8s ease, color 0.2s ease;

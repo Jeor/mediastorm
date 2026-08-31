@@ -1140,15 +1140,18 @@
 
 .settings-command-bar .settings-level-switch {
     display: grid;
-    flex: 0 0 240px;
-    width: 240px;
+    grid-template-columns: repeat(3, max-content);
+    flex: 0 0 auto;
+    width: max-content;
     height: 48px;
     padding: 0.2rem;
 }
 
 .settings-command-bar .settings-level-btn {
+    min-width: max-content;
     min-height: 0;
     height: 100%;
+    white-space: nowrap;
 }
 
 .settings-command-bar .settings-context-trigger-desktop {

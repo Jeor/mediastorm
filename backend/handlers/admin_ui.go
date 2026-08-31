@@ -10717,7 +10717,7 @@ func (h *AdminUIHandler) ShareLinksPage(w http.ResponseWriter, r *http.Request) 
 	usersList := h.getScopedUsers(isAdmin, accountID)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/tools/share-links",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -10744,7 +10744,7 @@ func (h *AdminUIHandler) ResolvedNZBsPage(w http.ResponseWriter, r *http.Request
 	usersList := h.getScopedUsers(isAdmin, accountID)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/tools/resolved-nzbs",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -10771,7 +10771,7 @@ func (h *AdminUIHandler) BadStreamsPage(w http.ResponseWriter, r *http.Request) 
 	usersList := h.getScopedUsers(isAdmin, accountID)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/tools/bad-streams",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -10836,7 +10836,7 @@ func (h *AdminUIHandler) PrequeuePage(w http.ResponseWriter, r *http.Request) {
 	isAdmin, accountID, basePath, username := h.getPageRoleInfo(r)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/prequeue",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,

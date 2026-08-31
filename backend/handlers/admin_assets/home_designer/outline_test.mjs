@@ -3,12 +3,17 @@ import test from 'node:test';
 import { isHomeDesignerDrop, insertionIndex, removalFocusTarget, renderInspector } from './outline.js';
 
 class Element {
-    constructor() { this.children = []; this.dataset = {}; this.attributes = {}; this.classList = { add() {}, remove() {}, toggle() {} }; }
-    append(...children) { this.children.push(...children); }
+    constructor(tagName) { this.tagName = tagName; this.children = []; this.dataset = {}; this.attributes = {}; this.className = ''; this.classList = { add() {}, remove() {}, toggle() {} }; }
+    append(...children) { children.forEach((child) => { child.parentElement = this; this.children.push(child); }); }
     replaceChildren(...children) { this.children = children; }
     addEventListener() {}
     setAttribute(name, value) { this.attributes[name] = String(value); }
 }
+
+const findPath = (element, path) => {
+    if (element.dataset?.fieldPath === path) return element;
+    return element.children.map((child) => findPath(child, path)).find(Boolean);
+};
 
 const findText = (element, value) => {
     if (element.textContent === value) return element;
@@ -68,6 +73,27 @@ test('collection inspector disables Add collection at the twenty-item cap', () =
     assert.equal(findText(container, 'Add collection').disabled, true);
 });
 
+test('row inspector uses admin form treatments for text and select controls', () => {
+    // Break caught: inspector fields rendering as unstyled native controls and visually breaking the panel grid.
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        const container = new Element('section');
+        renderInspector(container, {
+            state: {
+                selectionId: 'genre-row', rowValidation: {},
+                catalog: [{ type: 'genre', fields: [{ path: 'genre', type: 'select', options: [{ value: '28', label: 'Action' }] }] }],
+                rows: [{ id: 'genre-row', name: 'Action movies', type: 'genre', genre: '28' }],
+            },
+            dispatch() {},
+        });
+        assert.equal(findPath(container, 'name').className, 'form-input');
+        assert.equal(findPath(container, 'genre').className, 'form-select');
+    } finally {
+        globalThis.document = previousDocument;
+    }
+});
+
 test('server field errors are connected to row and collection controls accessibly', () => {
     // Break caught: a 422 collection error shown only in a global alert, with no invalid control or description.
     const originalDocument = globalThis.document;
@@ -81,10 +107,6 @@ test('server field errors are connected to row and collection controls accessibl
         }, dispatch() {}, onSelect() {},
     });
     globalThis.document = originalDocument;
-    const findPath = (element, path) => {
-        if (element.dataset?.fieldPath === path) return element;
-        return element.children.map((child) => findPath(child, path)).find(Boolean);
-    };
     const control = findPath(container, 'collectionItems.0.logoUrl');
     assert.equal(control.attributes['aria-invalid'], 'true');
     assert.match(control.attributes['aria-describedby'], /collectionItems-0-logoUrl/);

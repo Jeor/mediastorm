@@ -30,6 +30,7 @@ const label = (text) => { const item = document.createElement('label'); item.tex
 const field = (name, path, value, onChange, type = 'text', options = []) => {
     const item = label(name);
     const input = document.createElement(type === 'select' ? 'select' : 'input');
+    input.className = type === 'select' ? 'form-select' : 'form-input';
     if (type === 'select') options.forEach(([optionValue, optionLabel]) => { const option = document.createElement('option'); option.value = optionValue; option.textContent = optionLabel; input.append(option); });
     else input.type = type;
     input.dataset.themePath = path;

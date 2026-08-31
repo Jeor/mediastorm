@@ -1,6 +1,9 @@
 .home-designer {
+    --primary: var(--accent);
+    --radius-md: var(--radius);
     display: grid;
     gap: 1.25rem;
+    min-width: 0;
 }
 
 .home-designer-status {
@@ -52,8 +55,8 @@
 }
 
 .home-designer-toolbar {
-    grid-template-columns: minmax(14rem, 0.8fr) minmax(18rem, 1.2fr) auto;
-    align-items: end;
+    grid-template-columns: minmax(14rem, 1fr) auto;
+    align-items: center;
     padding: 1rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -61,7 +64,10 @@
 }
 
 .home-designer-toolbar-actions {
-    grid-auto-flow: column;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 .home-designer-open-drawer,
@@ -74,6 +80,7 @@
 .home-designer-workspace {
     grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 1.1fr) minmax(20rem, 1fr);
     align-items: start;
+    min-width: 0;
 }
 
 .home-designer-library,
@@ -98,6 +105,30 @@
     gap: 0.5rem;
 }
 
+.home-designer-library-filters,
+.home-designer-entry-actions,
+.home-designer-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.home-designer-library-search {
+    width: 100%;
+}
+
+.home-designer-library-entry h3,
+.home-designer-outline-row,
+.home-designer-inspector form,
+.home-designer-inspector fieldset {
+    min-width: 0;
+}
+
+.home-designer-library-entry p,
+.home-designer-row-name {
+    overflow-wrap: anywhere;
+}
+
 .home-designer-library-entry,
 .home-designer-outline-row,
 .home-designer-collection-item {
@@ -109,9 +140,25 @@
 }
 
 .home-designer-outline-row {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     cursor: grab;
+}
+
+.home-designer-outline-row .home-designer-row-state {
+    text-align: right;
+}
+
+.home-designer-outline-row .home-designer-row-actions {
+    grid-column: 1 / -1;
+}
+
+.home-designer-row-actions .btn,
+.home-designer-entry-actions .btn,
+.home-designer-library-filters .btn {
+    min-height: 34px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8125rem;
 }
 
 .home-designer-outline-row[aria-current="true"],
@@ -155,6 +202,14 @@
     min-width: 0;
 }
 
+.home-designer-inspector label,
+.home-designer-theme-fields label,
+.home-designer-preview-toolbar label {
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
 .home-designer-inspector fieldset {
     border: 0;
     margin: 0;
@@ -180,7 +235,7 @@
 }
 
 .home-designer-theme-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(8rem, 1fr));
 }
 
 .home-designer-theme-fields label,
@@ -204,7 +259,7 @@
 }
 
 .home-designer-preview-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(9rem, auto) minmax(7rem, auto);
+    grid-template-columns: minmax(0, 1fr) repeat(3, minmax(9rem, auto));
     align-items: end;
 }
 
@@ -344,6 +399,10 @@
     }
 
     .home-designer-preview-toolbar { grid-template-columns: 1fr; }
+
+    .home-designer-theme-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .home-designer-toolbar-actions { justify-content: flex-start; }
 
     .home-designer-workspace {
         grid-template-columns: repeat(2, minmax(0, 1fr));

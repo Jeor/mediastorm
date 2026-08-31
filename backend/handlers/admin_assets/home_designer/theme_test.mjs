@@ -88,3 +88,26 @@ test('Theme mode and value 422 errors render at an accessible action target and 
         globalThis.document = previousDocument;
     }
 });
+
+test('theme editor uses admin form treatments for color, number, and select controls', () => {
+    // Break caught: theme fields appearing as mismatched native controls in the editor toolbar.
+    const previousDocument = globalThis.document;
+    const document = { activeElement: null, createElement: (tagName) => new Element(tagName) };
+    globalThis.document = document;
+    try {
+        const host = new Element('div');
+        renderTheme(host, { state: { scope: { kind: 'global' }, revision: 'one', themeMode: 'custom', theme: {}, themePresets: [] }, dispatch() {} });
+        const controls = [];
+        const visit = (element) => {
+            if (Object.hasOwn(element.dataset || {}, 'themePath') && element.type !== 'checkbox') controls.push(element);
+            element.children.forEach(visit);
+        };
+        visit(host);
+        assert.ok(controls.length > 0);
+        for (const control of controls) {
+            assert.equal(control.className, control.tagName === 'select' ? 'form-select' : 'form-input');
+        }
+    } finally {
+        globalThis.document = previousDocument;
+    }
+});

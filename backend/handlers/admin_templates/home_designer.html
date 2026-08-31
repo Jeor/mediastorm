@@ -31,7 +31,6 @@
     <section class="home-designer-editor" data-home-designer-editor hidden>
         <div class="home-designer-toolbar">
             <div data-home-designer-rows-controls></div>
-            <div data-home-designer-theme-controls></div>
             <div class="home-designer-toolbar-actions">
                 <button type="button" class="btn btn-secondary" data-home-designer-undo disabled>Undo</button>
                 <button type="button" class="btn btn-secondary" data-home-designer-redo disabled>Redo</button>
@@ -39,6 +38,7 @@
                 <button type="button" class="btn btn-primary" data-home-designer-apply>Apply changes</button>
             </div>
         </div>
+        <div data-home-designer-theme></div>
         <p class="sr-only" data-home-designer-live aria-live="polite"></p>
         <div class="home-designer-workspace">
             <button type="button" class="btn btn-secondary home-designer-open-drawer" data-home-designer-open-library aria-controls="homeDesignerLibrary">Open row library</button>
@@ -53,9 +53,9 @@
                     <h2>Live preview</h2>
                     <p>Theme and row edits are visible here but are not saved until you apply changes.</p>
                 </div>
-                <label>Editing scope <select data-home-designer-scope aria-label="Editing scope"></select></label>
-                <label>Preview profile <select data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
-                <label>Preview platform <select data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
+                <label>Editing scope <select class="form-select" data-home-designer-scope aria-label="Editing scope"></select></label>
+                <label>Preview profile <select class="form-select" data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
+                <label>Preview platform <select class="form-select" data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
             </div>
             <div data-home-designer-preview-host></div>
         </section>

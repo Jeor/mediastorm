@@ -170,6 +170,7 @@ export const renderOutline = (container, { state, dispatch, liveRegion, onSelect
 const fieldControl = (field, value) => {
     if (field.type === 'select') {
         const select = document.createElement('select');
+        select.className = 'form-select';
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.textContent = field.required ? 'Select an option' : 'No selection';
@@ -185,6 +186,7 @@ const fieldControl = (field, value) => {
     }
     const input = document.createElement('input');
     input.type = field.type === 'number' ? 'number' : field.type === 'url' ? 'url' : field.type === 'boolean' ? 'checkbox' : 'text';
+    if (input.type !== 'checkbox') input.className = 'form-input';
     if (field.type === 'boolean') input.checked = Boolean(value);
     else input.value = value ?? '';
     return input;
@@ -216,6 +218,7 @@ const collectionEditor = (fieldset, row, rows, dispatch, errors = [], onFieldEdi
         const input = (path, label, type = 'text') => {
             const control = document.createElement('input');
             control.type = type;
+            control.className = 'form-input';
             control.value = item[path] ?? '';
             control.dataset.fieldPath = `collectionItems.${index}.${path}`;
             control.setAttribute('aria-label', `Collection ${index + 1} ${label}`);
@@ -227,6 +230,7 @@ const collectionEditor = (fieldset, row, rows, dispatch, errors = [], onFieldEdi
         input('id', 'ID');
         input('name', 'name');
         const source = document.createElement('select');
+        source.className = 'form-select';
         source.setAttribute('aria-label', `Collection ${index + 1} source`);
         source.dataset.fieldPath = `collectionItems.${index}.sourceShelfId`;
         const none = document.createElement('option'); none.value = ''; none.textContent = 'Choose a source'; source.append(none);

@@ -95,6 +95,7 @@ export const renderLibrary = (container, { state, dispatch, onAdd, onConfigure }
     heading.textContent = 'Add a row';
     const search = document.createElement('input');
     search.type = 'search';
+    search.className = 'form-input home-designer-library-search';
     search.placeholder = 'Search rows';
     search.setAttribute('aria-label', 'Search row library');
     const filters = document.createElement('div');

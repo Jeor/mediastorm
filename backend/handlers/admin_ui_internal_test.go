@@ -181,6 +181,76 @@ func TestAdminSettingsSaveCommitsPendingTextArrayInputs(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsGlobalSaveClearsDirtyStateBeforeImpactRefresh(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	marker := `originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // The settings write is complete at this point. Clear the dirty UI before
+                    // refreshing profile-impact metadata, which may require several requests.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();`
+	if !strings.Contains(source, marker) {
+		t.Fatal("section-level global save must clear dirty state immediately after committing its baseline")
+	}
+
+	marker = `originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // Saving is finished even though the follow-up profile-impact refresh can
+                    // take longer. Hide the sticky unsaved bar as soon as the write succeeds.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();`
+	if !strings.Contains(source, marker) {
+		t.Fatal("sticky global save must clear dirty state immediately after committing its baseline")
+	}
+
+	for _, saveFunction := range []string{"saveSection", "saveAllSettings"} {
+		start := strings.Index(source, "async function "+saveFunction+"(")
+		if start < 0 {
+			t.Fatalf("settings template missing %s", saveFunction)
+		}
+		body := source[start:]
+		clearDirty := strings.Index(body, "updateSettingsSaveStatus();")
+		impactRefresh := strings.Index(body, "await updateProfileSaveImpact(changedGroups);")
+		if clearDirty < 0 || impactRefresh < 0 || clearDirty > impactRefresh {
+			t.Fatalf("%s must clear dirty state before refreshing profile impact", saveFunction)
+		}
+	}
+}
+
+func TestAdminSettingsProfileOverrideRefreshPublishesAtomicSnapshot(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"let userOverrideRefreshPromise = null;",
+		"if (userOverrideRefreshPromise) return userOverrideRefreshPromise;",
+		"const nextUserOverrides = { ...userOverrides };",
+		"const nextUserOverrideDetails = {};",
+		"nextUserOverrideDetails[userId] = details;",
+		"userOverrides = nextUserOverrides;",
+		"userOverrideDetails = nextUserOverrideDetails;",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing atomic profile-override refresh marker %q", marker)
+		}
+	}
+
+	refreshStart := strings.Index(source, "async function recalculateAllUserOverrides()")
+	if refreshStart < 0 {
+		t.Fatal("settings template missing recalculateAllUserOverrides")
+	}
+	refreshBody := source[refreshStart:]
+	if reset := strings.Index(refreshBody, "userOverrideDetails = {};"); reset >= 0 && reset < strings.Index(refreshBody, "function handleClientChange") {
+		t.Fatal("profile override refresh must not clear shared details before its asynchronous work completes")
+	}
+}
+
 func TestAdminSettingsSensitiveFieldsAllowOnlyOneReveal(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

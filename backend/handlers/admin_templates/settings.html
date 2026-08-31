@@ -4233,6 +4233,7 @@
 
     // Per-profile override details: { userId: { groupKey: [fieldLabel, ...] } }
     let userOverrideDetails = {};
+    let userOverrideRefreshPromise = null;
     let clientOverrideGroupsById = {};
     let overrideImpactNotice = null;
 
@@ -4385,49 +4386,65 @@
     // and compares field-by-field against global to build detailed override info.
     async function recalculateAllUserOverrides() {
         if (!userOverrides) return;
+        // Saving, opening Review Customizations, and initial page hydration can all
+        // request this refresh at once. Share one refresh and publish a complete
+        // snapshot so concurrent callers cannot clear one another's profile results.
+        if (userOverrideRefreshPromise) return userOverrideRefreshPromise;
 
-        userOverrideDetails = {};
+        const refresh = (async () => {
+            const nextUserOverrides = { ...userOverrides };
+            const nextUserOverrideDetails = {};
 
-        // Collect all user IDs from the dropdown (not just ones previously marked)
-        const userSelector = document.getElementById('userSelector');
-        if (!userSelector) return;
-        const allUserIds = Array.from(userSelector.options)
-            .filter(o => o.value)
-            .map(o => o.value);
+            // Collect all user IDs from the dropdown (not just ones previously marked)
+            const userSelector = document.getElementById('userSelector');
+            if (!userSelector) return;
+            const allUserIds = Array.from(userSelector.options)
+                .filter(o => o.value)
+                .map(o => o.value);
 
-        for (const userId of allUserIds) {
-            try {
-                const response = await fetch(basePath + '/api/user-settings?userId=' + encodeURIComponent(userId) + '&raw=true', {
-                    credentials: 'same-origin'
-                });
-                if (!response.ok) {
-                    userOverrides[userId] = false;
-                    continue;
+            for (const userId of allUserIds) {
+                try {
+                    const response = await fetch(basePath + '/api/user-settings?userId=' + encodeURIComponent(userId) + '&raw=true', {
+                        credentials: 'same-origin'
+                    });
+                    if (!response.ok) {
+                        nextUserOverrides[userId] = false;
+                        continue;
+                    }
+                    const settings = await response.json();
+                    if (!settings || Object.keys(settings).length === 0) {
+                        nextUserOverrides[userId] = false;
+                        continue;
+                    }
+
+                    const details = buildProfileOverrideDetails(settings);
+
+                    const hasOverrides = Object.keys(details).length > 0;
+                    settingsPropagationLog('recalc profile result from raw profile settings', {
+                        userId,
+                        hasOverrides,
+                        details,
+                    });
+                    nextUserOverrides[userId] = hasOverrides;
+                    if (hasOverrides) {
+                        nextUserOverrideDetails[userId] = details;
+                    }
+                } catch (e) {
+                    console.warn('Failed to load settings for user', userId, e);
                 }
-                const settings = await response.json();
-                if (!settings || Object.keys(settings).length === 0) {
-                    userOverrides[userId] = false;
-                    continue;
-                }
-
-                const details = buildProfileOverrideDetails(settings);
-
-                const hasOverrides = Object.keys(details).length > 0;
-                settingsPropagationLog('recalc profile result from raw profile settings', {
-                    userId,
-                    hasOverrides,
-                    details,
-                });
-                userOverrides[userId] = hasOverrides;
-                if (hasOverrides) {
-                    userOverrideDetails[userId] = details;
-                }
-            } catch (e) {
-                console.warn('Failed to load settings for user', userId, e);
             }
+
+            userOverrides = nextUserOverrides;
+            userOverrideDetails = nextUserOverrideDetails;
+            renderSettingsScopeTree();
+            updateRevertButtonVisibility();
+        })();
+        userOverrideRefreshPromise = refresh;
+        try {
+            await refresh;
+        } finally {
+            if (userOverrideRefreshPromise === refresh) userOverrideRefreshPromise = null;
         }
-        renderSettingsScopeTree();
-        updateRevertButtonVisibility();
     }
 
     async function handleClientChange(clientId) {
@@ -8737,13 +8754,16 @@
                 });
                 if (response.ok) {
                     originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // The settings write is complete at this point. Clear the dirty UI before
+                    // refreshing profile-impact metadata, which may require several requests.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                     btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
                     showToast('Settings saved successfully');
                     void loadHardwareAccelerationStatus();
                     setTimeout(() => renderSettings(), 500);
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
-                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -14641,12 +14661,15 @@
                 });
                 if (response.ok) {
                     originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // Saving is finished even though the follow-up profile-impact refresh can
+                    // take longer. Hide the sticky unsaved bar as soon as the write succeeds.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                     showToast('Settings saved successfully');
                     void loadHardwareAccelerationStatus();
                     if (committedPendingTextArrays) renderSettings();
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
-                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');

@@ -2281,8 +2281,7 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 	if limit <= 0 {
 		limit = 16 * 1024 * 1024
 	}
-	sample, readErr := io.ReadAll(io.LimitReader(resp.Body, limit))
-	_ = resp.Close()
+	sample, readErr := readProviderProbeSample(ctx, resp, limit)
 	if readErr != nil && !errors.Is(readErr, io.EOF) {
 		return nil, readErr
 	}
@@ -2337,6 +2336,34 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 	}
 	h.enrichBluRayStreamLanguages(ctx, cleanPath, meta)
 	return meta, nil
+}
+
+type providerProbeReadResult struct {
+	data []byte
+	err  error
+}
+
+func readProviderProbeSample(ctx context.Context, resp *streaming.Response, limit int64) ([]byte, error) {
+	resultCh := make(chan providerProbeReadResult, 1)
+	go func() {
+		data, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+		resultCh <- providerProbeReadResult{data: data, err: err}
+	}()
+
+	select {
+	case result := <-resultCh:
+		_ = resp.Close()
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return result.data, result.err
+	case <-ctx.Done():
+		// Some virtual Usenet files hold their read mutex while waiting for an
+		// NNTP segment, so Close can itself block behind the read. Detach cleanup
+		// and let cancellation release the probe caller immediately.
+		go func() { _ = resp.Close() }()
+		return nil, ctx.Err()
+	}
 }
 
 const maxCLPIBytes = 1024 * 1024

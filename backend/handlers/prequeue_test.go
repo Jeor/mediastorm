@@ -876,6 +876,47 @@ func TestRacePrequeueResolutionsCancelledContext(t *testing.T) {
 	}
 }
 
+func TestRacePrequeueResolutionsDetachesLoserThatIgnoresCancellation(t *testing.T) {
+	loserStarted := make(chan struct{})
+	releaseLoser := make(chan struct{})
+	defer close(releaseLoser)
+
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if i == 1 {
+			close(loserStarted)
+			<-releaseLoser // Deliberately ignore ctx, matching a wedged provider read.
+			return nil, nil, ctx.Err()
+		}
+		<-loserStarted
+		return &candidateResolution{
+			index:      0,
+			result:     models.NZBResult{Title: "winner"},
+			resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/winner.mkv"},
+		}, nil, nil
+	}
+
+	startedAt := time.Now()
+	winner, usedFallback, err := racePrequeueResolutionsWithJoinTimeout(
+		context.Background(),
+		newSliceCandidateSource([]models.NZBResult{{Title: "winner"}, {Title: "stuck-loser"}}),
+		2,
+		process,
+		nil,
+		0,
+		true,
+		25*time.Millisecond,
+	)
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback || winner == nil || winner.index != 0 {
+		t.Fatalf("race returned winner=%d usedFallback=%t, want winner 0", winnerIndex(winner), usedFallback)
+	}
+	if elapsed := time.Since(startedAt); elapsed > time.Second {
+		t.Fatalf("race waited %s for a loser that ignored cancellation", elapsed)
+	}
+}
+
 func TestResolveCandidatesSequentialUsesRankedOrder(t *testing.T) {
 	var mu sync.Mutex
 	active := 0

@@ -39,6 +39,8 @@ import (
 
 var seriesDisplayLabelRE = regexp.MustCompile(`(?i)\s*[•·]\s*S\d{1,4}E\d{1,5}\b.*$`)
 
+const prequeueResolutionWorkerJoinTimeout = 5 * time.Second
+
 // SeriesDetailsProvider provides series metadata for episode counting
 type SeriesDetailsProvider interface {
 	SeriesDetails(ctx context.Context, req models.SeriesDetailsQuery) (*models.SeriesDetails, error)
@@ -2646,6 +2648,10 @@ func (s *streamCandidateSource) Snapshot() []models.NZBResult {
 // the 0-based in-flight candidate window whenever it changes, so callers can
 // publish honest "racing candidates X–Y" progress.
 func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, width int, process prequeueCandidateProcessor, report func(inFlightMin, inFlightMax int), settle time.Duration, endEarly bool) (winner *candidateResolution, usedFallback bool, err error) {
+	return racePrequeueResolutionsWithJoinTimeout(ctx, src, width, process, report, settle, endEarly, prequeueResolutionWorkerJoinTimeout)
+}
+
+func racePrequeueResolutionsWithJoinTimeout(ctx context.Context, src prequeueCandidateSource, width int, process prequeueCandidateProcessor, report func(inFlightMin, inFlightMax int), settle time.Duration, endEarly bool, joinTimeout time.Duration) (winner *candidateResolution, usedFallback bool, err error) {
 	if width <= 0 {
 		width = 1
 	}
@@ -2703,6 +2709,13 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 	pending := make([]streamedCandidate, 0, width)
 	activeSet := map[int]struct{}{}
 	activeByService := map[models.ContentServiceType]int{}
+	cancelAndJoin := func(reason string) {
+		cancelRace()
+		if waitForPrequeueResolutionWorkers(&wg, joinTimeout) {
+			return
+		}
+		log.Printf("[prequeue] Timed out after %s waiting for cancelled candidate workers (%s); detaching %d worker(s)", joinTimeout, reason, len(activeSet))
+	}
 
 	// Settle state: the first validated candidate that cannot immediately win
 	// (a positive grace window applies, or endRaceEarly is off)
@@ -2780,16 +2793,14 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 		startReadyCandidates()
 		select {
 		case <-ctx.Done():
-			cancelRace()
-			wg.Wait() // release workers touching shared candidate state
+			cancelAndJoin("caller cancelled")
 			return nil, false, ctx.Err()
 		case <-settleTimer:
 			// Settle window closed: finalize the best-ranked candidate that
 			// validated within it, discarding everything else. settledBest is
 			// always non-nil here — the timer is only armed when a validation
 			// with a better-ranked candidate in flight set it.
-			cancelRace()
-			wg.Wait()
+			cancelAndJoin("settle window closed")
 			if ctx.Err() != nil {
 				return nil, false, ctx.Err()
 			}
@@ -2838,8 +2849,7 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 					// worker). Join in-flight workers, as the exhaustion path does,
 					// so a loser's late stage update can't overwrite the adopted
 					// state after we return.
-					cancelRace()
-					wg.Wait()
+					cancelAndJoin("winner adopted")
 					return r.accepted, false, nil
 				} else {
 					// endEarly is off: even though this validation is the best-ranked
@@ -2893,6 +2903,26 @@ func racePrequeueResolutions(ctx context.Context, src prequeueCandidateSource, w
 		return nil, false, fmt.Errorf("all %d candidates failed to resolve (top-ranked failure: %w)", reported, firstErr)
 	}
 	return nil, false, errNoSearchCandidates
+}
+
+func waitForPrequeueResolutionWorkers(wg *sync.WaitGroup, timeout time.Duration) bool {
+	if timeout <= 0 {
+		wg.Wait()
+		return true
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 // lowestInFlightBetterRanked returns the lowest (best-ranked) candidate index
@@ -2994,6 +3024,9 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 			h.updatePrequeueStageDetail(prequeueID, "waiting_provider", result.Title)
 			resolution, resolveErr = h.waitForPlaybackQueue(raceCtx, prequeueID, resolution.QueueID, result.Title)
 		}
+		if err := raceCtx.Err(); err != nil {
+			return nil, nil, err
+		}
 		if resolveErr != nil || resolution == nil || resolution.WebDAVPath == "" {
 			// A loser that was still mid-flight when a winner was adopted sees the
 			// race context cancelled; label that as superseded rather than a
@@ -3051,6 +3084,9 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 			var probeErr error
 			if probeResult == nil {
 				probeResult, probeErr = probeResolvedCandidate(raceCtx, h.fullProber, resolution)
+				if err := raceCtx.Err(); err != nil {
+					return nil, nil, err
+				}
 				if probeErr != nil {
 					if raceCtx.Err() != nil && (errors.Is(probeErr, context.Canceled) || errors.Is(probeErr, context.DeadlineExceeded)) {
 						log.Printf("[prequeue] Result [%d] (%s) %s superseded by winner, aborting probe: %v", i, result.ServiceType, result.Title, probeErr)
@@ -3083,6 +3119,9 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 
 		if (opts.needsUnknownTrackCheck || opts.needsAllowedLanguageCheck) && probeResult == nil && h.metadataProber != nil {
 			metadata, probeErr := h.metadataProber.ProbeVideoMetadata(raceCtx, resolution.WebDAVPath)
+			if err := raceCtx.Err(); err != nil {
+				return nil, nil, err
+			}
 			if probeErr != nil {
 				if raceCtx.Err() != nil && (errors.Is(probeErr, context.Canceled) || errors.Is(probeErr, context.DeadlineExceeded)) {
 					log.Printf("[prequeue] Result [%d] (%s) %s superseded by winner, aborting metadata probe: %v", i, result.ServiceType, result.Title, probeErr)
@@ -3092,6 +3131,9 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 				return nil, nil, probeErr
 			}
 			metadataResult = metadata
+		}
+		if err := raceCtx.Err(); err != nil {
+			return nil, nil, err
 		}
 
 		if opts.needsAllowedLanguageCheck {

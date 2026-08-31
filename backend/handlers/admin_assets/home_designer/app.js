@@ -2,6 +2,7 @@ const root = document.getElementById('homeDesignerRoot');
 const status = root?.querySelector('[data-home-designer-status]');
 const editor = root?.querySelector('[data-home-designer-editor]');
 const errors = root?.querySelector('[data-home-designer-errors]');
+const drawerBackdrop = root?.querySelector('[data-home-designer-drawer-backdrop]');
 
 if (root && status) {
     const basePath = root.dataset.basePath || '';
@@ -28,6 +29,9 @@ if (root && status) {
     let beforeUnloadRegistered = false;
     let drawer = null;
     let drawerReturnFocus = null;
+    let drawerBackground = [];
+    const pendingDrafts = new Map();
+    const drawerMedia = globalThis.matchMedia?.('(max-width: 1100px)');
     const warnBeforeUnload = (event) => { event.preventDefault(); event.returnValue = ''; return ''; };
 
     const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
@@ -73,16 +77,21 @@ if (root && status) {
         requestAnimationFrame(() => alert.focus?.());
     };
 
+    const hasUnsavedWork = () => Boolean(store?.isDirty?.() || pendingDrafts.size);
     const syncDirtyProtection = () => {
-        const dirty = Boolean(store?.isDirty?.());
+        const dirty = hasUnsavedWork();
         if (dirty === beforeUnloadRegistered) return;
         if (dirty) globalThis.addEventListener?.('beforeunload', warnBeforeUnload);
         else globalThis.removeEventListener?.('beforeunload', warnBeforeUnload);
         beforeUnloadRegistered = dirty;
     };
 
-    const confirmDiscard = (message) => !store?.isDirty?.() || typeof globalThis.confirm !== 'function' || globalThis.confirm(message);
+    const confirmDiscard = (message) => !hasUnsavedWork() || typeof globalThis.confirm !== 'function' || globalThis.confirm(message);
     const confirmReset = (message) => typeof globalThis.confirm !== 'function' || globalThis.confirm(message);
+    const draftKey = (target) => target?.dataset?.themePath ? `theme:${target.dataset.themePath}` : target?.dataset?.fieldPath ? `rows:${target.dataset.fieldPath}` : '';
+    const clearDraft = (target) => { const key = draftKey(target); if (key) pendingDrafts.delete(key); syncDirtyProtection(); };
+    const clearDrafts = () => { pendingDrafts.clear(); syncDirtyProtection(); };
+    const isEditableTarget = (target) => Boolean(target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName));
 
     const showFailure = () => {
         status.replaceChildren();
@@ -122,10 +131,49 @@ if (root && status) {
         if (!first) return;
         if (first.section === 'rows' && first.rowId) {
             selectRow(first.rowId);
-            requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(first.path)}"]`)?.focus());
+            const row = (store?.getState?.().rows || []).find((candidate) => candidate.id === first.rowId);
+            const itemIndex = first.itemId ? row?.collectionItems?.findIndex((item) => item.id === first.itemId) : -1;
+            const path = itemIndex >= 0 ? `collectionItems.${itemIndex}.${first.path}` : first.path;
+            requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(path)}"]`)?.focus());
             return;
         }
-        if (first.section === 'theme') requestAnimationFrame(() => editor?.querySelector(`[data-theme-path="${CSS.escape(first.path)}"]`)?.focus());
+        if (first.section === 'theme') {
+            requestAnimationFrame(() => editor?.querySelector(`[data-theme-path="${CSS.escape(first.path)}"]`)?.focus());
+            return;
+        }
+        if (first.section === 'scope') {
+            requestAnimationFrame(() => editor?.querySelector('[data-home-designer-scope]')?.focus());
+            return;
+        }
+        if (first.section === 'rows') requestAnimationFrame(() => editor?.querySelector('[data-home-designer-rows-controls] button:not([disabled])')?.focus());
+    };
+
+    const validationKey = (error) => [error?.section || '', error?.rowId || '', error?.itemId || '', error?.path || ''].join(':');
+    const serverValidationByField = (state) => {
+        const rows = {};
+        const theme = [];
+        const sectionValidation = {};
+        applyValidation.forEach((error) => {
+            if (!error?.section || !error?.path) return;
+            if (error.section === 'theme') { theme.push(error); return; }
+            if (error.section !== 'rows') { (sectionValidation[error.section] ||= []).push(error); return; }
+            if (!error.rowId) { (sectionValidation.rows ||= []).push(error); return; }
+            const row = (state.rows || []).find((candidate) => candidate.id === error.rowId);
+            let path = error.path;
+            if (error.itemId && row?.collectionItems) {
+                const index = row.collectionItems.findIndex((item) => item.id === error.itemId);
+                if (index >= 0) path = `collectionItems.${index}.${error.path}`;
+            }
+            (rows[error.rowId] ||= []).push({ ...error, path });
+        });
+        return { rows, theme, sectionValidation };
+    };
+
+    const clearServerValidation = (identity) => {
+        const key = validationKey(identity);
+        const previous = applyValidation.length;
+        applyValidation = applyValidation.filter((error) => validationKey(error) !== key);
+        if (previous !== applyValidation.length && !applyValidation.length) clearErrors();
     };
 
     const previewSignature = (state) => JSON.stringify({ scope: state?.scope || {}, rows: state?.rows || [] });
@@ -166,7 +214,7 @@ if (root && status) {
         if (schedule && previewController) requestAnimationFrame(scheduleVisible);
     };
 
-    const renderRowsMode = (state) => {
+    const renderRowsMode = (state, sectionErrors = []) => {
         const controls = editor?.querySelector('[data-home-designer-rows-controls]');
         if (!controls) return;
         controls.replaceChildren();
@@ -181,6 +229,15 @@ if (root && status) {
             requestAnimationFrame(() => editor.querySelector('[data-home-designer-rows-controls] button:not([disabled])')?.focus());
         });
         controls.append(message, customize);
+        sectionErrors.forEach((error, index) => {
+            const fieldError = document.createElement('p');
+            fieldError.className = 'home-designer-field-error';
+            fieldError.id = `home-designer-rows-error-${index}`;
+            fieldError.textContent = error.message;
+            controls.append(fieldError);
+            customize.setAttribute('aria-invalid', 'true');
+            customize.setAttribute('aria-describedby', fieldError.id);
+        });
         if (state.scope?.kind !== 'global') {
             const reset = document.createElement('button');
             reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.textContent = 'Reset to inherited';
@@ -216,16 +273,12 @@ if (root && status) {
         const focusStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
         const focusEnd = typeof active?.selectionEnd === 'number' ? active.selectionEnd : null;
         const state = store.getState();
-        const serverRowValidation = applyValidation.reduce((byRow, error) => {
-            if (error?.section === 'rows' && error?.rowId) {
-                (byRow[error.rowId] ||= []).push({ path: error.path, message: error.message });
-            }
-            return byRow;
-        }, {});
+        const validation = serverValidationByField(state);
+        const serverRowValidation = validation.rows;
         const inspectorState = Object.keys(serverRowValidation).length
             ? { ...state, rowValidation: Object.fromEntries(Object.entries({ ...state.rowValidation, ...serverRowValidation }).map(([id, rowErrors]) => [id, [...(state.rowValidation?.[id] || []), ...(serverRowValidation[id] || [])]])) }
             : state;
-        renderRowsMode(state);
+        renderRowsMode(state, validation.sectionValidation.rows || []);
         library.renderLibrary(editor.querySelector('[data-home-designer-library]'), {
             state, dispatch: store.dispatch,
             onAdd: handleAddedRow,
@@ -237,6 +290,8 @@ if (root && status) {
         });
         outline.renderInspector(editor.querySelector('[data-home-designer-inspector]'), {
             state: inspectorState, dispatch: store.dispatch, onSelect: selectRow,
+            sectionValidation: validation.sectionValidation,
+            onFieldEdit: (identity) => clearServerValidation(identity),
             onCatalogSubmit: (entry, values) => {
                 const rows = library.createCatalogRows(entry, state.rows, values);
                 const index = Number.isInteger(state.catalogSelection?.index) ? state.catalogSelection.index : state.rows.length;
@@ -251,7 +306,8 @@ if (root && status) {
         if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);
         const [theme, preview] = await previewModules;
         theme.renderTheme(editor.querySelector('[data-home-designer-theme]'), {
-            state, dispatch: store.dispatch,
+            state, dispatch: store.dispatch, errors: validation.theme,
+            onFieldEdit: (path) => clearServerValidation({ section: 'theme', path }),
             onReset: () => {
                 if (!confirmReset('Reset Theme to the inherited appearance? This discards the Theme override.')) return;
                 store.dispatch({ type: 'theme/reset' });
@@ -302,6 +358,21 @@ if (root && status) {
                 const option = document.createElement('option'); option.value = `profile:${profile.id}`; option.textContent = profile.displayName || profile.id; scopeSelect.append(option);
             });
             scopeSelect.value = state.scope?.kind === 'profile' ? `profile:${state.scope.profileId}` : 'global';
+            const existingScopeError = scopeSelect.parentElement?.querySelector?.('.home-designer-scope-error');
+            existingScopeError?.remove();
+            const scopeError = validation.sectionValidation.scope?.[0];
+            if (scopeError) {
+                const message = document.createElement('p');
+                message.className = 'home-designer-field-error home-designer-scope-error';
+                message.id = 'home-designer-scope-error';
+                message.textContent = scopeError.message;
+                scopeSelect.setAttribute('aria-invalid', 'true');
+                scopeSelect.setAttribute('aria-describedby', message.id);
+                scopeSelect.parentElement?.append(message);
+            } else {
+                scopeSelect.removeAttribute('aria-invalid');
+                scopeSelect.removeAttribute('aria-describedby');
+            }
         }
         const undoButton = root.querySelector('[data-home-designer-undo]');
         const redoButton = root.querySelector('[data-home-designer-redo]');
@@ -326,12 +397,39 @@ if (root && status) {
         });
     };
 
+    const setBackgroundInert = (inert) => {
+        if (inert && drawer) {
+            const workspace = drawer.parentElement;
+            const nodes = [
+                ...Array.from(editor?.children || []).filter((node) => node !== workspace),
+                ...Array.from(workspace?.children || []).filter((node) => node !== drawer),
+            ];
+            drawerBackground = nodes.map((node) => ({ node, inert: Boolean(node.inert), ariaHidden: node.getAttribute?.('aria-hidden') }));
+            drawerBackground.forEach(({ node }) => { node.inert = true; node.setAttribute?.('aria-hidden', 'true'); });
+            if (drawerBackdrop) drawerBackdrop.hidden = false;
+            return;
+        }
+        drawerBackground.forEach(({ node, inert: wasInert, ariaHidden }) => {
+            node.inert = wasInert;
+            if (ariaHidden === null || ariaHidden === undefined) node.removeAttribute?.('aria-hidden');
+            else node.setAttribute?.('aria-hidden', ariaHidden);
+        });
+        drawerBackground = [];
+        if (drawerBackdrop) drawerBackdrop.hidden = true;
+    };
+
+    const guardDrawerFocus = (event) => {
+        if (drawer && event.target && !drawer.contains(event.target)) drawer.querySelector('.home-designer-drawer-close, input, select, button, [href]')?.focus?.();
+    };
+
     const closeDrawer = () => {
         if (!drawer) return;
         drawer.classList.remove('is-drawer-open');
         drawer.removeAttribute('role');
         drawer.removeAttribute('aria-modal');
+        setBackgroundInert(false);
         document.body?.classList.remove('home-designer-drawer-open');
+        document.removeEventListener?.('focusin', guardDrawerFocus, true);
         const returnFocus = drawerReturnFocus;
         drawer = null;
         drawerReturnFocus = null;
@@ -339,6 +437,7 @@ if (root && status) {
     };
 
     const openDrawer = (kind, trigger) => {
+        if (drawerMedia && !drawerMedia.matches) return;
         const target = editor?.querySelector(`[data-home-designer-${kind}]`);
         if (!target) return;
         if (drawer && drawer !== target) closeDrawer();
@@ -347,9 +446,16 @@ if (root && status) {
         target.classList.add('is-drawer-open');
         target.setAttribute('role', 'dialog');
         target.setAttribute('aria-modal', 'true');
+        setBackgroundInert(true);
         document.body?.classList.add('home-designer-drawer-open');
+        document.addEventListener?.('focusin', guardDrawerFocus, true);
         requestAnimationFrame(() => target.querySelector('.home-designer-drawer-close, input, select, button, [href]')?.focus?.());
     };
+
+    drawerBackdrop?.addEventListener('click', closeDrawer);
+    const onDrawerMediaChange = () => { if (drawer && drawerMedia && !drawerMedia.matches) closeDrawer(); };
+    if (drawerMedia?.addEventListener) drawerMedia.addEventListener('change', onDrawerMediaChange);
+    drawerMedia?.addListener?.(onDrawerMediaChange);
 
     const mountDrawerControls = () => {
         [['library', 'Row library'], ['inspector', 'Row inspector']].forEach(([kind, label]) => {
@@ -373,6 +479,7 @@ if (root && status) {
                 else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
             }
         }
+        if (isEditableTarget(event.target)) return;
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'z') {
             event.preventDefault();
             if (event.shiftKey) store?.redo?.(); else store?.undo?.();
@@ -389,6 +496,20 @@ if (root && status) {
         }
         const link = event.target?.closest?.('a[href]');
         if (link && !event.defaultPrevented && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && !confirmDiscard('Discard unsaved Home Designer changes and leave this page?')) event.preventDefault();
+    });
+    root.addEventListener?.('input', (event) => {
+        const target = event.target;
+        const key = draftKey(target);
+        if (!key || !isEditableTarget(target) || ['checkbox', 'radio', 'color'].includes(target.type)) return;
+        target.dataset.homeDesignerDraft = 'true';
+        pendingDrafts.set(key, target.value);
+        syncDirtyProtection();
+    });
+    root.addEventListener?.('change', (event) => {
+        const target = event.target;
+        if (!draftKey(target)) return;
+        delete target.dataset.homeDesignerDraft;
+        clearDraft(target);
     });
 
     const connectEditor = () => {
@@ -408,6 +529,11 @@ if (root && status) {
         renderEditor();
     };
 
+    const setWorkspaceLoading = (loading) => {
+        if (editor) editor.hidden = Boolean(loading);
+        root.setAttribute?.('aria-busy', String(Boolean(loading)));
+    };
+
     const load = async (scope) => {
         invalidatePreview();
         previewRowsSignature = '';
@@ -416,8 +542,6 @@ if (root && status) {
             const [{ loadDocument }, { createStore }] = await modules;
             const saved = await loadDocument(basePath, scope, { signal: current.controller.signal });
             if (!isCurrent(current)) return null;
-            store = createStore(saved);
-            connectEditor();
             return { current, saved };
         } catch (error) {
             return isCurrent(current) ? { current, error } : null;
@@ -426,27 +550,50 @@ if (root && status) {
 
     const bootstrap = async () => {
         if (!activeScope.kind || (activeScope.kind === 'profile' && !activeScope.profileId)) return;
+        setWorkspaceLoading(true);
         const result = await load(activeScope);
         if (!result || !isCurrent(result.current)) return;
         if (result.error) showFailure();
-        else showReady();
+        else {
+            const [, { createStore }] = await modules;
+            store = createStore(result.saved);
+            connectEditor();
+            setWorkspaceLoading(false);
+            showReady();
+        }
     };
 
     const switchScope = async (scope) => {
         if (!confirmDiscard('Discard unsaved Home Designer changes?')) return false;
-        activeScope = { ...scope };
-        const result = await load(activeScope);
-        if (!result || !isCurrent(result.current)) return false;
+        const previousScope = { ...activeScope };
+        if (hasUnsavedWork()) {
+            store?.discard?.();
+            clearDrafts();
+        }
+        setWorkspaceLoading(true);
+        const result = await load(scope);
+        if (!result || !isCurrent(result.current)) {
+            setWorkspaceLoading(false);
+            return false;
+        }
         if (result.error) {
+            setWorkspaceLoading(false);
+            activeScope = previousScope;
+            void renderEditor();
             showFailure();
             return false;
         }
+        activeScope = { ...scope };
+        const [, { createStore }] = await modules;
+        store = createStore(result.saved);
+        connectEditor();
+        setWorkspaceLoading(false);
         showReady();
         return true;
     };
 
     const apply = async () => {
-        if (!store) return false;
+        if (!store || root.getAttribute?.('aria-busy') === 'true') return false;
         if (!(store.isApplyValid?.() ?? true)) {
             showActionError('Complete the highlighted row settings before applying.');
             focusFirstInvalid();
@@ -464,6 +611,7 @@ if (root && status) {
             applyingStore.replaceWithSaved(saved);
             applyValidation = [];
             clearErrors();
+            clearDrafts();
             syncDirtyProtection();
             showReady();
             return true;
@@ -471,14 +619,22 @@ if (root && status) {
             if (!isCurrent(current)) return false;
             const [{ APIError }] = await modules;
             if (!isCurrent(current)) return false;
-            if (error instanceof APIError && error.code === 'revision_conflict') {
-                showActionError('This document changed elsewhere. Reload the latest version before applying again.', 'Reload latest', async () => {
-                    if (!isCurrent(current) || !sameScope(activeScope, request.scope)) return;
-                    const result = await load(activeScope);
-                    if (!result || !isCurrent(result.current)) return;
-                    if (result.error) showFailure();
-                    else { clearErrors(); showReady(); }
-                });
+                if (error instanceof APIError && error.code === 'revision_conflict') {
+                    showActionError('This document changed elsewhere. Reload the latest version before applying again.', 'Reload latest', async () => {
+                        if (!isCurrent(current) || !sameScope(activeScope, request.scope)) return;
+                        setWorkspaceLoading(true);
+                        const result = await load(activeScope);
+                        if (!result || !isCurrent(result.current)) { setWorkspaceLoading(false); return; }
+                        if (result.error) { setWorkspaceLoading(false); showFailure(); }
+                        else {
+                            const [, { createStore }] = await modules;
+                            store = createStore(result.saved);
+                            connectEditor();
+                            setWorkspaceLoading(false);
+                            clearErrors();
+                            showReady();
+                        }
+                    });
             } else if (error instanceof APIError && (error.status === 422 || error.code === 'validation_error')) {
                 applyValidation = Array.isArray(error.fields) ? error.fields : [];
                 showActionError(error.message || 'Correct the highlighted settings before applying.');
@@ -499,6 +655,7 @@ if (root && status) {
             store.discard();
             applyValidation = [];
             clearErrors();
+            clearDrafts();
             syncDirtyProtection();
             showReady();
             return true;

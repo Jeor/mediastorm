@@ -55,7 +55,7 @@ const renderPresets = (host, presets, dispatch) => {
     });
 };
 
-const reconcileTheme = (controls, state, dispatch) => {
+const reconcileTheme = (controls, state, dispatch, errors = []) => {
     controls.mode.textContent = state?.themeMode === 'inherit' ? 'Theme inherits the global appearance.' : 'Theme uses a custom appearance.';
     controls.customize.disabled = state?.themeMode === 'custom';
     if (controls.reset) controls.reset.disabled = state?.themeMode === 'inherit';
@@ -66,13 +66,36 @@ const reconcileTheme = (controls, state, dispatch) => {
         if (input.type === 'checkbox') input.checked = Boolean(value);
         else input.value = String(value ?? '');
     });
+    const byPath = new Map(errors.map((error) => [error.path, error]));
+    controls.inputs.forEach((input, path) => {
+        const error = byPath.get(path);
+        const existing = controls.errorMessages.get(path);
+        if (error) {
+            input.setAttribute?.('aria-invalid', 'true');
+            if (!existing) {
+                const message = document.createElement('p');
+                message.className = 'home-designer-field-error';
+                message.id = `home-designer-theme-error-${path}`;
+                input.parentElement?.append(message);
+                controls.errorMessages.set(path, message);
+                input.setAttribute?.('aria-describedby', message.id);
+            }
+            controls.errorMessages.get(path).textContent = error.message;
+        } else {
+            input.removeAttribute?.('aria-invalid');
+            input.removeAttribute?.('aria-describedby');
+            existing?.remove();
+            controls.errorMessages.delete(path);
+        }
+    });
 };
 
-export const renderTheme = (host, { state, dispatch, onReset } = {}) => {
+export const renderTheme = (host, { state, dispatch, onReset, onFieldEdit, errors = [] } = {}) => {
     if (!host) return;
     const documentKey = `${state?.scope?.kind || ''}:${state?.scope?.profileId || ''}:${state?.revision || ''}`;
     if (host._homeDesignerTheme?.documentKey === documentKey) {
-        reconcileTheme(host._homeDesignerTheme, state, dispatch);
+        host._homeDesignerTheme.onFieldEdit = onFieldEdit;
+        reconcileTheme(host._homeDesignerTheme, state, dispatch, errors);
         return;
     }
     host.replaceChildren();
@@ -86,17 +109,19 @@ export const renderTheme = (host, { state, dispatch, onReset } = {}) => {
     section.append(actions);
     const presetList = document.createElement('div'); presetList.className = 'home-designer-theme-presets'; section.append(presetList);
     const fields = document.createElement('div'); fields.className = 'home-designer-theme-fields';
-    const update = (path) => (value) => dispatch?.({ type: 'theme/field', path, value });
+    const update = (path) => (value) => { onFieldEdit?.(path); dispatch?.({ type: 'theme/field', path, value }); };
     const inputs = new Map();
     const addField = (path, control) => { inputs.set(path, control._themeInput); fields.append(control); };
     [['Accent color', 'accentColor'], ['Text color', 'textColor'], ['Secondary text', 'secondaryTextColor'], ['Background', 'backgroundColor'], ['Modal background', 'modalBackgroundColor']]
         .forEach(([name, path]) => addField(path, field(name, path, themeValue(state?.theme, path), update(path), 'color')));
-    addField('fontScale', field('Font scale', 'fontScale', themeValue(state?.theme, 'fontScale'), update('fontScale'), 'number'));
+    const fontScale = field('Font scale', 'fontScale', themeValue(state?.theme, 'fontScale'), update('fontScale'), 'number');
+    fontScale._themeInput.min = '0.1'; fontScale._themeInput.max = '2'; fontScale._themeInput.step = '0.1';
+    addField('fontScale', fontScale);
     addField('buttonStyle', field('Button style', 'buttonStyle', themeValue(state?.theme, 'buttonStyle'), update('buttonStyle'), 'select', [['soft', 'Soft'], ['outlined', 'Outlined'], ['filled', 'Filled']]));
     addField('buttonRadius', field('Button radius', 'buttonRadius', themeValue(state?.theme, 'buttonRadius'), update('buttonRadius'), 'select', [['square', 'Square'], ['rounded', 'Rounded'], ['pill', 'Pill']]));
     addField('highContrast', checkbox('High contrast', 'highContrast', themeValue(state?.theme, 'highContrast'), update('highContrast')));
     addField('reduceOverlays', checkbox('Reduce overlays', 'reduceOverlays', themeValue(state?.theme, 'reduceOverlays'), update('reduceOverlays')));
     section.append(fields); host.append(section);
-    host._homeDesignerTheme = { documentKey, mode, customize, reset, presets: presetList, inputs };
-    reconcileTheme(host._homeDesignerTheme, state, dispatch);
+    host._homeDesignerTheme = { documentKey, mode, customize, reset, presets: presetList, inputs, errorMessages: new Map(), onFieldEdit };
+    reconcileTheme(host._homeDesignerTheme, state, dispatch, errors);
 };

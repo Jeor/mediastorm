@@ -190,22 +190,28 @@ const fieldControl = (field, value) => {
     return input;
 };
 
-const fieldError = (fieldset, error) => {
+const fieldError = (fieldset, error, control = null) => {
     if (!error) return;
     const message = document.createElement('p');
     message.className = 'home-designer-field-error';
+    message.id = `home-designer-field-error-${error.path.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
     message.textContent = error.message;
+    control?.setAttribute?.('aria-invalid', 'true');
+    control?.setAttribute?.('aria-describedby', message.id);
     fieldset.append(message);
 };
 
-const collectionEditor = (fieldset, row, rows, dispatch, errors = []) => {
+const collectionEditor = (fieldset, row, rows, dispatch, errors = [], onFieldEdit) => {
     const items = Array.isArray(row.collectionItems) ? row.collectionItems : [];
     const update = (next) => dispatch({ type: 'rows/field', id: row.id, path: 'collectionItems', value: next.map((item, order) => ({ ...item, order })) });
     const sources = rows.filter((candidate) => candidate.id !== row.id && candidate.type !== 'collection-hub' && candidate.id !== 'streaming-services');
     items.forEach((item, index) => {
         const line = document.createElement('div');
         line.className = 'home-designer-collection-item';
-        const set = (path, value) => update(items.map((candidate, position) => position === index ? { ...candidate, [path]: value } : candidate));
+        const set = (path, value) => {
+            onFieldEdit?.({ section: 'rows', rowId: row.id, itemId: item.id, path });
+            update(items.map((candidate, position) => position === index ? { ...candidate, [path]: value } : candidate));
+        };
         const errorAt = (path) => errors.find((error) => error.path === `collectionItems.${index}.${path}`);
         const input = (path, label, type = 'text') => {
             const control = document.createElement('input');
@@ -214,10 +220,9 @@ const collectionEditor = (fieldset, row, rows, dispatch, errors = []) => {
             control.dataset.fieldPath = `collectionItems.${index}.${path}`;
             control.setAttribute('aria-label', `Collection ${index + 1} ${label}`);
             const error = errorAt(path);
-            if (error) control.setAttribute('aria-invalid', 'true');
             control.addEventListener('change', () => set(path, type === 'number' ? (control.value === '' ? 0 : Number(control.value)) : control.value));
             line.append(control);
-            fieldError(line, error);
+            fieldError(line, error, control);
         };
         input('id', 'ID');
         input('name', 'name');
@@ -229,10 +234,9 @@ const collectionEditor = (fieldset, row, rows, dispatch, errors = []) => {
         sources.filter((candidate) => candidate.id === item.sourceShelfId || !usedByOtherItems.has(candidate.id)).forEach((candidate) => { const option = document.createElement('option'); option.value = candidate.id; option.textContent = candidate.name || candidate.id; source.append(option); });
         source.value = item.sourceShelfId || '';
         const sourceError = errorAt('sourceShelfId');
-        if (sourceError) source.setAttribute('aria-invalid', 'true');
         source.addEventListener('change', () => set('sourceShelfId', source.value));
         line.append(source);
-        fieldError(line, sourceError);
+        fieldError(line, sourceError, source);
         const enabled = document.createElement('input');
         enabled.type = 'checkbox'; enabled.checked = item.enabled !== false; enabled.setAttribute('aria-label', `Collection ${index + 1} enabled`);
         enabled.addEventListener('change', () => set('enabled', enabled.checked));
@@ -260,7 +264,7 @@ const collectionEditor = (fieldset, row, rows, dispatch, errors = []) => {
     fieldset.append(add);
 };
 
-export const renderInspector = (container, { state, dispatch, onSelect, onCatalogSubmit } = {}) => {
+export const renderInspector = (container, { state, dispatch, onSelect, onCatalogSubmit, onFieldEdit, sectionValidation = {} } = {}) => {
     container.replaceChildren();
     const heading = document.createElement('h2');
     heading.textContent = 'Inspector';
@@ -300,6 +304,7 @@ export const renderInspector = (container, { state, dispatch, onSelect, onCatalo
     form.addEventListener('submit', (event) => event.preventDefault());
     const title = document.createElement('h3'); title.textContent = row.name || entry?.name || 'Untitled row';
     form.append(title);
+    (sectionValidation.rows || []).forEach((error) => fieldError(form, error));
     if (errors.length) {
         const summary = document.createElement('div');
         summary.className = 'home-designer-validation-summary';
@@ -314,14 +319,14 @@ export const renderInspector = (container, { state, dispatch, onSelect, onCatalo
         if (field.type === 'collection') {
             fieldset.append(label);
             fieldError(fieldset, errors.find((error) => error.path === field.path));
-            collectionEditor(fieldset, row, state.rows || [], dispatch, errors);
+            collectionEditor(fieldset, row, state.rows || [], dispatch, errors, onFieldEdit);
         } else {
             const control = fieldControl(field, row[field.path]);
             const id = `home-designer-${row.id}-${field.path}`;
             control.id = id; control.dataset.fieldPath = field.path; label.htmlFor = id;
             const error = errors.find((candidate) => candidate.path === field.path);
-            if (error) { control.setAttribute('aria-invalid', 'true'); const message = document.createElement('p'); message.className = 'home-designer-field-error'; message.textContent = error.message; fieldset.append(message); }
-            control.addEventListener('change', () => dispatch({ type: 'rows/field', id: row.id, path: field.path, value: field.type === 'boolean' ? control.checked : field.type === 'number' ? (control.value === '' ? 0 : Number(control.value)) : control.value }));
+            fieldError(fieldset, error, control);
+            control.addEventListener('change', () => { onFieldEdit?.({ section: 'rows', rowId: row.id, path: field.path }); dispatch({ type: 'rows/field', id: row.id, path: field.path, value: field.type === 'boolean' ? control.checked : field.type === 'number' ? (control.value === '' ? 0 : Number(control.value)) : control.value }); });
             fieldset.append(label, control);
         }
         form.append(fieldset);

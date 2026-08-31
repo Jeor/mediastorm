@@ -69,6 +69,8 @@
     display: none;
 }
 
+.home-designer-drawer-backdrop[hidden] { display: none; }
+
 .home-designer-workspace {
     grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 1.1fr) minmax(20rem, 1fr);
     align-items: start;
@@ -362,6 +364,13 @@
         overflow: auto;
         border-radius: 0;
         box-shadow: -0.75rem 0 2rem rgb(0 0 0 / 0.35);
+    }
+
+    .home-designer-drawer-backdrop {
+        position: fixed;
+        z-index: 49;
+        inset: 0;
+        background: rgb(0 0 0 / 0.5);
     }
 
     .home-designer-library.is-drawer-open,

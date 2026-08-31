@@ -26,6 +26,7 @@
         {{end}}
     </div>
     <div class="home-designer-errors" data-home-designer-errors aria-live="assertive" aria-atomic="true"></div>
+    <div class="home-designer-drawer-backdrop" data-home-designer-drawer-backdrop hidden></div>
     {{if not .NoProfiles}}
     <section class="home-designer-editor" data-home-designer-editor hidden>
         <div class="home-designer-toolbar">
@@ -58,7 +59,7 @@
             </div>
             <div data-home-designer-preview-host></div>
         </section>
-        <p class="home-designer-advanced-links">Need a detailed control? <a href="{{.BasePath}}/settings?category=homeShelves">Advanced Home settings</a> or <a href="{{.BasePath}}/settings?category=display">Advanced Appearance settings</a>.</p>
+        <p class="home-designer-advanced-links">Need a detailed control? <a href="{{.BasePath}}/settings?category=interface#homeShelves">Advanced Home settings</a> or <a href="{{.BasePath}}/settings?category=appearance#display">Advanced Appearance settings</a>.</p>
     </section>
     {{end}}
 </section>

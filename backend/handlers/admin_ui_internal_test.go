@@ -65,8 +65,8 @@ func TestHomeDesignerTemplateProvidesAccessibleEditorStructure(t *testing.T) {
 		`data-home-designer-scope`,
 		`data-home-designer-preview-profile`,
 		`data-home-designer-preview-platform`,
-		`href="{{.BasePath}}/settings?category=homeShelves"`,
-		`href="{{.BasePath}}/settings?category=display"`,
+		`href="{{.BasePath}}/settings?category=interface#homeShelves"`,
+		`href="{{.BasePath}}/settings?category=appearance#display"`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("Home Designer template missing accessibility/navigation marker %q", marker)
@@ -86,6 +86,8 @@ func TestAdminSettingsKeepsAdvancedControlsAndLinksToHomeDesigner(t *testing.T) 
 		`Open Home Designer`,
 		`settings-home-designer-callout`,
 		`basePath + '/settings/home-designer'`,
+		`settingsLandingGroups.some(group => group.id === requestedSettingsCategory)`,
+		`schema[requestedSettingsSection]?.group`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing Home Designer preservation marker %q", marker)

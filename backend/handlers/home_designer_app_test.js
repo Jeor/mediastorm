@@ -158,7 +158,61 @@ test('Home Designer Retry keeps the scope selected before a failed reload', asyn
     shouldFail = false;
     status.children[1].click();
     await settle(); await settle(); await settle(); await settle();
-    assert.deepEqual(scopes, ['global', 'profile', 'profile']);
+    assert.deepEqual(scopes, ['global', 'profile', 'global']);
+});
+
+test('Home Designer source keeps native undo and dirty drafts separate from document history', async () => {
+    // Break caught: Ctrl/Cmd+Z stealing an unfinished field edit before change/blur or navigation silently losing that draft.
+    const source = await sourceWithModules();
+    assert.match(source, /const isEditableTarget = \(target\)/);
+    assert.match(source, /if \(isEditableTarget\(event\.target\)\) return;/);
+    assert.match(source, /homeDesignerDraft/);
+    assert.match(source, /pendingDrafts\.size/);
+});
+
+test('an unfinished field draft protects navigation while native input undo remains untouched', async () => {
+    const source = await sourceWithModules();
+    const root = new Element('section');
+    root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = ''; root.append(status);
+    let undoCalls = 0;
+    let confirmCalls = 0;
+    let loadCalls = 0;
+    const store = { isDirty: () => false, buildApplyRequest: () => null, replaceWithSaved() {}, discard() {}, undo: () => { undoCalls += 1; } };
+    vm.runInNewContext(source, {
+        document: { getElementById: () => root, createElement: (tagName) => new Element(tagName) }, Error, Promise, AbortController,
+        confirm: () => { confirmCalls += 1; return false; },
+        homeDesignerAPI: { loadDocument: async (_, scope) => { loadCalls += 1; return { scope, revision: 'one', rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }; }, applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => store },
+    });
+    await settle(); await settle();
+    const input = { tagName: 'INPUT', type: 'text', value: 'draft', dataset: { fieldPath: 'name' } };
+    root.listeners.get('input')({ target: input });
+    let prevented = false;
+    root.listeners.get('keydown')({ target: input, key: 'z', ctrlKey: true, metaKey: false, altKey: false, preventDefault: () => { prevented = true; } });
+    assert.equal(undoCalls, 0);
+    assert.equal(prevented, false);
+    assert.equal(await root.homeDesigner.switchScope({ kind: 'profile', profileId: 'profile-1' }), false);
+    assert.equal(confirmCalls, 1);
+    assert.equal(loadCalls, 1);
+});
+
+test('Home Designer source makes responsive drawers modal and cleans them up on resize', async () => {
+    // Break caught: a dialog-looking drawer allowing background interaction or retaining aria-modal after leaving its breakpoint.
+    const source = await sourceWithModules();
+    assert.match(source, /setBackgroundInert\(true\)/);
+    assert.match(source, /setBackgroundInert\(false\)/);
+    assert.match(source, /matchMedia\?\.\('\(max-width: 1100px\)'\)/);
+    assert.match(source, /drawerMedia\.addEventListener\('change'/);
+});
+
+test('Home Designer source routes every 422 field identity to row, collection, theme, or section feedback', async () => {
+    // Break caught: server validation disappearing unless it happened to be a row error with rowId.
+    const source = await sourceWithModules();
+    assert.match(source, /serverValidationByField/);
+    assert.match(source, /error\.itemId/);
+    assert.match(source, /sectionValidation/);
+    assert.match(source, /onFieldEdit/);
 });
 
 test('a stale Apply response cannot replace a newer scope store', async () => {

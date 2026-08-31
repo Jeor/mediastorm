@@ -3,11 +3,11 @@ import test from 'node:test';
 import { isHomeDesignerDrop, insertionIndex, removalFocusTarget, renderInspector } from './outline.js';
 
 class Element {
-    constructor() { this.children = []; this.dataset = {}; this.classList = { add() {}, remove() {}, toggle() {} }; }
+    constructor() { this.children = []; this.dataset = {}; this.attributes = {}; this.classList = { add() {}, remove() {}, toggle() {} }; }
     append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.children = children; }
     addEventListener() {}
-    setAttribute() {}
+    setAttribute(name, value) { this.attributes[name] = String(value); }
 }
 
 const findText = (element, value) => {
@@ -66,4 +66,27 @@ test('collection inspector disables Add collection at the twenty-item cap', () =
     renderInspector(container, { state: { selectionId: 'hub', rowValidation: {}, catalog: [{ type: 'collection-hub', fields: [{ path: 'collectionItems', type: 'collection' }] }], rows }, dispatch() {} });
     globalThis.document = originalDocument;
     assert.equal(findText(container, 'Add collection').disabled, true);
+});
+
+test('server field errors are connected to row and collection controls accessibly', () => {
+    // Break caught: a 422 collection error shown only in a global alert, with no invalid control or description.
+    const originalDocument = globalThis.document;
+    globalThis.document = { createElement: () => new Element() };
+    const container = new Element();
+    renderInspector(container, {
+        state: {
+            selectionId: 'hub', catalog: [{ type: 'collection-hub', fields: [{ path: 'collectionItems', type: 'collection', label: 'Collections' }] }],
+            rowValidation: { hub: [{ path: 'collectionItems.0.logoUrl', message: 'Use https artwork' }] },
+            rows: [{ id: 'source', name: 'Source', type: 'genre' }, { id: 'hub', name: 'Hub', type: 'collection-hub', collectionItems: [{ id: 'item', name: 'Item', sourceShelfId: 'source', logoUrl: 'http://bad' }] }],
+        }, dispatch() {}, onSelect() {},
+    });
+    globalThis.document = originalDocument;
+    const findPath = (element, path) => {
+        if (element.dataset?.fieldPath === path) return element;
+        return element.children.map((child) => findPath(child, path)).find(Boolean);
+    };
+    const control = findPath(container, 'collectionItems.0.logoUrl');
+    assert.equal(control.attributes['aria-invalid'], 'true');
+    assert.match(control.attributes['aria-describedby'], /collectionItems-0-logoUrl/);
+    assert.ok(findText(container, 'Use https artwork'));
 });

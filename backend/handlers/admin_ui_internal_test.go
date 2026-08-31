@@ -288,12 +288,12 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 
 	for _, marker := range []string{
 		`id="settingsCategoryNav"`,
-		`id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true"`,
+		`id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')"`,
 		`id="settingsAdvancedBtn"`,
 		`autocomplete="off" autocapitalize="none" spellcheck="false"`,
-		`const basicSettingsReady = false;`,
-		`let settingsLevel = 'advanced';`,
-		`settingsLevel = (basicSettingsReady && level === 'basic') ? 'basic' : 'advanced';`,
+		`const settingsLevels = new Set(['basic', 'advanced']);`,
+		`let settingsLevel = settingsLevels.has(storedSettingsLevel) ? storedSettingsLevel : 'basic';`,
+		`settingsLevel = settingsLevels.has(level) ? level : 'basic';`,
 		`.page-header-controls .form-select {`,
 		`height: 40px;`,
 		`function setSettingsLevel(level)`,
@@ -302,19 +302,54 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 		`'Streaming Method'`,
 		`'Adapt to Each Device'`,
 		`const settingsOverviewGroups = [`,
-		`{ id: 'sources', label: 'Sources & Providers' }`,
-		`{ id: 'search', label: 'Search & Results' }`,
+		`{ id: 'sources', label: 'Sources' }`,
+		`{ id: 'search', label: 'Search & Quality' }`,
 		`{ id: 'server', label: 'Server & Network' }`,
 		`function toggleSettingsSection(header)`,
-		`document.querySelectorAll('#settingsContainer .section.open')`,
+		`container.querySelectorAll('.section.open')`,
 		`function handleSettingsSectionKeydown(event, header)`,
 		`const firstMatch = filteredSections.values().next().value;`,
 		`propagateBtnLabel.textContent = 'Review Customizations'`,
-		`settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)`,
+		`if (settingsLevel === 'basic') return !advancedSections.has(sectionKey);`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing progressive-disclosure marker %q", marker)
 		}
+	}
+}
+
+func TestAdminSettingsPreservesInheritanceAndScopesPropagation(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`return isExplicitEmptyArrayOverride(section, key) ? [] : null;`,
+		`if (normValue === null) {`,
+		`const strippedSettings = stripInheritedValues(userSettings, currentSettings);`,
+		`body: JSON.stringify(strippedSettings)`,
+		`const changedGroups = changedPropagationGroupKeys(originalSettings, currentSettings);`,
+		`await updateProfileSaveImpact(changedGroups);`,
+		`clearProfilePropagationGroup(targetSettings, group);`,
+		`const strippedSettings = stripInheritedValues(targetSettings, currentSettings);`,
+		`clearClientPropagationGroup(targetSettings, group);`,
+		`for (const fieldKey of liveTVPerUserFields) {`,
+		`delete targetSettings[sectionKey];`,
+		`for (const path of group.clientPaths) {`,
+		`deleteAtPath(targetSettings, path);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing inheritance/propagation marker %q", marker)
+		}
+	}
+
+	changedGroups := strings.Index(source, `const changedGroups = changedPropagationGroupKeys(originalSettings, currentSettings);`)
+	globalSave := strings.Index(source, `body: JSON.stringify(currentSettings)`)
+	impactReview := strings.Index(source, `await updateProfileSaveImpact(changedGroups);`)
+	if changedGroups < 0 || globalSave < 0 || impactReview < 0 || !(changedGroups < globalSave && globalSave < impactReview) {
+		t.Fatal("global settings must identify changed propagation groups before save and review their impact afterward")
 	}
 }
 
@@ -516,8 +551,8 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
 		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 22 {
-		t.Fatalf("shared shell navigation SVG count = %d, want 22", got)
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 38 {
+		t.Fatalf("shared shell navigation SVG count = %d, want 38", got)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,

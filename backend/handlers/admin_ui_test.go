@@ -2571,12 +2571,29 @@ func TestAdminUIHandler_ConnectionsPage(t *testing.T) {
 		t.Errorf("admin: expected 200, got %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, contentID := range []string{"search-diagnostics-content", "api-usage-content"} {
+	for _, contentID := range []string{"api-usage-content"} {
 		if !strings.Contains(body, `aria-expanded="false" aria-controls="`+contentID+`"`) {
 			t.Errorf("admin: expected %s toggle to start collapsed", contentID)
 		}
 		if !strings.Contains(body, `id="`+contentID+`" class="collapsible-panel-content" hidden`) {
 			t.Errorf("admin: expected %s content to be hidden by default", contentID)
+		}
+	}
+	if strings.Contains(body, "search-diagnostics") {
+		t.Error("admin: connections page should not contain search diagnostics after their move to Search")
+	}
+
+	searchReq := httptest.NewRequest(http.MethodGet, "/admin/search", nil)
+	searchReq.AddCookie(&http.Cookie{Name: "strmr_admin_session", Value: masterSession.Token})
+	searchRec := httptest.NewRecorder()
+	handler.RequireMasterAuth(handler.SearchPage)(searchRec, searchReq)
+	if searchRec.Code != http.StatusOK {
+		t.Fatalf("admin search: expected 200, got %d", searchRec.Code)
+	}
+	searchBody := searchRec.Body.String()
+	for _, marker := range []string{`id="searchDiagnostics"`, `id="run-search-diagnostics-btn"`, `id="search-diagnostics-results"`} {
+		if !strings.Contains(searchBody, marker) {
+			t.Errorf("admin search: expected diagnostics marker %q", marker)
 		}
 	}
 

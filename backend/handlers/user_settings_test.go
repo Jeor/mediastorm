@@ -165,6 +165,53 @@ func TestUserSettingsHandler_PutSettings_Success(t *testing.T) {
 	}
 }
 
+func TestUserSettingsHandler_PutSettings_PreservesNullAndExplicitZeroValues(t *testing.T) {
+	settingsSvc := &fakeUserSettingsService{}
+	usersSvc := &fakeUserExistsService{exists: true}
+	h := handlers.NewUserSettingsHandler(settingsSvc, usersSvc, config.NewManager(t.TempDir()))
+
+	body := json.RawMessage(`{
+		"playback": {
+			"matchFrameRate": false,
+			"maxResultsPerResolution": 0,
+			"pauseWhenAppInactive": null
+		},
+		"display": {
+			"enableAnimations": null
+		},
+		"filtering": {
+			"requiredTerms": [],
+			"filterOutTerms": null
+		}
+	}`)
+	r := userSettingsRequest(http.MethodPut, "/", body, map[string]string{"userID": "u1"})
+	w := httptest.NewRecorder()
+	h.PutSettings(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s, want 200", w.Code, w.Body.String())
+	}
+	got := settingsSvc.updatedSettings
+	if got.Playback.MatchFrameRate == nil || *got.Playback.MatchFrameRate {
+		t.Fatalf("matchFrameRate = %v, want explicit false", got.Playback.MatchFrameRate)
+	}
+	if got.Playback.MaxResultsPerResolution == nil || *got.Playback.MaxResultsPerResolution != 0 {
+		t.Fatalf("maxResultsPerResolution = %v, want explicit zero", got.Playback.MaxResultsPerResolution)
+	}
+	if got.Playback.PauseWhenAppInactive != nil {
+		t.Fatalf("pauseWhenAppInactive = %v, want nil inheritance", got.Playback.PauseWhenAppInactive)
+	}
+	if got.Display.EnableAnimations != nil {
+		t.Fatalf("enableAnimations = %v, want nil inheritance", got.Display.EnableAnimations)
+	}
+	if got.Filtering.RequiredTerms == nil || len(got.Filtering.RequiredTerms) != 0 {
+		t.Fatalf("requiredTerms = %#v, want explicit empty override", got.Filtering.RequiredTerms)
+	}
+	if got.Filtering.FilterOutTerms != nil {
+		t.Fatalf("filterOutTerms = %#v, want nil inheritance", got.Filtering.FilterOutTerms)
+	}
+}
+
 func TestUserSettingsHandler_PutSettings_InvalidJSON(t *testing.T) {
 	settingsSvc := &fakeUserSettingsService{}
 	usersSvc := &fakeUserExistsService{exists: true}

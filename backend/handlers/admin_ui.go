@@ -1916,23 +1916,24 @@ func (h *AdminUIHandler) GetHardwareAccelerationStatus(w http.ResponseWriter, _ 
 
 // AdminPageData holds data for admin page templates
 type AdminPageData struct {
-	CurrentPath    string
-	BasePath       string // e.g. "/mediastorm/admin" or "/admin"
-	ServerBasePath string // server-level prefix only, e.g. "/mediastorm" or ""
-	IsAdmin        bool   // true for master accounts, false for regular accounts
-	AccountID      string // Account ID for scoping data (empty for master)
-	Username       string // Username of logged in account
-	Settings       config.Settings
-	Schema         map[string]interface{}
-	Groups         []map[string]string
-	Status         AdminStatus
-	Users          []models.User
-	UserOverrides  map[string]bool // Map of userID -> hasOverrides for showing indicators
-	Version        string
-	BuildID        string
-	NoProfiles     bool // true when non-admin user has no profiles
-	Presets        []config.Preset
-	HiddenItems    []adminHiddenItem
+	CurrentPath              string
+	BasePath                 string // e.g. "/mediastorm/admin" or "/admin"
+	ServerBasePath           string // server-level prefix only, e.g. "/mediastorm" or ""
+	IsAdmin                  bool   // true for master accounts, false for regular accounts
+	AccountID                string // Account ID for scoping data (empty for master)
+	Username                 string // Username of logged in account
+	Settings                 config.Settings
+	Schema                   map[string]interface{}
+	Groups                   []map[string]string
+	Status                   AdminStatus
+	Users                    []models.User
+	UserOverrides            map[string]bool // Map of userID -> hasOverrides for showing indicators
+	Version                  string
+	BuildID                  string
+	HomeDesignerAssetVersion string
+	NoProfiles               bool // true when non-admin user has no profiles
+	Presets                  []config.Preset
+	HiddenItems              []adminHiddenItem
 }
 
 // AdminStatus holds backend status information

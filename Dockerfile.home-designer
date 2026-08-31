@@ -13,11 +13,12 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked go mod download
 COPY backend/ ./
 ARG TARGETOS
 ARG TARGETARCH
+ARG SOURCE_COMMIT=unknown
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     mkdir -p /out \
     && test "$TARGETOS" = "linux" \
-    && CGO_ENABLED=1 GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -trimpath -o /out/mediastorm .
+    && CGO_ENABLED=1 GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -trimpath -ldflags "-X novastream/handlers.homeDesignerAssetVersion=$SOURCE_COMMIT" -o /out/mediastorm .
 
 FROM godver3/mediastorm:latest
 ARG SOURCE_COMMIT=unknown

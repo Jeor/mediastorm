@@ -24,16 +24,17 @@ func (h *AdminUIHandler) HomeDesignerPage(w http.ResponseWriter, r *http.Request
 	isAdmin, accountID, basePath, username := h.getPageRoleInfo(r)
 	users := h.getScopedUsers(isAdmin, accountID)
 	data := AdminPageData{
-		CurrentPath:    basePath + "/settings/home-designer",
-		BasePath:       basePath,
-		ServerBasePath: h.serverBasePath,
-		IsAdmin:        isAdmin,
-		AccountID:      accountID,
-		Username:       username,
-		Users:          users,
-		Version:        GetBackendVersion(),
-		BuildID:        GetBackendBuildID(),
-		NoProfiles:     !isAdmin && len(users) == 0,
+		CurrentPath:              basePath + "/settings/home-designer",
+		BasePath:                 basePath,
+		ServerBasePath:           h.serverBasePath,
+		IsAdmin:                  isAdmin,
+		AccountID:                accountID,
+		Username:                 username,
+		Users:                    users,
+		Version:                  GetBackendVersion(),
+		BuildID:                  GetBackendBuildID(),
+		HomeDesignerAssetVersion: homeDesignerAssetVersion,
+		NoProfiles:               !isAdmin && len(users) == 0,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

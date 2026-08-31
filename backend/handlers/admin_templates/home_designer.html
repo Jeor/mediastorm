@@ -1,7 +1,7 @@
 {{define "title"}}Home Designer · Mediastorm{{end}}
 
 {{define "styles"}}
-<link rel="stylesheet" href="{{.BasePath}}/assets/home-designer/home_designer.css">
+<link rel="stylesheet" href="{{.BasePath}}/assets/home-designer/{{.HomeDesignerAssetVersion}}/home_designer.css">
 {{end}}
 
 {{define "content"}}
@@ -63,5 +63,5 @@
     </section>
     {{end}}
 </section>
-<script type="module" src="{{.BasePath}}/assets/home-designer/app.js"></script>
+<script type="module" src="{{.BasePath}}/assets/home-designer/{{.HomeDesignerAssetVersion}}/app.js"></script>
 {{end}}

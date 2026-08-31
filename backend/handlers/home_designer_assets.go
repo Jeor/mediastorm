@@ -11,6 +11,10 @@ import (
 //go:embed admin_assets/home_designer/*.js admin_assets/home_designer/*.css
 var homeDesignerAssets embed.FS
 
+// homeDesignerAssetVersion is replaced with the source revision in test-image
+// builds so every deployment gets a fresh asset path through edge caches.
+var homeDesignerAssetVersion = "dev"
+
 var homeDesignerAssetContentTypes = map[string]string{
 	"app.js":            "text/javascript; charset=utf-8",
 	"api.js":            "text/javascript; charset=utf-8",

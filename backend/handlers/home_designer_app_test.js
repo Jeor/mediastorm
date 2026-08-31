@@ -32,14 +32,44 @@ class Element {
     }
 
     append(...children) {
-        children.forEach((child) => { child.parentElement = this; });
-        this.children.push(...children);
+        children.forEach((child) => {
+            child.parentElement?.removeChild(child);
+            child.parentElement = this;
+            this.children.push(child);
+        });
     }
 
     replaceChildren(...children) {
-        children.forEach((child) => { child.parentElement = this; });
+        this.children.forEach((child) => { child.parentElement = null; });
+        children.forEach((child) => {
+            child.parentElement?.removeChild(child);
+            child.parentElement = this;
+        });
         this.children = children;
     }
+
+    removeChild(child) {
+        const index = this.children.indexOf(child);
+        if (index >= 0) this.children.splice(index, 1);
+        child.parentElement = null;
+        return child;
+    }
+
+    insertBefore(child, before) {
+        child.parentElement?.removeChild(child);
+        child.parentElement = this;
+        const index = before ? this.children.indexOf(before) : -1;
+        if (index >= 0) this.children.splice(index, 0, child);
+        else this.children.push(child);
+        return child;
+    }
+
+    get nextSibling() {
+        if (!this.parentElement) return null;
+        return this.parentElement.children[this.parentElement.children.indexOf(this) + 1] || null;
+    }
+
+    get parentNode() { return this.parentElement; }
 
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
 
@@ -295,22 +325,45 @@ test('responsive drawer blocks the shared shell and restores it when its breakpo
 
     assert.equal(sidebar.inert, true);
     assert.equal(topbar.inert, true);
+    assert.equal(library.parentElement, body, 'the active dialog leaves the main-content stack');
+    assert.equal(backdrop.parentElement, body, 'the backdrop leaves the main-content stack');
     assert.equal(backdrop.hidden, false);
     assert.equal(library.getAttribute('role'), 'dialog');
     documentListeners.get('focusin')({ target: sidebar });
     assert.equal(close.focusCount, 2, 'opening and an attempted shared-shell focus return focus to the drawer');
+    assert.equal(documentListeners.has('keydown'), true, 'the portaled dialog retains keyboard handling');
     const styles = await readFile(new URL('./admin_assets/home_designer/home_designer.css', import.meta.url), 'utf8');
     assert.match(styles, /z-index:\s*10001/);
     assert.match(styles, /z-index:\s*10000/);
+
+    let escapePrevented = false;
+    documentListeners.get('keydown')({ target: close, key: 'Escape', preventDefault: () => { escapePrevented = true; } });
+    assert.equal(escapePrevented, true);
+    assert.equal(library.parentElement, workspace, 'Escape restores the dialog position');
+    assert.equal(backdrop.parentElement, root, 'Escape restores the backdrop position');
+    root.listeners.get('click')({ target: opener });
+    assert.equal(library.parentElement, body);
+    assert.equal(backdrop.parentElement, body);
 
     media.matches = false;
     media.listener();
     assert.equal(sidebar.inert, false);
     assert.equal(topbar.inert, false);
     assert.equal(backdrop.hidden, true);
+    assert.equal(library.parentElement, workspace, 'the dialog returns to its original workspace position');
+    assert.equal(backdrop.parentElement, root, 'the backdrop returns to its original page position');
     assert.equal(library.getAttribute('role'), null);
     assert.equal(body.classList.contains('home-designer-drawer-open'), false);
     assert.equal(documentListeners.has('focusin'), false);
+    assert.equal(documentListeners.has('keydown'), false);
+});
+
+test('a portaled drawer remains addressable by editor rendering and focus work', async () => {
+    const source = await sourceWithModules();
+    assert.match(source, /const findDesignerElement = \(selector\) =>/);
+    assert.match(source, /library\.renderLibrary\(findDesignerElement\('\[data-home-designer-library\]'\)/);
+    assert.match(source, /outline\.renderInspector\(findDesignerElement\('\[data-home-designer-inspector\]'\)/);
+    assert.match(source, /const target = findDesignerElement\(`\[data-home-designer-\$\{kind\}\]`\)/);
 });
 
 test('authoritative document replacement clears stale 422 feedback before rendering it', async () => {

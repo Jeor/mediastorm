@@ -30,6 +30,9 @@ if (root && status) {
     let drawer = null;
     let drawerReturnFocus = null;
     let drawerBackground = [];
+    let drawerPortal = [];
+    let drawerDialogAttributes = null;
+    let drawerBackdropHidden = true;
     const pendingDrafts = new Map();
     const drawerMedia = globalThis.matchMedia?.('(max-width: 1100px)');
     const warnBeforeUnload = (event) => { event.preventDefault(); event.returnValue = ''; return ''; };
@@ -96,6 +99,13 @@ if (root && status) {
     const clearDraft = (target) => { const key = draftKey(target); if (key) pendingDrafts.delete(key); syncDirtyProtection(); };
     const clearDrafts = () => { pendingDrafts.clear(); syncDirtyProtection(); };
     const isEditableTarget = (target) => Boolean(target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName));
+    const findDesignerElement = (selector) => editor?.querySelector(selector)
+        || (drawer?.matches?.(selector) ? drawer : drawer?.querySelector?.(selector))
+        || null;
+    const focusDesignerPath = (attribute, path) => {
+        if (!editor && !drawer) return;
+        findDesignerElement(`[${attribute}="${CSS.escape(path)}"]`)?.focus();
+    };
 
     const showFailure = () => {
         status.replaceChildren();
@@ -127,7 +137,7 @@ if (root && status) {
         const [id, errors] = Object.entries(validation)[0] || [];
         if (!id || !errors?.[0]) return;
         selectRow(id);
-        requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(errors[0].path)}"]`)?.focus());
+        requestAnimationFrame(() => focusDesignerPath('data-field-path', errors[0].path));
     };
 
     const focusFirstServerInvalid = (fields) => {
@@ -138,11 +148,11 @@ if (root && status) {
             const row = (store?.getState?.().rows || []).find((candidate) => candidate.id === first.rowId);
             const itemIndex = first.itemId ? row?.collectionItems?.findIndex((item) => item.id === first.itemId) : -1;
             const path = itemIndex >= 0 ? `collectionItems.${itemIndex}.${first.path}` : first.path;
-            requestAnimationFrame(() => editor?.querySelector(`[data-field-path="${CSS.escape(path)}"]`)?.focus());
+            requestAnimationFrame(() => focusDesignerPath('data-field-path', path));
             return;
         }
         if (first.section === 'theme') {
-            requestAnimationFrame(() => editor?.querySelector(`[data-theme-path="${CSS.escape(first.path)}"]`)?.focus());
+            requestAnimationFrame(() => focusDesignerPath('data-theme-path', first.path));
             return;
         }
         if (first.section === 'scope') {
@@ -258,12 +268,12 @@ if (root && status) {
 
     const configureCatalog = (entry, index) => {
         store.dispatch({ type: 'catalog/configure', token: entry.type, index, values: {} });
-        requestAnimationFrame(() => editor?.querySelector('[data-home-designer-inspector] [data-field-path]')?.focus());
+        requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
     const handleAddedRow = (id, entry) => {
         selectRow(id);
-        if ((entry.fields || []).length) requestAnimationFrame(() => editor?.querySelector('[data-home-designer-inspector] [data-field-path]')?.focus());
+        if ((entry.fields || []).length) requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
     const renderEditor = async () => {
@@ -272,8 +282,9 @@ if (root && status) {
         const [library, outline] = await editorModules;
         if (!store) return;
         const active = document.activeElement;
-        const focusPath = active?.closest?.('[data-home-designer-editor]') ? active.dataset?.fieldPath : null;
-        const themePath = active?.closest?.('[data-home-designer-editor]') ? active.dataset?.themePath : null;
+        const activeInDesigner = editor.contains?.(active) || drawer?.contains(active);
+        const focusPath = activeInDesigner ? active?.dataset?.fieldPath : null;
+        const themePath = activeInDesigner ? active?.dataset?.themePath : null;
         const focusStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
         const focusEnd = typeof active?.selectionEnd === 'number' ? active.selectionEnd : null;
         const state = store.getState();
@@ -283,7 +294,7 @@ if (root && status) {
             ? { ...state, rowValidation: Object.fromEntries(Object.entries({ ...state.rowValidation, ...serverRowValidation }).map(([id, rowErrors]) => [id, [...(state.rowValidation?.[id] || []), ...(serverRowValidation[id] || [])]])) }
             : state;
         renderRowsMode(state, validation.sectionValidation.rows || []);
-        library.renderLibrary(editor.querySelector('[data-home-designer-library]'), {
+        library.renderLibrary(findDesignerElement('[data-home-designer-library]'), {
             state, dispatch: store.dispatch,
             onAdd: handleAddedRow,
             onConfigure: configureCatalog,
@@ -292,7 +303,7 @@ if (root && status) {
             state, dispatch: store.dispatch, liveRegion: editor.querySelector('[data-home-designer-live]'), onSelect: selectRow,
             onConfigure: configureCatalog, onAdd: handleAddedRow,
         });
-        outline.renderInspector(editor.querySelector('[data-home-designer-inspector]'), {
+        outline.renderInspector(findDesignerElement('[data-home-designer-inspector]'), {
             state: inspectorState, dispatch: store.dispatch, onSelect: selectRow,
             sectionValidation: validation.sectionValidation,
             onFieldEdit: (identity) => clearServerValidation(identity),
@@ -303,7 +314,7 @@ if (root && status) {
                 store.dispatch({ type: 'catalog/cancel' });
                 if (rows[0]) {
                     selectRow(rows[0].id);
-                    requestAnimationFrame(() => editor.querySelector('[data-home-designer-inspector] [data-field-path]')?.focus());
+                    requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
                 }
             },
         });
@@ -394,8 +405,8 @@ if (root && status) {
         editor.hidden = false;
         if (focusPath || themePath) requestAnimationFrame(() => {
             const replacement = focusPath
-                ? editor.querySelector(`[data-field-path="${CSS.escape(focusPath)}"]`)
-                : editor.querySelector(`[data-theme-path="${CSS.escape(themePath)}"]`);
+                ? findDesignerElement(`[data-field-path="${CSS.escape(focusPath)}"]`)
+                : findDesignerElement(`[data-theme-path="${CSS.escape(themePath)}"]`);
             replacement?.focus();
             if (focusStart !== null && typeof replacement?.setSelectionRange === 'function') replacement.setSelectionRange(focusStart, focusEnd);
         });
@@ -422,6 +433,22 @@ if (root && status) {
         if (drawerBackdrop) drawerBackdrop.hidden = true;
     };
 
+    const portalDrawer = (target) => {
+        const body = document.body;
+        if (!body) return;
+        const nodes = [drawerBackdrop, target].filter(Boolean);
+        drawerPortal = nodes.map((node) => ({ node, parent: node.parentNode, nextSibling: node.nextSibling }));
+        drawerPortal.forEach(({ node }) => body.append(node));
+    };
+
+    const restoreDrawerPortal = () => {
+        drawerPortal.forEach(({ node, parent, nextSibling }) => {
+            if (!parent) return;
+            parent.insertBefore(node, nextSibling?.parentNode === parent ? nextSibling : null);
+        });
+        drawerPortal = [];
+    };
+
     const guardDrawerFocus = (event) => {
         if (drawer && event.target && !drawer.contains(event.target)) drawer.querySelector('.home-designer-drawer-close, input, select, button, [href]')?.focus?.();
     };
@@ -429,30 +456,41 @@ if (root && status) {
     const closeDrawer = () => {
         if (!drawer) return;
         drawer.classList.remove('is-drawer-open');
-        drawer.removeAttribute('role');
-        drawer.removeAttribute('aria-modal');
+        ['role', 'aria-modal'].forEach((name) => {
+            const value = drawerDialogAttributes?.[name];
+            if (value === null || value === undefined) drawer.removeAttribute(name);
+            else drawer.setAttribute(name, value);
+        });
         setBackgroundInert(false);
         document.body?.classList.remove('home-designer-drawer-open');
         document.removeEventListener?.('focusin', guardDrawerFocus, true);
+        document.removeEventListener?.('keydown', handleKeyboard);
+        restoreDrawerPortal();
+        if (drawerBackdrop) drawerBackdrop.hidden = drawerBackdropHidden;
         const returnFocus = drawerReturnFocus;
         drawer = null;
         drawerReturnFocus = null;
+        drawerDialogAttributes = null;
         requestAnimationFrame(() => returnFocus?.focus?.());
     };
 
     const openDrawer = (kind, trigger) => {
         if (drawerMedia && !drawerMedia.matches) return;
-        const target = editor?.querySelector(`[data-home-designer-${kind}]`);
+        const target = findDesignerElement(`[data-home-designer-${kind}]`);
         if (!target) return;
         if (drawer && drawer !== target) closeDrawer();
         drawer = target;
         drawerReturnFocus = trigger || document.activeElement;
+        drawerDialogAttributes = { role: target.getAttribute('role'), 'aria-modal': target.getAttribute('aria-modal') };
+        drawerBackdropHidden = Boolean(drawerBackdrop?.hidden);
+        portalDrawer(target);
         target.classList.add('is-drawer-open');
         target.setAttribute('role', 'dialog');
         target.setAttribute('aria-modal', 'true');
         setBackgroundInert(true);
         document.body?.classList.add('home-designer-drawer-open');
         document.addEventListener?.('focusin', guardDrawerFocus, true);
+        document.addEventListener?.('keydown', handleKeyboard);
         requestAnimationFrame(() => target.querySelector('.home-designer-drawer-close, input, select, button, [href]')?.focus?.());
     };
 
@@ -463,7 +501,7 @@ if (root && status) {
 
     const mountDrawerControls = () => {
         [['library', 'Row library'], ['inspector', 'Row inspector']].forEach(([kind, label]) => {
-            const target = editor?.querySelector(`[data-home-designer-${kind}]`);
+            const target = findDesignerElement(`[data-home-designer-${kind}]`);
             if (!target || target.querySelector('.home-designer-drawer-close')) return;
             const close = document.createElement('button');
             close.type = 'button'; close.className = 'btn btn-secondary home-designer-drawer-close'; close.textContent = `Close ${label}`;
@@ -472,8 +510,8 @@ if (root && status) {
         });
     };
 
-    root.addEventListener?.('keydown', (event) => {
-        if (drawer) {
+    const handleKeyboard = (event) => {
+        if (drawer?.contains(event.target)) {
             if (event.key === 'Escape') { event.preventDefault(); closeDrawer(); return; }
             if (event.key === 'Tab') {
                 const focusable = [...drawer.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')];
@@ -491,7 +529,8 @@ if (root && status) {
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'y') {
             event.preventDefault(); store?.redo?.();
         }
-    });
+    };
+    root.addEventListener?.('keydown', handleKeyboard);
     root.addEventListener?.('click', (event) => {
         const drawerButton = event.target?.closest?.('[data-home-designer-open-library], [data-home-designer-open-inspector]');
         if (drawerButton) {

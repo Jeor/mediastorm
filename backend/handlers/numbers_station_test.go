@@ -108,7 +108,11 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		t.Fatalf("read status template: %v", err)
 	}
 	content := string(templateBytes)
-	for _, unwanted := range []string{"Complete the next line.", "numbers-station-hint", "NUMBERS STATION ·", "numbers-station-submit", ">TRANSMIT<", "submitNumbersStation"} {
+	for _, unwanted := range []string{
+		"Complete the next line.", "numbers-station-hint", "NUMBERS STATION ·", "numbers-station-submit", ">TRANSMIT<", "submitNumbersStation",
+		"topbar.appendChild(achievement)", "numbers-station-achievement-present", "numbers-station-achievement-scrolled", "updateNumbersStationAchievementVisibility",
+		".numbers-station-signal.transmission-complete {\n    display: none;",
+	} {
 		if strings.Contains(content, unwanted) {
 			t.Fatalf("status template still contains %q", unwanted)
 		}
@@ -133,11 +137,11 @@ func TestNumbersStationDashboardUsesCompactMobileSafeReceiver(t *testing.T) {
 		`if (response.status !== 422 && feedback)`,
 		`readNumbersStationResponse(response)`,
 		`SESSION EXPIRED — RELOAD THE DASHBOARD`,
+		`<span id="numbersStationAchievement" class="numbers-station-achievement" hidden>`,
 		`numbers-station-achievement-badge" type="button" onclick="openNumbersStation()"`,
-		`topbar.appendChild(achievement)`,
-		`numbers-station-achievement-present`,
-		`numbers-station-achievement-scrolled`,
-		`window.addEventListener('scroll', updateNumbersStationAchievementVisibility, { passive: true })`,
+		`if (achievement) achievement.hidden = false;`,
+		`.numbers-station-signal.transmission-complete`,
+		`opacity: 0.62;`,
 		`options.showBroadcast ? 'SIGNAL ACQUIRED' : 'NO CARRIER'`,
 		`dashboard-uptime-count`,
 		`class="numbers-station-static-break numbers-station-silence-heading"`,

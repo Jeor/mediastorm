@@ -392,12 +392,8 @@
 }
 
 .numbers-station-achievement {
-    position: absolute;
-    left: 50%;
-    top: 100%;
-    z-index: 1;
-    transform: translateX(-50%);
-    transition: opacity 0.18s ease, visibility 0.18s ease;
+    display: inline-flex;
+    align-items: center;
 }
 
 .numbers-station-achievement[hidden] {
@@ -410,15 +406,14 @@
     gap: 0.4rem;
     padding: 0.42rem 0.7rem 0.46rem;
     border: 1px solid rgba(74, 222, 128, 0.34);
-    border-top: 0;
-    border-radius: 0 0 8px 8px;
+    border-radius: 999px;
     background: rgba(17, 35, 25, 0.98);
     color: #86efac;
     font: 700 0.68rem/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
 .numbers-station-achievement-badge:hover,
@@ -461,21 +456,7 @@
 }
 
 .numbers-station-signal.transmission-complete {
-    display: none;
-}
-
-.admin-topbar.numbers-station-achievement-present {
-    margin-bottom: 1.9rem;
-}
-
-.admin-topbar.numbers-station-achievement-scrolled {
-    margin-bottom: 0;
-}
-
-.admin-topbar.numbers-station-achievement-scrolled .numbers-station-achievement {
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0.62;
 }
 
 .numbers-station-signal-dot {
@@ -1003,6 +984,9 @@ body.numbers-station-open {
             <span class="numbers-station-signal-dot" aria-hidden="true"></span>
             <span>77.77</span>
         </button>
+        <span id="numbersStationAchievement" class="numbers-station-achievement" hidden>
+            <button class="numbers-station-achievement-badge" type="button" onclick="openNumbersStation()" aria-label="Storm-Marked — open Numbers Station">Storm-Marked</button>
+        </span>
     </h1>
     <p>System overview and quick actions</p>
 </div>
@@ -1020,10 +1004,6 @@ body.numbers-station-open {
         Refresh
     </button>
 </div>
-</div>
-
-<div id="numbersStationAchievement" class="numbers-station-achievement" hidden>
-    <button class="numbers-station-achievement-badge" type="button" onclick="openNumbersStation()" aria-label="Storm-Marked — open Numbers Station">Storm-Marked</button>
 </div>
 
 <section id="dashboardUpdateBanner" class="dashboard-update-banner" aria-label="Backend update available" hidden>
@@ -4080,17 +4060,7 @@ body.numbers-station-open {
         const signal = document.getElementById('numbersStationSignal');
         signal?.classList.add('carrier-detected', 'transmission-complete');
         const achievement = document.getElementById('numbersStationAchievement');
-        const topbar = document.querySelector('.admin-topbar');
-        if (achievement && topbar) {
-            topbar.appendChild(achievement);
-            achievement.hidden = false;
-            topbar.classList.add('numbers-station-achievement-present');
-            updateNumbersStationAchievementVisibility();
-        }
-    }
-
-    function updateNumbersStationAchievementVisibility() {
-        document.querySelector('.admin-topbar')?.classList.toggle('numbers-station-achievement-scrolled', window.scrollY > 0);
+        if (achievement) achievement.hidden = false;
     }
 
     function renderNumbersStation(state, options = {}) {
@@ -4275,7 +4245,6 @@ body.numbers-station-open {
             refreshDebridStatus();
         }
         initializeNumbersStationSignal();
-        window.addEventListener('scroll', updateNumbersStationAchievementVisibility, { passive: true });
         document.getElementById('numbersStationDialog')?.addEventListener('close', () => {
             unlockNumbersStationScroll();
         });

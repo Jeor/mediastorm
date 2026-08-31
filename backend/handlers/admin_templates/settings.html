@@ -1109,8 +1109,7 @@
 }
 
 .settings-command-bar {
-    display: grid;
-    grid-template-columns: minmax(240px, 1fr) auto minmax(210px, 0.7fr) auto;
+    display: flex;
     gap: 0.75rem;
     align-items: center;
     margin-top: 0.75rem;
@@ -1118,6 +1117,7 @@
 
 .settings-search-wrap {
     position: relative;
+    flex: 1 1 240px;
     min-width: 0;
 }
 
@@ -1140,6 +1140,7 @@
 
 .settings-command-bar .settings-level-switch {
     display: grid;
+    flex: 0 0 240px;
     width: 240px;
     height: 48px;
     padding: 0.2rem;
@@ -1150,10 +1151,17 @@
     height: 100%;
 }
 
-.settings-command-bar .settings-context-trigger-desktop { min-height: 48px; }
+.settings-command-bar .settings-context-trigger-desktop {
+    min-width: 0;
+    min-height: 48px;
+    flex: 1 1 160px;
+}
+
+.settings-command-bar .settings-context-trigger-desktop > span { min-width: 0; }
 
 .settings-save-state {
     display: inline-flex;
+    flex: 0 0 auto;
     min-height: 48px;
     align-items: center;
     justify-self: end;

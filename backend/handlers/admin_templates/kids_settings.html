@@ -5,17 +5,20 @@
 {{define "title"}}Kids Profile Settings - {{if .IsAdmin}}mediastorm Admin{{else}}mediastorm account{{end}}{{end}}
 
 {{define "content"}}
-<div class="page-header">
-    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+<div class="page-header" data-page-group="People &amp; communication">
+    <div class="page-header-copy">
+        <div class="page-kicker">People &amp; communication</div>
+        <h1>Kids profile settings</h1>
+        <p id="profile-name-display">Loading...</p>
+    </div>
+    <div class="page-header-actions">
         <a href="{{.BasePath}}/accounts" class="btn btn-secondary btn-sm">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
                 <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
             </svg>
-            Back to Profiles
+            Back to people
         </a>
     </div>
-    <h1>Kids Profile Settings</h1>
-    <p id="profile-name-display">Loading...</p>
 </div>
 
 <div class="grid" style="gap: 1.5rem;">

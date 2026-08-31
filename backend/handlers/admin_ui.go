@@ -379,7 +379,7 @@ var SettingsSchema = map[string]interface{}{
 	},
 	"usenet": map[string]interface{}{
 		"label":    "Usenet Servers",
-		"icon":     "download",
+		"icon":     "database",
 		"group":    "providers",
 		"order":    2,
 		"is_array": true,

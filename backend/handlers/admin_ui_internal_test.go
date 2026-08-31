@@ -627,8 +627,8 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
 		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 39 {
-		t.Fatalf("shared shell navigation SVG count = %d, want 39", got)
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 38 {
+		t.Fatalf("shared shell navigation SVG count = %d, want 38", got)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,
@@ -654,6 +654,19 @@ func TestSharedShellUsesConciseMaintenanceGroupLabel(t *testing.T) {
 	}
 	if strings.Contains(source, `Maintenance &amp; records`) {
 		t.Fatal("shared shell still contains the old Maintenance & records group label")
+	}
+}
+
+func TestSharedShellOmitsWatchTogetherNavigationEntry(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+	for _, marker := range []string{`href="{{.ServerBasePath}}/watch-party"`, `<span>Watch Together</span>`} {
+		if strings.Contains(source, marker) {
+			t.Fatalf("shared shell still exposes session-only Watch Together navigation marker %q", marker)
+		}
 	}
 }
 

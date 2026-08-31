@@ -5289,6 +5289,37 @@ func TestContinueWatching_RecentlyReleasedNextEpisodePromotesItem(t *testing.T) 
 	if items[0].NextEpisode == nil || items[0].NextEpisode.EpisodeNumber != 2 {
 		t.Fatalf("expected promoted item to keep immediate next episode E02, got %+v", items[0].NextEpisode)
 	}
+	if !items[0].UpdatedAt.Equal(now.Add(-48 * time.Hour)) {
+		t.Fatalf("expected promotion not to change genuine activity timestamp, got %s", items[0].UpdatedAt)
+	}
+	if items[0].SortAt.IsZero() || items[0].SortAt.Before(releaseTime.Add(-time.Minute)) || items[0].SortAt.After(releaseTime.Add(time.Minute)) {
+		t.Fatalf("expected release ordering timestamp near %s, got %s", releaseTime, items[0].SortAt)
+	}
+}
+
+func TestContinueWatching_ReleaseOrderingPersistsBeyondNewBadgeWindow(t *testing.T) {
+	now := time.Now().UTC()
+	releaseTime := now.Add(-7 * 24 * time.Hour)
+	nextEpisode := &models.EpisodeReference{AirDateTimeUTC: releaseTime.Format(time.RFC3339)}
+
+	sortAt, ok := continueWatchingReleaseTime(nextEpisode)
+	if !ok {
+		t.Fatal("expected an already released next episode to retain a release ordering timestamp")
+	}
+	if !sortAt.Equal(releaseTime.Truncate(time.Second)) {
+		t.Fatalf("expected sort timestamp %s, got %s", releaseTime.Truncate(time.Second), sortAt)
+	}
+
+	state := models.SeriesWatchState{
+		UpdatedAt: now.Add(-14 * 24 * time.Hour),
+		SortAt:    sortAt,
+	}
+	if got := continueWatchingSortTime(state); !got.Equal(sortAt) {
+		t.Fatalf("expected durable release ordering timestamp %s, got %s", sortAt, got)
+	}
+	if !state.UpdatedAt.Equal(now.Add(-14 * 24 * time.Hour)) {
+		t.Fatalf("expected genuine activity timestamp to remain unchanged, got %s", state.UpdatedAt)
+	}
 }
 
 func TestContinueWatching_BehindOnBacklogDoesNotPromoteLaterRecentAiredEpisode(t *testing.T) {

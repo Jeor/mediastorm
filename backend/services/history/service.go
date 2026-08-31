@@ -1532,8 +1532,8 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 				if t.activityAt.After(state.UpdatedAt) {
 					state.UpdatedAt = t.activityAt
 				}
-				if promotedAt, ok := continueWatchingRecentReleaseTime(nextEpisode); ok && promotedAt.After(state.UpdatedAt) {
-					state.UpdatedAt = promotedAt
+				if releaseAt, ok := continueWatchingReleaseTime(nextEpisode); ok && releaseAt.After(state.UpdatedAt) {
+					state.SortAt = releaseAt
 				}
 
 				// Build watched episodes map
@@ -1743,20 +1743,30 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 		continueWatching = filtered
 	}
 
-	// Sort by most recently updated (in-progress items will naturally sort first if more recent)
+	// Sort by genuine activity or, for an available next episode, the episode's
+	// release time. Release ordering is intentionally durable: the frontend owns
+	// the separate 72-hour "New" badge window, while the shelf position drifts
+	// down naturally as newer activity and releases arrive.
 	sort.Slice(continueWatching, func(i, j int) bool {
-		if continueWatching[i].UpdatedAt.Equal(continueWatching[j].UpdatedAt) {
+		iSortAt := continueWatchingSortTime(continueWatching[i])
+		jSortAt := continueWatchingSortTime(continueWatching[j])
+		if iSortAt.Equal(jSortAt) {
 			return continueWatching[i].SeriesID < continueWatching[j].SeriesID
 		}
-		return continueWatching[i].UpdatedAt.After(continueWatching[j].UpdatedAt)
+		return iSortAt.After(jSortAt)
 	})
 
 	return continueWatching, nil
 }
 
-const continueWatchingRecentReleaseWindow = 72 * time.Hour
+func continueWatchingSortTime(state models.SeriesWatchState) time.Time {
+	if state.SortAt.After(state.UpdatedAt) {
+		return state.SortAt
+	}
+	return state.UpdatedAt
+}
 
-func continueWatchingRecentReleaseTime(nextEpisode *models.EpisodeReference) (time.Time, bool) {
+func continueWatchingReleaseTime(nextEpisode *models.EpisodeReference) (time.Time, bool) {
 	if nextEpisode == nil {
 		return time.Time{}, false
 	}
@@ -1781,9 +1791,6 @@ func continueWatchingRecentReleaseTime(nextEpisode *models.EpisodeReference) (ti
 
 	now := time.Now().UTC()
 	if releaseTime.After(now) {
-		return time.Time{}, false
-	}
-	if now.Sub(releaseTime) > continueWatchingRecentReleaseWindow {
 		return time.Time{}, false
 	}
 	return releaseTime, true

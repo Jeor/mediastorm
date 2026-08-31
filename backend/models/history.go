@@ -37,6 +37,11 @@ type SeriesWatchState struct {
 	PercentWatched  float64                     `json:"percentWatched,omitempty"`
 	ResumePercent   float64                     `json:"resumePercent,omitempty"`
 
+	// SortAt is an internal Continue Watching ordering timestamp. It allows a
+	// newly released next episode to establish a durable shelf position without
+	// misrepresenting UpdatedAt as user playback activity.
+	SortAt time.Time `json:"-"`
+
 	// Episode counts for tracking series completion (excludes specials/season 0)
 	WatchedEpisodeCount int `json:"watchedEpisodeCount,omitempty"` // Number of episodes user has watched
 	TotalEpisodeCount   int `json:"totalEpisodeCount,omitempty"`   // Total released episodes in series

@@ -3,9 +3,9 @@
 {{define "title"}}{{if hasSuffix .CurrentPath "/tasks"}}Automations{{else if hasSuffix .CurrentPath "/integrations"}}Connected Services{{else}}Maintenance{{end}} - {{if .IsAdmin}}mediastorm Admin{{else}}mediastorm account{{end}}{{end}}
 
 {{define "content"}}
-<div class="page-header" data-page-group="{{if or (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}Configuration &amp; operations{{else}}Maintenance &amp; records{{end}}">
+<div class="page-header" data-page-group="{{if or (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}Configuration &amp; operations{{else}}Maintenance{{end}}">
     <div class="page-header-copy">
-        <div class="page-kicker">{{if or (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}Configuration &amp; operations{{else}}Maintenance &amp; records{{end}}</div>
+        <div class="page-kicker">{{if or (hasSuffix .CurrentPath "/tasks") (hasSuffix .CurrentPath "/integrations")}}Configuration &amp; operations{{else}}Maintenance{{end}}</div>
         {{if hasSuffix .CurrentPath "/tasks"}}
         <h1>Automations</h1>
         <p>Schedule recurring syncs{{if .IsAdmin}}, library scans, backups, and background preparation{{end}}.</p>
@@ -166,8 +166,7 @@
 
     <section class="maintenance-dashboard-section" aria-labelledby="maintenanceSystemTitle">
         <h2 id="maintenanceSystemTitle">Maintain system</h2>
-        <div class="maintenance-system-layout">
-            <div class="maintenance-system-list">
+        <div class="maintenance-system-list">
                 {{if .IsAdmin}}
                 <a class="maintenance-dashboard-row" href="{{.BasePath}}/backup">
                     <span class="maintenance-row-icon">
@@ -219,33 +218,16 @@
                     <button class="btn btn-secondary maintenance-row-action maintenance-row-action-danger" type="button" id="restart-backend-dashboard-btn" onclick="restartBackend()">Restart</button>
                 </div>
                 {{end}}
-            </div>
-
-            <aside class="maintenance-quick-tools" aria-labelledby="maintenanceQuickToolsTitle">
-                <h3 id="maintenanceQuickToolsTitle">On-page tools</h3>
-                <p>Select a tool to open its existing controls below.</p>
-                {{if .IsAdmin}}
-                <button type="button" onclick="openMaintenanceTool('profileMessageSection')">Profile messages <span aria-hidden="true">›</span></button>
-                <button type="button" onclick="openMaintenanceTool('prequeueManagementSection')">Prequeue cache <span aria-hidden="true">›</span></button>
-                <button type="button" onclick="openMaintenanceTool('backgroundWorkersSection')">Background workers <span aria-hidden="true">›</span></button>
-                {{end}}
-                <button type="button" onclick="openMaintenanceTool('troubleshootingSection')">Troubleshooting uploads <span aria-hidden="true">›</span></button>
-            </aside>
         </div>
     </section>
 </div>
 
-<details class="maintenance-tool-details" id="maintenanceToolDetails">
-    <summary>
-        <span>
-            <strong>Advanced controls</strong>
-            <small>Open actions and live tools that need additional input.</small>
-        </span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <polyline points="6 9 12 15 18 9"/>
-        </svg>
-    </summary>
-    <div class="maintenance-tool-details-body">
+<section class="maintenance-controls" aria-labelledby="maintenanceControlsTitle">
+    <div class="maintenance-controls-heading">
+        <h2 id="maintenanceControlsTitle">Maintenance controls</h2>
+        <p>Messages, workers, cache management, diagnostics, and support uploads.</p>
+    </div>
+    <div class="maintenance-controls-body">
 {{end}}
 
 <!-- SYSTEM CATEGORY -->
@@ -1820,7 +1802,7 @@
 {{else if hasSuffix .CurrentPath "/integrations"}}
 {{else}}
     </div>
-</details>
+</section>
 {{end}}
 
 <style>
@@ -2115,11 +2097,6 @@
         border-color: var(--danger);
         color: var(--danger);
     }
-    .maintenance-system-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1.5fr) minmax(235px, 0.65fr);
-        gap: 1rem;
-    }
     .maintenance-system-list {
         display: grid;
         gap: 0.35rem;
@@ -2132,103 +2109,24 @@
     .maintenance-dashboard-row-danger .maintenance-row-meta {
         color: var(--danger);
     }
-    .maintenance-quick-tools {
-        min-width: 0;
-        padding: 0.85rem 0 0.85rem 1rem;
-        border-left: 1px solid var(--border);
-    }
-    .maintenance-quick-tools h3 {
-        margin: 0 0 0.25rem;
-        color: var(--text-primary);
-        font-size: 0.875rem;
-        font-weight: 600;
-    }
-    .maintenance-quick-tools p {
-        margin: 0 0 0.75rem;
-        color: var(--text-muted);
-        font-size: 0.75rem;
-    }
-    .maintenance-quick-tools button {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        min-height: 42px;
-        padding: 0.55rem 0.25rem;
-        border: 0;
-        border-bottom: 1px solid var(--border);
-        background: transparent;
-        color: var(--text-secondary);
-        font: inherit;
-        font-size: 0.8125rem;
-        text-align: left;
-        cursor: pointer;
-    }
-    .maintenance-quick-tools button:hover {
-        color: var(--text-primary);
-    }
-    .maintenance-quick-tools button span {
-        color: var(--text-muted);
-        font-size: 1.1rem;
-    }
-    .maintenance-tool-details {
+    .maintenance-controls {
         margin-bottom: 2rem;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: var(--bg-secondary);
-        overflow: hidden;
     }
-    .maintenance-tool-details > summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        min-height: 58px;
-        gap: 1rem;
-        padding: 0.75rem 1rem;
+    .maintenance-controls-heading {
+        margin-bottom: 0.75rem;
+    }
+    .maintenance-controls-heading h2 {
+        margin: 0;
         color: var(--text-primary);
-        cursor: pointer;
-        list-style: none;
+        font-size: 0.9rem;
+        font-weight: 650;
     }
-    .maintenance-tool-details > summary::-webkit-details-marker {
-        display: none;
-    }
-    .maintenance-tool-details > summary:hover {
-        background: var(--bg-hover);
-    }
-    .maintenance-tool-details > summary span {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        gap: 0.15rem;
-    }
-    .maintenance-tool-details > summary strong {
-        font-size: 0.875rem;
-        font-weight: 600;
-    }
-    .maintenance-tool-details > summary small {
-        overflow: hidden;
+    .maintenance-controls-heading p {
+        margin: 0.25rem 0 0;
         color: var(--text-muted);
         font-size: 0.75rem;
-        text-overflow: ellipsis;
-        white-space: nowrap;
     }
-    .maintenance-tool-details > summary svg {
-        width: 18px;
-        height: 18px;
-        flex: 0 0 auto;
-        color: var(--text-muted);
-        transition: transform 0.2s;
-    }
-    .maintenance-tool-details[open] > summary {
-        border-bottom: 1px solid var(--border);
-    }
-    .maintenance-tool-details[open] > summary svg {
-        transform: rotate(180deg);
-    }
-    .maintenance-tool-details-body {
-        padding: 1rem;
-    }
-    .maintenance-tool-details-body > .settings-group:last-child {
+    .maintenance-controls-body > .settings-group:last-child {
         margin-bottom: 0;
     }
     @media (max-width: 980px) {
@@ -2240,14 +2138,6 @@
             border-top: 1px solid var(--border);
         }
         .maintenance-status-item:nth-child(3) {
-            border-left: 0;
-        }
-        .maintenance-system-layout {
-            grid-template-columns: 1fr;
-        }
-        .maintenance-quick-tools {
-            padding: 0.85rem 0 0;
-            border-top: 1px solid var(--border);
             border-left: 0;
         }
     }
@@ -2282,9 +2172,6 @@
         }
         .maintenance-row-meta {
             display: none;
-        }
-        .maintenance-tool-details > summary small {
-            white-space: normal;
         }
     }
     .settings-group {
@@ -3086,11 +2973,9 @@
     const requestedTaskProfileId = new URLSearchParams(window.location.search).get('profileId') || '';
 
     function openMaintenanceTool(sectionId) {
-        const details = document.getElementById('maintenanceToolDetails');
         const section = document.getElementById(sectionId);
-        if (!details || !section) return;
+        if (!section) return;
 
-        details.open = true;
         if (!section.classList.contains('open')) {
             const header = section.querySelector('.section-header');
             if (header) toggleSection(header);

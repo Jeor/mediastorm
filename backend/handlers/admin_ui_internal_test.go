@@ -376,6 +376,55 @@ func TestAdminSettingsDesktopCommandBarKeepsAllDetailLabelsVisible(t *testing.T)
 	}
 }
 
+func TestAdminSettingsSupportsAllViewAndClosesScopeBeforeCustomizationReview(t *testing.T) {
+	settingsBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	settingsSource := string(settingsBytes)
+	for _, marker := range []string{
+		`requestedSettingsParams.get('view') === 'all'`,
+		`activeSettingsGroup = 'all';`,
+		`if (groupId === 'all') url.searchParams.set('view', 'all');`,
+		`activeSettingsGroup !== 'all'`,
+		`view === 'all' ? 'all'`,
+	} {
+		if !strings.Contains(settingsSource, marker) {
+			t.Fatalf("settings template missing all-settings marker %q", marker)
+		}
+	}
+	for _, functionName := range []string{"propagateSettings", "reviewOverrideImpact"} {
+		start := strings.Index(settingsSource, "function "+functionName+"(")
+		if start < 0 {
+			t.Fatalf("settings template missing %s", functionName)
+		}
+		end := strings.Index(settingsSource[start:], "\n    }")
+		if end < 0 || !strings.Contains(settingsSource[start:start+end], "closeSettingsContextSheet();") {
+			t.Fatalf("%s does not close the current-scope menu before opening customization review", functionName)
+		}
+	}
+
+	baseBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	baseSource := string(baseBytes)
+	for _, marker := range []string{
+		`settings?view=all`,
+		`data-settings-destination="all"`,
+		`<span>All settings</span>`,
+		`typeof window.setSettingsGroup !== 'function'`,
+		`window.setSettingsGroup(link.dataset.settingsDestination === 'home' ? '' : link.dataset.settingsDestination);`,
+	} {
+		if !strings.Contains(baseSource, marker) {
+			t.Fatalf("shared shell missing all-settings navigation marker %q", marker)
+		}
+	}
+	if strings.Contains(baseSource, `data-settings-destination="home"><svg`) && strings.Contains(baseSource, `settings?view=dashboard" class="sidebar-nav-link active`) {
+		t.Fatal("settings dashboard remains server-rendered active before the requested destination is resolved")
+	}
+}
+
 func TestAdminSettingsMobileScopeControlsShowClearState(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {
@@ -574,8 +623,8 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
 		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 38 {
-		t.Fatalf("shared shell navigation SVG count = %d, want 38", got)
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 39 {
+		t.Fatalf("shared shell navigation SVG count = %d, want 39", got)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,
@@ -601,6 +650,36 @@ func TestSharedShellUsesConciseMaintenanceGroupLabel(t *testing.T) {
 	}
 	if strings.Contains(source, `Maintenance &amp; records`) {
 		t.Fatal("shared shell still contains the old Maintenance & records group label")
+	}
+}
+
+func TestSharedShellHighlightsMaintenanceLeafWithoutSelectingParent(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+	summaryMarker := `<span>Maintenance</span></span><span class="sidebar-admin-badge">Admin</span>`
+	summaryIndex := strings.Index(source, summaryMarker)
+	if summaryIndex < 0 {
+		t.Fatal("shared shell is missing the Maintenance group summary")
+	}
+	detailsIndex := strings.LastIndex(source[:summaryIndex], `<details`)
+	if detailsIndex < 0 {
+		t.Fatal("shared shell is missing the Maintenance details wrapper")
+	}
+	openingTagEnd := strings.Index(source[detailsIndex:summaryIndex], `>`)
+	if openingTagEnd < 0 {
+		t.Fatal("shared shell has an invalid Maintenance details opening tag")
+	}
+	openingTag := source[detailsIndex : detailsIndex+openingTagEnd+1]
+	if !strings.Contains(openingTag, `class="sidebar-group"`) || strings.Contains(openingTag, `current`) {
+		t.Fatalf("Maintenance parent should open without selected styling, got %q", openingTag)
+	}
+	for _, destination := range []string{"prequeue", "resolved-nzbs", "bad-streams", "share-links"} {
+		if !strings.Contains(source, `hasSuffix .CurrentPath "/`+destination+`"}}active`) {
+			t.Errorf("shared shell is missing leaf active state for %s", destination)
+		}
 	}
 }
 
@@ -720,6 +799,37 @@ func TestAdminMaintenanceLinksAllSubpages(t *testing.T) {
 	if strings.Contains(toolsSource, `id="prequeueManagementSection" style="display: none;"`) ||
 		strings.Contains(toolsSource, "function updatePrequeueManagementSection()") {
 		t.Fatal("prequeue management link remains conditional on an enabled prewarm automation")
+	}
+	for _, unwanted := range []string{"On-page tools", "Advanced controls", "maintenance-quick-tools", "maintenance-tool-details"} {
+		if strings.Contains(toolsSource, unwanted) {
+			t.Errorf("maintenance page still contains obsolete disclosure %q", unwanted)
+		}
+	}
+	for _, marker := range []string{`id="maintenanceControlsTitle">Maintenance controls`, `class="maintenance-controls-body"`, `if (!section) return;`} {
+		if !strings.Contains(toolsSource, marker) {
+			t.Errorf("maintenance page missing flattened control marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSearchSwitchesBetweenExclusiveWorkspaces(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/search.html")
+	if err != nil {
+		t.Fatalf("read search template: %v", err)
+	}
+	source := string(templateBytes)
+	for _, marker := range []string{
+		`id="searchDiagnostics" class="card search-diagnostics-card" aria-labelledby="searchDiagnosticsHeading" hidden`,
+		`function syncSearchWorkspaceDestination()`,
+		`contentSearch.hidden = showDiagnostics;`,
+		`selected.hidden = showDiagnostics;`,
+		`scrapeResults.hidden = showDiagnostics;`,
+		`diagnostics.hidden = !showDiagnostics;`,
+		`window.addEventListener('hashchange', syncSearchWorkspaceDestination);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("search template missing exclusive-workspace marker %q", marker)
+		}
 	}
 }
 

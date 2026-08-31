@@ -2818,7 +2818,9 @@
     const requestedSettingsSection = window.location.hash.replace(/^#/, '');
     const requestedSettingsParams = new URLSearchParams(window.location.search);
     const requestedSettingsCategory = requestedSettingsParams.get('category') || '';
-    if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
+    if (requestedSettingsParams.get('view') === 'all') {
+        activeSettingsGroup = 'all';
+    } else if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
         activeSettingsGroup = requestedSettingsCategory;
     }
     if (requestedSettingsSection && schema[requestedSettingsSection]?.group) {
@@ -2837,6 +2839,9 @@
             url.searchParams.delete('category');
             url.searchParams.set('view', 'essentials');
             url.hash = '';
+        } else if (activeSettingsGroup === 'all') {
+            url.searchParams.delete('category');
+            url.searchParams.set('view', 'all');
         } else if (activeSettingsGroup) {
             url.searchParams.delete('view');
         } else {
@@ -2860,9 +2865,14 @@
         const searchInput = document.getElementById('settingsSearch');
         if (searchInput) searchInput.value = '';
         const url = new URL(window.location.href);
-        url.searchParams.delete('view');
-        if (groupId) url.searchParams.set('category', groupId);
-        else url.searchParams.delete('category');
+        url.searchParams.delete('category');
+        if (groupId === 'all') url.searchParams.set('view', 'all');
+        else if (groupId) {
+            url.searchParams.delete('view');
+            url.searchParams.set('category', groupId);
+        } else {
+            url.searchParams.set('view', 'dashboard');
+        }
         url.hash = '';
         history.pushState({}, '', url);
         syncSettingsSidebarDestination(activeSettingsGroup || 'home');
@@ -2956,7 +2966,7 @@
             if (!selectedUserId && def.inheritFrom) return false;
             return true;
         }));
-        if (activeSettingsGroup && !availableGroups.some(group => group.id === activeSettingsGroup)) {
+        if (activeSettingsGroup && activeSettingsGroup !== 'all' && !availableGroups.some(group => group.id === activeSettingsGroup)) {
             activeSettingsGroup = '';
         }
         if (nav) {
@@ -3188,7 +3198,9 @@
                 ? filteredSections.size
                 : (isEssentials
                     ? Object.entries(schema).filter(([key, def]) => def.group && !def.hidden && watchEssentialSections.has(key)).length
-                    : (group ? settingsAvailableSectionsForOverview(group.id).length : 0));
+                    : (group
+                        ? settingsAvailableSectionsForOverview(group.id).length
+                        : settingsLandingGroups.reduce((total, candidate) => total + settingsAvailableSectionsForOverview(candidate.id).length, 0)));
             summary.textContent = count + (count === 1 ? ' section' : ' sections') + ' · ' + settingsScopeDisplayName();
         }
     }
@@ -4587,6 +4599,7 @@
 
     // Open the explicit review flow for child scopes with custom settings.
     async function propagateSettings() {
+        closeSettingsContextSheet();
         if (selectedUserId) await openClientOverrideReview();
         else await openProfileOverrideReview();
     }
@@ -5303,6 +5316,7 @@
     }
 
     function reviewOverrideImpact() {
+        closeSettingsContextSheet();
         if (overrideImpactNotice?.level === 'profile') openClientOverrideReview();
         else openProfileOverrideReview();
     }
@@ -14259,7 +14273,7 @@
 
         // Add validation warning banner if there are issues
         const visibleErrorKeys = Object.keys(validationErrors).filter(key => {
-            if (!activeSettingsGroup || searchTerm || !schema[key]) return true;
+            if (!activeSettingsGroup || activeSettingsGroup === 'all' || searchTerm || !schema[key]) return true;
             return settingsOverviewGroupForSection(key, schema[key]) === activeSettingsGroup;
         });
         const totalErrors = visibleErrorKeys.length;
@@ -14279,7 +14293,7 @@
         let totalMatchingSections = 0;
 
         for (const group of settingsOverviewGroups) {
-            if (activeSettingsGroup && !searchTerm && group.id !== activeSettingsGroup) continue;
+            if (activeSettingsGroup && activeSettingsGroup !== 'all' && !searchTerm && group.id !== activeSettingsGroup) continue;
             const groupSections = Object.entries(schema).filter(([key, def]) => {
                 if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
@@ -14578,9 +14592,10 @@
     window.addEventListener('popstate', () => {
         const params = new URLSearchParams(window.location.search);
         const category = params.get('category') || '';
+        const view = params.get('view') || '';
         const storedLevel = settingsLevels.has(localStorage.getItem('mediastorm-settings-level')) ? localStorage.getItem('mediastorm-settings-level') : 'basic';
         settingsLevel = storedLevel;
-        activeSettingsGroup = settingsLandingGroups.some(group => group.id === category) ? category : '';
+        activeSettingsGroup = view === 'all' ? 'all' : (settingsLandingGroups.some(group => group.id === category) ? category : '');
         syncSettingsSidebarDestination(activeSettingsGroup || 'home');
         renderSettings();
     });

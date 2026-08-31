@@ -280,6 +280,30 @@ func TestAdminSettingsAddListIncludesSharedActivityShelves(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsCollectionHubIncludesGenreAndDecadeTemplates(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`<option value="genres-movie">Movie Genres (18)</option>`,
+		`<option value="genres-tv">TV Genres (12)</option>`,
+		`<option value="decades-movie">Movie Decades (10)</option>`,
+		`<option value="decades-tv">TV Decades (10)</option>`,
+		"function getCollectionHubTemplate(templateId)",
+		"function applyCollectionHubTemplate()",
+		"enabled: false,",
+		"removeUnsavedCollectionHubTemplateShelves(modal",
+		"item.sourceShelfId === originalShelfId",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing collection-hub template behavior %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

@@ -12,6 +12,15 @@ class Element {
         this.className = '';
         this.textContent = '';
         this.type = '';
+        this.parentElement = null;
+        this.attributes = new Map();
+        this.inert = false;
+        this.focusCount = 0;
+        this.classList = {
+            add: (...names) => { this.className = [...new Set(this.className.split(/\s+/).filter(Boolean).concat(names))].join(' '); },
+            remove: (...names) => { this.className = this.className.split(/\s+/).filter((name) => name && !names.includes(name)).join(' '); },
+            contains: (name) => this.className.split(/\s+/).includes(name),
+        };
     }
 
     addEventListener(type, listener) {
@@ -23,18 +32,58 @@ class Element {
     }
 
     append(...children) {
+        children.forEach((child) => { child.parentElement = this; });
         this.children.push(...children);
     }
 
     replaceChildren(...children) {
+        children.forEach((child) => { child.parentElement = this; });
         this.children = children;
     }
 
-    querySelector(selector) {
-        if (selector === '[data-home-designer-status]') {
-            return this.children.find((child) => Object.hasOwn(child.dataset, 'homeDesignerStatus')) || null;
+    setAttribute(name, value) { this.attributes.set(name, String(value)); }
+
+    getAttribute(name) { return this.attributes.get(name) ?? null; }
+
+    removeAttribute(name) { this.attributes.delete(name); }
+
+    hasAttribute(name) { return this.attributes.has(name); }
+
+    contains(target) {
+        for (let current = target; current; current = current.parentElement) if (current === this) return true;
+        return false;
+    }
+
+    focus() { this.focusCount += 1; }
+
+    matches(selector) {
+        if (selector.startsWith('.')) return this.className.split(/\s+/).includes(selector.slice(1));
+        const dataMatch = selector.match(/^\[data-([a-z0-9-]+)\]$/);
+        if (dataMatch) {
+            const key = dataMatch[1].replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+            return Object.hasOwn(this.dataset, key);
         }
-        return this.children.find((child) => selector === `.${child.className}`) || null;
+        return selector === this.tagName.toLowerCase();
+    }
+
+    querySelector(selector) {
+        for (const candidate of this.querySelectorAll(selector)) {
+            return candidate;
+        }
+        return null;
+    }
+
+    querySelectorAll(selector) {
+        const selectors = selector.split(',').map((item) => item.trim().replace(/:not\([^)]*\)/g, ''));
+        const found = [];
+        const visit = (node) => {
+            node.children.forEach((child) => {
+                if (selectors.some((item) => child.matches(item))) found.push(child);
+                visit(child);
+            });
+        };
+        visit(this);
+        return found;
     }
 }
 
@@ -204,6 +253,123 @@ test('Home Designer source makes responsive drawers modal and cleans them up on 
     assert.match(source, /setBackgroundInert\(false\)/);
     assert.match(source, /matchMedia\?\.\('\(max-width: 1100px\)'\)/);
     assert.match(source, /drawerMedia\.addEventListener\('change'/);
+});
+
+test('responsive drawer blocks the shared shell and restores it when its breakpoint closes', async () => {
+    // Break caught: a high-z sidebar/topbar still receiving pointer or focus while a Home Designer drawer is open.
+    const source = await sourceWithModules();
+    const body = new Element('body');
+    const sidebar = new Element('aside');
+    const topbar = new Element('header');
+    const root = new Element('section');
+    root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section');
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    const close = new Element('button'); close.className = 'home-designer-drawer-close'; library.append(close);
+    workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(sidebar, topbar, root);
+    const documentListeners = new Map();
+    const media = {
+        matches: true,
+        addEventListener: (_type, listener) => { media.listener = listener; },
+    };
+    const document = {
+        body,
+        activeElement: null,
+        getElementById: () => root,
+        createElement: (tagName) => new Element(tagName),
+        addEventListener: (type, listener) => documentListeners.set(type, listener),
+        removeEventListener: (type) => documentListeners.delete(type),
+    };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        matchMedia: () => media,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus: () => {} };
+    root.listeners.get('click')({ target: opener });
+
+    assert.equal(sidebar.inert, true);
+    assert.equal(topbar.inert, true);
+    assert.equal(backdrop.hidden, false);
+    assert.equal(library.getAttribute('role'), 'dialog');
+    documentListeners.get('focusin')({ target: sidebar });
+    assert.equal(close.focusCount, 2, 'opening and an attempted shared-shell focus return focus to the drawer');
+    const styles = await readFile(new URL('./admin_assets/home_designer/home_designer.css', import.meta.url), 'utf8');
+    assert.match(styles, /z-index:\s*10001/);
+    assert.match(styles, /z-index:\s*10000/);
+
+    media.matches = false;
+    media.listener();
+    assert.equal(sidebar.inert, false);
+    assert.equal(topbar.inert, false);
+    assert.equal(backdrop.hidden, true);
+    assert.equal(library.getAttribute('role'), null);
+    assert.equal(body.classList.contains('home-designer-drawer-open'), false);
+    assert.equal(documentListeners.has('focusin'), false);
+});
+
+test('authoritative document replacement clears stale 422 feedback before rendering it', async () => {
+    // Break caught: a validation alert from the previous scope/revision remaining attached to a freshly loaded document.
+    const source = await sourceWithModules();
+    assert.match(source, /const clearValidationState = \(\) => \{[\s\S]*applyValidation = \[\];[\s\S]*clearErrors\(\);/);
+    assert.match(source, /const replaceWithLoadedDocument = async \(saved\) => \{[\s\S]*clearValidationState\(\);[\s\S]*clearDrafts\(\);[\s\S]*store = createStore\(saved\);[\s\S]*connectEditor\(\);/);
+    assert.match(source, /bootstrap[\s\S]*await replaceWithLoadedDocument\(result\.saved\)/);
+    assert.match(source, /switchScope[\s\S]*await replaceWithLoadedDocument\(result\.saved\)/);
+    assert.match(source, /Reload latest[\s\S]*await replaceWithLoadedDocument\(result\.saved\)/);
+    assert.match(source, /clearValidationState\(\);[\s\S]*applyingStore\.replaceWithSaved\(saved\)/);
+});
+
+test('a stale 422 alert clears after a successful scope load or Reload latest', async () => {
+    const source = await sourceWithModules();
+    class APIError extends Error {
+        constructor(message, { code = '', status = 0, fields = [] } = {}) {
+            super(message);
+            this.code = code;
+            this.status = status;
+            this.fields = fields;
+        }
+    }
+    const root = new Element('section');
+    root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const errors = new Element('div'); errors.dataset.homeDesignerErrors = '';
+    root.append(status, errors);
+    let response = 'validation';
+    const document = { getElementById: () => root, createElement: (tagName) => new Element(tagName) };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: {
+            loadDocument: async (_, scope) => ({ scope, revision: `${scope.kind}-revision`, rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }),
+            applyDocument: async () => {
+                if (response === 'validation') throw new APIError('Invalid theme', { status: 422, fields: [{ section: 'theme', path: 'fontScale', message: 'Too large' }] });
+                if (response === 'conflict') throw new APIError('Conflict', { code: 'revision_conflict' });
+                return {};
+            },
+            APIError,
+        },
+        homeDesignerStore: { createStore: (saved) => ({ isDirty: () => true, buildApplyRequest: () => ({ scope: saved.scope, expectedRevision: saved.revision, theme: { mode: 'custom', value: {} } }), replaceWithSaved: () => {}, discard: () => {} }) },
+    });
+    await settle(); await settle(); await settle(); await settle();
+    await root.homeDesigner.apply();
+    assert.equal(errors.children.length, 1);
+
+    await root.homeDesigner.switchScope({ kind: 'profile', profileId: 'profile-1' });
+    assert.equal(errors.children.length, 0, 'a scope replacement removes the prior 422 alert');
+
+    response = 'validation';
+    await root.homeDesigner.apply();
+    response = 'conflict';
+    await root.homeDesigner.apply();
+    assert.equal(errors.children.length, 1);
+    errors.children[0].children[1].click();
+    await settle(); await settle(); await settle(); await settle();
+    assert.equal(errors.children.length, 0, 'Reload latest removes validation feedback from the old revision');
 });
 
 test('Home Designer source routes every 422 field identity to row, collection, theme, or section feedback', async () => {

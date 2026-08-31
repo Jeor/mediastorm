@@ -357,7 +357,7 @@
     .home-designer-library,
     .home-designer-inspector {
         position: fixed;
-        z-index: 50;
+        z-index: 10001;
         inset: 0 0 0 auto;
         display: none;
         width: min(30rem, 100vw);
@@ -368,7 +368,7 @@
 
     .home-designer-drawer-backdrop {
         position: fixed;
-        z-index: 49;
+        z-index: 10000;
         inset: 0;
         background: rgb(0 0 0 / 0.5);
     }

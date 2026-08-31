@@ -52,6 +52,10 @@ if (root && status) {
     };
 
     const clearErrors = () => errors?.replaceChildren();
+    const clearValidationState = () => {
+        applyValidation = [];
+        clearErrors();
+    };
     const showActionError = (text, actionLabel = '', action = null) => {
         if (!errors) {
             showMessage('home-designer-error', text);
@@ -399,11 +403,11 @@ if (root && status) {
 
     const setBackgroundInert = (inert) => {
         if (inert && drawer) {
-            const workspace = drawer.parentElement;
-            const nodes = [
-                ...Array.from(editor?.children || []).filter((node) => node !== workspace),
-                ...Array.from(workspace?.children || []).filter((node) => node !== drawer),
-            ];
+            const nodes = [];
+            for (let child = drawer; child?.parentElement; child = child.parentElement) {
+                const parent = child.parentElement;
+                nodes.push(...Array.from(parent.children || []).filter((node) => node !== child && node !== drawerBackdrop));
+            }
             drawerBackground = nodes.map((node) => ({ node, inert: Boolean(node.inert), ariaHidden: node.getAttribute?.('aria-hidden') }));
             drawerBackground.forEach(({ node }) => { node.inert = true; node.setAttribute?.('aria-hidden', 'true'); });
             if (drawerBackdrop) drawerBackdrop.hidden = false;
@@ -548,6 +552,14 @@ if (root && status) {
         }
     };
 
+    const replaceWithLoadedDocument = async (saved) => {
+        clearValidationState();
+        clearDrafts();
+        const [, { createStore }] = await modules;
+        store = createStore(saved);
+        connectEditor();
+    };
+
     const bootstrap = async () => {
         if (!activeScope.kind || (activeScope.kind === 'profile' && !activeScope.profileId)) return;
         setWorkspaceLoading(true);
@@ -555,9 +567,7 @@ if (root && status) {
         if (!result || !isCurrent(result.current)) return;
         if (result.error) showFailure();
         else {
-            const [, { createStore }] = await modules;
-            store = createStore(result.saved);
-            connectEditor();
+            await replaceWithLoadedDocument(result.saved);
             setWorkspaceLoading(false);
             showReady();
         }
@@ -567,6 +577,7 @@ if (root && status) {
         if (!confirmDiscard('Discard unsaved Home Designer changes?')) return false;
         const previousScope = { ...activeScope };
         if (hasUnsavedWork()) {
+            clearValidationState();
             store?.discard?.();
             clearDrafts();
         }
@@ -584,9 +595,7 @@ if (root && status) {
             return false;
         }
         activeScope = { ...scope };
-        const [, { createStore }] = await modules;
-        store = createStore(result.saved);
-        connectEditor();
+        await replaceWithLoadedDocument(result.saved);
         setWorkspaceLoading(false);
         showReady();
         return true;
@@ -608,10 +617,9 @@ if (root && status) {
             if (!isCurrent(current)) return false;
             const saved = await applyDocument(basePath, request, { signal: current.controller.signal });
             if (!isCurrent(current) || store !== applyingStore) return false;
-            applyingStore.replaceWithSaved(saved);
-            applyValidation = [];
-            clearErrors();
+            clearValidationState();
             clearDrafts();
+            applyingStore.replaceWithSaved(saved);
             syncDirtyProtection();
             showReady();
             return true;
@@ -627,11 +635,8 @@ if (root && status) {
                         if (!result || !isCurrent(result.current)) { setWorkspaceLoading(false); return; }
                         if (result.error) { setWorkspaceLoading(false); showFailure(); }
                         else {
-                            const [, { createStore }] = await modules;
-                            store = createStore(result.saved);
-                            connectEditor();
+                            await replaceWithLoadedDocument(result.saved);
                             setWorkspaceLoading(false);
-                            clearErrors();
                             showReady();
                         }
                     });
@@ -652,10 +657,9 @@ if (root && status) {
         apply,
         discard: () => {
             if (!store) return false;
-            store.discard();
-            applyValidation = [];
-            clearErrors();
+            clearValidationState();
             clearDrafts();
+            store.discard();
             syncDirtyProtection();
             showReady();
             return true;

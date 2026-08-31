@@ -68,7 +68,7 @@ const reconcileTheme = (controls, state, dispatch) => {
     });
 };
 
-export const renderTheme = (host, { state, dispatch } = {}) => {
+export const renderTheme = (host, { state, dispatch, onReset } = {}) => {
     if (!host) return;
     const documentKey = `${state?.scope?.kind || ''}:${state?.scope?.profileId || ''}:${state?.revision || ''}`;
     if (host._homeDesignerTheme?.documentKey === documentKey) {
@@ -82,7 +82,7 @@ export const renderTheme = (host, { state, dispatch } = {}) => {
     const actions = document.createElement('div'); actions.className = 'home-designer-theme-actions';
     const customize = document.createElement('button'); customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.dataset.themeCustomize = ''; customize.textContent = 'Customize theme'; customize.addEventListener('click', () => dispatch?.({ type: 'theme/customize' })); actions.append(customize);
     let reset = null;
-    if (state?.scope?.kind !== 'global') { reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.dataset.themeReset = ''; reset.textContent = 'Reset to inherited'; reset.addEventListener('click', () => dispatch?.({ type: 'theme/reset' })); actions.append(reset); }
+    if (state?.scope?.kind !== 'global') { reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.dataset.themeReset = ''; reset.textContent = 'Reset to inherited'; reset.addEventListener('click', () => { if (onReset) onReset(); else dispatch?.({ type: 'theme/reset' }); }); actions.append(reset); }
     section.append(actions);
     const presetList = document.createElement('div'); presetList.className = 'home-designer-theme-presets'; section.append(presetList);
     const fields = document.createElement('div'); fields.className = 'home-designer-theme-fields';

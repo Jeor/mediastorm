@@ -1419,6 +1419,19 @@
     font-weight: 600;
     cursor: pointer;
 }
+.settings-home-designer-callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--text-secondary);
+}
+.settings-home-designer-callout p { margin: 0; }
 
 .settings-category-header {
     display: grid;
@@ -13439,6 +13452,13 @@
         // Add preset dropdown before filtering section content
         if (sectionKey === 'filtering' && !selectedClientId) {
             contentHtml = renderPresetDropdown() + contentHtml;
+        }
+
+        if (sectionKey === 'homeShelves' || sectionKey === 'display') {
+            const details = sectionKey === 'homeShelves'
+                ? 'Compose rows and preview changes before applying them.'
+                : 'Preview Home Designer theme changes before applying them.';
+            contentHtml = '<div class="settings-home-designer-callout"><p><strong>Home Designer</strong><br>'+details+'</p><a class="btn btn-secondary" href="'+basePath + '/settings/home-designer'+'">Open Home Designer</a></div>' + contentHtml;
         }
 
         // Add clear cache button for cache section

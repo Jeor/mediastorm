@@ -43,6 +43,56 @@ func TestNotificationsTemplateLoads(t *testing.T) {
 	}
 }
 
+func TestHomeDesignerTemplateProvidesAccessibleEditorStructure(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/home_designer.html")
+	if err != nil {
+		t.Fatalf("read Home Designer template: %v", err)
+	}
+	source := string(templateBytes)
+	if strings.Count(source, "<h1>") != 1 {
+		t.Fatalf("Home Designer must have exactly one h1, got %d", strings.Count(source, "<h1>"))
+	}
+	for _, marker := range []string{
+		`aria-label="Row library"`,
+		`aria-label="Composition preview"`,
+		`aria-label="Row inspector"`,
+		`data-home-designer-status aria-live="polite"`,
+		`data-home-designer-errors aria-live="assertive"`,
+		`data-home-designer-apply`,
+		`data-home-designer-discard`,
+		`data-home-designer-undo`,
+		`data-home-designer-redo`,
+		`data-home-designer-scope`,
+		`data-home-designer-preview-profile`,
+		`data-home-designer-preview-platform`,
+		`href="{{.BasePath}}/settings?category=homeShelves"`,
+		`href="{{.BasePath}}/settings?category=display"`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("Home Designer template missing accessibility/navigation marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSettingsKeepsAdvancedControlsAndLinksToHomeDesigner(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+	for _, marker := range []string{
+		`homeShelves.shelves`,
+		`display.appearance`,
+		`Open Home Designer`,
+		`settings-home-designer-callout`,
+		`basePath + '/settings/home-designer'`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing Home Designer preservation marker %q", marker)
+		}
+	}
+}
+
 func TestToolsTemplateIncludesProfileScrobLinking(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/tools.html")
 	if err != nil {

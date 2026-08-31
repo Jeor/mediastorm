@@ -26,6 +26,18 @@
     color: var(--danger);
 }
 
+.home-designer-errors:empty { display: none; }
+
+.home-designer-errors .home-designer-error {
+    display: grid;
+    gap: 0.75rem;
+    max-width: 680px;
+    padding: 1rem;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+
 .home-designer-editor,
 .home-designer-workspace,
 .home-designer-toolbar,
@@ -50,6 +62,11 @@
 
 .home-designer-toolbar-actions {
     grid-auto-flow: column;
+}
+
+.home-designer-open-drawer,
+.home-designer-drawer-close {
+    display: none;
 }
 
 .home-designer-workspace {
@@ -325,4 +342,51 @@
     }
 
     .home-designer-preview-toolbar { grid-template-columns: 1fr; }
+
+    .home-designer-workspace {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-designer-outline,
+    .home-designer-preview {
+        grid-column: 1 / -1;
+    }
+
+    .home-designer-library,
+    .home-designer-inspector {
+        position: fixed;
+        z-index: 50;
+        inset: 0 0 0 auto;
+        display: none;
+        width: min(30rem, 100vw);
+        overflow: auto;
+        border-radius: 0;
+        box-shadow: -0.75rem 0 2rem rgb(0 0 0 / 0.35);
+    }
+
+    .home-designer-library.is-drawer-open,
+    .home-designer-inspector.is-drawer-open {
+        display: grid;
+        align-content: start;
+    }
+
+    .home-designer-open-drawer,
+    .home-designer-drawer-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .home-designer-drawer-close { justify-self: start; }
+
+    body.home-designer-drawer-open { overflow: hidden; }
+}
+
+@media (max-width: 640px) {
+    .home-designer-toolbar-actions { grid-auto-flow: row; }
+    .home-designer-workspace { grid-template-columns: 1fr; }
+    .home-designer-open-drawer { width: 100%; }
+    .home-designer-library,
+    .home-designer-inspector { width: 100vw; }
+    .home-designer-theme-fields { grid-template-columns: 1fr; }
 }

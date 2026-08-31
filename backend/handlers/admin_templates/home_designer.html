@@ -25,21 +25,26 @@
         </section>
         {{end}}
     </div>
+    <div class="home-designer-errors" data-home-designer-errors aria-live="assertive" aria-atomic="true"></div>
     {{if not .NoProfiles}}
     <section class="home-designer-editor" data-home-designer-editor hidden>
         <div class="home-designer-toolbar">
             <div data-home-designer-rows-controls></div>
             <div data-home-designer-theme-controls></div>
             <div class="home-designer-toolbar-actions">
+                <button type="button" class="btn btn-secondary" data-home-designer-undo disabled>Undo</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-redo disabled>Redo</button>
                 <button type="button" class="btn btn-secondary" data-home-designer-discard>Discard changes</button>
                 <button type="button" class="btn btn-primary" data-home-designer-apply>Apply changes</button>
             </div>
         </div>
         <p class="sr-only" data-home-designer-live aria-live="polite"></p>
         <div class="home-designer-workspace">
-            <aside class="home-designer-library" data-home-designer-library aria-label="Row library"></aside>
+            <button type="button" class="btn btn-secondary home-designer-open-drawer" data-home-designer-open-library aria-controls="homeDesignerLibrary">Open row library</button>
+            <aside id="homeDesignerLibrary" class="home-designer-library" data-home-designer-library aria-label="Row library"></aside>
             <section class="home-designer-outline" data-home-designer-outline aria-label="Composition outline"></section>
-            <section class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector"></section>
+            <button type="button" class="btn btn-secondary home-designer-open-drawer" data-home-designer-open-inspector aria-controls="homeDesignerInspector">Open row inspector</button>
+            <section id="homeDesignerInspector" class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector"></section>
         </div>
         <section class="home-designer-preview" aria-label="Composition preview">
             <div class="home-designer-preview-toolbar">
@@ -47,11 +52,13 @@
                     <h2>Live preview</h2>
                     <p>Theme and row edits are visible here but are not saved until you apply changes.</p>
                 </div>
-                <label>Preview as <select data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
-                <label>Device <select data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
+                <label>Editing scope <select data-home-designer-scope aria-label="Editing scope"></select></label>
+                <label>Preview profile <select data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
+                <label>Preview platform <select data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
             </div>
             <div data-home-designer-preview-host></div>
         </section>
+        <p class="home-designer-advanced-links">Need a detailed control? <a href="{{.BasePath}}/settings?category=homeShelves">Advanced Home settings</a> or <a href="{{.BasePath}}/settings?category=display">Advanced Appearance settings</a>.</p>
     </section>
     {{end}}
 </section>

@@ -2,9 +2,11 @@ package prewarm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -610,6 +612,63 @@ func TestRunOnce_HandlesWorkerFailure(t *testing.T) {
 	if result.Failed != 1 {
 		t.Errorf("expected 1 failed, got %d", result.Failed)
 	}
+}
+
+func TestRunOnce_TimesOutStuckWorkerAndContinues(t *testing.T) {
+	store := playback.NewPrequeueStore(30 * time.Minute)
+	users := []models.User{{ID: "user1", Name: "Alice"}}
+	continueWatching := map[string][]models.SeriesWatchState{
+		"user1": {
+			{
+				SeriesID:    "title1",
+				SeriesTitle: "Stuck Show",
+				UpdatedAt:   time.Now().UTC(),
+				NextEpisode: &models.EpisodeReference{SeasonNumber: 1, EpisodeNumber: 1},
+			},
+		},
+	}
+
+	workerStarted := make(chan struct{})
+	releaseWorker := make(chan struct{})
+	svc := NewService(nil, "")
+	svc.SetHistoryService(&mockHistoryProvider{continueWatching: continueWatching})
+	svc.SetUsersService(&mockUsersProvider{users: users})
+	svc.SetPrequeueStore(store)
+	svc.SetWorkerFunc(func(context.Context, string, string, string, string, int, string, *models.EpisodeReference) (string, error) {
+		return "", errors.New("unscoped worker should not be called")
+	})
+	svc.workerTimeout = 25 * time.Millisecond
+	svc.SetScopedWorkerFunc(func(ctx context.Context, titleID, titleName, imdbID, mediaType string, year int, userID, clientID, settingsScopeKey string, targetEpisode *models.EpisodeReference) (string, error) {
+		entry, _ := store.CreateScoped(titleID, titleName, userID, mediaType, year, targetEpisode, "prewarm", settingsScopeKey)
+		close(workerStarted)
+		<-releaseWorker
+		return entry.ID, nil
+	})
+
+	startedAt := time.Now()
+	result, err := svc.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("RunOnce failed: %v", err)
+	}
+	if elapsed := time.Since(startedAt); elapsed > time.Second {
+		t.Fatalf("RunOnce remained blocked for %s", elapsed)
+	}
+	select {
+	case <-workerStarted:
+	default:
+		t.Fatal("worker was not started")
+	}
+	if result.Failed != 1 || result.Warmed != 0 {
+		t.Fatalf("result = %+v, want failed=1 warmed=0", result)
+	}
+	if _, ok := store.GetByTitleUserScope("title1", "user1", playback.DefaultPrequeueSettingsScopeKey); ok {
+		t.Fatal("timed-out prequeue entry was not removed")
+	}
+	entry := svc.entries[entryKey("title1", "user1")]
+	if entry == nil || !strings.Contains(entry.Error, "timed out") {
+		t.Fatalf("warm entry error = %#v, want timeout failure", entry)
+	}
+	close(releaseWorker)
 }
 
 func TestRunOnce_RejectsResolvedPrequeueWithoutReusablePreparation(t *testing.T) {

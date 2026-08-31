@@ -1127,6 +1127,9 @@ func main() {
 	r.HandleFunc("/admin/api/streams/sse", adminUIHandler.RequireAuth(adminUIHandler.GetStreamsSSE)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/streams/{streamID}/terminate", adminUIHandler.RequireAuth(adminUIHandler.TerminateStream)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/dashboard/stats", adminUIHandler.RequireAuth(adminUIHandler.GetDashboardStats)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/dashboard/layout", adminUIHandler.RequireAuth(adminUIHandler.GetDashboardLayout)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/dashboard/layout", adminUIHandler.RequireMasterAuth(adminUIHandler.SaveDashboardLayout)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/api/dashboard/layout", adminUIHandler.RequireMasterAuth(adminUIHandler.ResetDashboardLayout)).Methods(http.MethodDelete)
 	if numbersStationHandler != nil {
 		numbersStationLimiter := api.NewIPRateLimiter(rate.Every(6*time.Second), 10)
 		r.HandleFunc("/admin/api/numbers-station", adminUIHandler.RequireAuth(numbersStationHandler.State)).Methods(http.MethodGet)

@@ -64,6 +64,7 @@ type Service struct {
 // The legacy JSON file list is kept for backwards compatibility with non-DB deployments.
 var backupFiles = []string{
 	"settings.json",
+	"admin-dashboard-layout.json",
 	"queue.db",
 	"users.json",
 	"watchlist.json",
@@ -75,6 +76,7 @@ var backupFiles = []string{
 
 var backupFilesDB = []string{
 	"settings.json",
+	"admin-dashboard-layout.json",
 }
 
 func (s *Service) useDB() bool { return s.store != nil }

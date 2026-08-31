@@ -3,6 +3,7 @@
 {{define "title"}}Dashboard - {{if .IsAdmin}}mediastorm Admin{{else}}mediastorm account{{end}}{{end}}
 
 {{define "styles"}}
+<link rel="stylesheet" href="{{.ServerBasePath}}/api/static/gridstack-13.2.0.min.css?v={{.BuildID}}-layout2">
 <style>
 .donation-banner {
     position: relative;
@@ -250,6 +251,125 @@
 
 .dashboard-v4 > * {
     margin-bottom: 0 !important;
+}
+
+.dashboard-grid {
+    min-height: 8rem;
+    margin: -0.625rem;
+}
+
+.dashboard-grid.grid-stack > .grid-stack-item > .grid-stack-item-content {
+    inset: 0.625rem;
+    overflow: visible;
+}
+
+.dashboard-module {
+    height: 100%;
+    margin: 0 !important;
+}
+
+.dashboard-module.card {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.dashboard-module.card > .card-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+}
+
+.dashboard-module-handle {
+    position: absolute;
+    z-index: 8;
+    top: 0.9rem;
+    left: 50%;
+    display: none;
+    width: 2.25rem;
+    height: 1.5rem;
+    padding: 0;
+    transform: translateX(-50%);
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(129, 140, 248, 0.5);
+    border-radius: 999px;
+    background: rgba(13, 13, 18, 0.9);
+    color: var(--text-secondary);
+    cursor: grab;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.dashboard-module-handle::before {
+    content: '';
+    width: 14px;
+    height: 6px;
+    background: radial-gradient(circle, currentColor 1.25px, transparent 1.5px) 0 0 / 7px 6px;
+}
+
+.dashboard-layout-editing .dashboard-module-handle {
+    display: inline-flex;
+}
+
+.dashboard-layout-editing .dashboard-module {
+    outline: 1px dashed rgba(129, 140, 248, 0.6);
+    outline-offset: -1px;
+}
+
+.dashboard-layout-editing .grid-stack-item.ui-draggable-dragging .dashboard-module-handle {
+    cursor: grabbing;
+}
+
+.dashboard-layout-editing .ui-resizable-handle {
+    opacity: 1;
+}
+
+.dashboard-layout-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dashboard-layout-actions[hidden],
+.dashboard-layout-message[hidden],
+#dashboardEditLayoutBtn[hidden],
+[data-dashboard-module-source][hidden] {
+    display: none;
+}
+
+.dashboard-layout-message {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: var(--radius);
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    font-size: 0.8125rem;
+}
+
+.dashboard-layout-message.success {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.1);
+    color: #86efac;
+}
+
+.dashboard-grid-loading {
+    min-height: 12rem;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+}
+
+.dashboard-grid-fallback {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+}
+
+@media (max-width: 1099px) {
+    #dashboardEditLayoutBtn,
+    #dashboardLayoutActions {
+        display: none !important;
+    }
 }
 
 .dashboard-header-row {
@@ -1006,9 +1126,20 @@ body.numbers-station-open {
         </svg>
         Refresh
     </button>
+    {{if .IsAdmin}}
+    <button id="dashboardEditLayoutBtn" class="btn btn-secondary" type="button" onclick="dashboardLayoutController.startEditing()">
+        Edit layout
+    </button>
+    <div id="dashboardLayoutActions" class="dashboard-layout-actions" hidden>
+        <button class="btn btn-secondary" type="button" onclick="dashboardLayoutController.resetDraft()">Reset</button>
+        <button class="btn btn-secondary" type="button" onclick="dashboardLayoutController.cancelEditing()">Cancel</button>
+        <button id="dashboardSaveLayoutBtn" class="btn btn-primary" type="button" onclick="dashboardLayoutController.save()">Save</button>
+    </div>
+    {{end}}
 </div>
 </div>
 
+<div id="dashboardLayoutMessage" class="dashboard-layout-message" role="alert" hidden></div>
 <section id="dashboardUpdateBanner" class="dashboard-update-banner" aria-label="Backend update available" hidden>
     <div>
         <h2 class="dashboard-update-title">
@@ -1040,8 +1171,12 @@ body.numbers-station-open {
     </button>
 </section>
 
-<div class="dashboard-summary-grid" aria-label="Dashboard summary">
-    <section class="dashboard-summary-card">
+<div id="dashboardGrid" class="dashboard-grid grid-stack" aria-label="Dashboard modules" data-layout-url="{{.ServerBasePath}}/admin/api/dashboard/layout" data-can-edit="{{.IsAdmin}}">
+    <div class="dashboard-grid-loading"><span>Loading dashboard layout…</span></div>
+</div>
+
+<div class="dashboard-summary-grid" aria-label="Dashboard summary" data-dashboard-module-source>
+    <section class="dashboard-summary-card" data-dashboard-module="system-status" data-dashboard-module-label="System Status">
         <div class="dashboard-summary-label">System Status</div>
         <div class="dashboard-summary-value dashboard-status-value">
             <span id="dashboardSystemStatusDot" class="dashboard-status-dot" aria-hidden="true"></span>
@@ -1049,12 +1184,12 @@ body.numbers-station-open {
         </div>
         <div class="dashboard-summary-meta" id="dashboardSystemStatusMeta">Contacting the backend</div>
     </section>
-    <section class="dashboard-summary-card">
+    <section class="dashboard-summary-card" data-dashboard-module="active-stream-count" data-dashboard-module-label="Active Streams summary">
         <div class="dashboard-summary-label">Active Streams</div>
         <div class="dashboard-summary-value" id="activeStreamCount">0</div>
         <div class="dashboard-summary-meta" id="streamSubtext">Loading stream activity…</div>
     </section>
-    <section class="dashboard-summary-card">
+    <section class="dashboard-summary-card" data-dashboard-module="backend-uptime" data-dashboard-module-label="Backend Uptime">
         <div class="dashboard-summary-label">Backend Uptime</div>
         <div class="dashboard-uptime">
             <span id="backendUptime" aria-live="polite">Loading…</span>
@@ -1062,7 +1197,7 @@ body.numbers-station-open {
         <div class="dashboard-summary-meta" id="backendStartedAt">Live server runtime</div>
     </section>
     {{if .IsAdmin}}
-    <section id="providerReadinessCard" class="dashboard-summary-card"
+    <section id="providerReadinessCard" class="dashboard-summary-card" data-dashboard-module="provider-readiness" data-dashboard-module-label="Provider Readiness"
         data-usenet-enabled="{{countEnabledProviders .Settings.Usenet}}"
         data-usenet-total="{{len .Settings.Usenet}}"
         data-debrid-enabled="{{countEnabledDebrid .Settings.Streaming.DebridProviders}}"
@@ -1086,9 +1221,9 @@ body.numbers-station-open {
     </div>
 </dialog>
 
-<div class="dashboard-primary-grid {{if not .IsAdmin}}dashboard-primary-grid-single{{end}}">
+<div class="dashboard-primary-grid {{if not .IsAdmin}}dashboard-primary-grid-single{{end}}" data-dashboard-module-source>
 <!-- Active Streams -->
-<div class="card">
+<div class="card" data-dashboard-module="active-streams" data-dashboard-module-label="Active Streams">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1125,7 +1260,7 @@ body.numbers-station-open {
 </div>
 
 {{if .IsAdmin}}
-<section class="card" aria-labelledby="providerHealthHeading">
+<section class="card" aria-labelledby="providerHealthHeading" data-dashboard-module="provider-health" data-dashboard-module-label="Provider Health">
     <div class="card-header">
         <h2 id="providerHealthHeading">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1188,8 +1323,8 @@ body.numbers-station-open {
 </div>
 
 <!-- User Stats -->
-<div class="dashboard-insights">
-    <div class="card">
+<div class="dashboard-insights" data-dashboard-module-source>
+    <div class="card" data-dashboard-module="watch-time" data-dashboard-module-label="Watch Time">
         <div class="card-header" style="gap: 0.75rem; flex-wrap: wrap;">
             <h2>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1244,7 +1379,7 @@ body.numbers-station-open {
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-dashboard-module="recently-watched" data-dashboard-module-label="Recently Watched">
         <div class="card-header">
             <h2>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1272,7 +1407,7 @@ body.numbers-station-open {
 </section>
 
 <!-- Usenet Activity -->
-<div class="card dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
+<div class="card dashboard-advanced-detail" data-dashboard-module="usenet-connections" data-dashboard-module-label="Usenet Connections" style="margin-bottom: 1.5rem;">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1310,7 +1445,7 @@ body.numbers-station-open {
 </div>
 
 <!-- Live Stream Limits -->
-<div class="card live-limits-card dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
+<div class="card live-limits-card dashboard-advanced-detail" data-dashboard-module="live-stream-limits" data-dashboard-module-label="Live Stream Limits" style="margin-bottom: 1.5rem;">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1345,8 +1480,8 @@ body.numbers-station-open {
 </div>
 
 <!-- VOD Stream Usage by Account -->
-<div class="dashboard-advanced-detail">
-<div class="card" id="vodUsageCard" style="margin-bottom: 1.5rem; display: none;">
+<div class="dashboard-advanced-detail" data-dashboard-module-source>
+<div class="card dashboard-advanced-detail" id="vodUsageCard" data-dashboard-module="vod-stream-limits" data-dashboard-module-label="VOD Stream Limits" style="margin-bottom: 1.5rem; display: none;">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1378,8 +1513,8 @@ body.numbers-station-open {
 
 {{if .IsAdmin}}
 <!-- Service Health -->
-<div class="grid grid-2 dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
-    <div class="card">
+<div class="grid grid-2 dashboard-advanced-detail" data-dashboard-module-source style="margin-bottom: 1.5rem;">
+    <div class="card dashboard-advanced-detail" data-dashboard-module="usenet-providers" data-dashboard-module-label="Usenet Providers">
         <div class="card-header">
             <h2>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1445,7 +1580,7 @@ body.numbers-station-open {
         </div>
     </div>
 
-    <div class="card">
+    <div class="card dashboard-advanced-detail" data-dashboard-module="debrid-providers" data-dashboard-module-label="Debrid Providers">
         <div class="card-header">
             <h2>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1497,7 +1632,7 @@ body.numbers-station-open {
 
 {{if .IsAdmin}}
 <!-- Endpoint Health -->
-<div class="card dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
+<div class="card dashboard-advanced-detail" data-dashboard-module="endpoint-health" data-dashboard-module-label="Endpoint Health" style="margin-bottom: 1.5rem;">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1550,7 +1685,7 @@ body.numbers-station-open {
 </div>
 
 <!-- Configuration Summary -->
-<div class="card dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
+<div class="card dashboard-advanced-detail" data-dashboard-module="configuration-summary" data-dashboard-module-label="Configuration Summary" style="margin-bottom: 1.5rem;">
     <div class="card-header">
         <h2>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1652,8 +1787,8 @@ body.numbers-station-open {
 </div>
 
 <!-- Indexers and Scrapers -->
-<div class="grid grid-2 dashboard-advanced-detail" style="margin-bottom: 1.5rem;">
-    <div class="card">
+<div class="grid grid-2 dashboard-advanced-detail" data-dashboard-module-source style="margin-bottom: 1.5rem;">
+    <div class="card dashboard-advanced-detail" data-dashboard-module="indexers" data-dashboard-module-label="Indexers">
         <div class="card-header">
             <h2>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1704,7 +1839,7 @@ body.numbers-station-open {
         </div>
     </div>
 
-    <div class="card">
+    <div class="card dashboard-advanced-detail" data-dashboard-module="torrent-scrapers" data-dashboard-module-label="Torrent Scrapers">
         <div class="card-header">
             <h2>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1792,6 +1927,8 @@ body.numbers-station-open {
 {{end}}
 
 {{define "scripts"}}
+<script src="{{.ServerBasePath}}/api/static/gridstack-13.2.0-all.js?v={{.BuildID}}-layout2"></script>
+<script src="{{.ServerBasePath}}/api/static/admin-dashboard-layout-v1.js?v={{.BuildID}}-layout2"></script>
 <style>
     /* View toggle buttons */
     .view-toggle-btn {
@@ -2595,8 +2732,10 @@ body.numbers-station-open {
         dashboardDetail = level === 'advanced' ? 'advanced' : 'basic';
         localStorage.setItem('mediastorm-dashboard-detail', dashboardDetail);
         document.querySelectorAll('.dashboard-advanced-detail').forEach(element => {
+            if (element.classList.contains('dashboard-module')) return;
             element.style.display = dashboardDetail === 'advanced' ? '' : 'none';
         });
+        window.dashboardLayoutController?.setDetailLevel(dashboardDetail);
         const basicButton = document.getElementById('dashboardBasicBtn');
         const advancedButton = document.getElementById('dashboardAdvancedBtn');
         basicButton?.classList.toggle('active', dashboardDetail === 'basic');
@@ -3689,11 +3828,11 @@ body.numbers-station-open {
         const hasRows = rows.length > 0;
 
         if (!hasGlobal && !hasRows) {
-            card.style.display = 'none';
+            window.dashboardLayoutController?.setModuleAvailable('vod-stream-limits', false);
             return;
         }
 
-        card.style.display = '';
+        window.dashboardLayoutController?.setModuleAvailable('vod-stream-limits', true);
 
         // Global limit summary
         if (globalEl) {

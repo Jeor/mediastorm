@@ -106,6 +106,11 @@ if (root && status) {
         if (!editor && !drawer) return;
         findDesignerElement(`[${attribute}="${CSS.escape(path)}"]`)?.focus();
     };
+    const focusThemeValidation = (path) => {
+        if (!editor && !drawer) return;
+        const input = findDesignerElement(`[data-theme-path="${CSS.escape(path)}"]`);
+        (input || findDesignerElement('[data-home-designer-theme-validation]'))?.focus();
+    };
 
     const showFailure = () => {
         status.replaceChildren();
@@ -152,7 +157,7 @@ if (root && status) {
             return;
         }
         if (first.section === 'theme') {
-            requestAnimationFrame(() => focusDesignerPath('data-theme-path', first.path));
+            requestAnimationFrame(() => focusThemeValidation(first.path));
             return;
         }
         if (first.section === 'scope') {
@@ -324,9 +329,12 @@ if (root && status) {
             state, dispatch: store.dispatch, errors: validation.theme,
             onFieldEdit: (path) => clearServerValidation({ section: 'theme', path }),
             onReset: () => {
-                if (!confirmReset('Reset Theme to the inherited appearance? This discards the Theme override.')) return;
+                if (!confirmReset('Reset Theme to the inherited appearance? This discards the Theme override.')) return false;
+                clearServerValidation({ section: 'theme', path: 'mode' });
+                clearServerValidation({ section: 'theme', path: 'value' });
                 store.dispatch({ type: 'theme/reset' });
                 editor.querySelector('[data-home-designer-live]').textContent = 'Theme reset to the inherited appearance.';
+                return true;
             },
         });
         if (!previewController) {
@@ -465,6 +473,7 @@ if (root && status) {
         document.body?.classList.remove('home-designer-drawer-open');
         document.removeEventListener?.('focusin', guardDrawerFocus, true);
         document.removeEventListener?.('keydown', handleKeyboard);
+        detachDrawerDelegates(drawer);
         restoreDrawerPortal();
         if (drawerBackdrop) drawerBackdrop.hidden = drawerBackdropHidden;
         const returnFocus = drawerReturnFocus;
@@ -491,6 +500,7 @@ if (root && status) {
         document.body?.classList.add('home-designer-drawer-open');
         document.addEventListener?.('focusin', guardDrawerFocus, true);
         document.addEventListener?.('keydown', handleKeyboard);
+        attachDrawerDelegates(target);
         requestAnimationFrame(() => target.querySelector('.home-designer-drawer-close, input, select, button, [href]')?.focus?.());
     };
 
@@ -531,7 +541,7 @@ if (root && status) {
         }
     };
     root.addEventListener?.('keydown', handleKeyboard);
-    root.addEventListener?.('click', (event) => {
+    const handleClick = (event) => {
         const drawerButton = event.target?.closest?.('[data-home-designer-open-library], [data-home-designer-open-inspector]');
         if (drawerButton) {
             openDrawer(drawerButton.hasAttribute('data-home-designer-open-library') ? 'library' : 'inspector', drawerButton);
@@ -539,21 +549,34 @@ if (root && status) {
         }
         const link = event.target?.closest?.('a[href]');
         if (link && !event.defaultPrevented && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && !confirmDiscard('Discard unsaved Home Designer changes and leave this page?')) event.preventDefault();
-    });
-    root.addEventListener?.('input', (event) => {
+    };
+    const handleInput = (event) => {
         const target = event.target;
         const key = draftKey(target);
         if (!key || !isEditableTarget(target) || ['checkbox', 'radio', 'color'].includes(target.type)) return;
         target.dataset.homeDesignerDraft = 'true';
         pendingDrafts.set(key, target.value);
         syncDirtyProtection();
-    });
-    root.addEventListener?.('change', (event) => {
+    };
+    const handleChange = (event) => {
         const target = event.target;
         if (!draftKey(target)) return;
         delete target.dataset.homeDesignerDraft;
         clearDraft(target);
-    });
+    };
+    const attachDrawerDelegates = (target) => {
+        target?.addEventListener?.('click', handleClick);
+        target?.addEventListener?.('input', handleInput);
+        target?.addEventListener?.('change', handleChange);
+    };
+    const detachDrawerDelegates = (target) => {
+        target?.removeEventListener?.('click', handleClick);
+        target?.removeEventListener?.('input', handleInput);
+        target?.removeEventListener?.('change', handleChange);
+    };
+    root.addEventListener?.('click', handleClick);
+    root.addEventListener?.('input', handleInput);
+    root.addEventListener?.('change', handleChange);
 
     const connectEditor = () => {
         unsubscribe?.();

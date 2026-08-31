@@ -45,12 +45,15 @@ const checkbox = (name, path, value, onChange) => {
     const item = label(name); const input = document.createElement('input'); input.type = 'checkbox'; input.dataset.themePath = path; input.checked = Boolean(value); input.addEventListener('change', () => onChange(input.checked)); item._themeInput = input; item.append(input); return item;
 };
 
-const renderPresets = (host, presets, dispatch) => {
+const renderPresets = (host, presets, dispatch, onSectionEdit) => {
     host.replaceChildren();
     (Array.isArray(presets) ? presets : []).forEach((preset) => {
         const button = document.createElement('button');
         button.type = 'button'; button.className = 'btn btn-secondary'; button.textContent = String(preset?.name || preset?.id || 'Preset');
-        button.addEventListener('click', () => dispatch?.({ type: 'theme/replace', value: structuredClone(preset?.appearance || {}) }));
+        button.addEventListener('click', () => {
+            onSectionEdit?.();
+            dispatch?.({ type: 'theme/replace', value: structuredClone(preset?.appearance || {}) });
+        });
         host.append(button);
     });
 };
@@ -59,7 +62,7 @@ const reconcileTheme = (controls, state, dispatch, errors = []) => {
     controls.mode.textContent = state?.themeMode === 'inherit' ? 'Theme inherits the global appearance.' : 'Theme uses a custom appearance.';
     controls.customize.disabled = state?.themeMode === 'custom';
     if (controls.reset) controls.reset.disabled = state?.themeMode === 'inherit';
-    renderPresets(controls.presets, state?.themePresets, dispatch);
+    renderPresets(controls.presets, state?.themePresets, dispatch, controls.onSectionEdit);
     controls.inputs.forEach((input, path) => {
         if (input === document.activeElement) return;
         const value = themeValue(state?.theme, path);
@@ -88,6 +91,32 @@ const reconcileTheme = (controls, state, dispatch, errors = []) => {
             controls.errorMessages.delete(path);
         }
     });
+    const sectionErrors = errors.filter((error) => !controls.inputs.has(error.path));
+    if (sectionErrors.length) {
+        if (!controls.sectionError) {
+            const message = document.createElement('p');
+            message.className = 'home-designer-field-error';
+            message.id = 'home-designer-theme-section-error';
+            controls.actions.append(message);
+            controls.sectionError = message;
+        }
+        controls.sectionError.textContent = sectionErrors.map((error) => error.message).filter(Boolean).join(' ');
+        controls.actions.setAttribute?.('aria-invalid', 'true');
+        controls.actions.setAttribute?.('aria-describedby', controls.sectionError.id);
+        [controls.customize, controls.reset].filter(Boolean).forEach((button) => {
+            button.setAttribute?.('aria-invalid', 'true');
+            button.setAttribute?.('aria-describedby', controls.sectionError.id);
+        });
+    } else {
+        controls.actions.removeAttribute?.('aria-invalid');
+        controls.actions.removeAttribute?.('aria-describedby');
+        [controls.customize, controls.reset].filter(Boolean).forEach((button) => {
+            button.removeAttribute?.('aria-invalid');
+            button.removeAttribute?.('aria-describedby');
+        });
+        controls.sectionError?.remove();
+        controls.sectionError = null;
+    }
 };
 
 export const renderTheme = (host, { state, dispatch, onReset, onFieldEdit, errors = [] } = {}) => {
@@ -102,14 +131,15 @@ export const renderTheme = (host, { state, dispatch, onReset, onFieldEdit, error
     const section = document.createElement('section'); section.className = 'home-designer-theme-controls';
     const heading = document.createElement('h2'); heading.textContent = 'Theme'; section.append(heading);
     const mode = document.createElement('p'); mode.dataset.themeMode = ''; section.append(mode);
-    const actions = document.createElement('div'); actions.className = 'home-designer-theme-actions';
-    const customize = document.createElement('button'); customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.dataset.themeCustomize = ''; customize.textContent = 'Customize theme'; customize.addEventListener('click', () => dispatch?.({ type: 'theme/customize' })); actions.append(customize);
+    const actions = document.createElement('div'); actions.className = 'home-designer-theme-actions'; actions.dataset.homeDesignerThemeValidation = ''; actions.tabIndex = -1;
+    const onSectionEdit = () => { onFieldEdit?.('mode'); onFieldEdit?.('value'); };
+    const customize = document.createElement('button'); customize.type = 'button'; customize.className = 'btn btn-secondary'; customize.dataset.themeCustomize = ''; customize.textContent = 'Customize theme'; customize.addEventListener('click', () => { onSectionEdit(); dispatch?.({ type: 'theme/customize' }); }); actions.append(customize);
     let reset = null;
-    if (state?.scope?.kind !== 'global') { reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.dataset.themeReset = ''; reset.textContent = 'Reset to inherited'; reset.addEventListener('click', () => { if (onReset) onReset(); else dispatch?.({ type: 'theme/reset' }); }); actions.append(reset); }
+    if (state?.scope?.kind !== 'global') { reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary'; reset.dataset.themeReset = ''; reset.textContent = 'Reset to inherited'; reset.addEventListener('click', () => { if (onReset) onReset(); else { onSectionEdit(); dispatch?.({ type: 'theme/reset' }); } }); actions.append(reset); }
     section.append(actions);
     const presetList = document.createElement('div'); presetList.className = 'home-designer-theme-presets'; section.append(presetList);
     const fields = document.createElement('div'); fields.className = 'home-designer-theme-fields';
-    const update = (path) => (value) => { onFieldEdit?.(path); dispatch?.({ type: 'theme/field', path, value }); };
+    const update = (path) => (value) => { onFieldEdit?.(path); onSectionEdit(); dispatch?.({ type: 'theme/field', path, value }); };
     const inputs = new Map();
     const addField = (path, control) => { inputs.set(path, control._themeInput); fields.append(control); };
     [['Accent color', 'accentColor'], ['Text color', 'textColor'], ['Secondary text', 'secondaryTextColor'], ['Background', 'backgroundColor'], ['Modal background', 'modalBackgroundColor']]
@@ -122,6 +152,6 @@ export const renderTheme = (host, { state, dispatch, onReset, onFieldEdit, error
     addField('highContrast', checkbox('High contrast', 'highContrast', themeValue(state?.theme, 'highContrast'), update('highContrast')));
     addField('reduceOverlays', checkbox('Reduce overlays', 'reduceOverlays', themeValue(state?.theme, 'reduceOverlays'), update('reduceOverlays')));
     section.append(fields); host.append(section);
-    host._homeDesignerTheme = { documentKey, mode, customize, reset, presets: presetList, inputs, errorMessages: new Map(), onFieldEdit };
+    host._homeDesignerTheme = { documentKey, mode, actions, customize, reset, presets: presetList, inputs, errorMessages: new Map(), sectionError: null, onFieldEdit, onSectionEdit };
     reconcileTheme(host._homeDesignerTheme, state, dispatch, errors);
 };

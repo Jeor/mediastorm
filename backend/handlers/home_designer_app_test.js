@@ -27,8 +27,19 @@ class Element {
         this.listeners.set(type, listener);
     }
 
+    removeEventListener(type, listener) {
+        if (this.listeners.get(type) === listener) this.listeners.delete(type);
+    }
+
     click() {
         this.listeners.get('click')?.();
+    }
+
+    dispatchEvent(event) {
+        event.target ||= this;
+        this.listeners.get(event.type)?.(event);
+        if (event.bubbles !== false) this.parentElement?.dispatchEvent(event);
+        return !event.defaultPrevented;
     }
 
     append(...children) {
@@ -88,12 +99,18 @@ class Element {
 
     matches(selector) {
         if (selector.startsWith('.')) return this.className.split(/\s+/).includes(selector.slice(1));
+        if (selector === 'a[href]') return this.tagName.toLowerCase() === 'a' && this.hasAttribute('href');
         const dataMatch = selector.match(/^\[data-([a-z0-9-]+)\]$/);
         if (dataMatch) {
             const key = dataMatch[1].replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
             return Object.hasOwn(this.dataset, key);
         }
         return selector === this.tagName.toLowerCase();
+    }
+
+    closest(selector) {
+        for (let current = this; current; current = current.parentElement) if (current.matches(selector)) return current;
+        return null;
     }
 
     querySelector(selector) {
@@ -119,7 +136,9 @@ class Element {
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 const sourceWithModules = async () => (await readFile(new URL('./admin_assets/home_designer/app.js', import.meta.url), 'utf8'))
-    .replace(/const modules = Promise\.all\(\[import\('\.\/api\.js'\), import\('\.\/store\.js'\)\]\)\s*\.then\(\(\[api, editorStore\]\) => \[api\.default \?\? api, editorStore\.default \?\? editorStore\]\);/, 'const modules = Promise.resolve([homeDesignerAPI, homeDesignerStore]);');
+    .replace(/const modules = Promise\.all\(\[import\('\.\/api\.js'\), import\('\.\/store\.js'\)\]\)\s*\.then\(\(\[api, editorStore\]\) => \[api\.default \?\? api, editorStore\.default \?\? editorStore\]\);/, 'const modules = Promise.resolve([homeDesignerAPI, homeDesignerStore]);')
+    .replace(/if \(!editorModules\) editorModules = Promise\.all\(\[import\('\.\/library\.js'\), import\('\.\/outline\.js'\)\]\);/, 'if (!editorModules) editorModules = Promise.resolve([homeDesignerLibrary, homeDesignerOutline]);')
+    .replace(/if \(!previewModules\) previewModules = Promise\.all\(\[import\('\.\/theme\.js'\), import\('\.\/preview\.js'\)\]\);/g, 'if (!previewModules) previewModules = Promise.resolve([homeDesignerTheme, homeDesignerPreview]);');
 
 test('Home Designer Retry replaces a blocking failure after a successful reload', async () => {
     const source = await sourceWithModules();
@@ -366,6 +385,62 @@ test('a portaled drawer remains addressable by editor rendering and focus work',
     assert.match(source, /const target = findDesignerElement\(`\[data-home-designer-\$\{kind\}\]`\)/);
 });
 
+test('a body-portaled inspector retains draft and internal-link delegates until it closes', async () => {
+    // Break caught: input and setup-link events no longer bubbling through the Home Designer root after portaling.
+    const source = await sourceWithModules();
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section');
+    const inspector = new Element('aside'); inspector.dataset.homeDesignerInspector = '';
+    const close = new Element('button'); close.className = 'home-designer-drawer-close';
+    const input = new Element('INPUT'); input.type = 'text'; input.value = 'unfinished'; input.dataset.fieldPath = 'title';
+    const setupLink = new Element('a'); setupLink.setAttribute('href', '/account/setup');
+    inspector.append(close, input, setupLink); workspace.append(inspector); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    const documentListeners = new Map();
+    const windowListeners = new Map();
+    const media = { matches: true, addEventListener: (_type, listener) => { media.listener = listener; } };
+    let confirmations = 0;
+    const document = {
+        body,
+        activeElement: null,
+        getElementById: () => root,
+        createElement: (tagName) => new Element(tagName),
+        addEventListener: (type, listener) => documentListeners.set(type, listener),
+        removeEventListener: (type) => documentListeners.delete(type),
+    };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        matchMedia: () => media,
+        requestAnimationFrame: (callback) => callback(),
+        addEventListener: (type, listener) => windowListeners.set(type, listener),
+        removeEventListener: (type) => windowListeners.delete(type),
+        confirm: () => { confirmations += 1; return false; },
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-inspector', focus: () => {} };
+    root.listeners.get('click')({ target: opener });
+    assert.equal(inspector.parentElement, body);
+
+    input.dispatchEvent({ type: 'input', bubbles: true });
+    assert.equal(windowListeners.has('beforeunload'), true, 'an unfinished portaled inspector edit protects unload');
+    const linkEvent = { type: 'click', bubbles: true, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+    setupLink.dispatchEvent(linkEvent);
+    assert.equal(confirmations, 1);
+    assert.equal(linkEvent.defaultPrevented, true, 'a portaled setup link remains subject to the dirty-navigation guard');
+    input.dispatchEvent({ type: 'change', bubbles: true });
+    assert.equal(windowListeners.has('beforeunload'), false, 'the portaled change delegate clears the pending draft');
+
+    media.matches = false;
+    media.listener();
+    assert.equal(inspector.listeners.has('input'), false);
+    assert.equal(inspector.listeners.has('change'), false);
+    assert.equal(inspector.listeners.has('click'), false);
+});
+
 test('authoritative document replacement clears stale 422 feedback before rendering it', async () => {
     // Break caught: a validation alert from the previous scope/revision remaining attached to a freshly loaded document.
     const source = await sourceWithModules();
@@ -423,6 +498,32 @@ test('a stale 422 alert clears after a successful scope load or Reload latest', 
     errors.children[0].children[1].click();
     await settle(); await settle(); await settle(); await settle();
     assert.equal(errors.children.length, 0, 'Reload latest removes validation feedback from the old revision');
+});
+
+test('a Theme mode or value 422 focuses the Theme action validation target', async () => {
+    const source = await sourceWithModules();
+    class APIError extends Error { constructor() { super('Invalid theme'); this.status = 422; this.fields = [{ section: 'theme', path: 'mode', message: 'Mode is invalid' }]; } }
+    const root = new Element('section'); root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const errors = new Element('div'); errors.dataset.homeDesignerErrors = '';
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const themeValidation = new Element('div'); themeValidation.dataset.homeDesignerThemeValidation = ''; editor.append(themeValidation);
+    root.append(status, errors, editor);
+    const state = { scope: { kind: 'global' }, revision: 'one', rows: [], theme: {}, themeMode: 'inherit', rowsMode: 'inherit', previewProfiles: [] };
+    const store = { getState: () => state, subscribe: () => () => {}, isDirty: () => true, isApplyValid: () => true, buildApplyRequest: () => ({ scope: state.scope, expectedRevision: state.revision, theme: { mode: 'inherit' } }), canUndo: () => false, canRedo: () => false };
+    vm.runInNewContext(source, {
+        document: { getElementById: () => root, createElement: (tagName) => new Element(tagName) }, Error, Promise, AbortController,
+        requestAnimationFrame: (callback) => callback(), CSS: { escape: (value) => value },
+        homeDesignerAPI: { loadDocument: async () => ({ scope: state.scope, revision: 'one', rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }), applyDocument: async () => { throw new APIError(); }, APIError },
+        homeDesignerStore: { createStore: () => store },
+        homeDesignerLibrary: { renderLibrary: () => {} },
+        homeDesignerOutline: { renderOutline: () => {}, renderInspector: () => {} },
+        homeDesignerTheme: { renderTheme: () => {}, applyThemeVariables: () => {} },
+        homeDesignerPreview: { createPreviewController: () => ({ invalidate: () => {} }), renderTVPreview: () => {}, renderMobilePreview: () => {} },
+    });
+    await settle(); await settle(); await settle(); await settle();
+    await root.homeDesigner.apply();
+    assert.equal(themeValidation.focusCount, 1);
 });
 
 test('Home Designer source routes every 422 field identity to row, collection, theme, or section feedback', async () => {

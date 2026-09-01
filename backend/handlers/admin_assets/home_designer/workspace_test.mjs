@@ -59,3 +59,21 @@ test('compact library collapses when dragging begins', () => {
     state = reduceWorkspace(state, { type: 'drag/start' });
     assert.deepEqual([state.libraryOpen, state.dragging], [false, true]);
 });
+
+test('resizing from wide to standard keeps the context drawer and closes the library', () => {
+    // Break caught: a standard workspace retaining both docked drawers after shrinking from wide.
+    let state = reduceWorkspace(createWorkspaceState(1600), { type: 'edit/start' });
+    state = reduceWorkspace(state, { type: 'tool/library' });
+    state = reduceWorkspace(state, { type: 'tool/inspector' });
+    state = reduceWorkspace(state, { type: 'resize', width: 1200 });
+    assert.deepEqual([state.band, state.libraryOpen, state.contextTool], ['standard', false, 'inspector']);
+});
+
+test('apply and cancel close every drawer and clear drag state', () => {
+    // Break caught: leaving edit mode with a compact modal or drag lifecycle still active.
+    let state = reduceWorkspace(createWorkspaceState(1000), { type: 'edit/start' });
+    state = reduceWorkspace(state, { type: 'tool/theme' });
+    state = reduceWorkspace(state, { type: 'drag/start' });
+    assert.deepEqual(reduceWorkspace(state, { type: 'edit/applied' }), createWorkspaceState(1000));
+    assert.deepEqual(reduceWorkspace(state, { type: 'edit/cancel' }), createWorkspaceState(1000));
+});

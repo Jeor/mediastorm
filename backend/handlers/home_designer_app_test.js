@@ -105,6 +105,7 @@ class Element {
     }
 
     matches(selector) {
+        if (selector.includes(',')) return selector.split(',').some((item) => this.matches(item.trim()));
         if (selector.startsWith('.')) return this.className.split(/\s+/).includes(selector.slice(1));
         if (selector === 'a[href]') return this.tagName.toLowerCase() === 'a' && this.hasAttribute('href');
         const dataMatch = selector.match(/^\[data-([a-z0-9-]+)\]$/);
@@ -402,8 +403,103 @@ test('Home Designer source bases compact drawers on workspace state, not viewpor
     assert.match(source, /const isCompactWorkspace = \(\) => workspaceState\?\.band === 'compact';/);
     assert.doesNotMatch(source, /matchMedia\?\./);
     const styles = await readFile(new URL('./admin_assets/home_designer/home_designer.css', import.meta.url), 'utf8');
-    assert.match(styles, /\.home-designer-editor\[data-band="compact"\]/);
+    assert.match(styles, /\.home-designer-editor\.is-band-compact/);
     assert.doesNotMatch(styles, /@media \(max-width:/);
+});
+
+test('workspace observation uses the canvas shell content width and applies responsive state classes', async () => {
+    // Break caught: sizing from the outer editor/viewport or failing to expose reducer state to the adaptive CSS shell.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: (width) => { measuredWidths.push(width); return { mode: 'edit', band: width >= 1440 ? 'wide' : width >= 1100 ? 'standard' : 'compact', libraryOpen: true, contextTool: 'theme', dragging: false }; }, reduceWorkspace: (state, action) => { workspaceActions.push(action); if (action.type !== 'resize') return state; const band = action.width >= 1440 ? 'wide' : action.width >= 1100 ? 'standard' : 'compact'; return { ...state, band, libraryOpen: band === 'wide' ? state.libraryOpen : false }; } });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = ''; editor.getBoundingClientRect = () => ({ width: 860 });
+    const workspace = new Element('div'); workspace.className = 'home-designer-workspace'; workspace.getBoundingClientRect = () => ({ width: 1500 });
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    const context = new Element('aside'); context.dataset.homeDesignerContextDrawer = '';
+    const inspector = new Element('section'); inspector.dataset.homeDesignerInspector = '';
+    const theme = new Element('section'); theme.dataset.homeDesignerTheme = '';
+    context.append(inspector, theme); workspace.append(library, context); editor.append(workspace); root.append(status, editor); body.append(root);
+    const measuredWidths = [];
+    const workspaceActions = [];
+    let observedTarget;
+    let resizeWorkspace;
+    class ResizeObserver {
+        constructor(callback) { resizeWorkspace = callback; }
+        observe(target) { observedTarget = target; }
+    }
+    const document = { body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController, ResizeObserver, measuredWidths, workspaceActions,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    assert.deepEqual(measuredWidths, [1500]);
+    assert.equal(observedTarget, workspace);
+    assert.equal(editor.classList.contains('is-band-wide'), true);
+    assert.equal(editor.classList.contains('is-library-open'), true);
+    assert.equal(editor.classList.contains('is-theme-open'), true);
+
+    resizeWorkspace([{ target: workspace, contentRect: { width: 1200 } }]);
+    assert.equal(workspaceActions.at(-1).width, 1200);
+    assert.equal(editor.classList.contains('is-band-standard'), true);
+    assert.equal(editor.classList.contains('is-band-wide'), false);
+    assert.equal(editor.classList.contains('is-library-open'), false);
+
+    resizeWorkspace([{ target: workspace, contentRect: { width: 900 } }]);
+    assert.equal(context.parentElement, body, 'an open docked Theme becomes a compact modal after shrinking');
+    assert.equal(context.getAttribute('role'), 'dialog');
+    assert.equal(context.getAttribute('aria-modal'), 'true');
+});
+
+test('compact Theme uses the shared context drawer as a modal while docked drawers stay inline', async () => {
+    // Break caught: treating Theme as a toolbar panel, or applying compact dialog/inert semantics to a standard workspace.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: initialBand, libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => action.type === 'tool/theme' ? { ...state, contextTool: action.open === false ? null : 'theme' } : state });");
+    const run = async (initialBand) => {
+        const body = new Element('body');
+        const shell = new Element('header');
+        const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+        const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+        const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+        const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+        const workspace = new Element('div'); workspace.className = 'home-designer-workspace'; workspace.getBoundingClientRect = () => ({ width: initialBand === 'compact' ? 900 : 1200 });
+        const tool = new Element('button'); tool.dataset.homeDesignerTool = 'theme';
+        const canvas = new Element('section'); canvas.dataset.homeDesignerCanvas = '';
+        const context = new Element('aside'); context.dataset.homeDesignerContextDrawer = '';
+        const inspector = new Element('section'); inspector.dataset.homeDesignerInspector = '';
+        const theme = new Element('section'); theme.dataset.homeDesignerTheme = '';
+        const close = new Element('button'); close.className = 'home-designer-drawer-close';
+        context.append(inspector, theme, close); workspace.append(tool, canvas, context); editor.append(workspace); root.append(status, backdrop, editor); body.append(shell, root);
+        const document = { body, activeElement: tool, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
+        vm.runInNewContext(source, {
+            document, Error, Promise, AbortController, initialBand,
+            requestAnimationFrame: (callback) => callback(),
+            homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+            homeDesignerStore: { createStore: () => ({}) },
+        });
+        await settle(); await settle();
+        tool.dispatchEvent({ type: 'click', bubbles: true });
+        return { body, shell, root, backdrop, workspace, canvas, context, inspector, theme };
+    };
+
+    const compact = await run('compact');
+    assert.equal(compact.context.parentElement, compact.body);
+    assert.equal(compact.context.getAttribute('role'), 'dialog');
+    assert.equal(compact.context.getAttribute('aria-modal'), 'true');
+    assert.equal(compact.theme.hidden, false);
+    assert.equal(compact.inspector.hidden, true);
+    assert.equal(compact.root.inert, true);
+    assert.equal(compact.backdrop.hidden, false);
+
+    const standard = await run('standard');
+    assert.equal(standard.context.parentElement, standard.workspace);
+    assert.equal(standard.context.getAttribute('role'), null);
+    assert.equal(standard.context.getAttribute('aria-modal'), null);
+    assert.equal(standard.canvas.inert, false);
+    assert.equal(standard.shell.inert, false);
+    assert.equal(standard.backdrop.hidden, true);
 });
 
 test('a compact editor opens a modal drawer even when viewport media is wide', async () => {
@@ -589,7 +685,7 @@ test('a portaled drawer remains addressable by editor rendering and focus work',
     assert.match(source, /const findDesignerElement = \(selector\) =>/);
     assert.match(source, /library\.renderLibrary\(findDesignerElement\('\[data-home-designer-library\]'\)/);
     assert.match(source, /inspector\.renderInspector\(findDesignerElement\('\[data-home-designer-inspector\]'\)/);
-    assert.match(source, /const target = findDesignerElement\(`\[data-home-designer-\$\{kind\}\]`\)/);
+    assert.match(source, /const directTarget = findDesignerElement\(`\[data-home-designer-\$\{kind\}\]`\)/);
 });
 
 test('a body-portaled inspector retains draft and internal-link delegates until it closes', async () => {

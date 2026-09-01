@@ -33,33 +33,38 @@
             <div data-home-designer-rows-controls hidden></div>
             <div class="home-designer-toolbar-actions">
                 <button type="button" class="btn btn-primary" data-home-designer-edit>Edit Home</button>
-                <button type="button" class="btn btn-secondary" data-home-designer-tool="library" hidden>Rows</button>
-                <button type="button" class="btn btn-secondary" data-home-designer-tool="inspector" hidden>Inspector</button>
-                <button type="button" class="btn btn-secondary" data-home-designer-tool="theme" hidden>Theme</button>
                 <button type="button" class="btn btn-secondary" data-home-designer-undo disabled hidden>Undo</button>
                 <button type="button" class="btn btn-secondary" data-home-designer-redo disabled hidden>Redo</button>
                 <button type="button" class="btn btn-secondary" data-home-designer-cancel data-home-designer-discard hidden>Cancel</button>
                 <button type="button" class="btn btn-primary" data-home-designer-apply hidden>Apply</button>
             </div>
         </div>
-        <div data-home-designer-theme hidden></div>
         <p class="sr-only" data-home-designer-live aria-live="polite"></p>
         <div class="home-designer-workspace">
+            <nav class="home-designer-tool-rail" aria-label="Home Designer tools">
+                <button type="button" class="btn btn-secondary" data-home-designer-tool="library" aria-controls="homeDesignerLibrary" hidden>Add Rows</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-tool="inspector" aria-controls="homeDesignerInspector" hidden>Customize</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-tool="theme" aria-controls="homeDesignerTheme" hidden>Theme</button>
+            </nav>
             <aside id="homeDesignerLibrary" class="home-designer-library" data-home-designer-library aria-label="Row library" hidden></aside>
-            <section id="homeDesignerInspector" class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector" hidden></section>
-        </div>
-        <section class="home-designer-preview" aria-label="Composition preview">
-            <div class="home-designer-preview-toolbar">
-                <div>
-                    <h2>Live preview</h2>
-                    <p>Theme and row edits are visible here but are not saved until you apply changes.</p>
+            <section class="home-designer-preview" data-home-designer-canvas aria-label="Home row canvas">
+                <div class="home-designer-preview-toolbar">
+                    <div>
+                        <h2>Live preview</h2>
+                        <p>Theme and row edits are visible here but are not saved until you apply changes.</p>
+                    </div>
+                    <label>Editing scope <select class="form-select" data-home-designer-scope aria-label="Editing scope"></select></label>
+                    <label>Preview profile <select class="form-select" data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
+                    <label>Preview platform <select class="form-select" data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
                 </div>
-                <label>Editing scope <select class="form-select" data-home-designer-scope aria-label="Editing scope"></select></label>
-                <label>Preview profile <select class="form-select" data-home-designer-preview-profile aria-label="Preview as profile"></select></label>
-                <label>Preview platform <select class="form-select" data-home-designer-preview-platform aria-label="Preview device"><option value="tv">TV</option><option value="mobile">Mobile</option></select></label>
-            </div>
-            <div data-home-designer-preview-host></div>
-        </section>
+                <div data-home-designer-preview-host></div>
+            </section>
+            <aside class="home-designer-context-drawer" aria-label="Home Designer controls" data-home-designer-context-drawer hidden>
+                <section id="homeDesignerInspector" class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector" hidden></section>
+                <section id="homeDesignerTheme" data-home-designer-theme aria-label="Theme editor" hidden></section>
+            </aside>
+            <div class="home-designer-drag-token" aria-hidden="true">Adding row</div>
+        </div>
         <p class="home-designer-advanced-links">Need a detailed control? <a href="{{.BasePath}}/settings?category=interface#homeShelves">Advanced Home settings</a> or <a href="{{.BasePath}}/settings?category=appearance#display">Advanced Appearance settings</a>.</p>
     </section>
     {{end}}

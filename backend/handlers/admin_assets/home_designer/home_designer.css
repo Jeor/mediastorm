@@ -42,7 +42,6 @@
 }
 
 .home-designer-editor,
-.home-designer-workspace,
 .home-designer-toolbar,
 .home-designer-toolbar-actions,
 .home-designer-library-filters,
@@ -77,13 +76,16 @@
 .home-designer-drawer-backdrop[hidden] { display: none; }
 
 .home-designer-workspace {
-    grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 1fr);
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    grid-template-areas: "rail canvas";
+    gap: 0.75rem;
     align-items: start;
     min-width: 0;
 }
 
 .home-designer-library,
-.home-designer-inspector,
+.home-designer-context-drawer,
 .home-designer-preview,
 .home-designer-theme-controls {
     padding: 1rem;
@@ -91,6 +93,34 @@
     border-radius: var(--radius-lg);
     background: var(--bg-secondary);
 }
+
+.home-designer-tool-rail {
+    grid-area: rail;
+    display: grid;
+    gap: 0.5rem;
+    position: sticky;
+    top: 0.75rem;
+}
+
+.home-designer-tool-rail .btn {
+    min-width: 3rem;
+    min-height: 3rem;
+    padding: 0.35rem;
+    overflow-wrap: anywhere;
+    font-size: 0.7rem;
+    line-height: 1.05;
+}
+
+.home-designer-library { grid-area: library; }
+.home-designer-preview { grid-area: canvas; min-width: 0; }
+.home-designer-context-drawer { grid-area: context; min-width: 0; }
+.home-designer-inspector { min-width: 0; }
+.home-designer-drag-token { display: none; }
+
+.home-designer-library[hidden],
+.home-designer-context-drawer[hidden],
+.home-designer-inspector[hidden],
+[data-home-designer-theme][hidden] { display: none !important; }
 
 .home-designer-library-entries,
 .home-designer-preview [data-home-designer-preview-host],
@@ -204,7 +234,7 @@
 }
 
 .home-designer-theme-fields {
-    grid-template-columns: repeat(5, minmax(8rem, 1fr));
+    grid-template-columns: 1fr;
 }
 
 .home-designer-theme-fields label,
@@ -391,34 +421,87 @@
     .home-designer *, .home-designer *::before, .home-designer *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-.home-designer-editor[data-band="compact"] .home-designer-toolbar,
-.home-designer-editor[data-band="compact"] .home-designer-workspace,
-.home-designer-editor[data-band="compact"] .home-designer-preview-toolbar {
+.home-designer-editor[data-mode="preview"] .home-designer-tool-rail,
+.home-designer-editor[data-mode="preview"] .home-designer-library,
+.home-designer-editor[data-mode="preview"] .home-designer-context-drawer,
+.home-designer-editor[data-mode="preview"] .home-designer-canvas-actions,
+.home-designer-editor[data-mode="preview"] .home-designer-drop-indicator,
+.home-designer-editor[data-mode="preview"] [data-home-designer-rows-controls] {
+    display: none;
+}
+
+.home-designer-editor.is-band-standard.is-library-open .home-designer-workspace,
+.home-designer-editor.is-band-standard.is-inspector-open .home-designer-workspace,
+.home-designer-editor.is-band-standard.is-theme-open .home-designer-workspace {
+    grid-template-columns: 3rem 19rem minmax(40rem, 1fr);
+    grid-template-areas: "rail drawer canvas";
+}
+
+.home-designer-editor.is-band-standard.is-library-open .home-designer-library,
+.home-designer-editor.is-band-standard.is-inspector-open .home-designer-context-drawer,
+.home-designer-editor.is-band-standard.is-theme-open .home-designer-context-drawer { grid-area: drawer; }
+
+.home-designer-editor.is-band-wide.is-library-open .home-designer-workspace {
+    grid-template-columns: 3rem 19rem minmax(40rem, 1fr);
+    grid-template-areas: "rail library canvas";
+}
+
+.home-designer-editor.is-band-wide:is(.is-inspector-open, .is-theme-open) .home-designer-workspace {
+    grid-template-columns: 3rem minmax(40rem, 1fr) 21rem;
+    grid-template-areas: "rail canvas context";
+}
+
+.home-designer-editor.is-band-wide.is-library-open:is(.is-inspector-open, .is-theme-open) .home-designer-workspace {
+    grid-template-columns: 3rem 19rem minmax(40rem, 1fr) 21rem;
+    grid-template-areas: "rail library canvas context";
+}
+
+.home-designer-editor.is-band-compact .home-designer-toolbar,
+.home-designer-editor.is-band-compact .home-designer-preview-toolbar {
     grid-template-columns: 1fr;
 }
 
-.home-designer-editor[data-band="compact"] .home-designer-toolbar-actions {
+.home-designer-editor.is-band-compact .home-designer-toolbar-actions {
     justify-content: flex-start;
     grid-auto-flow: row;
 }
 
-.home-designer-editor[data-band="compact"] .home-designer-preview {
-    grid-column: 1 / -1;
-}
-
-.home-designer-editor[data-band="compact"] .home-designer-theme-fields { grid-template-columns: 1fr; }
-
 body.home-designer-drawer-open .home-designer-library,
-body.home-designer-drawer-open .home-designer-inspector {
+.home-designer-editor.is-band-compact .home-designer-library,
+.home-designer-editor.is-band-compact .home-designer-context-drawer,
+body.home-designer-drawer-open .home-designer-context-drawer.is-drawer-open,
+body.home-designer-drawer-open .home-designer-inspector.is-drawer-open {
     position: fixed;
     z-index: 10001;
-    inset: 0 0 0 auto;
+    inset-block: 0;
+    inset-inline-end: 0;
     display: grid;
     align-content: start;
-    width: min(30rem, 100vw);
+    width: min(22rem, calc(100vw - 3rem));
     overflow: auto;
     border-radius: 0;
     box-shadow: -0.75rem 0 2rem rgb(0 0 0 / 0.35);
+}
+
+.home-designer-editor.is-band-compact .home-designer-library,
+body.home-designer-drawer-open .home-designer-library.is-drawer-open {
+    inset-inline: 3rem auto;
+}
+
+.home-designer-editor.is-band-compact.is-dragging .home-designer-library,
+.home-designer-editor.is-band-compact.is-dragging .home-designer-context-drawer { display: none; }
+
+.home-designer-editor.is-dragging .home-designer-drag-token {
+    display: block;
+    position: fixed;
+    z-index: 10002;
+    inset: auto 1rem 1rem auto;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    pointer-events: none;
 }
 
 .home-designer-drawer-backdrop {

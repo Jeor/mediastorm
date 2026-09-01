@@ -26,6 +26,7 @@ if (root && status) {
     let applyValidation = [];
     let beforeUnloadRegistered = false;
     let drawer = null;
+    let drawerTool = null;
     let drawerReturnFocus = null;
     let drawerBackground = [];
     let drawerPortal = [];
@@ -43,20 +44,31 @@ if (root && status) {
         const editing = workspaceState.mode === 'edit';
         editor.dataset.mode = workspaceState.mode;
         editor.dataset.band = workspaceState.band;
+        const stateClasses = [
+            'is-band-wide', 'is-band-standard', 'is-band-compact',
+            'is-library-open', 'is-inspector-open', 'is-theme-open', 'is-dragging',
+        ];
+        editor.classList.remove(...stateClasses);
+        editor.classList.add(`is-band-${workspaceState.band}`);
+        if (editing && workspaceState.libraryOpen) editor.classList.add('is-library-open');
+        if (editing && workspaceState.contextTool === 'inspector') editor.classList.add('is-inspector-open');
+        if (editing && workspaceState.contextTool === 'theme') editor.classList.add('is-theme-open');
+        if (editing && workspaceState.dragging) editor.classList.add('is-dragging');
         [
             '[data-home-designer-undo]',
             '[data-home-designer-redo]',
             '[data-home-designer-cancel]',
             '[data-home-designer-apply]',
             '[data-home-designer-rows-controls]',
-            '[data-home-designer-theme]',
             '[data-home-designer-tool]',
         ].forEach((selector) => editor.querySelectorAll(selector).forEach((element) => { element.hidden = !editing; }));
         editor.querySelector('[data-home-designer-edit]')?.toggleAttribute('hidden', editing);
-        const library = editor.querySelector('[data-home-designer-library]');
-        const inspector = editor.querySelector('[data-home-designer-inspector]');
-        const theme = editor.querySelector('[data-home-designer-theme]');
+        const library = findDesignerElement('[data-home-designer-library]');
+        const context = findDesignerElement('[data-home-designer-context-drawer]');
+        const inspector = findDesignerElement('[data-home-designer-inspector]');
+        const theme = findDesignerElement('[data-home-designer-theme]');
         if (library) library.hidden = !editing || !workspaceState.libraryOpen;
+        if (context) context.hidden = !editing || !workspaceState.contextTool;
         if (inspector) inspector.hidden = !editing || workspaceState.contextTool !== 'inspector';
         if (theme) theme.hidden = !editing || workspaceState.contextTool !== 'theme';
         editor.querySelectorAll('[data-home-designer-tool]').forEach((button) => {
@@ -73,22 +85,26 @@ if (root && status) {
         const previousBand = workspaceState.band;
         workspaceState = workspaceReducer(workspaceState, action);
         renderWorkspace();
-        const drawerKind = drawer?.dataset?.homeDesignerLibrary !== undefined ? 'library' : drawer?.dataset?.homeDesignerInspector !== undefined ? 'inspector' : '';
-        const drawerIsInactive = (kind) => (
+        const drawerIsInactive = (tool) => (
             previousBand !== workspaceState.band && !isCompactWorkspace()
-            || kind === 'library' && !workspaceState.libraryOpen
-            || kind === 'inspector' && workspaceState.contextTool !== 'inspector'
+            || tool === 'library' && !workspaceState.libraryOpen
+            || tool !== 'library' && !workspaceState.contextTool
         );
-        const shouldCloseDrawer = drawer && drawerIsInactive(drawerKind);
-        const closeInactiveDrawer = (activeDrawer, kind) => {
-            if (drawer !== activeDrawer || !drawerIsInactive(kind)) return;
+        const shouldCloseDrawer = drawer && drawerIsInactive(drawerTool);
+        const closeInactiveDrawer = (activeDrawer, tool) => {
+            if (drawer !== activeDrawer || !drawerIsInactive(tool)) return;
             closeDrawer(false);
             renderWorkspace();
         };
         if (shouldCloseDrawer) {
             const activeDrawer = drawer;
-            if (action.type === 'drag/start' && drawerKind === 'library') requestAnimationFrame(() => closeInactiveDrawer(activeDrawer, drawerKind));
-            else closeInactiveDrawer(activeDrawer, drawerKind);
+            const activeTool = drawerTool;
+            if (action.type === 'drag/start' && activeTool === 'library') requestAnimationFrame(() => closeInactiveDrawer(activeDrawer, activeTool));
+            else closeInactiveDrawer(activeDrawer, activeTool);
+        }
+        if (!drawer && previousBand !== workspaceState.band && isCompactWorkspace() && workspaceState.mode === 'edit') {
+            const activeTool = workspaceState.libraryOpen ? 'library' : workspaceState.contextTool;
+            if (activeTool) openDrawer(activeTool);
         }
         if (workspaceState.mode !== previousMode) void renderEditor();
         return workspaceState;
@@ -96,7 +112,7 @@ if (root && status) {
 
     const openWorkspaceTool = (tool) => {
         const workspace = dispatchWorkspace({ type: `tool/${tool}`, open: true });
-        if (workspace?.band === 'compact' && (tool === 'library' || tool === 'inspector')) openDrawer(tool);
+        if (workspace?.band === 'compact') openDrawer(tool);
         return workspace;
     };
 
@@ -104,12 +120,16 @@ if (root && status) {
         if (!editor || workspaceState) return;
         const workspace = await workspaceModule;
         if (!editor || workspaceState) return;
+        const workspaceElement = editor.querySelector('.home-designer-workspace') || editor;
         workspaceReducer = workspace.reduceWorkspace;
-        workspaceState = workspace.createWorkspaceState(editor.getBoundingClientRect().width);
+        workspaceState = workspace.createWorkspaceState(workspaceElement.getBoundingClientRect().width);
         renderWorkspace();
         if (typeof ResizeObserver === 'function') {
-            workspaceObserver = new ResizeObserver(() => dispatchWorkspace({ type: 'resize', width: editor.getBoundingClientRect().width }));
-            workspaceObserver.observe(editor);
+            workspaceObserver = new ResizeObserver((entries = []) => {
+                const entry = entries.find?.((candidate) => candidate.target === workspaceElement) || entries[0];
+                dispatchWorkspace({ type: 'resize', width: entry?.contentRect?.width ?? workspaceElement.getBoundingClientRect().width });
+            });
+            workspaceObserver.observe(workspaceElement);
         }
     };
 
@@ -399,7 +419,7 @@ if (root && status) {
         });
         if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);
         const [theme] = await previewModules;
-        theme.renderTheme(editor.querySelector('[data-home-designer-theme]'), {
+        theme.renderTheme(findDesignerElement('[data-home-designer-theme]'), {
             state, dispatch: store.dispatch, errors: validation.theme,
             onFieldEdit: (path) => clearServerValidation({ section: 'theme', path }),
             onReset: () => {
@@ -531,7 +551,7 @@ if (root && status) {
 
     const closeDrawer = (synchronizeWorkspace = true) => {
         if (!drawer) return;
-        const kind = drawer.dataset?.homeDesignerLibrary !== undefined ? 'library' : drawer.dataset?.homeDesignerInspector !== undefined ? 'inspector' : '';
+        const tool = drawerTool;
         drawer.classList.remove('is-drawer-open');
         ['role', 'aria-modal'].forEach((name) => {
             const value = drawerDialogAttributes?.[name];
@@ -547,19 +567,24 @@ if (root && status) {
         if (drawerBackdrop) drawerBackdrop.hidden = drawerBackdropHidden;
         const returnFocus = drawerReturnFocus;
         drawer = null;
+        drawerTool = null;
         drawerReturnFocus = null;
         drawerDialogAttributes = null;
-        if (synchronizeWorkspace && kind && isCompactWorkspace()) dispatchWorkspace({ type: `tool/${kind}`, open: false });
+        if (synchronizeWorkspace && tool && isCompactWorkspace()) dispatchWorkspace({ type: `tool/${tool}`, open: false });
         requestAnimationFrame(() => returnFocus?.focus?.());
     };
 
     const openDrawer = (kind, trigger) => {
         if (!isCompactWorkspace()) return;
-        const target = findDesignerElement(`[data-home-designer-${kind}]`);
+        const directTarget = findDesignerElement(`[data-home-designer-${kind}]`);
+        const target = kind === 'library'
+            ? directTarget
+            : findDesignerElement('[data-home-designer-context-drawer]') || directTarget;
         if (!target) return;
-        if (drawer === target) return;
+        if (drawer === target) { drawerTool = kind; return; }
         if (drawer && drawer !== target) closeDrawer(false);
         drawer = target;
+        drawerTool = kind;
         drawerReturnFocus = trigger || document.activeElement;
         drawerDialogAttributes = { role: target.getAttribute('role'), 'aria-modal': target.getAttribute('aria-modal') };
         drawerBackdropHidden = Boolean(drawerBackdrop?.hidden);
@@ -578,8 +603,9 @@ if (root && status) {
     drawerBackdrop?.addEventListener('click', closeDrawer);
 
     const mountDrawerControls = () => {
-        [['library', 'Row library'], ['inspector', 'Row inspector']].forEach(([kind, label]) => {
-            const target = findDesignerElement(`[data-home-designer-${kind}]`);
+        [['library', 'Row library'], ['context-drawer', 'Home Designer controls']].forEach(([kind, label]) => {
+            const target = findDesignerElement(`[data-home-designer-${kind}]`)
+                || (kind === 'context-drawer' ? findDesignerElement('[data-home-designer-inspector]') : null);
             if (!target || target.querySelector('.home-designer-drawer-close')) return;
             const close = document.createElement('button');
             close.type = 'button'; close.className = 'btn btn-secondary home-designer-drawer-close'; close.textContent = `Close ${label}`;
@@ -618,7 +644,7 @@ if (root && status) {
             if (legacyDrawer) { openDrawer(kind, toolButton); return; }
             const state = dispatchWorkspace({ type: `tool/${kind}` });
             const opened = kind === 'library' ? state?.libraryOpen : state?.contextTool === kind;
-            if (opened && state?.band === 'compact' && (kind === 'library' || kind === 'inspector')) openDrawer(kind, toolButton);
+            if (opened && state?.band === 'compact') openDrawer(kind, toolButton);
             else if (!opened && drawer) closeDrawer(false);
             return;
         }

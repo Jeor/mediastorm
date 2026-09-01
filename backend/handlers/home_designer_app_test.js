@@ -454,6 +454,98 @@ test('workspace observation uses the canvas shell content width and applies resp
     assert.equal(context.getAttribute('aria-modal'), 'true');
 });
 
+test('hidden loading ignores zero-width observations and remeasures after reveal', async () => {
+    // Break caught: a hidden standard editor becoming a focus-trapping compact modal from a transient zero-width observation.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'standard', libraryOpen: true, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action); if (action.type !== 'resize') return state; const band = action.width >= 1440 ? 'wide' : action.width >= 1100 ? 'standard' : 'compact'; return { ...state, band }; } });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    let workspaceWidth = 1200;
+    const workspace = new Element('div'); workspace.className = 'home-designer-workspace'; workspace.getBoundingClientRect = () => ({ width: workspaceWidth });
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    const workspaceActions = [];
+    const documentListeners = new Map();
+    let resizeWorkspace;
+    let rejectLoad;
+    class ResizeObserver { constructor(callback) { resizeWorkspace = callback; } observe() {} }
+    const document = {
+        body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName),
+        addEventListener: (type, listener) => documentListeners.set(type, listener),
+        removeEventListener: (type) => documentListeners.delete(type),
+    };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController, ResizeObserver, workspaceActions,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: {
+            loadDocument: () => new Promise((_, reject) => { rejectLoad = reject; }),
+            applyDocument: async () => ({}), APIError: class APIError extends Error {},
+        },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    const switching = root.homeDesigner.switchScope({ kind: 'profile', profileId: 'profile-2' });
+    await settle();
+    assert.equal(editor.hidden, true);
+    resizeWorkspace([{ target: workspace, contentRect: { width: 0 } }]);
+    assert.equal(editor.classList.contains('is-band-standard'), true);
+    assert.equal(library.parentElement, workspace);
+    assert.equal(backdrop.hidden, true);
+    assert.equal(documentListeners.has('focusin'), false);
+
+    workspaceWidth = 1500;
+    rejectLoad(new Error('offline'));
+    await switching;
+    await settle();
+    assert.equal(editor.hidden, false);
+    assert.equal(editor.classList.contains('is-band-wide'), true);
+    assert.equal(workspaceActions.at(-1).width, 1500);
+});
+
+test('automatic compact conversion returns focus to the visible context tool', async () => {
+    // Break caught: Escape restoring focus to Theme content that the close transition just hid.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'standard', libraryOpen: false, contextTool: 'theme', dragging: false }), reduceWorkspace: (state, action) => action.type === 'resize' ? { ...state, band: 'compact' } : action.type === 'tool/theme' ? { ...state, contextTool: action.open === false ? null : 'theme' } : state });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('div'); workspace.className = 'home-designer-workspace'; workspace.getBoundingClientRect = () => ({ width: 1200 });
+    const tool = new Element('button'); tool.dataset.homeDesignerTool = 'theme';
+    const canvas = new Element('section'); canvas.dataset.homeDesignerCanvas = '';
+    const context = new Element('aside'); context.dataset.homeDesignerContextDrawer = '';
+    const inspector = new Element('section'); inspector.dataset.homeDesignerInspector = '';
+    const theme = new Element('section'); theme.dataset.homeDesignerTheme = '';
+    const input = new Element('INPUT'); input.dataset.themePath = 'accentColor';
+    const close = new Element('button'); close.className = 'home-designer-drawer-close';
+    theme.append(input); context.append(inspector, theme, close); workspace.append(tool, canvas, context); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    const documentListeners = new Map();
+    let resizeWorkspace;
+    class ResizeObserver { constructor(callback) { resizeWorkspace = callback; } observe() {} }
+    const document = {
+        body, activeElement: input, getElementById: () => root, createElement: (tagName) => new Element(tagName),
+        addEventListener: (type, listener) => documentListeners.set(type, listener),
+        removeEventListener: (type) => documentListeners.delete(type),
+    };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController, ResizeObserver,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    resizeWorkspace([{ target: workspace, contentRect: { width: 900 } }]);
+    assert.equal(context.parentElement, body);
+    assert.equal(input.focusCount, 1, 'modal opening focuses its first control');
+    documentListeners.get('keydown')({ target: close, key: 'Escape', preventDefault() {} });
+    assert.equal(context.parentElement, workspace);
+    assert.equal(theme.hidden, true);
+    assert.equal(input.focusCount, 1, 'hidden Theme content does not regain focus');
+    assert.equal(tool.focusCount, 1, 'focus returns to the visible Theme tool');
+});
+
 test('compact Theme uses the shared context drawer as a modal while docked drawers stay inline', async () => {
     // Break caught: treating Theme as a toolbar panel, or applying compact dialog/inert semantics to a standard workspace.
     const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: initialBand, libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => action.type === 'tool/theme' ? { ...state, contextTool: action.open === false ? null : 'theme' } : state });");
@@ -510,7 +602,7 @@ test('a compact editor opens a modal drawer even when viewport media is wide', a
     const status = new Element('div'); status.dataset.homeDesignerStatus = '';
     const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
     const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
-    const workspace = new Element('section');
+    const workspace = new Element('section'); workspace.className = 'home-designer-workspace';
     const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
     workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
     const document = { body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
@@ -535,7 +627,7 @@ test('a drawer returns to the editor when its measured band leaves compact', asy
     const status = new Element('div'); status.dataset.homeDesignerStatus = '';
     const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
     const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
-    const workspace = new Element('section');
+    const workspace = new Element('section'); workspace.className = 'home-designer-workspace';
     const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
     workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
     let resizeWorkspace;
@@ -551,7 +643,7 @@ test('a drawer returns to the editor when its measured band leaves compact', asy
     const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus() {} };
     root.listeners.get('click')({ target: opener });
     assert.equal(library.parentElement, body);
-    resizeWorkspace();
+    resizeWorkspace([{ target: workspace, contentRect: { width: 1200 } }]);
     assert.equal(library.parentElement, workspace);
     assert.equal(body.classList.contains('home-designer-drawer-open'), false);
 });

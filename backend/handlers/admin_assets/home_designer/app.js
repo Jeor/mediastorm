@@ -38,6 +38,25 @@ if (root && status) {
     const pendingDrafts = new Map();
     const warnBeforeUnload = (event) => { event.preventDefault(); event.returnValue = ''; return ''; };
     const isCompactWorkspace = () => workspaceState?.band === 'compact';
+    const workspaceElement = () => editor?.querySelector('.home-designer-workspace') || editor;
+    const workspaceToolButton = (tool) => [...(editor?.querySelectorAll('[data-home-designer-tool]') || [])]
+        .find((button) => button.dataset.homeDesignerTool === tool) || null;
+
+    const isUsableFocusTarget = (target) => {
+        if (!target?.focus || target.isConnected === false) return false;
+        for (let current = target; current; current = current.parentElement) {
+            if (current.hidden || current.inert || current.getAttribute?.('aria-hidden') === 'true') return false;
+        }
+        return true;
+    };
+
+    const fallbackFocusTarget = (tool) => {
+        const toolButton = workspaceToolButton(tool);
+        if (isUsableFocusTarget(toolButton)) return toolButton;
+        const canvas = editor?.querySelector('[data-home-designer-canvas]');
+        const canvasControl = canvas?.querySelector('button, [href], [tabindex]');
+        return isUsableFocusTarget(canvasControl) ? canvasControl : isUsableFocusTarget(canvas) ? canvas : null;
+    };
 
     const renderWorkspace = () => {
         if (!editor || !workspaceState) return;
@@ -104,7 +123,13 @@ if (root && status) {
         }
         if (!drawer && previousBand !== workspaceState.band && isCompactWorkspace() && workspaceState.mode === 'edit') {
             const activeTool = workspaceState.libraryOpen ? 'library' : workspaceState.contextTool;
-            if (activeTool) openDrawer(activeTool);
+            if (activeTool) {
+                const inlineDrawer = activeTool === 'library'
+                    ? findDesignerElement('[data-home-designer-library]')
+                    : findDesignerElement('[data-home-designer-context-drawer]') || findDesignerElement(`[data-home-designer-${activeTool}]`);
+                const returnTarget = inlineDrawer?.contains?.(document.activeElement) ? workspaceToolButton(activeTool) : null;
+                openDrawer(activeTool, returnTarget);
+            }
         }
         if (workspaceState.mode !== previousMode) void renderEditor();
         return workspaceState;
@@ -120,17 +145,28 @@ if (root && status) {
         if (!editor || workspaceState) return;
         const workspace = await workspaceModule;
         if (!editor || workspaceState) return;
-        const workspaceElement = editor.querySelector('.home-designer-workspace') || editor;
+        const observedWorkspace = workspaceElement();
         workspaceReducer = workspace.reduceWorkspace;
-        workspaceState = workspace.createWorkspaceState(workspaceElement.getBoundingClientRect().width);
+        workspaceState = workspace.createWorkspaceState(observedWorkspace.getBoundingClientRect().width);
         renderWorkspace();
         if (typeof ResizeObserver === 'function') {
             workspaceObserver = new ResizeObserver((entries = []) => {
-                const entry = entries.find?.((candidate) => candidate.target === workspaceElement) || entries[0];
-                dispatchWorkspace({ type: 'resize', width: entry?.contentRect?.width ?? workspaceElement.getBoundingClientRect().width });
+                const entry = entries.find?.((candidate) => candidate.target === observedWorkspace) || entries[0];
+                dispatchMeasuredWorkspaceWidth(entry?.contentRect?.width ?? observedWorkspace.getBoundingClientRect().width);
             });
-            workspaceObserver.observe(workspaceElement);
+            workspaceObserver.observe(observedWorkspace);
         }
+    };
+
+    const dispatchMeasuredWorkspaceWidth = (width) => {
+        const measured = Number(width);
+        if (!Number.isFinite(measured) || measured <= 0 || editor?.hidden || root.getAttribute?.('aria-busy') === 'true') return workspaceState;
+        return dispatchWorkspace({ type: 'resize', width: measured });
+    };
+
+    const remeasureWorkspace = () => {
+        const observedWorkspace = workspaceElement();
+        if (observedWorkspace) dispatchMeasuredWorkspaceWidth(observedWorkspace.getBoundingClientRect().width);
     };
 
     const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
@@ -571,7 +607,10 @@ if (root && status) {
         drawerReturnFocus = null;
         drawerDialogAttributes = null;
         if (synchronizeWorkspace && tool && isCompactWorkspace()) dispatchWorkspace({ type: `tool/${tool}`, open: false });
-        requestAnimationFrame(() => returnFocus?.focus?.());
+        requestAnimationFrame(() => {
+            const target = isUsableFocusTarget(returnFocus) ? returnFocus : fallbackFocusTarget(tool);
+            target?.focus?.();
+        });
     };
 
     const openDrawer = (kind, trigger) => {
@@ -585,7 +624,8 @@ if (root && status) {
         if (drawer && drawer !== target) closeDrawer(false);
         drawer = target;
         drawerTool = kind;
-        drawerReturnFocus = trigger || document.activeElement;
+        const activeElement = document.activeElement;
+        drawerReturnFocus = trigger || (target.contains?.(activeElement) ? workspaceToolButton(kind) : activeElement);
         drawerDialogAttributes = { role: target.getAttribute('role'), 'aria-modal': target.getAttribute('aria-modal') };
         drawerBackdropHidden = Boolean(drawerBackdrop?.hidden);
         portalDrawer(target);
@@ -701,6 +741,10 @@ if (root && status) {
     const setWorkspaceLoading = (loading) => {
         if (editor) editor.hidden = Boolean(loading);
         root.setAttribute?.('aria-busy', String(Boolean(loading)));
+        if (!loading) {
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(remeasureWorkspace);
+            else remeasureWorkspace();
+        }
     };
 
     const load = async (scope) => {

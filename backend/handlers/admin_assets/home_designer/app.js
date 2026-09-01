@@ -76,9 +76,22 @@ if (root && status) {
         const previousBand = workspaceState.band;
         workspaceState = workspaceReducer(workspaceState, action);
         renderWorkspace();
-        if (drawer && previousBand !== workspaceState.band && !isCompactWorkspace()) {
+        const drawerKind = drawer?.dataset?.homeDesignerLibrary !== undefined ? 'library' : drawer?.dataset?.homeDesignerInspector !== undefined ? 'inspector' : '';
+        const drawerIsInactive = (kind) => (
+            previousBand !== workspaceState.band && !isCompactWorkspace()
+            || kind === 'library' && !workspaceState.libraryOpen
+            || kind === 'inspector' && workspaceState.contextTool !== 'inspector'
+        );
+        const shouldCloseDrawer = drawer && drawerIsInactive(drawerKind);
+        const closeInactiveDrawer = (activeDrawer, kind) => {
+            if (drawer !== activeDrawer || !drawerIsInactive(kind)) return;
             closeDrawer(false);
             renderWorkspace();
+        };
+        if (shouldCloseDrawer) {
+            const activeDrawer = drawer;
+            if (action.type === 'drag/start' && drawerKind === 'library') requestAnimationFrame(() => closeInactiveDrawer(activeDrawer, drawerKind));
+            else closeInactiveDrawer(activeDrawer, drawerKind);
         }
         if (workspaceState.mode !== previousMode) void renderEditor();
         return workspaceState;
@@ -528,7 +541,7 @@ if (root && status) {
 
     const closeDrawer = (synchronizeWorkspace = true) => {
         if (!drawer) return;
-        const kind = drawer.hasAttribute('data-home-designer-library') ? 'library' : drawer.hasAttribute('data-home-designer-inspector') ? 'inspector' : '';
+        const kind = drawer.dataset?.homeDesignerLibrary !== undefined ? 'library' : drawer.dataset?.homeDesignerInspector !== undefined ? 'inspector' : '';
         drawer.classList.remove('is-drawer-open');
         ['role', 'aria-modal'].forEach((name) => {
             const value = drawerDialogAttributes?.[name];

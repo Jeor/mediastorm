@@ -371,7 +371,7 @@ test('a drawer returns to the editor when its measured band leaves compact', asy
 
 test('a portaled drawer delegates workspace drag lifecycle events', async () => {
     // Break caught: drag events from a body-portaled compact drawer never reaching the workspace reducer.
-    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action.type); return state; } });");
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: true, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action.type); return state; } });");
     const body = new Element('body');
     const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
     const status = new Element('div'); status.dataset.homeDesignerStatus = '';
@@ -394,6 +394,38 @@ test('a portaled drawer delegates workspace drag lifecycle events', async () => 
     library.dispatchEvent({ type: 'dragstart', bubbles: true });
     library.dispatchEvent({ type: 'dragend', bubbles: true });
     assert.deepEqual(workspaceActions, ['drag/start', 'drag/end']);
+});
+
+test('a compact library drag closes its portaled modal after native dragstart', async () => {
+    // Break caught: reducer state closes the compact library while its body-portaled modal remains visible and focus-trapping.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'compact', libraryOpen: true, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => action.type === 'drag/start' ? { ...state, libraryOpen: false, dragging: true } : action.type === 'drag/end' ? { ...state, dragging: false } : state });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section');
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    const frames = [];
+    const document = { body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        requestAnimationFrame: (callback) => frames.push(callback),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus() {} };
+    root.listeners.get('click')({ target: opener });
+    assert.equal(library.parentElement, body);
+    library.dispatchEvent({ type: 'dragstart', bubbles: true });
+    assert.equal(library.parentElement, body, 'native dragstart completes before the portal is restored');
+    while (frames.length) frames.shift()();
+    assert.equal(library.parentElement, workspace);
+    assert.equal(backdrop.parentElement, root);
+    assert.equal(backdrop.hidden, true);
+    assert.equal(body.classList.contains('home-designer-drawer-open'), false);
 });
 
 test('compact drawer blocks the shared shell and restores it on Escape', async () => {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"novastream/internal/apiusage"
+	"novastream/internal/mdblisturl"
 )
 
 // Minimal TVDB v4 client (token auth, trending and search endpoints we need)
@@ -667,6 +669,9 @@ func (c *tvdbClient) fetchMDBListTVShows() ([]mdblistTVShow, error) {
 // fetchMDBListJSON fetches and decodes JSON from an MDBList URL with a 15-second
 // timeout and one retry on server errors (500+/524 Cloudflare timeouts).
 func (c *tvdbClient) fetchMDBListJSON(url string, dest any) error {
+	if !mdblisturl.Valid(url) {
+		return errors.New("invalid MDBList URL")
+	}
 	backoff := 500 * time.Millisecond
 	var lastErr error
 
@@ -682,7 +687,21 @@ func (c *tvdbClient) fetchMDBListJSON(url string, dest any) error {
 			return err
 		}
 
-		resp, err := c.httpc.Do(req)
+		client := *c.httpc
+		previousRedirect := client.CheckRedirect
+		client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+			if err := mdblisturl.CheckRedirect(next, via); err != nil {
+				return err
+			}
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			if previousRedirect != nil {
+				return previousRedirect(next, via)
+			}
+			return nil
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			cancel()
 			lastErr = fmt.Errorf("mdblist http error: %w", err)

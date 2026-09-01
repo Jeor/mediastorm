@@ -436,7 +436,7 @@ func TestStripProfileHomeTopShelfSettings(t *testing.T) {
 	}
 }
 
-func TestStripProfileShelfMissingGlobalShelfIsInherited(t *testing.T) {
+func TestStripProfileShelfMissingGlobalShelfRemainsSnapshot(t *testing.T) {
 	svc := tempService(t)
 	g := globalDefaults()
 	g.HomeShelves.Shelves = append(g.HomeShelves.Shelves, config.ShelfConfig{
@@ -459,8 +459,15 @@ func TestStripProfileShelfMissingGlobalShelfIsInherited(t *testing.T) {
 	svc.settings["user1"] = us
 	svc.StripRedundantOverrides(g, nil, nil)
 
-	if _, ok := svc.settings["user1"]; ok {
-		t.Error("expected profile to be deleted because missing global shelf inherits")
+	got, ok := svc.settings["user1"]
+	if !ok {
+		t.Fatal("expected profile snapshot to be preserved")
+	}
+	if len(got.HomeShelves.Shelves) != 2 {
+		t.Fatalf("snapshot length = %d, want 2", len(got.HomeShelves.Shelves))
+	}
+	if findShelf(got.HomeShelves.Shelves, "new-global-shelf") != nil {
+		t.Fatal("new global shelf leaked into profile snapshot")
 	}
 }
 
@@ -572,7 +579,7 @@ func TestStripProfileShelfExplicitFalseCalendarSourcesMatchMissingGlobal(t *test
 	}
 }
 
-func TestMergeWithGlobalIncludesMissingShelves(t *testing.T) {
+func TestMergeWithGlobalPreservesCompleteShelfSnapshot(t *testing.T) {
 	g := globalDefaults()
 	g.HomeShelves.Shelves = append(g.HomeShelves.Shelves, config.ShelfConfig{
 		ID:      "new-global-shelf",
@@ -591,8 +598,8 @@ func TestMergeWithGlobalIncludesMissingShelves(t *testing.T) {
 		},
 	}, g)
 
-	if findShelf(eff.HomeShelves.Shelves, "new-global-shelf") == nil {
-		t.Fatal("expected missing global shelf to be inherited into effective settings")
+	if findShelf(eff.HomeShelves.Shelves, "new-global-shelf") != nil {
+		t.Fatal("new global shelf leaked into effective profile snapshot")
 	}
 	watchlist := findShelf(eff.HomeShelves.Shelves, "watchlist")
 	if watchlist == nil {
@@ -603,7 +610,7 @@ func TestMergeWithGlobalIncludesMissingShelves(t *testing.T) {
 	}
 }
 
-func TestGetWithDefaultsIncludesMissingGlobalShelves(t *testing.T) {
+func TestGetWithDefaultsPreservesCustomShelfSnapshotWhenGlobalAddsRows(t *testing.T) {
 	svc := tempService(t)
 	defaults := models.UserSettings{
 		HomeShelves: models.HomeShelvesSettings{
@@ -626,8 +633,8 @@ func TestGetWithDefaultsIncludesMissingGlobalShelves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if findShelf(got.HomeShelves.Shelves, "new-global-shelf") == nil {
-		t.Fatal("expected missing global shelf to be included in effective settings")
+	if findShelf(got.HomeShelves.Shelves, "new-global-shelf") != nil {
+		t.Fatal("custom shelf snapshot unexpectedly inherited a later global shelf")
 	}
 	watchlist := findShelf(got.HomeShelves.Shelves, "watchlist")
 	if watchlist == nil {

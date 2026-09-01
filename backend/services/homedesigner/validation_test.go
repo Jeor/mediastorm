@@ -50,6 +50,30 @@ func TestValidateHomeDesigner_RejectsInvalidRowsAndTheme(t *testing.T) {
 	}
 }
 
+func TestValidateHomeDesigner_MDBListOnlyAcceptsCanonicalPublicListURLs(t *testing.T) {
+	for _, test := range []struct {
+		name, value string
+		valid       bool
+	}{
+		{name: "canonical", value: "https://mdblist.com/lists/user/list-name/json", valid: true},
+		{name: "http", value: "http://mdblist.com/lists/user/list/json"},
+		{name: "loopback", value: "http://127.0.0.1/lists/user/list/json"},
+		{name: "link local", value: "https://169.254.169.254/lists/user/list/json"},
+		{name: "misleading host", value: "https://mdblist.com.evil.example/lists/user/list/json"},
+		{name: "userinfo", value: "https://user:secret@mdblist.com/lists/user/list/json"},
+		{name: "misleading path", value: "https://mdblist.com/redirect?next=/lists/user/list/json"},
+		{name: "extra path", value: "https://mdblist.com/lists/user/list/json/extra"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := customRowsRequest(models.HomeShelvesSettings{Shelves: []models.ShelfConfig{{ID: "list", Name: "List", Type: "mdblist", ListURL: test.value}}})
+			errs := ValidateApply(request, BuildCatalog(config.DefaultSettings(), nil))
+			if got := !hasFieldError(errs, "rows", "list", "listUrl"); got != test.valid {
+				t.Fatalf("valid = %v, want %v; errors=%#v", got, test.valid, errs)
+			}
+		})
+	}
+}
+
 func TestValidateHomeDesigner_NormalizesOrderAndWhitespace(t *testing.T) {
 	shelfScale := 1.4
 	heroScale := 0.25

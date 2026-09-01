@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"novastream/internal/mdblisturl"
 	"novastream/models"
 )
 
@@ -291,8 +292,12 @@ func validateShelf(rowID string, shelf models.ShelfConfig, entry CatalogEntry) [
 		if value != "" && len(field.Options) > 0 && !isCatalogOption(field.Options, value) {
 			errs = append(errs, rowError(rowID, field.Path, "value is not supported"))
 		}
-		if value != "" && field.Type == "url" && !isHTTPURL(value) {
-			errs = append(errs, rowError(rowID, field.Path, "must be an http or https URL"))
+		if value != "" && field.Type == "url" {
+			if shelf.Type == "mdblist" && field.Path == "listUrl" && !mdblisturl.Valid(value) {
+				errs = append(errs, rowError(rowID, field.Path, "must be a canonical https://mdblist.com/lists/{user}/{list}/json URL"))
+			} else if shelf.Type != "mdblist" && !isHTTPURL(value) {
+				errs = append(errs, rowError(rowID, field.Path, "must be an http or https URL"))
+			}
 		}
 	}
 	switch shelf.Type {

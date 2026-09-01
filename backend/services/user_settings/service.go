@@ -455,7 +455,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Display.Appearance.ReduceOverlays == nil {
 			settings.Display.Appearance.ReduceOverlays = defaults.Display.Appearance.ReduceOverlays
 		}
-		settings.HomeShelves.Shelves = mergeShelvesWithDefaults(settings.HomeShelves.Shelves, defaults.HomeShelves.Shelves)
+		if !models.BoolVal(settings.HomeShelves.ShelvesOverride, len(settings.HomeShelves.Shelves) > 0) {
+			settings.HomeShelves.Shelves = mergeShelvesWithDefaults(nil, defaults.HomeShelves.Shelves)
+		}
 		if settings.HomeShelves.ExploreCardPosition == "" {
 			settings.HomeShelves.ExploreCardPosition = string(defaults.HomeShelves.ExploreCardPosition)
 		}
@@ -551,12 +553,12 @@ func mergeShelvesWithDefaults(shelves []models.ShelfConfig, defaults []models.Sh
 // the calendar shelf globally, every profile still carrying the materialized default set
 // is flagged as an override forever). A stored list that exactly matches the built-in
 // defaults was written by that earlier buggy migration; revert it to the inherit state.
-// Genuinely customized profiles keep their shelves, with any missing built-ins backfilled.
+// Genuinely customized profiles keep their shelves as a complete snapshot.
 //
 // Returns true if the stored shelves were modified.
 func reconcileProfileHomeShelves(us *models.UserSettings) bool {
 	shelves := us.HomeShelves.Shelves
-	if len(shelves) == 0 {
+	if len(shelves) == 0 && !models.BoolVal(us.HomeShelves.ShelvesOverride, false) {
 		// No stored override → fully inherits global. Never materialize defaults here.
 		return false
 	}
@@ -566,14 +568,14 @@ func reconcileProfileHomeShelves(us *models.UserSettings) bool {
 		us.HomeShelves.Shelves = shelves
 		changed = true
 	}
-	if shelvesArePristineDefaults(shelves) {
+	if us.HomeShelves.ShelvesOverride == nil && shelvesArePristineDefaults(shelves) {
 		// Auto-materialized default set → restore the inherit state.
 		us.HomeShelves.Shelves = nil
 		return true
 	}
-	if merged, defaultsChanged := models.EnsureDefaultHomeShelves(shelves); defaultsChanged {
-		us.HomeShelves.Shelves = merged
-		return true
+	if us.HomeShelves.ShelvesOverride == nil || !*us.HomeShelves.ShelvesOverride {
+		us.HomeShelves.ShelvesOverride = models.BoolPtr(true)
+		changed = true
 	}
 	return changed
 }
@@ -828,7 +830,8 @@ func isSettingsEmpty(s models.UserSettings) bool {
 	}
 
 	// Check HomeShelves
-	if len(s.HomeShelves.Shelves) > 0 ||
+	if s.HomeShelves.ShelvesOverride != nil ||
+		len(s.HomeShelves.Shelves) > 0 ||
 		s.HomeShelves.ExploreCardPosition != "" ||
 		s.HomeShelves.ItemCap != 0 ||
 		s.HomeShelves.MobileTopShelfMode != "" ||

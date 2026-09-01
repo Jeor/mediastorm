@@ -47,6 +47,11 @@ class Element {
         this.disabled = false;
     }
     append(...children) { children.forEach((child) => { child.parentNode = this; this.children.push(child); }); }
+    insertBefore(child, before) {
+        child.remove(); child.parentNode = this;
+        const index = before ? this.children.indexOf(before) : -1;
+        if (index < 0) this.children.push(child); else this.children.splice(index, 0, child);
+    }
     remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((child) => child !== this); this.parentNode = null; }
     addEventListener(type, listener) { this.listeners.set(type, listener); }
     removeEventListener(type) { this.listeners.delete(type); }
@@ -55,6 +60,7 @@ class Element {
     click() { this.listeners.get('click')?.({ preventDefault() {}, stopPropagation() {} }); }
     querySelectorAll(selector) { return descendants(this).filter((element) => matches(element, selector)); }
     querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+    closest(selector) { for (let current = this; current; current = current.parentNode) if (matches(current, selector)) return current; return null; }
 }
 
 const matches = (element, selector) => {
@@ -143,4 +149,62 @@ test('removal focuses the store-selected row after the synchronous rerender', as
         globalThis.document = previousDocument;
         globalThis.requestAnimationFrame = previousRAF;
     }
+});
+
+test('drop indicators use model row identities instead of hero or reordered presentation siblings', async () => {
+    // Break caught: TV hero markup or a promoted mobile carousel shifting a model insertion by one row.
+    const { mountCanvasInteractions } = await moduleFromFile('canvas.js');
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        for (const ids of [['hero', 'one', 'two', 'three'], ['two', 'one', 'three']]) {
+            const preview = previewHost([]);
+            ids.forEach((id) => {
+                const child = new Element(id === 'hero' ? 'div' : 'section');
+                if (id !== 'hero') child.dataset.previewRowId = id;
+                child.getBoundingClientRect = () => ({ top: 0, bottom: 100, height: 100 });
+                preview.viewport.append(child);
+            });
+            preview.viewport.getBoundingClientRect = () => ({ top: 0, bottom: 500 });
+            preview.viewport.scrollBy = () => {};
+            let moved;
+            mountCanvasInteractions(preview.host, { state: { rows }, editing: true, dispatch: (action) => { moved = action; } });
+            const target = preview.host.querySelector('[data-preview-row-id="two"]');
+            preview.viewport.listeners.get('dragover')({ target, clientY: 25, dataTransfer: { types: ['application/x-home-designer-row'] }, preventDefault() {} });
+            const indicator = preview.viewport.children.find((child) => child.className === 'home-designer-drop-indicator');
+            assert.equal(indicator.dataset.dropIndex, '1');
+            assert.equal(preview.viewport.children[preview.viewport.children.indexOf(indicator) + 1], target);
+            preview.viewport.listeners.get('drop')({ target, dataTransfer: { types: ['application/x-home-designer-row'], getData: (type) => type.endsWith('row') ? 'three' : '' }, preventDefault() {} });
+            assert.deepEqual(moved, { type: 'rows/move', id: 'three', to: 1 });
+        }
+    } finally { globalThis.document = previousDocument; }
+});
+
+test('drag announcements cover start, distinct targets, drop, and Escape cancellation without flooding', async () => {
+    // Break caught: mouse drag state changes being silent to assistive technology or repeated dragover events flooding the live region.
+    const { mountCanvasInteractions } = await moduleFromFile('canvas.js');
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        const preview = previewHost(['one', 'two', 'three']);
+        preview.viewport.children.forEach((row) => { row.getBoundingClientRect = () => ({ top: 0, bottom: 100, height: 100 }); });
+        preview.viewport.getBoundingClientRect = () => ({ top: 0, bottom: 500 });
+        preview.viewport.scrollBy = () => {};
+        const liveRegion = { set textContent(value) { this.messages.push(value); }, get textContent() { return this.messages.at(-1) || ''; }, messages: [] };
+        mountCanvasInteractions(preview.host, { state: { rows }, editing: true, dispatch: () => {}, liveRegion });
+        const handle = preview.host.querySelector('[data-preview-row-id="one"]').querySelector('[data-home-designer-drag-handle]');
+        handle.listeners.get('dragstart')({ dataTransfer: { setData() {}, effectAllowed: '' } });
+        const target = preview.host.querySelector('[data-preview-row-id="two"]');
+        const over = { target, clientY: 25, dataTransfer: { types: ['application/x-home-designer-row'] }, preventDefault() {} };
+        preview.viewport.listeners.get('dragover')(over);
+        preview.viewport.listeners.get('dragover')(over);
+        assert.equal(liveRegion.messages.length, 2);
+        preview.viewport.listeners.get('drop')({ target, dataTransfer: { types: ['application/x-home-designer-row'], getData: (type) => type.endsWith('row') ? 'one' : '' }, preventDefault() {} });
+        assert.match(liveRegion.textContent, /dropped at position 1 of 3/i);
+
+        handle.listeners.get('dragstart')({ dataTransfer: { setData() {}, effectAllowed: '' } });
+        preview.viewport.listeners.get('dragover')(over);
+        preview.viewport.listeners.get('keydown')({ key: 'Escape', preventDefault() {} });
+        assert.match(liveRegion.textContent, /drag cancelled/i);
+    } finally { globalThis.document = previousDocument; }
 });

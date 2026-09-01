@@ -146,6 +146,7 @@ func (s *Service) Apply(ctx context.Context, actor Actor, request ApplyRequest) 
 					current.HomeShelves = models.HomeShelvesSettings{}
 				} else {
 					current.HomeShelves = *request.Rows.Value
+					current.HomeShelves.ShelvesOverride = models.BoolPtr(true)
 				}
 			}
 			if request.Theme != nil {
@@ -165,6 +166,23 @@ func (s *Service) Apply(ctx context.Context, actor Actor, request ApplyRequest) 
 		return Document{}, err
 	}
 	return s.Load(ctx, actor, request.Scope)
+}
+
+// ValidatePreview authorizes an unsaved row snapshot against the same
+// actor-specific catalog used by Apply, without writing it.
+func (s *Service) ValidatePreview(ctx context.Context, actor Actor, request PreviewRequest) error {
+	if err := s.authorize(actor, request.Scope); err != nil {
+		return err
+	}
+	settings, err := s.config.Load()
+	if err != nil {
+		return err
+	}
+	apply := ApplyRequest{Scope: request.Scope, Rows: request.Rows}
+	if fields := ValidateApply(apply, BuildCatalogForContext(settings, s.catalogContext(ctx, actor, request.Scope))); len(fields) > 0 {
+		return ValidationError{Fields: fields}
+	}
+	return nil
 }
 
 type documentEnvelope struct {
@@ -233,7 +251,7 @@ func (s *Service) authorize(actor Actor, scope Scope) error {
 }
 
 func homeShelvesInherited(settings models.HomeShelvesSettings) bool {
-	return len(settings.Shelves) == 0 && settings.ExploreCardPosition == "" && settings.ItemCap == 0 &&
+	return !models.BoolVal(settings.ShelvesOverride, len(settings.Shelves) > 0) && settings.ExploreCardPosition == "" && settings.ItemCap == 0 &&
 		settings.ExcludeUpcomingFromContinue == nil && settings.MobileTopShelfMode == "" && settings.MobileTopShelfSourceID == "" &&
 		settings.TVTopShelfMode == "" && settings.TVTopShelfSourceID == "" && settings.DisableTvLandscapeCardExpansion == nil &&
 		settings.HomeShelfScale == nil && settings.HomeHeroScale == nil

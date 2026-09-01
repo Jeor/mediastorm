@@ -2,16 +2,44 @@ package metadata
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"sync"
 	"testing"
+
+	"novastream/internal/mdblisturl"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
+}
+
+func TestFetchMDBListJSONRejectsRedirectsOutsideCanonicalMDBListPaths(t *testing.T) {
+	requests := 0
+	client := &tvdbClient{httpc: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requests++
+		if req.URL.Host != "mdblist.com" {
+			t.Fatalf("redirect transport reached unsafe host %q", req.URL.Host)
+		}
+		return &http.Response{
+			StatusCode: http.StatusFound,
+			Header:     http.Header{"Location": []string{"http://169.254.169.254/latest/meta-data"}},
+			Body:       io.NopCloser(bytes.NewBuffer(nil)),
+			Request:    req,
+		}, nil
+	})}}
+
+	var destination []mdblistItem
+	err := client.fetchMDBListJSON("https://mdblist.com/lists/user/list/json", &destination)
+	if !errors.Is(err, mdblisturl.ErrUnsafeRedirect) {
+		t.Fatalf("fetch error = %v, want unsafe redirect error", err)
+	}
+	if requests != 2 {
+		t.Fatalf("canonical endpoint requests = %d, want two retry attempts", requests)
+	}
 }
 
 func TestTVDBClientSetsAcceptLanguageHeader(t *testing.T) {

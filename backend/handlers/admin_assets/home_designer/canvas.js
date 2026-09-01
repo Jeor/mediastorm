@@ -50,14 +50,23 @@ export const mountCanvasInteractions = (host, {
     indicator.className = 'home-designer-drop-indicator';
     indicator.setAttribute('aria-hidden', 'true');
     let pendingIndex = null;
+    let draggedRow = null;
+    let dropped = false;
     const clearInsertion = () => { pendingIndex = null; indicator.remove(); };
     const showInsertion = (index) => {
         pendingIndex = Math.max(0, Math.min(index, rows.length));
         indicator.dataset.dropIndex = String(pendingIndex);
         if (typeof viewport.insertBefore === 'function') {
-            const children = [...viewport.children].filter((child) => child !== indicator);
-            viewport.insertBefore(indicator, children[pendingIndex] || null);
+            const nextID = rows[pendingIndex]?.id;
+            const nextRow = nextID === undefined ? null : [...viewport.querySelectorAll('[data-preview-row-id]')]
+                .find((element) => element.dataset.previewRowId === nextID) || null;
+            viewport.insertBefore(indicator, nextRow);
         }
+        const position = pendingIndex + 1;
+        const message = draggedRow
+            ? `Move ${draggedRow.name || 'row'} to position ${position} of ${rows.length}.`
+            : `Drop row at position ${position} of ${rows.length + 1}.`;
+        announce(liveRegion, message);
     };
     const customize = (id) => onCustomize?.(id);
     const controls = viewport.querySelectorAll('[data-preview-row-id]');
@@ -74,6 +83,9 @@ export const mountCanvasInteractions = (host, {
         drag.addEventListener('dragstart', (event) => {
             event.dataTransfer?.setData('application/x-home-designer-row', row.id);
             if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+            draggedRow = row;
+            dropped = false;
+            announce(liveRegion, `${row.name || 'Row'} grabbed. Current position ${index + 1} of ${rows.length}.`);
             onDragStart?.(row.id);
         });
         const visibility = button(row.enabled === false ? 'Show' : 'Hide', 'homeDesignerVisibility');
@@ -112,7 +124,8 @@ export const mountCanvasInteractions = (host, {
         const target = rowFromTarget(event.target);
         const rect = target?.getBoundingClientRect?.();
         const after = rect ? event.clientY > rect.top + rect.height / 2 : false;
-        showInsertion(insertionIndex(rows, target?.dataset?.previewRowId, after));
+        const nextIndex = insertionIndex(rows, target?.dataset?.previewRowId, after);
+        if (nextIndex !== pendingIndex) showInsertion(nextIndex);
         const delta = edgeScrollDelta(event.clientY, viewport.getBoundingClientRect(), 48, 18);
         if (delta !== 0) viewport.scrollBy({ top: delta, behavior: 'auto' });
     };
@@ -123,20 +136,35 @@ export const mountCanvasInteractions = (host, {
         const rawIndex = pendingIndex ?? insertionIndex(rows, target?.dataset?.previewRowId, false);
         const catalogToken = event.dataTransfer?.getData('application/x-home-designer-catalog');
         const rowID = event.dataTransfer?.getData('application/x-home-designer-row');
+        const droppedIndex = rawIndex;
         clearInsertion();
-        if (catalogToken) await onCatalogDrop?.(catalogToken, rawIndex);
-        else if (rowID) { customize(rowID); dispatch({ type: 'rows/move', id: rowID, to: moveDestination(rows, rowID, rawIndex) }); }
+        if (catalogToken) {
+            await onCatalogDrop?.(catalogToken, rawIndex);
+            announce(liveRegion, `Row dropped at position ${droppedIndex + 1} of ${rows.length + 1}.`);
+        } else if (rowID) {
+            const destination = moveDestination(rows, rowID, rawIndex);
+            customize(rowID); dispatch({ type: 'rows/move', id: rowID, to: destination });
+            const source = rows.find((row) => row.id === rowID);
+            announce(liveRegion, `${source?.name || 'Row'} dropped at position ${destination + 1} of ${rows.length}.`);
+        }
+        dropped = true;
     };
-    const finishDrag = () => { clearInsertion(); onDragEnd?.(); };
-    const onKeyDown = (event) => { if (event.key === 'Escape') finishDrag(); };
+    const finishDrag = (cancelled = false) => {
+        const active = draggedRow !== null || pendingIndex !== null;
+        clearInsertion();
+        if (cancelled && active && !dropped) announce(liveRegion, 'Drag cancelled.');
+        draggedRow = null; dropped = false; onDragEnd?.();
+    };
+    const onDragEndEvent = () => finishDrag(false);
+    const onKeyDown = (event) => { if (event.key === 'Escape') { event.preventDefault?.(); finishDrag(true); } };
     viewport.addEventListener('dragover', onDragOver);
     viewport.addEventListener('drop', onDrop);
-    viewport.addEventListener('dragend', finishDrag);
+    viewport.addEventListener('dragend', onDragEndEvent);
     viewport.addEventListener('keydown', onKeyDown);
     return () => {
         viewport.removeEventListener('dragover', onDragOver);
         viewport.removeEventListener('drop', onDrop);
-        viewport.removeEventListener('dragend', finishDrag);
+        viewport.removeEventListener('dragend', onDragEndEvent);
         viewport.removeEventListener('keydown', onKeyDown);
         clearInsertion();
     };

@@ -114,6 +114,28 @@ test('catalog additions keep built-ins unique and mark incomplete configured row
     assert.equal(store.isApplyValid(), true);
 });
 
+test('catalog configuration participates in dirty history, discard, and Apply validity', async () => {
+    // Break caught: navigating away from an unfinished catalog form without a warning or treating its invisible draft as apply-ready.
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+
+    store.dispatch({ type: 'catalog/configure', token: 'mdblist', index: 1, values: { name: 'Draft' } });
+    assert.equal(store.isDirty(), true);
+    assert.equal(store.isApplyValid(), false);
+    assert.equal(store.canUndo(), true);
+    store.dispatch({ type: 'catalog/field', path: 'listUrl', value: 'https://mdblist.com/lists/user/list/json' });
+    assert.equal(store.getState().catalogSelection.values.listUrl, 'https://mdblist.com/lists/user/list/json');
+
+    store.undo();
+    assert.equal(store.getState().catalogSelection.values.listUrl, undefined);
+    store.redo();
+    assert.equal(store.getState().catalogSelection.values.listUrl, 'https://mdblist.com/lists/user/list/json');
+    store.discard();
+    assert.equal(store.getState().catalogSelection, null);
+    assert.equal(store.isDirty(), false);
+    assert.equal(store.isApplyValid(), true);
+});
+
 test('row validation is public and an ID rename preserves selection plus collection references', async () => {
     // Break caught: locally-invalid collection hubs appearing apply-ready or an ID edit closing the active inspector and orphaning its hub source.
     const { createStore } = await moduleFromFile('store.js');

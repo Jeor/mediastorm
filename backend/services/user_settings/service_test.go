@@ -1141,7 +1141,7 @@ func TestUpdate_PreservesExplicitEmptyLiveTVSourcesOverride(t *testing.T) {
 	}
 }
 
-func TestGetWithDefaults_BackfillsCalendarShelf(t *testing.T) {
+func TestGetWithDefaults_PreservesCompleteShelfSnapshot(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
 	if err != nil {
@@ -1165,110 +1165,19 @@ func TestGetWithDefaults_BackfillsCalendarShelf(t *testing.T) {
 		t.Fatalf("GetWithDefaults: %v", err)
 	}
 
-	if len(got.HomeShelves.Shelves) != len(models.DefaultHomeShelfConfigs()) {
-		t.Fatalf("expected %d shelves after backfill, got %d", len(models.DefaultHomeShelfConfigs()), len(got.HomeShelves.Shelves))
+	if len(got.HomeShelves.Shelves) != 3 {
+		t.Fatalf("snapshot length = %d, want 3", len(got.HomeShelves.Shelves))
 	}
-
-	var topTen *models.ShelfConfig
-	var tonight *models.ShelfConfig
-	var myRecommended *models.ShelfConfig
-	var myUpcoming *models.ShelfConfig
-	var calendar *models.ShelfConfig
-	var recentlyAired *models.ShelfConfig
-	var streamingServices *models.ShelfConfig
-	var liveFavorites *models.ShelfConfig
-	for i := range got.HomeShelves.Shelves {
-		if got.HomeShelves.Shelves[i].ID == "top-ten" {
-			topTen = &got.HomeShelves.Shelves[i]
+	for _, id := range []string{"top-ten", "calendar", "live-favorites"} {
+		for _, shelf := range got.HomeShelves.Shelves {
+			if shelf.ID == id {
+				t.Fatalf("removed shelf %q was backfilled", id)
+			}
 		}
-		if got.HomeShelves.Shelves[i].ID == "tonight" {
-			tonight = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "my-recommended" {
-			myRecommended = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "my-upcoming" {
-			myUpcoming = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "calendar" {
-			calendar = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "my-recently-aired" {
-			recentlyAired = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "streaming-services" {
-			streamingServices = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "live-favorites" {
-			liveFavorites = &got.HomeShelves.Shelves[i]
-		}
-	}
-	if topTen == nil {
-		t.Fatal("expected top ten shelf to be backfilled")
-	}
-	if topTen.Order != 0 {
-		t.Fatalf("expected top ten shelf order 0, got %d", topTen.Order)
-	}
-	if tonight == nil || tonight.Enabled || tonight.Order != 3 {
-		t.Fatalf("expected disabled tonight shelf at order 3, got %#v", tonight)
-	}
-	if calendar == nil {
-		t.Fatal("expected calendar shelf to be backfilled")
-	}
-	if calendar.Name != "Coming Up" {
-		t.Fatalf("expected calendar shelf name Coming Up, got %q", calendar.Name)
-	}
-	if myRecommended == nil {
-		t.Fatal("expected my recommended shelf to be backfilled")
-	}
-	if myRecommended.Order != 4 {
-		t.Fatalf("expected my recommended shelf order 4, got %d", myRecommended.Order)
-	}
-	if !myRecommended.Enabled {
-		t.Fatal("expected my recommended shelf to be enabled by default")
-	}
-	if myUpcoming == nil {
-		t.Fatal("expected my upcoming shelf to be backfilled")
-	}
-	if myUpcoming.Order != 5 {
-		t.Fatalf("expected my upcoming shelf order 5, got %d", myUpcoming.Order)
-	}
-	if calendar.Order != 6 {
-		t.Fatalf("expected calendar shelf order 6, got %d", calendar.Order)
-	}
-	if !calendar.Enabled {
-		t.Fatal("expected calendar shelf to be enabled by default")
-	}
-	if recentlyAired == nil {
-		t.Fatal("expected my recently aired shelf to be backfilled")
-	}
-	if recentlyAired.Order != 7 {
-		t.Fatalf("expected my recently aired shelf order 7, got %d", recentlyAired.Order)
-	}
-	if !models.BoolVal(recentlyAired.CalendarSources.Watchlist, false) {
-		t.Fatal("expected my recently aired shelf to include watchlist by default")
-	}
-	if models.BoolVal(recentlyAired.CalendarSources.History, false) ||
-		models.BoolVal(recentlyAired.CalendarSources.Trending, false) ||
-		models.BoolVal(recentlyAired.CalendarSources.TopTrending, false) ||
-		models.BoolVal(recentlyAired.CalendarSources.MDBLists, false) {
-		t.Fatal("expected my recently aired shelf to default to watchlist only")
-	}
-	if streamingServices == nil {
-		t.Fatal("expected streaming services shelf to be backfilled")
-	}
-	if liveFavorites == nil {
-		t.Fatal("expected live favorites shelf to be backfilled")
-	}
-	if liveFavorites.Enabled {
-		t.Fatal("expected live favorites shelf to default disabled")
-	}
-	if liveFavorites.Order != streamingServices.Order+1 {
-		t.Fatalf("expected live favorites shelf after streaming services, got %d after %d", liveFavorites.Order, streamingServices.Order)
 	}
 }
 
-func TestGetWithDefaults_InjectsNewLocalLibraryShelf(t *testing.T) {
+func TestGetWithDefaults_DoesNotInjectNewLocalLibraryShelfIntoSnapshot(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
 	if err != nil {
@@ -1300,7 +1209,7 @@ func TestGetWithDefaults_InjectsNewLocalLibraryShelf(t *testing.T) {
 		t.Fatalf("GetWithDefaults: %v", err)
 	}
 
-	// Should have injected the new shows library shelf
+	// A later global library must not leak into a custom profile snapshot.
 	found := false
 	for _, sh := range got.HomeShelves.Shelves {
 		if sh.ID == "local-library-shows-id" {
@@ -1308,8 +1217,8 @@ func TestGetWithDefaults_InjectsNewLocalLibraryShelf(t *testing.T) {
 			break
 		}
 	}
-	if !found {
-		t.Fatal("expected new local-library-shows-id shelf to be injected")
+	if found {
+		t.Fatal("new local-library-shows-id shelf leaked into snapshot")
 	}
 
 	// Should NOT have duplicated the existing movies library shelf
@@ -1357,14 +1266,14 @@ func TestReconcileProfileHomeShelves_RemovesDuplicateShelfIDs(t *testing.T) {
 	}
 }
 
-func TestGetWithDefaults_InheritsMissingBuiltinShelfFromDefaults(t *testing.T) {
+func TestGetWithDefaults_DoesNotInheritRemovedBuiltinShelfFromDefaults(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}
 
-	// User saved settings without trending-tv. Missing shelves inherit from the parent defaults.
+	// User saved a complete settings snapshot without trending-tv.
 	if err := svc.Update("user-notrending", models.UserSettings{
 		HomeShelves: models.HomeShelvesSettings{
 			Shelves: []models.ShelfConfig{
@@ -1396,15 +1305,12 @@ func TestGetWithDefaults_InheritsMissingBuiltinShelfFromDefaults(t *testing.T) {
 			break
 		}
 	}
-	if trendingTV == nil {
-		t.Fatal("expected missing trending-tv shelf to inherit from defaults")
-	}
-	if trendingTV.Enabled {
-		t.Fatal("expected inherited trending-tv shelf to use disabled parent value")
+	if trendingTV != nil {
+		t.Fatal("removed trending-tv shelf unexpectedly inherited from defaults")
 	}
 }
 
-func TestLoad_MigratesMissingCalendarShelf(t *testing.T) {
+func TestLoad_PreservesLegacyPartialShelfListAsSnapshot(t *testing.T) {
 	dir := t.TempDir()
 	raw := `{
   "user-1": {
@@ -1434,102 +1340,18 @@ func TestLoad_MigratesMissingCalendarShelf(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected migrated settings")
 	}
-	if len(got.HomeShelves.Shelves) != len(models.DefaultHomeShelfConfigs()) {
-		t.Fatalf("expected %d shelves after migration, got %d", len(models.DefaultHomeShelfConfigs()), len(got.HomeShelves.Shelves))
+	if len(got.HomeShelves.Shelves) != 4 {
+		t.Fatalf("legacy snapshot length = %d, want 4", len(got.HomeShelves.Shelves))
 	}
-
-	var topTen *models.ShelfConfig
-	var tonight *models.ShelfConfig
-	var myRecommended *models.ShelfConfig
-	var myUpcoming *models.ShelfConfig
-	var calendar *models.ShelfConfig
-	var recentlyAired *models.ShelfConfig
-	var streamingServices *models.ShelfConfig
-	var liveFavorites *models.ShelfConfig
-	for i := range got.HomeShelves.Shelves {
-		if got.HomeShelves.Shelves[i].ID == "top-ten" {
-			topTen = &got.HomeShelves.Shelves[i]
+	if got.HomeShelves.ShelvesOverride == nil || !*got.HomeShelves.ShelvesOverride {
+		t.Fatal("legacy nonempty shelf list was not marked as a complete snapshot")
+	}
+	for _, id := range []string{"top-ten", "calendar", "streaming-services"} {
+		for _, shelf := range got.HomeShelves.Shelves {
+			if shelf.ID == id {
+				t.Fatalf("legacy snapshot unexpectedly backfilled %q", id)
+			}
 		}
-		if got.HomeShelves.Shelves[i].ID == "tonight" {
-			tonight = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "my-recommended" {
-			myRecommended = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "my-upcoming" {
-			myUpcoming = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "calendar" {
-			calendar = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "my-recently-aired" {
-			recentlyAired = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "streaming-services" {
-			streamingServices = &got.HomeShelves.Shelves[i]
-		}
-		if got.HomeShelves.Shelves[i].ID == "live-favorites" {
-			liveFavorites = &got.HomeShelves.Shelves[i]
-		}
-	}
-	if topTen == nil {
-		t.Fatal("expected top ten shelf to be migrated in")
-	}
-	if topTen.Order != 0 {
-		t.Fatalf("expected top ten shelf order 0, got %d", topTen.Order)
-	}
-	if tonight == nil || tonight.Enabled || tonight.Order != 3 {
-		t.Fatalf("expected disabled tonight shelf at order 3, got %#v", tonight)
-	}
-	if calendar == nil {
-		t.Fatal("expected calendar shelf to be migrated in")
-	}
-	if myRecommended == nil {
-		t.Fatal("expected my recommended shelf to be migrated in")
-	}
-	if myRecommended.Order != 4 {
-		t.Fatalf("expected my recommended shelf order 4, got %d", myRecommended.Order)
-	}
-	if myUpcoming == nil {
-		t.Fatal("expected my upcoming shelf to be migrated in")
-	}
-	if myUpcoming.Order != 5 {
-		t.Fatalf("expected my upcoming shelf order 5, got %d", myUpcoming.Order)
-	}
-	if calendar.Order != 6 {
-		t.Fatalf("expected calendar shelf order 6, got %d", calendar.Order)
-	}
-	if recentlyAired == nil {
-		t.Fatal("expected my recently aired shelf to be migrated in")
-	}
-	if recentlyAired.Order != 7 {
-		t.Fatalf("expected my recently aired shelf order 7, got %d", recentlyAired.Order)
-	}
-	if streamingServices == nil {
-		t.Fatal("expected streaming services shelf to be migrated in")
-	}
-	if liveFavorites == nil {
-		t.Fatal("expected live favorites shelf to be migrated in")
-	}
-	if liveFavorites.Enabled {
-		t.Fatal("expected live favorites shelf to default disabled")
-	}
-	if liveFavorites.Order != streamingServices.Order+1 {
-		t.Fatalf("expected live favorites shelf after streaming services, got %d after %d", liveFavorites.Order, streamingServices.Order)
-	}
-
-	var watchlist *models.ShelfConfig
-	for i := range got.HomeShelves.Shelves {
-		if got.HomeShelves.Shelves[i].ID == "watchlist" {
-			watchlist = &got.HomeShelves.Shelves[i]
-			break
-		}
-	}
-	if watchlist == nil {
-		t.Fatal("expected watchlist shelf to remain after migration")
-	}
-	if watchlist.Order != 8 {
-		t.Fatalf("expected watchlist to shift to order 8, got %d", watchlist.Order)
 	}
 }
 
@@ -1598,8 +1420,7 @@ func TestLoad_DoesNotMaterializeDefaultsForInheritingProfile(t *testing.T) {
 	}
 }
 
-// A genuinely customized profile (its own custom shelf) keeps its shelves on reload,
-// with any missing built-in shelves backfilled.
+// A genuinely customized profile (its own custom shelf) keeps its exact shelves on reload.
 func TestLoad_PreservesCustomizedShelves(t *testing.T) {
 	dir := t.TempDir()
 	svc, err := NewService(dir)

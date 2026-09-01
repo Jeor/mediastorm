@@ -42,6 +42,7 @@ const workingState = (state) => ({
     theme: clone(state.theme),
     rowsMode: state.rowsMode,
     themeMode: state.themeMode,
+    catalogSelection: clone(state.catalogSelection),
 });
 
 const sectionEqual = (mode, value, baselineMode, baselineValue) => mode === baselineMode && (
@@ -59,7 +60,7 @@ const stateFrom = (baseline, working, selectionId = null, catalogSelection = nul
     rowsMode: working.rowsMode,
     themeMode: working.themeMode,
     selectionId,
-    catalogSelection,
+    catalogSelection: clone(working.catalogSelection ?? catalogSelection),
 });
 
 const publicState = (state) => ({
@@ -201,12 +202,13 @@ export const createStore = (document) => {
         canUndo: () => undoHistory.length > 0,
         canRedo: () => redoHistory.length > 0,
         isDirty: () => !sectionEqual(state.rowsMode, state.rows, baseline.rowsMode, baseline.rows) ||
-            !sectionEqual(state.themeMode, state.theme, baseline.themeMode, baseline.theme),
+            !sectionEqual(state.themeMode, state.theme, baseline.themeMode, baseline.theme) ||
+            !equal(state.catalogSelection, null),
         getInvalidRowIDs: () => {
             return Object.keys(rowValidation(state.rows.shelves, state.envelope.catalog));
         },
         getRowValidation: () => clone(rowValidation(state.rows.shelves, state.envelope.catalog)),
-        isApplyValid: () => Object.keys(rowValidation(state.rows.shelves, state.envelope.catalog)).length === 0,
+        isApplyValid: () => state.catalogSelection === null && Object.keys(rowValidation(state.rows.shelves, state.envelope.catalog)).length === 0,
         dispatch: (action) => {
             if (!action || typeof action.type !== 'string') return false;
             if (action.type === 'selection/select') {
@@ -220,19 +222,15 @@ export const createStore = (document) => {
                 return true;
             }
             if (action.type === 'catalog/configure') {
-                state.catalogSelection = { token: String(action.token ?? ''), index: Number.isInteger(action.index) ? action.index : state.rows.shelves.length, values: clone(action.values ?? {}) };
-                notify();
-                return true;
+                return commit(() => {
+                    state.catalogSelection = { token: String(action.token ?? ''), index: Number.isInteger(action.index) ? action.index : state.rows.shelves.length, values: clone(action.values ?? {}) };
+                });
             }
             if (action.type === 'catalog/field' && state.catalogSelection) {
-                updateField(state.catalogSelection.values, action.path, action.value);
-                notify();
-                return true;
+                return commit(() => { updateField(state.catalogSelection.values, action.path, action.value); });
             }
             if (action.type === 'catalog/cancel') {
-                state.catalogSelection = null;
-                notify();
-                return true;
+                return commit(() => { state.catalogSelection = null; });
             }
             return commit(() => {
                 const row = state.rows.shelves.find((candidate) => candidate.id === action.id);
@@ -333,7 +331,7 @@ export const createStore = (document) => {
             const current = workingState(state);
             const previous = undoHistory.pop();
             redoHistory.push(current);
-            state = stateFrom(baseline, previous, state.selectionId);
+            state = stateFrom(baseline, previous, state.selectionId, previous.catalogSelection);
             synchronizeSelection();
             notify();
             return true;
@@ -343,7 +341,7 @@ export const createStore = (document) => {
             const current = workingState(state);
             const next = redoHistory.pop();
             undoHistory.push(current);
-            state = stateFrom(baseline, next, state.selectionId);
+            state = stateFrom(baseline, next, state.selectionId, next.catalogSelection);
             synchronizeSelection();
             notify();
             return true;

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -795,6 +796,32 @@ func TestMetadataHandler_CustomListForwardsLiteOption(t *testing.T) {
 	}
 	if payload.Total != 2 || len(payload.Items) != 1 || payload.Items[0].Title.Name != "Fast Shelf" {
 		t.Fatalf("unexpected payload: %+v", payload)
+	}
+}
+
+func TestMetadataHandler_CustomListRejectsUnsafeMDBListURLs(t *testing.T) {
+	for _, rawURL := range []string{
+		"http://127.0.0.1/lists/user/list/json",
+		"https://169.254.169.254/lists/user/list/json",
+		"https://mdblist.com.evil.example/lists/user/list/json",
+		"https://user:secret@mdblist.com/lists/user/list/json",
+		"https://mdblist.com/redirect?next=/lists/user/list/json",
+	} {
+		t.Run(rawURL, func(t *testing.T) {
+			fake := &fakeMetadataService{}
+			handler := NewMetadataHandler(fake, testConfigManager(t))
+			req := httptest.NewRequest(http.MethodGet, "/api/lists/custom?url="+url.QueryEscape(rawURL), nil)
+			rec := httptest.NewRecorder()
+
+			handler.CustomList(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
+			}
+			if fake.lastCustomListURL != "" {
+				t.Fatalf("unsafe URL reached metadata service: %q", fake.lastCustomListURL)
+			}
+		})
 	}
 }
 

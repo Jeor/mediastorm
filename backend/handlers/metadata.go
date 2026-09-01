@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"novastream/config"
+	"novastream/internal/mdblisturl"
 	"novastream/models"
 	"novastream/services/kids"
 	"novastream/services/letterboxd"
@@ -1201,18 +1202,12 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate URL contains mdblist.com/lists/
-	if !strings.Contains(listURL, "mdblist.com/lists/") {
+	// Restrict remote list fetches to canonical public MDBList JSON endpoints.
+	if !mdblisturl.Valid(listURL) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "invalid MDBList URL format"})
 		return
-	}
-
-	// Auto-fix: remove trailing slashes and add /json if missing
-	listURL = strings.TrimRight(listURL, "/")
-	if !strings.HasSuffix(listURL, "/json") {
-		listURL = listURL + "/json"
 	}
 
 	// Build options — filtering + pagination handled inside the service

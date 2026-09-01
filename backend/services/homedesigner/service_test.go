@@ -212,9 +212,90 @@ func TestServiceLoadUsesRawProfileSectionsForIndependentInheritance(t *testing.T
 	if !document.Theme.Inherited || document.Theme.Override != nil {
 		t.Fatalf("theme = %#v, want inherited with no override", document.Theme)
 	}
-	if len(document.Rows.Effective.Shelves) <= len(document.Rows.Override.Shelves) {
-		t.Fatalf("effective rows = %#v, want defaults merged with raw override", document.Rows.Effective)
+	if !reflect.DeepEqual(document.Rows.Effective.Shelves, document.Rows.Override.Shelves) {
+		t.Fatalf("effective rows = %#v, want exact stored snapshot %#v", document.Rows.Effective.Shelves, document.Rows.Override.Shelves)
 	}
+}
+
+func TestServiceProfileRowsRemainACompleteSnapshotAcrossReloadAndGlobalChanges(t *testing.T) {
+	service, manager, profiles := newServiceLoadTest(t)
+	before, err := service.Load(context.Background(), Actor{AccountID: "account-a"}, Scope{Kind: "profile", ProfileID: "owned"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := before.Rows.Effective
+	removedID := rows.Shelves[len(rows.Shelves)-1].ID
+	rows.Shelves = rows.Shelves[:len(rows.Shelves)-1]
+	for i := range rows.Shelves {
+		rows.Shelves[i].Order = i
+	}
+	after, err := service.Apply(context.Background(), Actor{AccountID: "account-a"}, ApplyRequest{
+		Scope: before.Scope, ExpectedRevision: before.Revision,
+		Rows: &SectionMutation[models.HomeShelvesSettings]{Mode: ModeCustom, Value: &rows},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Rows.Effective.Shelves) != len(rows.Shelves) || shelfIDPresent(after.Rows.Effective.Shelves, removedID) {
+		t.Fatalf("apply reintroduced removed shelf %q: %#v", removedID, after.Rows.Effective.Shelves)
+	}
+
+	if err := manager.Mutate(func(settings *config.Settings) error {
+		settings.HomeShelves.Shelves = append(settings.HomeShelves.Shelves, config.ShelfConfig{ID: "later-global", Name: "Later global", Enabled: true, Order: len(settings.HomeShelves.Shelves)})
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := service.Load(context.Background(), Actor{AccountID: "account-a"}, before.Scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	native, err := profiles.GetWithDefaults("owned", models.UserSettings{HomeShelves: configHomeShelvesToModel(mustLoadSettings(t, manager).HomeShelves)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(reloaded.Rows.Effective.Shelves, rows.Shelves) || !reflect.DeepEqual(native.HomeShelves.Shelves, rows.Shelves) || shelfIDPresent(reloaded.Rows.Effective.Shelves, "later-global") {
+		t.Fatalf("snapshot leaked global rows: editor=%#v native=%#v want=%#v", reloaded.Rows.Effective.Shelves, native.HomeShelves.Shelves, rows.Shelves)
+	}
+}
+
+func TestServicePersistsAnExplicitEmptyRowsSnapshot(t *testing.T) {
+	service, _, profiles := newServiceLoadTest(t)
+	before, err := service.Load(context.Background(), Actor{AccountID: "account-a"}, Scope{Kind: "profile", ProfileID: "owned"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty := before.Rows.Effective
+	empty.Shelves = []models.ShelfConfig{}
+	after, err := service.Apply(context.Background(), Actor{AccountID: "account-a"}, ApplyRequest{Scope: before.Scope, ExpectedRevision: before.Revision, Rows: &SectionMutation[models.HomeShelvesSettings]{Mode: ModeCustom, Value: &empty}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := profiles.Get("owned")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Rows.Inherited || len(after.Rows.Effective.Shelves) != 0 || stored == nil || stored.HomeShelves.ShelvesOverride == nil || !*stored.HomeShelves.ShelvesOverride {
+		t.Fatalf("empty snapshot = after %#v stored %#v", after.Rows, stored)
+	}
+}
+
+func shelfIDPresent(shelves []models.ShelfConfig, id string) bool {
+	for _, shelf := range shelves {
+		if shelf.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func mustLoadSettings(t *testing.T, manager *config.Manager) config.Settings {
+	t.Helper()
+	settings, err := manager.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return settings
 }
 
 func TestServiceApplyGlobalRowsOnlyPreservesTheme(t *testing.T) {

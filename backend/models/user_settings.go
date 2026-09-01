@@ -520,6 +520,7 @@ type StreamingServiceListLink struct {
 // HomeShelvesSettings controls which shelves appear on the home screen and their order.
 type HomeShelvesSettings struct {
 	Shelves                         []ShelfConfig `json:"shelves"`
+	ShelvesOverride                 *bool         `json:"shelvesOverride,omitempty"`                 // Explicit complete shelf snapshot; permits an intentionally empty list
 	ExploreCardPosition             string        `json:"exploreCardPosition,omitempty"`             // "front" (default) or "end"
 	ItemCap                         int           `json:"itemCap,omitempty"`                         // Max items shown per home shelf before Explore card (default 20)
 	ExcludeUpcomingFromContinue     *bool         `json:"excludeUpcomingFromContinue,omitempty"`     // Move unreleased next-up episodes out of Continue Watching

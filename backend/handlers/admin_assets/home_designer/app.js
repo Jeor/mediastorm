@@ -820,7 +820,14 @@ if (root && status) {
             return false;
         }
         const request = store.buildApplyRequest();
-        if (!request) return true;
+        if (!request) {
+            clearValidationState();
+            clearDrafts();
+            syncDirtyProtection();
+            dispatchWorkspace({ type: 'edit/applied' });
+            showReady();
+            return true;
+        }
         const applyingStore = store;
         const current = beginOperation();
         try {

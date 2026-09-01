@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"novastream/config"
 	"novastream/models"
 	"novastream/services/homedesigner"
 	"novastream/services/watchlist"
@@ -61,6 +62,38 @@ func TestPreviewHomeDesignerProtectsProfileOwnershipAndRequestBounds(t *testing.
 				}
 			}
 		})
+	}
+}
+
+func TestPreviewHomeDesignerRejectsUnsafeAndUnauthorizedCatalogRowsBeforeResolution(t *testing.T) {
+	handler, owned := newHomeDesignerHandler(t)
+	if err := handler.configManager.Mutate(func(settings *config.Settings) error {
+		settings.Trakt.Accounts = []config.TraktAccount{{ID: "owned-trakt", Name: "Owned", OwnerAccountID: "account-a"}, {ID: "foreign-trakt", Name: "Foreign", OwnerAccountID: "account-b"}}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	provider := &recordingHomeDesignerPreviewProvider{}
+	handler.SetHomeDesignerPreviewProvider(provider)
+
+	rows := []models.ShelfConfig{
+		{ID: "unsafe-loopback", Name: "Unsafe", Type: "mdblist", Enabled: true, ListURL: "http://127.0.0.1/lists/user/list/json"},
+		{ID: "unsafe-userinfo", Name: "Unsafe", Type: "mdblist", Enabled: true, ListURL: "https://user:secret@mdblist.com/lists/user/list/json"},
+		{ID: "foreign", Name: "Foreign", Type: "trakt", Enabled: true, TraktAccountID: "foreign-trakt", TraktListType: "watchlist"},
+	}
+	for _, row := range rows {
+		payload, err := json.Marshal(homedesigner.PreviewRequest{Scope: homedesigner.Scope{Kind: "profile", ProfileID: owned.ID}, PreviewProfileID: owned.ID, Platform: "tv", Rows: &homedesigner.SectionMutation[models.HomeShelvesSettings]{Mode: homedesigner.ModeCustom, Value: &models.HomeShelvesSettings{Shelves: []models.ShelfConfig{row}}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		recorder := httptest.NewRecorder()
+		handler.PreviewHomeDesigner(recorder, homeDesignerRequest(http.MethodPost, "/account/api/home-designer/preview", models.Session{AccountID: "account-a"}, strings.NewReader(string(payload))))
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("row %q status = %d, want 422: %s", row.ID, recorder.Code, recorder.Body.String())
+		}
+	}
+	if provider.calls != 0 {
+		t.Fatalf("provider calls = %d, want zero for rejected rows", provider.calls)
 	}
 }
 

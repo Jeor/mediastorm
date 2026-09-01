@@ -612,10 +612,8 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 
 	// HomeShelves
-	if len(eff.HomeShelves.Shelves) == 0 {
+	if !models.BoolVal(eff.HomeShelves.ShelvesOverride, len(eff.HomeShelves.Shelves) > 0) {
 		eff.HomeShelves.Shelves = configShelvesToModel(g.HomeShelves.Shelves)
-	} else {
-		eff.HomeShelves.Shelves = mergeShelvesWithGlobal(eff.HomeShelves.Shelves, g.HomeShelves.Shelves)
 	}
 	if eff.HomeShelves.ExploreCardPosition == "" {
 		eff.HomeShelves.ExploreCardPosition = string(g.HomeShelves.ExploreCardPosition)
@@ -920,6 +918,7 @@ func stripHomeShelves(h *models.HomeShelvesSettings, g config.HomeShelvesSetting
 		// continue checking scalar home shelf options
 	} else if shelfConfigsEqual(h.Shelves, g.Shelves) {
 		h.Shelves = nil
+		h.ShelvesOverride = nil
 		changed = true
 	}
 	if h.ExploreCardPosition != "" && h.ExploreCardPosition == string(g.ExploreCardPosition) {
@@ -1591,9 +1590,11 @@ func appearanceEqual(a, b models.AppearanceSettings) bool {
 	return true
 }
 
-// shelfConfigsEqual compares explicit user shelf values against global shelves.
-// A global shelf missing from the user list is inherited, not an override.
+// shelfConfigsEqual compares complete profile and global shelf snapshots.
 func shelfConfigsEqual(user []models.ShelfConfig, global []config.ShelfConfig) bool {
+	if len(user) != len(global) {
+		return false
+	}
 	globalByID := make(map[string]config.ShelfConfig)
 	for _, gs := range global {
 		globalByID[gs.ID] = gs

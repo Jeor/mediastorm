@@ -1863,7 +1863,7 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		}
 	}
 
-	return &AdminUIHandler{
+	handler := &AdminUIHandler{
 		settingsTemplate:      createPageTemplate("settings.html"),
 		statusTemplate:        createPageTemplate("status.html"),
 		historyTemplate:       createPageTemplate("history.html"),
@@ -1894,12 +1894,13 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		hlsManager:            hlsManager,
 		usersService:          usersService,
 		userSettingsService:   userSettingsService,
-		homeDesignerService:   homedesigner.New(configManager, userSettingsService, usersService),
 		configManager:         configManager,
 		plexClient:            plex.NewClient(plex.GenerateClientID()),
 		traktClient:           trakt.NewClient("", ""), // Will be updated with credentials from settings
 		serverBasePath:        serverBasePath,
 	}
+	handler.homeDesignerService = homedesigner.NewWithCatalogCapabilities(configManager, userSettingsService, usersService, homeDesignerCatalogCapabilities{handler: handler})
+	return handler
 }
 
 func (h *AdminUIHandler) GetHardwareAccelerationStatus(w http.ResponseWriter, _ *http.Request) {

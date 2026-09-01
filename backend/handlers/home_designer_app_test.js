@@ -328,6 +328,37 @@ test('Home Designer bootstrap exposes explicit apply without writing the loaded 
     assert.equal(applyCalls, 1);
 });
 
+test('an incomplete catalog draft blocks Apply while a valid no-op exits edit mode without a request', async () => {
+    // Break caught: Apply silently discarding an unfinished catalog form, or appearing to succeed while leaving an unchanged editor in edit mode.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'standard', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action.type); return action.type === 'edit/applied' ? { ...state, mode: 'preview' } : state; } });");
+    const root = new Element('section'); root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section'); workspace.className = 'home-designer-workspace'; workspace.getBoundingClientRect = () => ({ width: 1200 });
+    editor.append(workspace); root.append(status, editor);
+    const state = { scope: { kind: 'global' }, revision: 'one', rows: [], theme: {}, rowsMode: 'custom', themeMode: 'custom', previewProfiles: [], rowValidation: {} };
+    let applyCalls = 0;
+    let applyValid = false;
+    const workspaceActions = [];
+    vm.runInNewContext(source, {
+        document: { activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName) }, Error, Promise, AbortController, structuredClone, workspaceActions,
+        requestAnimationFrame: (callback) => callback(), CSS: { escape: (value) => value },
+        homeDesignerAPI: { loadDocument: async () => state, applyDocument: async () => { applyCalls += 1; }, APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({ getState: () => state, subscribe: () => () => {}, isDirty: () => !applyValid, isApplyValid: () => applyValid, buildApplyRequest: () => null, canUndo: () => false, canRedo: () => false }) },
+        homeDesignerLibrary: { renderLibrary: () => {} }, homeDesignerInspector: { renderInspector: () => {} }, homeDesignerCanvas: { mountCanvasInteractions: () => () => {} },
+        homeDesignerTheme: { renderTheme: () => {}, applyThemeVariables: () => {} }, homeDesignerPreview: { renderTVPreview: () => {}, renderMobilePreview: () => {} },
+    });
+    await settle(); await settle(); await settle(); await settle();
+    assert.equal(await root.homeDesigner.apply(), false);
+    assert.equal(editor.dataset.mode, 'edit');
+    assert.ok(!workspaceActions.includes('edit/applied'));
+    applyValid = true;
+    assert.equal(await root.homeDesigner.apply(), true);
+    assert.equal(applyCalls, 0);
+    assert.ok(workspaceActions.includes('edit/applied'));
+    assert.equal(editor.dataset.mode, 'preview');
+});
+
 test('Home Designer Retry keeps the scope selected before a failed reload', async () => {
     // Break caught: Retry reverting a failed profile switch to the initial global scope.
     const source = await sourceWithModules();

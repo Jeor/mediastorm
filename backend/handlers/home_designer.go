@@ -89,7 +89,7 @@ func (h *AdminUIHandler) PreviewHomeDesigner(w http.ResponseWriter, r *http.Requ
 	// Reuse the editor service's scope authorization before invoking any
 	// provider, then separately verify the selected preview profile because it
 	// may intentionally differ from the edited scope for administrators.
-	if _, err := h.homeDesignerService.Load(r.Context(), h.homeDesignerActor(r), request.Scope); err != nil {
+	if err := h.homeDesignerService.ValidatePreview(r.Context(), h.homeDesignerActor(r), request); err != nil {
 		homeDesignerServiceError(w, err)
 		return
 	}

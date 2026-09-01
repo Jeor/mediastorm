@@ -170,6 +170,64 @@ func TestGetHomeDesignerEnforcesScopeOwnership(t *testing.T) {
 	}
 }
 
+func TestNewAdminUIHandlerInjectsActorCatalogCapabilities(t *testing.T) {
+	handler, owned := newHomeDesignerHandler(t)
+	if _, err := handler.usersService.SetTraktAccountID(owned.ID, "legacy-linked"); err != nil {
+		t.Fatal(err)
+	}
+	if err := handler.configManager.Mutate(func(settings *config.Settings) error {
+		settings.Server.BasePath = "/mediastorm"
+		settings.Trakt.Accounts = []config.TraktAccount{
+			{ID: "owned-account", Name: "Owned account", OwnerAccountID: "account-a"},
+			{ID: "legacy-linked", Name: "Linked legacy"},
+			{ID: "foreign", Name: "Foreign", OwnerAccountID: "account-b"},
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.GetHomeDesigner(recorder, homeDesignerRequest(http.MethodGet, "/account/api/home-designer?scope=profile&profileId="+owned.ID, models.Session{AccountID: "account-a"}, nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var document homedesigner.Document
+	if err := json.Unmarshal(recorder.Body.Bytes(), &document); err != nil {
+		t.Fatal(err)
+	}
+	var trakt homedesigner.CatalogEntry
+	var simkl homedesigner.CatalogEntry
+	for _, entry := range document.Catalog {
+		if entry.Type == "trakt" {
+			trakt = entry
+		}
+		if entry.Type == "simkl" {
+			simkl = entry
+		}
+	}
+	values := map[string]bool{}
+	for _, field := range trakt.Fields {
+		if field.Path == "traktAccountId" {
+			for _, option := range field.Options {
+				values[option.Value] = true
+			}
+		}
+	}
+	if !values["owned-account"] || !values["legacy-linked"] || values["foreign"] {
+		t.Fatalf("Trakt options = %#v", values)
+	}
+	if trakt.SetupPath != "" {
+		t.Fatalf("available Trakt unexpectedly has setup path %q", trakt.SetupPath)
+	}
+	if simkl.SetupPath != "/mediastorm/account/tools" {
+		t.Fatalf("Simkl setup path = %q", simkl.SetupPath)
+	}
+	if handler.homeDesignerService == nil {
+		t.Fatal("constructor did not install Home Designer service")
+	}
+}
+
 // TestPutHomeDesignerMapsValidationConflictAndSuccessToJSON protects clients
 // from HTML error responses and verifies writes remain explicit applies.
 func TestPutHomeDesignerMapsValidationConflictAndSuccessToJSON(t *testing.T) {

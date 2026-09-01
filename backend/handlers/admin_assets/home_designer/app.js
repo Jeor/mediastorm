@@ -345,19 +345,20 @@ if (root && status) {
         if ((entry.fields || []).length) requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
-    const addCatalogAt = async (token, index) => {
+    const addCatalogAt = async (token, index, values) => {
         const [library] = await editorModules;
         const state = store.getState();
         const entry = library.findCatalogEntry(state.catalog, token);
         if (!entry) return false;
         const insertion = Number.isInteger(index) ? index : state.rows.length;
-        if (entry.catalogOnly) {
+        const configured = entry.catalogOnly && values !== undefined;
+        if (entry.catalogOnly && !configured) {
             configureCatalog(entry, insertion);
-            openWorkspaceTool('inspector');
             return true;
         }
-        const rows = library.createCatalogRows(entry, state.rows);
+        const rows = library.createCatalogRows(entry, state.rows, values);
         rows.forEach((row, offset) => store.dispatch({ type: 'rows/add', row, index: insertion + offset }));
+        if (configured) store.dispatch({ type: 'catalog/cancel' });
         if (rows[0]) handleAddedRow(rows[0].id, entry);
         return rows.length > 0;
     };
@@ -391,14 +392,9 @@ if (root && status) {
             sectionValidation: validation.sectionValidation,
             onFieldEdit: (identity) => clearServerValidation(identity),
             onCatalogSubmit: (entry, values) => {
-                const rows = library.createCatalogRows(entry, state.rows, values);
-                const index = Number.isInteger(state.catalogSelection?.index) ? state.catalogSelection.index : state.rows.length;
-                rows.forEach((row, offset) => store.dispatch({ type: 'rows/add', row, index: index + offset }));
-                store.dispatch({ type: 'catalog/cancel' });
-                if (rows[0]) {
-                    handleAddedRow(rows[0].id, entry);
-                    requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
-                }
+                const current = store.getState();
+                const index = Number.isInteger(current.catalogSelection?.index) ? current.catalogSelection.index : current.rows.length;
+                return addCatalogAt(current.catalogSelection?.token || entry.type, index, values);
             },
         });
         if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);

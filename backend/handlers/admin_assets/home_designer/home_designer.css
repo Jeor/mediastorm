@@ -47,7 +47,6 @@
 .home-designer-toolbar-actions,
 .home-designer-library-filters,
 .home-designer-entry-actions,
-.home-designer-row-actions,
 .home-designer-preview-placeholder,
 .home-designer-preview-placeholder [data-home-designer-preview-host] {
     display: grid;
@@ -104,8 +103,7 @@
 }
 
 .home-designer-library-filters,
-.home-designer-entry-actions,
-.home-designer-row-actions {
+.home-designer-entry-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -121,8 +119,7 @@
     min-width: 0;
 }
 
-.home-designer-library-entry p,
-.home-designer-row-name {
+.home-designer-library-entry p {
     overflow-wrap: anywhere;
 }
 
@@ -135,7 +132,6 @@
     border-radius: var(--radius-md);
 }
 
-.home-designer-row-actions .btn,
 .home-designer-entry-actions .btn,
 .home-designer-library-filters .btn {
     min-height: 34px;

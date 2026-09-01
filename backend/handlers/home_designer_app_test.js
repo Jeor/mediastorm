@@ -148,8 +148,8 @@ const sourceWithModules = async (workspaceModule = "const workspaceModule = Prom
     .replace(/if \(!editorModules\) editorModules = Promise\.all\(\[import\('\.\/library\.js'\), import\('\.\/(?:outline|inspector)\.js'\), import\('\.\/(?:inspector|canvas)\.js'\)\]\);/, 'if (!editorModules) editorModules = Promise.resolve([homeDesignerLibrary, homeDesignerInspector, homeDesignerCanvas]);')
     .replace(/if \(!previewModules\) previewModules = Promise\.all\(\[import\('\.\/theme\.js'\), import\('\.\/preview\.js'\)\]\);/g, 'if (!previewModules) previewModules = Promise.resolve([homeDesignerTheme, homeDesignerPreview]);');
 
-test('editor mounts direct canvas interactions and routes accessible catalog insertion through one indexed path', async () => {
-    // Break caught: the canvas remaining passive or the library bypassing the app-level indexed insertion lifecycle.
+test('editor routes accessible Add, canvas drop, and configured submission through one indexed catalog path', async () => {
+    // Break caught: any catalog entry route bypassing shared lookup, indexed row insertion, selection, or Inspector opening.
     const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'compact', libraryOpen: true, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action); return action.type === 'tool/inspector' ? { ...state, contextTool: action.open === false ? null : 'inspector' } : state; } });");
     const body = new Element('body');
     const root = new Element('section'); root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
@@ -165,17 +165,29 @@ test('editor mounts direct canvas interactions and routes accessible catalog ins
     const state = {
         scope: { kind: 'global' }, revision: 'one', selectionId: 'one', rowsMode: 'custom', themeMode: 'custom',
         rows: [{ id: 'one', name: 'One', type: 'genre', enabled: true }], theme: {},
-        catalog: [{ type: 'genre', name: 'Genre', available: true, default: { id: 'genre', name: 'Genre', type: 'genre', enabled: true } }],
+        catalog: [
+            { type: 'genre', name: 'Genre', available: true, default: { id: 'genre', name: 'Genre', type: 'genre', enabled: true } },
+            { type: 'streaming-service', name: 'Streaming service', available: true, catalogOnly: true, fields: [{ path: 'service' }] },
+        ],
         previewProfiles: [], rowValidation: {}, permissions: {},
     };
     const dispatched = [];
     const workspaceActions = [];
+    const lookups = [];
+    const creations = [];
     let libraryOptions;
+    let inspectorOptions;
     let canvasOptions;
+    let ordinaryRows = 0;
     const store = {
         getState: () => state,
         subscribe: () => () => {},
-        dispatch: (action) => { dispatched.push(action); if (action.type === 'selection/select') state.selectionId = action.id; },
+        dispatch: (action) => {
+            dispatched.push(action);
+            if (action.type === 'rows/add') state.rows.splice(action.index, 0, action.row);
+            if (action.type === 'selection/select') state.selectionId = action.id;
+            if (action.type === 'catalog/cancel') state.catalogSelection = null;
+        },
         isDirty: () => false, isApplyValid: () => true, getRowValidation: () => ({}), canUndo: () => false, canRedo: () => false,
     };
     vm.runInNewContext(source, {
@@ -186,10 +198,18 @@ test('editor mounts direct canvas interactions and routes accessible catalog ins
         homeDesignerStore: { createStore: () => store },
         homeDesignerLibrary: {
             renderLibrary: (_, options) => { libraryOptions = options; },
-            findCatalogEntry: (catalog) => catalog[0],
-            createCatalogRows: () => [{ id: 'genre', name: 'Genre', type: 'genre', enabled: true }],
+            findCatalogEntry: (catalog, token) => { lookups.push(token); return catalog.find((entry) => entry.type === token); },
+            createCatalogRows: (entry, rows, values) => {
+                creations.push({ token: entry.type, rowCount: rows.length, values });
+                if (entry.catalogOnly) return [
+                    { id: 'streaming-movies', name: 'Streaming Movies', type: 'mdblist', enabled: true },
+                    { id: 'streaming-shows', name: 'Streaming Shows', type: 'mdblist', enabled: true },
+                ];
+                ordinaryRows += 1;
+                return [{ id: `genre-${ordinaryRows}`, name: 'Genre', type: 'genre', enabled: true }];
+            },
         },
-        homeDesignerInspector: { renderInspector: () => {} },
+        homeDesignerInspector: { renderInspector: (_, options) => { inspectorOptions = options; } },
         homeDesignerCanvas: { mountCanvasInteractions: (_, options) => { canvasOptions = options; return () => {}; } },
         homeDesignerTheme: { renderTheme: () => {}, applyThemeVariables: () => {} },
         homeDesignerPreview: { renderTVPreview: () => {}, renderMobilePreview: () => {} },
@@ -198,12 +218,23 @@ test('editor mounts direct canvas interactions and routes accessible catalog ins
     assert.ok(canvasOptions, 'the rendered preview mounts canvas behavior');
     assert.equal(canvasOptions.editing, true);
     await libraryOptions.onAdd('genre', 1);
-    assert.deepEqual(JSON.parse(JSON.stringify(dispatched.slice(-2))), [
-        { type: 'rows/add', row: { id: 'genre', name: 'Genre', type: 'genre', enabled: true }, index: 1 },
-        { type: 'selection/select', id: 'genre' },
+    await canvasOptions.onCatalogDrop('genre', 0);
+    state.catalogSelection = { token: 'streaming-service', index: 2 };
+    await inspectorOptions.onCatalogSubmit(state.catalog[1], { service: 'netflix', media: 'both' });
+    assert.deepEqual(lookups, ['genre', 'genre', 'streaming-service']);
+    assert.deepEqual(JSON.parse(JSON.stringify(dispatched.filter((action) => action.type === 'rows/add'))), [
+        { type: 'rows/add', row: { id: 'genre-1', name: 'Genre', type: 'genre', enabled: true }, index: 1 },
+        { type: 'rows/add', row: { id: 'genre-2', name: 'Genre', type: 'genre', enabled: true }, index: 0 },
+        { type: 'rows/add', row: { id: 'streaming-movies', name: 'Streaming Movies', type: 'mdblist', enabled: true }, index: 2 },
+        { type: 'rows/add', row: { id: 'streaming-shows', name: 'Streaming Shows', type: 'mdblist', enabled: true }, index: 3 },
+    ]);
+    assert.deepEqual(dispatched.filter((action) => action.type === 'selection/select').map((action) => action.id), ['genre-1', 'genre-2', 'streaming-movies']);
+    assert.equal(dispatched.filter((action) => action.type === 'catalog/cancel').length, 1);
+    assert.deepEqual(creations.map(({ token, values }) => [token, values || null]), [
+        ['genre', null], ['genre', null], ['streaming-service', { service: 'netflix', media: 'both' }],
     ]);
     canvasOptions.onSelect('one');
-    assert.equal(workspaceActions.filter((action) => action.type === 'tool/inspector' && action.open === true).length, 2);
+    assert.equal(workspaceActions.filter((action) => action.type === 'tool/inspector' && action.open === true).length, 4);
     inspector.querySelector('.home-designer-drawer-close').click();
     assert.equal(inspector.parentElement, editor, 'repeated idempotent opens preserve the drawer return location');
 });

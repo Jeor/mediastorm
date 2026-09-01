@@ -97,6 +97,13 @@ class Element {
 
     focus() { this.focusCount += 1; }
 
+    getBoundingClientRect() { return { width: 0 }; }
+
+    toggleAttribute(name, force) {
+        if (force) this.setAttribute(name, '');
+        else this.removeAttribute(name);
+    }
+
     matches(selector) {
         if (selector.startsWith('.')) return this.className.split(/\s+/).includes(selector.slice(1));
         if (selector === 'a[href]') return this.tagName.toLowerCase() === 'a' && this.hasAttribute('href');
@@ -137,6 +144,7 @@ class Element {
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 const sourceWithModules = async () => (await readFile(new URL('./admin_assets/home_designer/app.js', import.meta.url), 'utf8'))
     .replace(/const modules = Promise\.all\(\[import\('\.\/api\.js'\), import\('\.\/store\.js'\)\]\)\s*\.then\(\(\[api, editorStore\]\) => \[api\.default \?\? api, editorStore\.default \?\? editorStore\]\);/, 'const modules = Promise.resolve([homeDesignerAPI, homeDesignerStore]);')
+    .replace("const workspaceModule = import('./workspace.js');", "const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state) => state });")
     .replace(/if \(!editorModules\) editorModules = Promise\.all\(\[import\('\.\/library\.js'\), import\('\.\/outline\.js'\)\]\);/, 'if (!editorModules) editorModules = Promise.resolve([homeDesignerLibrary, homeDesignerOutline]);')
     .replace(/if \(!previewModules\) previewModules = Promise\.all\(\[import\('\.\/theme\.js'\), import\('\.\/preview\.js'\)\]\);/g, 'if (!previewModules) previewModules = Promise.resolve([homeDesignerTheme, homeDesignerPreview]);');
 
@@ -300,7 +308,7 @@ test('Home Designer source makes responsive drawers modal and cleans them up on 
     const source = await sourceWithModules();
     assert.match(source, /setBackgroundInert\(true\)/);
     assert.match(source, /setBackgroundInert\(false\)/);
-    assert.match(source, /matchMedia\?\.\('\(max-width: 1100px\)'\)/);
+    assert.match(source, /matchMedia\?\.\('\(max-width: 1099\.98px\)'\)/);
     assert.match(source, /drawerMedia\.addEventListener\('change'/);
 });
 

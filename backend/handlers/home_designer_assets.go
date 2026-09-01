@@ -24,6 +24,7 @@ var homeDesignerAssetContentTypes = map[string]string{
 	"preview.js":        "text/javascript; charset=utf-8",
 	"store.js":          "text/javascript; charset=utf-8",
 	"theme.js":          "text/javascript; charset=utf-8",
+	"workspace.js":      "text/javascript; charset=utf-8",
 }
 
 // HomeDesignerAsset serves only the small, embedded editor bootstrap assets.

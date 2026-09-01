@@ -30,22 +30,24 @@
     {{if not .NoProfiles}}
     <section class="home-designer-editor" data-home-designer-editor hidden>
         <div class="home-designer-toolbar">
-            <div data-home-designer-rows-controls></div>
+            <div data-home-designer-rows-controls hidden></div>
             <div class="home-designer-toolbar-actions">
-                <button type="button" class="btn btn-secondary" data-home-designer-undo disabled>Undo</button>
-                <button type="button" class="btn btn-secondary" data-home-designer-redo disabled>Redo</button>
-                <button type="button" class="btn btn-secondary" data-home-designer-discard>Discard changes</button>
-                <button type="button" class="btn btn-primary" data-home-designer-apply>Apply changes</button>
+                <button type="button" class="btn btn-primary" data-home-designer-edit>Edit Home</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-tool="library" hidden>Rows</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-tool="inspector" hidden>Inspector</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-tool="theme" hidden>Theme</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-undo disabled hidden>Undo</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-redo disabled hidden>Redo</button>
+                <button type="button" class="btn btn-secondary" data-home-designer-cancel data-home-designer-discard hidden>Cancel</button>
+                <button type="button" class="btn btn-primary" data-home-designer-apply hidden>Apply</button>
             </div>
         </div>
-        <div data-home-designer-theme></div>
+        <div data-home-designer-theme hidden></div>
         <p class="sr-only" data-home-designer-live aria-live="polite"></p>
         <div class="home-designer-workspace">
-            <button type="button" class="btn btn-secondary home-designer-open-drawer" data-home-designer-open-library aria-controls="homeDesignerLibrary">Open row library</button>
-            <aside id="homeDesignerLibrary" class="home-designer-library" data-home-designer-library aria-label="Row library"></aside>
+            <aside id="homeDesignerLibrary" class="home-designer-library" data-home-designer-library aria-label="Row library" hidden></aside>
             <section class="home-designer-outline" data-home-designer-outline aria-label="Composition outline"></section>
-            <button type="button" class="btn btn-secondary home-designer-open-drawer" data-home-designer-open-inspector aria-controls="homeDesignerInspector">Open row inspector</button>
-            <section id="homeDesignerInspector" class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector"></section>
+            <section id="homeDesignerInspector" class="home-designer-inspector" data-home-designer-inspector aria-label="Row inspector" hidden></section>
         </div>
         <section class="home-designer-preview" aria-label="Composition preview">
             <div class="home-designer-preview-toolbar">

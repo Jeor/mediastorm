@@ -11,6 +11,7 @@ if (root && status) {
         : { kind: 'profile', profileId: root.dataset.profileId || '' };
     const modules = Promise.all([import('./api.js'), import('./store.js')])
         .then(([api, editorStore]) => [api.default ?? api, editorStore.default ?? editorStore]);
+    const workspaceModule = import('./workspace.js');
     let store = null;
     let activeScope = initialScope;
     let operation = 0;
@@ -33,9 +34,61 @@ if (root && status) {
     let drawerPortal = [];
     let drawerDialogAttributes = null;
     let drawerBackdropHidden = true;
+    let workspaceReducer = null;
+    let workspaceState = null;
+    let workspaceObserver = null;
     const pendingDrafts = new Map();
-    const drawerMedia = globalThis.matchMedia?.('(max-width: 1100px)');
+    const drawerMedia = globalThis.matchMedia?.('(max-width: 1099.98px)');
     const warnBeforeUnload = (event) => { event.preventDefault(); event.returnValue = ''; return ''; };
+
+    const renderWorkspace = () => {
+        if (!editor || !workspaceState) return;
+        const editing = workspaceState.mode === 'edit';
+        editor.dataset.mode = workspaceState.mode;
+        editor.dataset.band = workspaceState.band;
+        [
+            '[data-home-designer-undo]',
+            '[data-home-designer-redo]',
+            '[data-home-designer-cancel]',
+            '[data-home-designer-apply]',
+            '[data-home-designer-rows-controls]',
+            '[data-home-designer-theme]',
+            '[data-home-designer-tool]',
+        ].forEach((selector) => editor.querySelectorAll(selector).forEach((element) => { element.hidden = !editing; }));
+        editor.querySelector('[data-home-designer-edit]')?.toggleAttribute('hidden', editing);
+        const library = editor.querySelector('[data-home-designer-library]');
+        const inspector = editor.querySelector('[data-home-designer-inspector]');
+        const theme = editor.querySelector('[data-home-designer-theme]');
+        if (library) library.hidden = !editing || !workspaceState.libraryOpen;
+        if (inspector) inspector.hidden = !editing || workspaceState.contextTool !== 'inspector';
+        if (theme) theme.hidden = !editing || workspaceState.contextTool !== 'theme';
+        editor.querySelectorAll('[data-home-designer-tool]').forEach((button) => {
+            const active = button.dataset.homeDesignerTool === 'library'
+                ? workspaceState.libraryOpen
+                : workspaceState.contextTool === button.dataset.homeDesignerTool;
+            button.setAttribute('aria-pressed', String(active));
+        });
+    };
+
+    const dispatchWorkspace = (action) => {
+        if (!workspaceState || !workspaceReducer) return workspaceState;
+        workspaceState = workspaceReducer(workspaceState, action);
+        renderWorkspace();
+        return workspaceState;
+    };
+
+    const initializeWorkspace = async () => {
+        if (!editor || workspaceState) return;
+        const workspace = await workspaceModule;
+        if (!editor || workspaceState) return;
+        workspaceReducer = workspace.reduceWorkspace;
+        workspaceState = workspace.createWorkspaceState(editor.getBoundingClientRect().width);
+        renderWorkspace();
+        if (typeof ResizeObserver === 'function') {
+            workspaceObserver = new ResizeObserver(() => dispatchWorkspace({ type: 'resize', width: editor.getBoundingClientRect().width }));
+            workspaceObserver.observe(editor);
+        }
+    };
 
     const sameScope = (left, right) => left?.kind === right?.kind && left?.profileId === right?.profileId;
     const beginOperation = () => {
@@ -273,11 +326,15 @@ if (root && status) {
 
     const configureCatalog = (entry, index) => {
         store.dispatch({ type: 'catalog/configure', token: entry.type, index, values: {} });
+        const workspace = dispatchWorkspace({ type: 'tool/inspector', open: true });
+        if (workspace?.band === 'compact') openDrawer('inspector');
         requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
     const handleAddedRow = (id, entry) => {
         selectRow(id);
+        const workspace = dispatchWorkspace({ type: 'tool/inspector', open: true });
+        if (workspace?.band === 'compact') openDrawer('inspector');
         if ((entry.fields || []).length) requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
@@ -411,6 +468,7 @@ if (root && status) {
             applyButton.setAttribute('aria-disabled', String(!valid));
         }
         editor.hidden = false;
+        renderWorkspace();
         if (focusPath || themePath) requestAnimationFrame(() => {
             const replacement = focusPath
                 ? findDesignerElement(`[data-field-path="${CSS.escape(focusPath)}"]`)
@@ -461,8 +519,9 @@ if (root && status) {
         if (drawer && event.target && !drawer.contains(event.target)) drawer.querySelector('.home-designer-drawer-close, input, select, button, [href]')?.focus?.();
     };
 
-    const closeDrawer = () => {
+    const closeDrawer = (synchronizeWorkspace = true) => {
         if (!drawer) return;
+        const kind = drawer.hasAttribute('data-home-designer-library') ? 'library' : drawer.hasAttribute('data-home-designer-inspector') ? 'inspector' : '';
         drawer.classList.remove('is-drawer-open');
         ['role', 'aria-modal'].forEach((name) => {
             const value = drawerDialogAttributes?.[name];
@@ -480,6 +539,7 @@ if (root && status) {
         drawer = null;
         drawerReturnFocus = null;
         drawerDialogAttributes = null;
+        if (synchronizeWorkspace && kind && workspaceState?.band === 'compact') dispatchWorkspace({ type: `tool/${kind}`, open: false });
         requestAnimationFrame(() => returnFocus?.focus?.());
     };
 
@@ -487,7 +547,7 @@ if (root && status) {
         if (drawerMedia && !drawerMedia.matches) return;
         const target = findDesignerElement(`[data-home-designer-${kind}]`);
         if (!target) return;
-        if (drawer && drawer !== target) closeDrawer();
+        if (drawer && drawer !== target) closeDrawer(false);
         drawer = target;
         drawerReturnFocus = trigger || document.activeElement;
         drawerDialogAttributes = { role: target.getAttribute('role'), 'aria-modal': target.getAttribute('aria-modal') };
@@ -505,7 +565,7 @@ if (root && status) {
     };
 
     drawerBackdrop?.addEventListener('click', closeDrawer);
-    const onDrawerMediaChange = () => { if (drawer && drawerMedia && !drawerMedia.matches) closeDrawer(); };
+    const onDrawerMediaChange = () => { if (drawer && drawerMedia && !drawerMedia.matches) closeDrawer(false); };
     if (drawerMedia?.addEventListener) drawerMedia.addEventListener('change', onDrawerMediaChange);
     drawerMedia?.addListener?.(onDrawerMediaChange);
 
@@ -532,6 +592,7 @@ if (root && status) {
             }
         }
         if (isEditableTarget(event.target)) return;
+        if (workspaceState?.mode !== 'edit') return;
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'z') {
             event.preventDefault();
             if (event.shiftKey) store?.redo?.(); else store?.undo?.();
@@ -542,9 +603,15 @@ if (root && status) {
     };
     root.addEventListener?.('keydown', handleKeyboard);
     const handleClick = (event) => {
-        const drawerButton = event.target?.closest?.('[data-home-designer-open-library], [data-home-designer-open-inspector]');
-        if (drawerButton) {
-            openDrawer(drawerButton.hasAttribute('data-home-designer-open-library') ? 'library' : 'inspector', drawerButton);
+        const toolButton = event.target?.closest?.('[data-home-designer-tool], [data-home-designer-open-library], [data-home-designer-open-inspector]');
+        if (toolButton) {
+            const legacyDrawer = toolButton.hasAttribute?.('data-home-designer-open-library') || toolButton.hasAttribute?.('data-home-designer-open-inspector');
+            const kind = toolButton.dataset?.homeDesignerTool || (toolButton.hasAttribute?.('data-home-designer-open-library') ? 'library' : toolButton.hasAttribute?.('data-home-designer-open-inspector') ? 'inspector' : '');
+            if (legacyDrawer) { openDrawer(kind, toolButton); return; }
+            const state = dispatchWorkspace({ type: `tool/${kind}` });
+            const opened = kind === 'library' ? state?.libraryOpen : state?.contextTool === kind;
+            if (opened && state?.band === 'compact' && (kind === 'library' || kind === 'inspector')) openDrawer(kind, toolButton);
+            else if (!opened && drawer) closeDrawer(false);
             return;
         }
         const link = event.target?.closest?.('a[href]');
@@ -577,6 +644,8 @@ if (root && status) {
     root.addEventListener?.('click', handleClick);
     root.addEventListener?.('input', handleInput);
     root.addEventListener?.('change', handleChange);
+    root.addEventListener?.('dragstart', () => dispatchWorkspace({ type: 'drag/start' }));
+    root.addEventListener?.('dragend', () => dispatchWorkspace({ type: 'drag/end' }));
 
     const connectEditor = () => {
         unsubscribe?.();
@@ -683,6 +752,7 @@ if (root && status) {
             clearDrafts();
             applyingStore.replaceWithSaved(saved);
             syncDirtyProtection();
+            dispatchWorkspace({ type: 'edit/applied' });
             showReady();
             return true;
         } catch (error) {
@@ -717,6 +787,16 @@ if (root && status) {
     root.homeDesigner = {
         get store() { return store; },
         apply,
+        cancel: () => {
+            if (!store || !confirmDiscard('Discard unsaved Home Designer changes?')) return false;
+            clearValidationState();
+            clearDrafts();
+            store.discard();
+            syncDirtyProtection();
+            dispatchWorkspace({ type: 'edit/cancel' });
+            showReady();
+            return true;
+        },
         discard: () => {
             if (!store) return false;
             clearValidationState();
@@ -729,10 +809,12 @@ if (root && status) {
         switchScope,
     };
 
+    root.querySelector('[data-home-designer-edit]')?.addEventListener('click', () => dispatchWorkspace({ type: 'edit/start' }));
     root.querySelector('[data-home-designer-apply]')?.addEventListener('click', apply);
-    root.querySelector('[data-home-designer-discard]')?.addEventListener('click', () => root.homeDesigner.discard());
+    root.querySelector('[data-home-designer-cancel]')?.addEventListener('click', () => root.homeDesigner.cancel());
     root.querySelector('[data-home-designer-undo]')?.addEventListener('click', () => store?.undo?.());
     root.querySelector('[data-home-designer-redo]')?.addEventListener('click', () => store?.redo?.());
 
+    void initializeWorkspace();
     if (initialScope.kind === 'global' || initialScope.profileId) bootstrap();
 }

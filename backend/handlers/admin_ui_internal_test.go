@@ -53,6 +53,12 @@ func TestHomeDesignerTemplateProvidesAccessibleEditorStructure(t *testing.T) {
 		t.Fatalf("Home Designer must have exactly one h1, got %d", strings.Count(source, "<h1>"))
 	}
 	for _, marker := range []string{
+		`data-home-designer-edit`,
+		`data-home-designer-cancel`,
+		`data-home-designer-apply`,
+		`data-home-designer-tool="library"`,
+		`data-home-designer-tool="inspector"`,
+		`data-home-designer-tool="theme"`,
 		`aria-label="Row library"`,
 		`aria-label="Composition preview"`,
 		`aria-label="Row inspector"`,

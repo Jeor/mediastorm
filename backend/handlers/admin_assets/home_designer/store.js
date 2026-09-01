@@ -254,8 +254,11 @@ export const createStore = (document) => {
                         break;
                     case 'rows/remove':
                         if (row) {
+                            const index = state.rows.shelves.indexOf(row);
+                            const nextSelection = state.rows.shelves[index + 1]?.id || state.rows.shelves[index - 1]?.id || null;
                             state.rowsMode = 'custom';
                             state.rows.shelves = state.rows.shelves.filter((candidate) => candidate.id !== action.id);
+                            if (state.selectionId === action.id) state.selectionId = nextSelection;
                         }
                         break;
                     case 'rows/move': {

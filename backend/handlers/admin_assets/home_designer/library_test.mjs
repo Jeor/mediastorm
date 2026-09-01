@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { expandStreamingService, renderLibrary } from './library.js';
+import { defaultInsertionIndex, expandStreamingService, renderLibrary } from './library.js';
 import { createStore } from './store.js';
 
 const streamingEntry = () => ({
@@ -34,6 +34,13 @@ const find = (element, predicate) => {
     }
     return undefined;
 };
+
+test('accessible Add defaults after selection or to the end', () => {
+    const rows = [{ id: 'one' }, { id: 'two' }, { id: 'three' }];
+    assert.equal(defaultInsertionIndex(rows, 'two'), 2);
+    assert.equal(defaultInsertionIndex(rows, null), 3);
+    assert.equal(defaultInsertionIndex(rows, 'missing'), 3);
+});
 
 test('row library search uses the admin form control treatment', () => {
     // Break caught: the editor shipping a raw browser search box inside the styled admin shell.

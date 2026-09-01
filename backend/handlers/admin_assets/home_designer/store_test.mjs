@@ -48,7 +48,7 @@ test('row edits normalize order, selection, undo, and redo without touching the 
     assert.equal(store.getState().rows[0].name, 'Saved list');
 
     store.dispatch({ type: 'rows/remove', id: 'watchlist' });
-    assert.equal(store.getState().selectionId, null);
+    assert.equal(store.getState().selectionId, 'top-ten');
     assert.deepEqual(store.getState().rows.map((row) => row.order), [0, 1]);
     store.undo();
     assert.equal(store.getState().rows[0].id, 'watchlist');
@@ -65,6 +65,28 @@ test('row additions and invalid rows are local working state only', async () => 
     store.discard();
     assert.equal(store.getState().rows.length, 3);
     assert.equal(store.isDirty(), false);
+});
+
+test('removing the selected row chooses its next neighbor then previous neighbor', async () => {
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+    store.dispatch({ type: 'selection/select', id: 'watchlist' });
+    store.dispatch({ type: 'rows/remove', id: 'watchlist' });
+    assert.equal(store.getState().selectionId, 'trending');
+    store.dispatch({ type: 'rows/remove', id: 'trending' });
+    assert.equal(store.getState().selectionId, 'top-ten');
+    store.dispatch({ type: 'rows/remove', id: 'top-ten' });
+    assert.equal(store.getState().selectionId, null);
+});
+
+test('indexed insertion selects the inserted row and remains one undo step', async () => {
+    const { createStore } = await moduleFromFile('store.js');
+    const store = createStore(documentFixture());
+    store.dispatch({ type: 'rows/add', row: { id: 'genres', name: 'Genres' }, index: 1 });
+    assert.deepEqual(store.getState().rows.map((row) => row.id), ['top-ten', 'genres', 'watchlist', 'trending']);
+    assert.equal(store.getState().selectionId, 'genres');
+    store.undo();
+    assert.deepEqual(store.getState().rows.map((row) => row.id), ['top-ten', 'watchlist', 'trending']);
 });
 
 test('catalog additions keep built-ins unique and mark incomplete configured rows invalid until completed', async () => {

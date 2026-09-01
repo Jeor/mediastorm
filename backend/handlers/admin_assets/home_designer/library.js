@@ -19,6 +19,11 @@ const nextID = (base, rows) => {
     return `${base}-${suffix}`;
 };
 
+export const defaultInsertionIndex = (rows = [], selectionId = null) => {
+    const selected = rows.findIndex((row) => row.id === selectionId);
+    return selected < 0 ? rows.length : selected + 1;
+};
+
 const streamingLists = {
     netflix: ['https://mdblist.com/lists/snoak/netflix-top-10-movies/json', 'https://mdblist.com/lists/snoak/netflix-top-10-shows/json'],
     disney: ['https://mdblist.com/lists/snoak/disney-plus-top-10-movies/json', 'https://mdblist.com/lists/snoak/disney-plus-top-10-tv-shows/json'],
@@ -128,13 +133,14 @@ export const renderLibrary = (container, { state, dispatch, onAdd, onConfigure }
                     event.dataTransfer.effectAllowed = 'copy';
                 });
                 add.addEventListener('click', () => {
+                    const current = state.rows || [];
+                    const index = defaultInsertionIndex(current, state.selectionId);
                     if (entry.catalogOnly) {
-                        onConfigure?.(entry, (state.rows || []).length);
+                        onConfigure?.(entry, index);
                         return;
                     }
-                    const current = state.rows || [];
                     const added = createCatalogRows(entry, current);
-                    added.forEach((row, offset) => dispatch?.({ type: 'rows/add', row, index: current.length + offset }));
+                    added.forEach((row, offset) => dispatch?.({ type: 'rows/add', row, index: index + offset }));
                     if (added[0]) onAdd?.(added[0].id, entry);
                 });
                 controls.append(add);

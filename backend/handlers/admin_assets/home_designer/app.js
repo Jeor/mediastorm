@@ -18,13 +18,10 @@ if (root && status) {
     let activeOperation = null;
     let editorModules = null;
     let previewModules = null;
-    let previewController = null;
-    let previewObserver = null;
     let previewProfileId = '';
     let previewPlatform = 'tv';
-    let previewResults = {};
     let previewRenderToken = 0;
-    let previewRowsSignature = '';
+    let canvasCleanup = null;
     let unsubscribe = null;
     let applyValidation = [];
     let beforeUnloadRegistered = false;
@@ -95,6 +92,12 @@ if (root && status) {
         }
         if (workspaceState.mode !== previousMode) void renderEditor();
         return workspaceState;
+    };
+
+    const openWorkspaceTool = (tool) => {
+        const workspace = dispatchWorkspace({ type: `tool/${tool}`, open: true });
+        if (workspace?.band === 'compact' && (tool === 'library' || tool === 'inspector')) openDrawer(tool);
+        return workspace;
     };
 
     const initializeWorkspace = async () => {
@@ -200,13 +203,11 @@ if (root && status) {
 
     const showReady = () => showMessage('home-designer-ready', 'Home Designer is ready.');
 
-    const selectRow = (id, source = 'outline') => {
+    const selectRow = (id) => {
         store?.dispatch({ type: 'selection/select', id });
+        if (workspaceState?.mode === 'edit') openWorkspaceTool('inspector');
         requestAnimationFrame(() => {
-            const counterpart = source === 'outline'
-                ? editor?.querySelector(`[data-preview-row-id="${CSS.escape(id)}"]`)
-                : editor?.querySelector(`[data-outline-row-id="${CSS.escape(id)}"]`);
-            counterpart?.scrollIntoView({ block: 'nearest' });
+            editor?.querySelector(`[data-preview-row-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
         });
     };
 
@@ -215,6 +216,7 @@ if (root && status) {
         const [id, errors] = Object.entries(validation)[0] || [];
         if (!id || !errors?.[0]) return;
         selectRow(id);
+        openWorkspaceTool('inspector');
         requestAnimationFrame(() => focusDesignerPath('data-field-path', errors[0].path));
     };
 
@@ -223,6 +225,7 @@ if (root && status) {
         if (!first) return;
         if (first.section === 'rows' && first.rowId) {
             selectRow(first.rowId);
+            openWorkspaceTool('inspector');
             const row = (store?.getState?.().rows || []).find((candidate) => candidate.id === first.rowId);
             const itemIndex = first.itemId ? row?.collectionItems?.findIndex((item) => item.id === first.itemId) : -1;
             const path = itemIndex >= 0 ? `collectionItems.${itemIndex}.${first.path}` : first.path;
@@ -230,6 +233,7 @@ if (root && status) {
             return;
         }
         if (first.section === 'theme') {
+            openWorkspaceTool('theme');
             requestAnimationFrame(() => focusThemeValidation(first.path));
             return;
         }
@@ -268,42 +272,28 @@ if (root && status) {
         if (previous !== applyValidation.length && !applyValidation.length) clearErrors();
     };
 
-    const previewSignature = (state) => JSON.stringify({ scope: state?.scope || {}, rows: state?.rows || [] });
-    const invalidatePreview = () => {
-        previewRenderToken += 1;
-        previewResults = {};
-        previewObserver?.disconnect();
-        previewController?.invalidate();
-    };
-
-    const renderPreview = async (state, { schedule = true } = {}) => {
+    const renderPreview = async (state) => {
         const token = ++previewRenderToken;
         const host = editor?.querySelector('[data-home-designer-preview-host]');
         if (!host) return;
         if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);
-        const [theme, preview] = await previewModules;
+        const [[theme, preview], [, , canvas]] = await Promise.all([previewModules, editorModules]);
         if (token !== previewRenderToken || !store || store.getState?.().revision !== state.revision) return;
         const renderer = previewPlatform === 'mobile' ? preview.renderMobilePreview : preview.renderTVPreview;
-        renderer(host, state, { results: previewResults, onSelect: (id) => selectRow(id, 'preview'), onRetry: (id) => previewController?.retry(id) });
+        canvasCleanup?.();
+        canvasCleanup = null;
+        renderer(host, state, { editing: workspaceState?.mode === 'edit', onSelect: selectRow });
         host.querySelector('.home-preview-device') && theme.applyThemeVariables(host.querySelector('.home-preview-device'), state.theme);
         host.querySelectorAll('[data-preview-row-id]').forEach((row) => row.setAttribute('aria-current', String(state.selectionId === row.dataset.previewRowId)));
-        previewObserver?.disconnect();
-        const scheduleVisible = () => {
-            const viewport = host.querySelector('.home-preview-content');
-            const viewportBounds = viewport?.getBoundingClientRect?.();
-            const visible = [...host.querySelectorAll('[data-preview-row-id]')].filter((element) => {
-                const bounds = element.getBoundingClientRect?.();
-                return !bounds || !viewportBounds || bounds.bottom >= viewportBounds.top && bounds.top <= viewportBounds.bottom;
-            }).map((element) => element.dataset.previewRowId);
-            previewController?.schedule({ scope: state.scope, profileId: previewProfileId, platform: previewPlatform, rows: state.rows, visibleRowIds: visible, theme: state.theme });
-        };
-        if (typeof IntersectionObserver === 'function') {
-            previewObserver = new IntersectionObserver((entries) => {
-                if (entries.some((entry) => entry.isIntersecting)) scheduleVisible();
-            }, { root: host.querySelector('.home-preview-content') });
-            host.querySelectorAll('[data-preview-row-id]').forEach((row) => previewObserver.observe(row));
-        }
-        if (schedule && previewController) requestAnimationFrame(scheduleVisible);
+        canvasCleanup = canvas.mountCanvasInteractions(host, {
+            state, getState: store.getState, editing: workspaceState?.mode === 'edit', dispatch: store.dispatch,
+            liveRegion: editor.querySelector('[data-home-designer-live]'),
+            onSelect: selectRow,
+            onCustomize: (id) => { selectRow(id); openWorkspaceTool('inspector'); },
+            onCatalogDrop: addCatalogAt,
+            onDragStart: () => dispatchWorkspace({ type: 'drag/start' }),
+            onDragEnd: () => dispatchWorkspace({ type: 'drag/end' }),
+        });
     };
 
     const renderRowsMode = (state, sectionErrors = []) => {
@@ -346,22 +336,36 @@ if (root && status) {
 
     const configureCatalog = (entry, index) => {
         store.dispatch({ type: 'catalog/configure', token: entry.type, index, values: {} });
-        const workspace = dispatchWorkspace({ type: 'tool/inspector', open: true });
-        if (workspace?.band === 'compact') openDrawer('inspector');
+        openWorkspaceTool('inspector');
         requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
     const handleAddedRow = (id, entry) => {
         selectRow(id);
-        const workspace = dispatchWorkspace({ type: 'tool/inspector', open: true });
-        if (workspace?.band === 'compact') openDrawer('inspector');
         if ((entry.fields || []).length) requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
+    };
+
+    const addCatalogAt = async (token, index) => {
+        const [library] = await editorModules;
+        const state = store.getState();
+        const entry = library.findCatalogEntry(state.catalog, token);
+        if (!entry) return false;
+        const insertion = Number.isInteger(index) ? index : state.rows.length;
+        if (entry.catalogOnly) {
+            configureCatalog(entry, insertion);
+            openWorkspaceTool('inspector');
+            return true;
+        }
+        const rows = library.createCatalogRows(entry, state.rows);
+        rows.forEach((row, offset) => store.dispatch({ type: 'rows/add', row, index: insertion + offset }));
+        if (rows[0]) handleAddedRow(rows[0].id, entry);
+        return rows.length > 0;
     };
 
     const renderEditor = async () => {
         if (!editor || !store) return;
-        if (!editorModules) editorModules = Promise.all([import('./library.js'), import('./outline.js'), import('./inspector.js')]);
-        const [library, outline, inspector] = await editorModules;
+        if (!editorModules) editorModules = Promise.all([import('./library.js'), import('./inspector.js'), import('./canvas.js')]);
+        const [library, inspector] = await editorModules;
         if (!store) return;
         const active = document.activeElement;
         const activeInDesigner = editor.contains?.(active) || drawer?.contains(active);
@@ -377,13 +381,10 @@ if (root && status) {
             : state;
         renderRowsMode(state, validation.sectionValidation.rows || []);
         library.renderLibrary(findDesignerElement('[data-home-designer-library]'), {
-            state, dispatch: store.dispatch,
-            onAdd: handleAddedRow,
-            onConfigure: configureCatalog,
-        });
-        outline.renderOutline(editor.querySelector('[data-home-designer-outline]'), {
-            state, dispatch: store.dispatch, liveRegion: editor.querySelector('[data-home-designer-live]'), onSelect: selectRow,
-            onConfigure: configureCatalog, onAdd: handleAddedRow, editable: workspaceState?.mode === 'edit',
+            state,
+            onAdd: addCatalogAt,
+            onDragStart: () => dispatchWorkspace({ type: 'drag/start' }),
+            onDragEnd: () => dispatchWorkspace({ type: 'drag/end' }),
         });
         inspector.renderInspector(findDesignerElement('[data-home-designer-inspector]'), {
             state: inspectorState, dispatch: store.dispatch, onSelect: selectRow,
@@ -395,13 +396,13 @@ if (root && status) {
                 rows.forEach((row, offset) => store.dispatch({ type: 'rows/add', row, index: index + offset }));
                 store.dispatch({ type: 'catalog/cancel' });
                 if (rows[0]) {
-                    selectRow(rows[0].id);
+                    handleAddedRow(rows[0].id, entry);
                     requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
                 }
             },
         });
         if (!previewModules) previewModules = Promise.all([import('./theme.js'), import('./preview.js')]);
-        const [theme, preview] = await previewModules;
+        const [theme] = await previewModules;
         theme.renderTheme(editor.querySelector('[data-home-designer-theme]'), {
             state, dispatch: store.dispatch, errors: validation.theme,
             onFieldEdit: (path) => clearServerValidation({ section: 'theme', path }),
@@ -414,19 +415,12 @@ if (root && status) {
                 return true;
             },
         });
-        if (!previewController) {
-            previewController = preview.createPreviewController({
-                fetchPreview: (request, options) => modules.then(([api]) => api.loadPreview(basePath, request, options)),
-                onChange: (results) => { previewResults = results; void renderPreview(store?.getState?.() || state, { schedule: false }); },
-            });
-        }
         previewProfileId ||= state.previewProfiles?.[0]?.id || state.scope?.profileId || '';
         const profileSelect = editor.querySelector('[data-home-designer-preview-profile]');
         if (profileSelect && !profileSelect.dataset.ready) {
             profileSelect.dataset.ready = 'true';
             profileSelect.addEventListener('change', () => {
                 previewProfileId = profileSelect.value;
-                invalidatePreview();
                 void renderPreview(store.getState());
             });
         }
@@ -437,7 +431,7 @@ if (root && status) {
         const platformSelect = editor.querySelector('[data-home-designer-preview-platform]');
         if (platformSelect && !platformSelect.dataset.ready) {
             platformSelect.dataset.ready = 'true';
-            platformSelect.addEventListener('change', () => { previewPlatform = platformSelect.value === 'mobile' ? 'mobile' : 'tv'; invalidatePreview(); void renderPreview(store.getState()); });
+            platformSelect.addEventListener('change', () => { previewPlatform = platformSelect.value === 'mobile' ? 'mobile' : 'tv'; void renderPreview(store.getState()); });
         }
         if (platformSelect) platformSelect.value = previewPlatform;
         const scopeSelect = editor.querySelector('[data-home-designer-scope]');
@@ -567,6 +561,7 @@ if (root && status) {
         if (!isCompactWorkspace()) return;
         const target = findDesignerElement(`[data-home-designer-${kind}]`);
         if (!target) return;
+        if (drawer === target) return;
         if (drawer && drawer !== target) closeDrawer(false);
         drawer = target;
         drawerReturnFocus = trigger || document.activeElement;
@@ -673,14 +668,8 @@ if (root && status) {
     const connectEditor = () => {
         unsubscribe?.();
         if (!store || !editor) return;
-        previewRowsSignature = previewSignature(store.getState());
-        unsubscribe = store.subscribe((state) => {
+        unsubscribe = store.subscribe(() => {
             syncDirtyProtection();
-            const nextSignature = previewSignature(state);
-            if (nextSignature !== previewRowsSignature) {
-                previewRowsSignature = nextSignature;
-                invalidatePreview();
-            }
             renderEditor();
         });
         syncDirtyProtection();
@@ -693,8 +682,6 @@ if (root && status) {
     };
 
     const load = async (scope) => {
-        invalidatePreview();
-        previewRowsSignature = '';
         const current = beginOperation();
         try {
             const [{ loadDocument }, { createStore }] = await modules;

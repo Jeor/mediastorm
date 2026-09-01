@@ -92,9 +92,9 @@ const button = (label, className = 'btn') => {
     return element;
 };
 
-// renderLibrary owns only its container. State changes flow through the supplied
-// store dispatcher, allowing app.js to re-render the complete editor surface.
-export const renderLibrary = (container, { state, dispatch, onAdd, onConfigure } = {}) => {
+// renderLibrary owns only its container. Catalog insertion flows through app.js,
+// allowing pointer and accessible actions to share one position-aware path.
+export const renderLibrary = (container, { state, onAdd, onDragStart, onDragEnd } = {}) => {
     container.replaceChildren();
     const heading = document.createElement('h2');
     heading.textContent = 'Add a row';
@@ -129,19 +129,16 @@ export const renderLibrary = (container, { state, dispatch, onAdd, onConfigure }
                 add.draggable = !alreadyAdded;
                 add.addEventListener('dragstart', (event) => {
                     if (alreadyAdded) return;
-                    event.dataTransfer?.setData('application/x-home-designer-catalog', catalogToken(entry));
+                    const token = catalogToken(entry);
+                    event.dataTransfer?.setData('application/x-home-designer-catalog', token);
                     event.dataTransfer.effectAllowed = 'copy';
+                    onDragStart?.(token);
                 });
+                add.addEventListener('dragend', () => onDragEnd?.());
                 add.addEventListener('click', () => {
                     const current = state.rows || [];
                     const index = defaultInsertionIndex(current, state.selectionId);
-                    if (entry.catalogOnly) {
-                        onConfigure?.(entry, index);
-                        return;
-                    }
-                    const added = createCatalogRows(entry, current);
-                    added.forEach((row, offset) => dispatch?.({ type: 'rows/add', row, index: index + offset }));
-                    if (added[0]) onAdd?.(added[0].id, entry);
+                    onAdd?.(catalogToken(entry), index);
                 });
                 controls.append(add);
                 if (alreadyAdded) {

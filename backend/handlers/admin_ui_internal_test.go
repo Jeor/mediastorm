@@ -78,6 +78,9 @@ func TestHomeDesignerTemplateProvidesAccessibleEditorStructure(t *testing.T) {
 			t.Fatalf("Home Designer template missing accessibility/navigation marker %q", marker)
 		}
 	}
+	if strings.Contains(source, `data-home-designer-outline`) {
+		t.Fatal("Home Designer must order rows directly in the preview, not a duplicate outline")
+	}
 }
 
 func TestAdminSettingsKeepsAdvancedControlsAndLinksToHomeDesigner(t *testing.T) {

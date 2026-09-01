@@ -59,7 +59,7 @@ export const mountCanvasInteractions = (host, {
             viewport.insertBefore(indicator, children[pendingIndex] || null);
         }
     };
-    const customize = () => onCustomize?.();
+    const customize = (id) => onCustomize?.(id);
     const controls = viewport.querySelectorAll('[data-preview-row-id]');
     controls.forEach((section) => {
         const id = section.dataset.previewRowId;
@@ -78,25 +78,25 @@ export const mountCanvasInteractions = (host, {
         });
         const visibility = button(row.enabled === false ? 'Show' : 'Hide', 'homeDesignerVisibility');
         visibility.addEventListener('click', (event) => {
-            event.stopPropagation(); customize();
+            event.stopPropagation(); customize(row.id);
             dispatch({ type: 'rows/visibility', id: row.id, enabled: row.enabled === false });
             announce(liveRegion, `${row.name || 'Row'} is now ${row.enabled === false ? 'visible' : 'hidden'}.`);
         });
         const up = button('Move Up', 'homeDesignerMoveUp');
         up.disabled = index === 0;
         up.addEventListener('click', (event) => {
-            event.stopPropagation(); customize(); dispatch({ type: 'rows/move', id: row.id, to: index - 1 });
+            event.stopPropagation(); customize(row.id); dispatch({ type: 'rows/move', id: row.id, to: index - 1 });
             announce(liveRegion, `${row.name || 'Row'} moved to position ${index} of ${rows.length}.`);
         });
         const down = button('Move Down', 'homeDesignerMoveDown');
         down.disabled = index === rows.length - 1;
         down.addEventListener('click', (event) => {
-            event.stopPropagation(); customize(); dispatch({ type: 'rows/move', id: row.id, to: index + 1 });
+            event.stopPropagation(); customize(row.id); dispatch({ type: 'rows/move', id: row.id, to: index + 1 });
             announce(liveRegion, `${row.name || 'Row'} moved to position ${index + 2} of ${rows.length}.`);
         });
         const remove = button('Remove', 'homeDesignerRemove');
         remove.addEventListener('click', (event) => {
-            event.stopPropagation(); customize(); dispatch({ type: 'rows/remove', id: row.id });
+            event.stopPropagation(); customize(row.id); dispatch({ type: 'rows/remove', id: row.id });
             announce(liveRegion, `${row.name || 'Row'} removed.`);
             requestAnimationFrame(() => focusSelectedRow(host, getState));
         });
@@ -125,7 +125,7 @@ export const mountCanvasInteractions = (host, {
         const rowID = event.dataTransfer?.getData('application/x-home-designer-row');
         clearInsertion();
         if (catalogToken) await onCatalogDrop?.(catalogToken, rawIndex);
-        else if (rowID) { customize(); dispatch({ type: 'rows/move', id: rowID, to: moveDestination(rows, rowID, rawIndex) }); }
+        else if (rowID) { customize(rowID); dispatch({ type: 'rows/move', id: rowID, to: moveDestination(rows, rowID, rawIndex) }); }
     };
     const finishDrag = () => { clearInsertion(); onDragEnd?.(); };
     const onKeyDown = (event) => { if (event.key === 'Escape') finishDrag(); };

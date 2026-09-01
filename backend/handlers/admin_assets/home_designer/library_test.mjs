@@ -57,6 +57,71 @@ test('row library search uses the admin form control treatment', () => {
     }
 });
 
+test('library reports drag lifecycle without mutating rows', () => {
+    // Break caught: dragging a catalog entry fails to close/reopen workspace drawers or mutates rows before drop.
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        const host = new Element('aside');
+        const events = [];
+        const state = {
+            rows: [],
+            catalog: [{
+                type: 'genre', name: 'Genre', available: true,
+                default: { id: 'genre', name: 'Genre', type: 'genre', enabled: true },
+            }],
+        };
+        renderLibrary(host, {
+            state,
+            onDragStart: (token) => events.push(['start', token]),
+            onDragEnd: () => events.push(['end']),
+        });
+        const addButton = find(host, (element) => element.textContent === 'Add');
+        const written = new Map();
+        const dataTransfer = {
+            setData: (type, value) => written.set(type, value),
+            effectAllowed: '',
+        };
+        addButton.listeners.get('dragstart')({ dataTransfer });
+        addButton.listeners.get('dragend')({});
+        assert.deepEqual(events, [['start', 'genre'], ['end']]);
+        assert.equal(written.get('application/x-home-designer-catalog'), 'genre');
+        assert.deepEqual(state.rows, []);
+    } finally {
+        globalThis.document = previousDocument;
+    }
+});
+
+test('accessible Add reports its position without inserting independently', () => {
+    // Break caught: the button bypassing the application insertion path and losing its selection-relative index.
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        const host = new Element('aside');
+        const added = [];
+        const dispatched = [];
+        const state = {
+            selectionId: 'one',
+            rows: [{ id: 'one' }, { id: 'two' }],
+            catalog: [{
+                type: 'genre', name: 'Genre', available: true,
+                default: { id: 'genre', name: 'Genre', type: 'genre', enabled: true },
+            }],
+        };
+        renderLibrary(host, {
+            state,
+            dispatch: (action) => dispatched.push(action),
+            onAdd: (token, index) => added.push([token, index]),
+        });
+        find(host, (element) => element.textContent === 'Add').listeners.get('click')();
+        assert.deepEqual(added, [['genre', 1]]);
+        assert.deepEqual(dispatched, []);
+        assert.deepEqual(state.rows, [{ id: 'one' }, { id: 'two' }]);
+    } finally {
+        globalThis.document = previousDocument;
+    }
+});
+
 test('streaming expansion preserves the selected media choice with canonical apply-ready fields', () => {
     // Break caught: streamed rows using the wrong list property or silently ignoring a movies/shows/both selection.
     const entry = streamingEntry();

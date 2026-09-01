@@ -78,13 +78,12 @@
 .home-designer-drawer-backdrop[hidden] { display: none; }
 
 .home-designer-workspace {
-    grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 1.1fr) minmax(20rem, 1fr);
+    grid-template-columns: minmax(14rem, 0.9fr) minmax(20rem, 1fr);
     align-items: start;
     min-width: 0;
 }
 
 .home-designer-library,
-.home-designer-outline,
 .home-designer-inspector,
 .home-designer-preview,
 .home-designer-theme-controls {
@@ -95,7 +94,6 @@
 }
 
 .home-designer-library-entries,
-.home-designer-outline-list,
 .home-designer-preview [data-home-designer-preview-host],
 .home-designer-theme-fields,
 .home-designer-theme-presets,
@@ -118,7 +116,6 @@
 }
 
 .home-designer-library-entry h3,
-.home-designer-outline-row,
 .home-designer-inspector form,
 .home-designer-inspector fieldset {
     min-width: 0;
@@ -130,27 +127,12 @@
 }
 
 .home-designer-library-entry,
-.home-designer-outline-row,
 .home-designer-collection-item {
     display: grid;
     gap: 0.5rem;
     padding: 0.75rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-}
-
-.home-designer-outline-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    cursor: grab;
-}
-
-.home-designer-outline-row .home-designer-row-state {
-    text-align: right;
-}
-
-.home-designer-outline-row .home-designer-row-actions {
-    grid-column: 1 / -1;
 }
 
 .home-designer-row-actions .btn,
@@ -161,18 +143,9 @@
     font-size: 0.8125rem;
 }
 
-.home-designer-outline-row[aria-current="true"],
 .home-designer-preview-row[aria-current="true"] {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
-}
-
-.home-designer-outline-row.is-drop-before {
-    border-top: 3px solid var(--primary);
-}
-
-.home-designer-outline-row.is-drop-after {
-    border-bottom: 3px solid var(--primary);
 }
 
 .home-designer-drop-indicator {
@@ -433,7 +406,6 @@
     grid-auto-flow: row;
 }
 
-.home-designer-editor[data-band="compact"] .home-designer-outline,
 .home-designer-editor[data-band="compact"] .home-designer-preview {
     grid-column: 1 / -1;
 }

@@ -100,6 +100,23 @@ test('editing rows receive direct manipulation controls but preview rows do not'
     } finally { globalThis.document = previousDocument; }
 });
 
+test('a row control customizes its owning row', async () => {
+    // Break caught: canvas controls opening Inspector without selecting the row they mutate.
+    const { mountCanvasInteractions } = await moduleFromFile('canvas.js');
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        const preview = previewHost(['one', 'two']);
+        const customized = [];
+        mountCanvasInteractions(preview.host, {
+            state: { rows: rows.slice(0, 2) }, editing: true, dispatch: () => {},
+            onCustomize: (id) => customized.push(id),
+        });
+        preview.host.querySelector('[data-preview-row-id="two"]').querySelector('[data-home-designer-visibility]').click();
+        assert.deepEqual(customized, ['two']);
+    } finally { globalThis.document = previousDocument; }
+});
+
 test('removal focuses the store-selected row after the synchronous rerender', async () => {
     // Break caught: canvas removal guessing a neighbour independently instead of following the store's authoritative selection.
     const { mountCanvasInteractions } = await moduleFromFile('canvas.js');

@@ -145,7 +145,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 const sourceWithModules = async (workspaceModule = "const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state) => state });") => (await readFile(new URL('./admin_assets/home_designer/app.js', import.meta.url), 'utf8'))
     .replace(/const modules = Promise\.all\(\[import\('\.\/api\.js'\), import\('\.\/store\.js'\)\]\)\s*\.then\(\(\[api, editorStore\]\) => \[api\.default \?\? api, editorStore\.default \?\? editorStore\]\);/, 'const modules = Promise.resolve([homeDesignerAPI, homeDesignerStore]);')
     .replace("const workspaceModule = import('./workspace.js');", workspaceModule)
-    .replace(/if \(!editorModules\) editorModules = Promise\.all\(\[import\('\.\/library\.js'\), import\('\.\/outline\.js'\)\]\);/, 'if (!editorModules) editorModules = Promise.resolve([homeDesignerLibrary, homeDesignerOutline]);')
+    .replace(/if \(!editorModules\) editorModules = Promise\.all\(\[import\('\.\/library\.js'\), import\('\.\/outline\.js'\), import\('\.\/inspector\.js'\)\]\);/, 'if (!editorModules) editorModules = Promise.resolve([homeDesignerLibrary, homeDesignerOutline, homeDesignerInspector]);')
     .replace(/if \(!previewModules\) previewModules = Promise\.all\(\[import\('\.\/theme\.js'\), import\('\.\/preview\.js'\)\]\);/g, 'if (!previewModules) previewModules = Promise.resolve([homeDesignerTheme, homeDesignerPreview]);');
 
 test('Home Designer Retry replaces a blocking failure after a successful reload', async () => {
@@ -497,7 +497,7 @@ test('a portaled drawer remains addressable by editor rendering and focus work',
     const source = await sourceWithModules();
     assert.match(source, /const findDesignerElement = \(selector\) =>/);
     assert.match(source, /library\.renderLibrary\(findDesignerElement\('\[data-home-designer-library\]'\)/);
-    assert.match(source, /outline\.renderInspector\(findDesignerElement\('\[data-home-designer-inspector\]'\)/);
+    assert.match(source, /inspector\.renderInspector\(findDesignerElement\('\[data-home-designer-inspector\]'\)/);
     assert.match(source, /const target = findDesignerElement\(`\[data-home-designer-\$\{kind\}\]`\)/);
 });
 
@@ -633,7 +633,8 @@ test('a Theme mode or value 422 focuses the Theme action validation target', asy
         homeDesignerAPI: { loadDocument: async () => ({ scope: state.scope, revision: 'one', rows: { inherited: true, effective: { shelves: [] } }, theme: { inherited: true, effective: {} } }), applyDocument: async () => { throw new APIError(); }, APIError },
         homeDesignerStore: { createStore: () => store },
         homeDesignerLibrary: { renderLibrary: () => {} },
-        homeDesignerOutline: { renderOutline: () => {}, renderInspector: () => {} },
+        homeDesignerOutline: { renderOutline: () => {} },
+        homeDesignerInspector: { renderInspector: () => {} },
         homeDesignerTheme: { renderTheme: () => {}, applyThemeVariables: () => {} },
         homeDesignerPreview: { createPreviewController: () => ({ invalidate: () => {} }), renderTVPreview: () => {}, renderMobilePreview: () => {} },
     });

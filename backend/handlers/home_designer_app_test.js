@@ -151,7 +151,7 @@ const sourceWithModules = async (workspaceModule = "const workspaceModule = Prom
 
 test('editor routes accessible Add, canvas drop, and configured submission through one indexed catalog path', async () => {
     // Break caught: any catalog entry route bypassing shared lookup, indexed row insertion, selection, or Inspector opening.
-    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'compact', libraryOpen: true, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action); return action.type === 'tool/inspector' ? { ...state, contextTool: action.open === false ? null : 'inspector' } : state; } });");
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'standard', libraryOpen: true, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action); return action.type === 'tool/inspector' ? { ...state, contextTool: action.open === false ? null : 'inspector' } : state; } });");
     const body = new Element('body');
     const root = new Element('section'); root.dataset = { basePath: '/admin', isAdmin: 'true', profileId: '' };
     const status = new Element('div'); status.dataset.homeDesignerStatus = '';
@@ -159,6 +159,7 @@ test('editor routes accessible Add, canvas drop, and configured submission throu
     const rowsControls = new Element('div'); rowsControls.dataset.homeDesignerRowsControls = '';
     const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
     const inspector = new Element('aside'); inspector.dataset.homeDesignerInspector = '';
+    const inspectorName = new Element('input'); inspectorName.dataset.fieldPath = 'name'; inspector.append(inspectorName);
     const theme = new Element('div'); theme.dataset.homeDesignerTheme = '';
     const live = new Element('p'); live.dataset.homeDesignerLive = '';
     const previewHost = new Element('div'); previewHost.dataset.homeDesignerPreviewHost = '';
@@ -219,6 +220,7 @@ test('editor routes accessible Add, canvas drop, and configured submission throu
     assert.ok(canvasOptions, 'the rendered preview mounts canvas behavior');
     assert.equal(canvasOptions.editing, true);
     await libraryOptions.onAdd('genre', 1);
+    assert.equal(inspectorName.focusCount, 1, 'an accessible Add restores focus after its button is replaced');
     await canvasOptions.onCatalogDrop('genre', 0);
     state.catalogSelection = { token: 'streaming-service', index: 2 };
     await inspectorOptions.onCatalogSubmit(state.catalog[1], { service: 'netflix', media: 'both' });

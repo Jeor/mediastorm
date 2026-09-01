@@ -396,9 +396,13 @@ if (root && status) {
         requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
     };
 
-    const handleAddedRow = (id, entry) => {
+    const handleAddedRow = (id) => {
         selectRow(id);
-        if ((entry.fields || []).length) requestAnimationFrame(() => findDesignerElement('[data-home-designer-inspector] [data-field-path]')?.focus());
+        requestAnimationFrame(() => {
+            const field = findDesignerElement('[data-home-designer-inspector]')?.querySelector('[data-field-path]');
+            const row = editor?.querySelector(`[data-preview-row-id="${CSS.escape(id)}"]`);
+            (field || row)?.focus?.();
+        });
     };
 
     const addCatalogAt = async (token, index, values) => {
@@ -415,7 +419,7 @@ if (root && status) {
         const rows = library.createCatalogRows(entry, state.rows, values);
         rows.forEach((row, offset) => store.dispatch({ type: 'rows/add', row, index: insertion + offset }));
         if (configured) store.dispatch({ type: 'catalog/cancel' });
-        if (rows[0]) handleAddedRow(rows[0].id, entry);
+        if (rows[0]) handleAddedRow(rows[0].id);
         return rows.length > 0;
     };
 

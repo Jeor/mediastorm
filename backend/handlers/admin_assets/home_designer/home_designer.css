@@ -422,69 +422,48 @@
     .home-designer *, .home-designer *::before, .home-designer *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-@media (max-width: 1099.98px) {
-    .home-designer-workspace,
-    .home-designer-toolbar {
-        grid-template-columns: 1fr;
-    }
-
-    .home-designer-preview-toolbar { grid-template-columns: 1fr; }
-
-    .home-designer-theme-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-    .home-designer-toolbar-actions { justify-content: flex-start; }
-
-    .home-designer-workspace {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .home-designer-outline,
-    .home-designer-preview {
-        grid-column: 1 / -1;
-    }
-
-    .home-designer-library,
-    .home-designer-inspector {
-        position: fixed;
-        z-index: 10001;
-        inset: 0 0 0 auto;
-        display: none;
-        width: min(30rem, 100vw);
-        overflow: auto;
-        border-radius: 0;
-        box-shadow: -0.75rem 0 2rem rgb(0 0 0 / 0.35);
-    }
-
-    .home-designer-drawer-backdrop {
-        position: fixed;
-        z-index: 10000;
-        inset: 0;
-        background: rgb(0 0 0 / 0.5);
-    }
-
-    .home-designer-library.is-drawer-open,
-    .home-designer-inspector.is-drawer-open {
-        display: grid;
-        align-content: start;
-    }
-
-    .home-designer-open-drawer,
-    .home-designer-drawer-close {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .home-designer-drawer-close { justify-self: start; }
-
-    body.home-designer-drawer-open { overflow: hidden; }
+.home-designer-editor[data-band="compact"] .home-designer-toolbar,
+.home-designer-editor[data-band="compact"] .home-designer-workspace,
+.home-designer-editor[data-band="compact"] .home-designer-preview-toolbar {
+    grid-template-columns: 1fr;
 }
 
-@media (max-width: 640px) {
-    .home-designer-toolbar-actions { grid-auto-flow: row; }
-    .home-designer-workspace { grid-template-columns: 1fr; }
-    .home-designer-open-drawer { width: 100%; }
-    .home-designer-library,
-    .home-designer-inspector { width: 100vw; }
-    .home-designer-theme-fields { grid-template-columns: 1fr; }
+.home-designer-editor[data-band="compact"] .home-designer-toolbar-actions {
+    justify-content: flex-start;
+    grid-auto-flow: row;
 }
+
+.home-designer-editor[data-band="compact"] .home-designer-outline,
+.home-designer-editor[data-band="compact"] .home-designer-preview {
+    grid-column: 1 / -1;
+}
+
+.home-designer-editor[data-band="compact"] .home-designer-theme-fields { grid-template-columns: 1fr; }
+
+body.home-designer-drawer-open .home-designer-library,
+body.home-designer-drawer-open .home-designer-inspector {
+    position: fixed;
+    z-index: 10001;
+    inset: 0 0 0 auto;
+    display: grid;
+    align-content: start;
+    width: min(30rem, 100vw);
+    overflow: auto;
+    border-radius: 0;
+    box-shadow: -0.75rem 0 2rem rgb(0 0 0 / 0.35);
+}
+
+.home-designer-drawer-backdrop {
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    background: rgb(0 0 0 / 0.5);
+}
+
+body.home-designer-drawer-open .home-designer-drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+body.home-designer-drawer-open { overflow: hidden; }

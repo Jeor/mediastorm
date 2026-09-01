@@ -37,7 +37,7 @@ const moveRow = (container, dispatch, rows, id, to, liveRegion) => {
     focusRow(container, id);
 };
 
-export const renderOutline = (container, { state, dispatch, liveRegion, onSelect, onConfigure, onAdd } = {}) => {
+export const renderOutline = (container, { state, dispatch, liveRegion, onSelect, onConfigure, onAdd, editable = true } = {}) => {
     container.replaceChildren();
     const heading = document.createElement('h2');
     heading.textContent = 'Composition';
@@ -76,29 +76,31 @@ export const renderOutline = (container, { state, dispatch, liveRegion, onSelect
         marker.remove();
         [...list.children].forEach((item) => item.classList.remove('is-drop-before', 'is-drop-after'));
     };
-    list.addEventListener('dragover', (event) => {
-        if (!isHomeDesignerDrop(event.dataTransfer?.types)) return;
-        event.preventDefault();
-        const target = event.target.closest?.('[data-row-id]');
-        const rect = target?.getBoundingClientRect?.();
-        const after = rect ? event.clientY > rect.top + rect.height / 2 : false;
-        showInsertion(insertionIndex(rows, target?.dataset.rowId, after));
-    });
-    list.addEventListener('dragleave', (event) => { if (!list.contains(event.relatedTarget)) clearInsertion(); });
-    list.addEventListener('drop', (event) => {
-        if (!isHomeDesignerDrop(event.dataTransfer?.types)) return;
-        event.preventDefault();
-        const index = pendingIndex ?? rows.length;
-        const catalogType = event.dataTransfer?.getData('application/x-home-designer-catalog');
-        const rowID = event.dataTransfer?.getData('application/x-home-designer-row');
-        clearInsertion();
-        if (catalogType) {
-            addAt(catalogType, Math.max(0, index));
-        } else {
-            const source = rows.findIndex((row) => row.id === rowID);
-            moveRow(container, dispatch, rows, rowID, Math.max(0, index - (source >= 0 && source < index ? 1 : 0)), liveRegion);
-        }
-    });
+    if (editable) {
+        list.addEventListener('dragover', (event) => {
+            if (!isHomeDesignerDrop(event.dataTransfer?.types)) return;
+            event.preventDefault();
+            const target = event.target.closest?.('[data-row-id]');
+            const rect = target?.getBoundingClientRect?.();
+            const after = rect ? event.clientY > rect.top + rect.height / 2 : false;
+            showInsertion(insertionIndex(rows, target?.dataset.rowId, after));
+        });
+        list.addEventListener('dragleave', (event) => { if (!list.contains(event.relatedTarget)) clearInsertion(); });
+        list.addEventListener('drop', (event) => {
+            if (!isHomeDesignerDrop(event.dataTransfer?.types)) return;
+            event.preventDefault();
+            const index = pendingIndex ?? rows.length;
+            const catalogType = event.dataTransfer?.getData('application/x-home-designer-catalog');
+            const rowID = event.dataTransfer?.getData('application/x-home-designer-row');
+            clearInsertion();
+            if (catalogType) {
+                addAt(catalogType, Math.max(0, index));
+            } else {
+                const source = rows.findIndex((row) => row.id === rowID);
+                moveRow(container, dispatch, rows, rowID, Math.max(0, index - (source >= 0 && source < index ? 1 : 0)), liveRegion);
+            }
+        });
+    }
 
     rows.forEach((row, index) => {
         const item = document.createElement('li');
@@ -106,19 +108,19 @@ export const renderOutline = (container, { state, dispatch, liveRegion, onSelect
         item.dataset.rowId = row.id;
         item.setAttribute('aria-posinset', String(index + 1));
         item.setAttribute('aria-setsize', String(rows.length));
-        item.draggable = true;
+        item.draggable = editable;
         item.tabIndex = 0;
         item.setAttribute('aria-current', String(state.selectionId === row.id));
         item.dataset.outlineRowId = row.id;
-        item.addEventListener('dragstart', (event) => {
+        if (editable) item.addEventListener('dragstart', (event) => {
             event.dataTransfer?.setData('application/x-home-designer-row', row.id);
             event.dataTransfer.effectAllowed = 'move';
         });
         item.addEventListener('click', () => onSelect?.(row.id));
         item.addEventListener('keydown', (event) => {
             if ((event.key === 'Enter' || event.key === ' ') && !event.altKey) { event.preventDefault(); onSelect?.(row.id); }
-            if (event.altKey && event.key === 'ArrowUp') { event.preventDefault(); moveRow(container, dispatch, rows, row.id, index - 1, liveRegion); }
-            if (event.altKey && event.key === 'ArrowDown') { event.preventDefault(); moveRow(container, dispatch, rows, row.id, index + 1, liveRegion); }
+            if (editable && event.altKey && event.key === 'ArrowUp') { event.preventDefault(); moveRow(container, dispatch, rows, row.id, index - 1, liveRegion); }
+            if (editable && event.altKey && event.key === 'ArrowDown') { event.preventDefault(); moveRow(container, dispatch, rows, row.id, index + 1, liveRegion); }
         });
         const name = document.createElement('span');
         name.className = 'home-designer-row-name';
@@ -128,31 +130,34 @@ export const renderOutline = (container, { state, dispatch, liveRegion, onSelect
         stateText.textContent = row.enabled === false ? 'Hidden' : 'Visible';
         const controls = document.createElement('div');
         controls.className = 'home-designer-row-actions';
-        const visibility = button(row.enabled === false ? 'Show' : 'Hide');
-        visibility.setAttribute('aria-label', `${visibility.textContent} ${row.name || 'row'}`);
-        visibility.addEventListener('click', (event) => { event.stopPropagation(); dispatch({ type: 'rows/visibility', id: row.id, enabled: row.enabled === false }); announce(liveRegion, `${row.name || 'Row'} is now ${row.enabled === false ? 'visible' : 'hidden'}.`); });
         const select = button('Select');
         select.addEventListener('click', (event) => { event.stopPropagation(); onSelect?.(row.id); });
-        const up = button('Move up');
-        up.disabled = index === 0;
-        up.addEventListener('click', (event) => { event.stopPropagation(); moveRow(container, dispatch, rows, row.id, index - 1, liveRegion); });
-        const down = button('Move down');
-        down.disabled = index === rows.length - 1;
-        down.addEventListener('click', (event) => { event.stopPropagation(); moveRow(container, dispatch, rows, row.id, index + 1, liveRegion); });
-        const remove = button('Remove');
-        remove.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const target = removalFocusTarget(rows, index);
-            dispatch({ type: 'rows/remove', id: row.id });
-            announce(liveRegion, `${row.name || 'Row'} removed.`);
-            if (target !== 'empty-outline') {
-                onSelect?.(target);
-                focusRow(container, target);
-            } else {
-                requestAnimationFrame(() => container.querySelector('[data-outline-empty]')?.focus());
-            }
-        });
-        controls.append(select, visibility, up, down, remove);
+        controls.append(select);
+        if (editable) {
+            const visibility = button(row.enabled === false ? 'Show' : 'Hide');
+            visibility.setAttribute('aria-label', `${visibility.textContent} ${row.name || 'row'}`);
+            visibility.addEventListener('click', (event) => { event.stopPropagation(); dispatch({ type: 'rows/visibility', id: row.id, enabled: row.enabled === false }); announce(liveRegion, `${row.name || 'Row'} is now ${row.enabled === false ? 'visible' : 'hidden'}.`); });
+            const up = button('Move up');
+            up.disabled = index === 0;
+            up.addEventListener('click', (event) => { event.stopPropagation(); moveRow(container, dispatch, rows, row.id, index - 1, liveRegion); });
+            const down = button('Move down');
+            down.disabled = index === rows.length - 1;
+            down.addEventListener('click', (event) => { event.stopPropagation(); moveRow(container, dispatch, rows, row.id, index + 1, liveRegion); });
+            const remove = button('Remove');
+            remove.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const target = removalFocusTarget(rows, index);
+                dispatch({ type: 'rows/remove', id: row.id });
+                announce(liveRegion, `${row.name || 'Row'} removed.`);
+                if (target !== 'empty-outline') {
+                    onSelect?.(target);
+                    focusRow(container, target);
+                } else {
+                    requestAnimationFrame(() => container.querySelector('[data-outline-empty]')?.focus());
+                }
+            });
+            controls.append(visibility, up, down, remove);
+        }
         item.append(name, stateText, controls);
         list.append(item);
     });

@@ -142,9 +142,9 @@ class Element {
 }
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
-const sourceWithModules = async () => (await readFile(new URL('./admin_assets/home_designer/app.js', import.meta.url), 'utf8'))
+const sourceWithModules = async (workspaceModule = "const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state) => state });") => (await readFile(new URL('./admin_assets/home_designer/app.js', import.meta.url), 'utf8'))
     .replace(/const modules = Promise\.all\(\[import\('\.\/api\.js'\), import\('\.\/store\.js'\)\]\)\s*\.then\(\(\[api, editorStore\]\) => \[api\.default \?\? api, editorStore\.default \?\? editorStore\]\);/, 'const modules = Promise.resolve([homeDesignerAPI, homeDesignerStore]);')
-    .replace("const workspaceModule = import('./workspace.js');", "const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state) => state });")
+    .replace("const workspaceModule = import('./workspace.js');", workspaceModule)
     .replace(/if \(!editorModules\) editorModules = Promise\.all\(\[import\('\.\/library\.js'\), import\('\.\/outline\.js'\)\]\);/, 'if (!editorModules) editorModules = Promise.resolve([homeDesignerLibrary, homeDesignerOutline]);')
     .replace(/if \(!previewModules\) previewModules = Promise\.all\(\[import\('\.\/theme\.js'\), import\('\.\/preview\.js'\)\]\);/g, 'if (!previewModules) previewModules = Promise.resolve([homeDesignerTheme, homeDesignerPreview]);');
 
@@ -303,17 +303,101 @@ test('an unfinished field draft protects navigation while native input undo rema
     assert.equal(loadCalls, 1);
 });
 
-test('Home Designer source makes responsive drawers modal and cleans them up on resize', async () => {
-    // Break caught: a dialog-looking drawer allowing background interaction or retaining aria-modal after leaving its breakpoint.
+test('Home Designer source bases compact drawers on workspace state, not viewport media', async () => {
+    // Break caught: a compact editor in a wide browser not receiving compact drawer treatment.
     const source = await sourceWithModules();
     assert.match(source, /setBackgroundInert\(true\)/);
     assert.match(source, /setBackgroundInert\(false\)/);
-    assert.match(source, /matchMedia\?\.\('\(max-width: 1099\.98px\)'\)/);
-    assert.match(source, /drawerMedia\.addEventListener\('change'/);
+    assert.match(source, /const isCompactWorkspace = \(\) => workspaceState\?\.band === 'compact';/);
+    assert.doesNotMatch(source, /matchMedia\?\./);
+    const styles = await readFile(new URL('./admin_assets/home_designer/home_designer.css', import.meta.url), 'utf8');
+    assert.match(styles, /\.home-designer-editor\[data-band="compact"\]/);
+    assert.doesNotMatch(styles, /@media \(max-width:/);
 });
 
-test('responsive drawer blocks the shared shell and restores it when its breakpoint closes', async () => {
-    // Break caught: a high-z sidebar/topbar still receiving pointer or focus while a Home Designer drawer is open.
+test('a compact editor opens a modal drawer even when viewport media is wide', async () => {
+    // Break caught: drawer activation consulting viewport media instead of the measured compact editor band.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => action.type === 'tool/library' ? { ...state, libraryOpen: true } : state });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section');
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    const document = { body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController,
+        matchMedia: () => ({ matches: false }),
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus() {} };
+    root.listeners.get('click')({ target: opener });
+    assert.equal(library.parentElement, body);
+});
+
+test('a drawer returns to the editor when its measured band leaves compact', async () => {
+    // Break caught: a compact drawer remaining portaled and modal after the editor itself grows to standard width.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'edit', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => action.type === 'resize' ? { ...state, band: 'standard' } : state });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section');
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    let resizeWorkspace;
+    class ResizeObserver { constructor(callback) { resizeWorkspace = callback; } observe() {} }
+    const document = { body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController, ResizeObserver,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus() {} };
+    root.listeners.get('click')({ target: opener });
+    assert.equal(library.parentElement, body);
+    resizeWorkspace();
+    assert.equal(library.parentElement, workspace);
+    assert.equal(body.classList.contains('home-designer-drawer-open'), false);
+});
+
+test('a portaled drawer delegates workspace drag lifecycle events', async () => {
+    // Break caught: drag events from a body-portaled compact drawer never reaching the workspace reducer.
+    const source = await sourceWithModules("const workspaceModule = Promise.resolve({ createWorkspaceState: () => ({ mode: 'preview', band: 'compact', libraryOpen: false, contextTool: null, dragging: false }), reduceWorkspace: (state, action) => { workspaceActions.push(action.type); return state; } });");
+    const body = new Element('body');
+    const root = new Element('section'); root.dataset = { basePath: '/account', isAdmin: 'false', profileId: '' };
+    const status = new Element('div'); status.dataset.homeDesignerStatus = '';
+    const backdrop = new Element('div'); backdrop.dataset.homeDesignerDrawerBackdrop = ''; backdrop.hidden = true;
+    const editor = new Element('section'); editor.dataset.homeDesignerEditor = '';
+    const workspace = new Element('section');
+    const library = new Element('aside'); library.dataset.homeDesignerLibrary = '';
+    workspace.append(library); editor.append(workspace); root.append(status, backdrop, editor); body.append(root);
+    const document = { body, activeElement: null, getElementById: () => root, createElement: (tagName) => new Element(tagName), addEventListener() {}, removeEventListener() {} };
+    const workspaceActions = [];
+    vm.runInNewContext(source, {
+        document, Error, Promise, AbortController, workspaceActions,
+        requestAnimationFrame: (callback) => callback(),
+        homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
+        homeDesignerStore: { createStore: () => ({}) },
+    });
+    await settle(); await settle();
+    const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus() {} };
+    root.listeners.get('click')({ target: opener });
+    library.dispatchEvent({ type: 'dragstart', bubbles: true });
+    library.dispatchEvent({ type: 'dragend', bubbles: true });
+    assert.deepEqual(workspaceActions, ['drag/start', 'drag/end']);
+});
+
+test('compact drawer blocks the shared shell and restores it on Escape', async () => {
+    // Break caught: a compact workspace drawer allowing background interaction or failing to restore its original position on close.
     const source = await sourceWithModules();
     const body = new Element('body');
     const sidebar = new Element('aside');
@@ -347,6 +431,7 @@ test('responsive drawer blocks the shared shell and restores it when its breakpo
         homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
         homeDesignerStore: { createStore: () => ({}) },
     });
+    await settle(); await settle();
     const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-library', focus: () => {} };
     root.listeners.get('click')({ target: opener });
 
@@ -372,17 +457,8 @@ test('responsive drawer blocks the shared shell and restores it when its breakpo
     assert.equal(library.parentElement, body);
     assert.equal(backdrop.parentElement, body);
 
-    media.matches = false;
-    media.listener();
-    assert.equal(sidebar.inert, false);
-    assert.equal(topbar.inert, false);
-    assert.equal(backdrop.hidden, true);
-    assert.equal(library.parentElement, workspace, 'the dialog returns to its original workspace position');
-    assert.equal(backdrop.parentElement, root, 'the backdrop returns to its original page position');
-    assert.equal(library.getAttribute('role'), null);
-    assert.equal(body.classList.contains('home-designer-drawer-open'), false);
-    assert.equal(documentListeners.has('focusin'), false);
-    assert.equal(documentListeners.has('keydown'), false);
+    assert.equal(sidebar.inert, true);
+    assert.equal(topbar.inert, true);
 });
 
 test('a portaled drawer remains addressable by editor rendering and focus work', async () => {
@@ -429,6 +505,7 @@ test('a body-portaled inspector retains draft and internal-link delegates until 
         homeDesignerAPI: { loadDocument: async () => ({}), applyDocument: async () => ({}), APIError: class APIError extends Error {} },
         homeDesignerStore: { createStore: () => ({}) },
     });
+    await settle(); await settle();
     const opener = { closest: () => opener, hasAttribute: (name) => name === 'data-home-designer-open-inspector', focus: () => {} };
     root.listeners.get('click')({ target: opener });
     assert.equal(inspector.parentElement, body);
@@ -442,8 +519,7 @@ test('a body-portaled inspector retains draft and internal-link delegates until 
     input.dispatchEvent({ type: 'change', bubbles: true });
     assert.equal(windowListeners.has('beforeunload'), false, 'the portaled change delegate clears the pending draft');
 
-    media.matches = false;
-    media.listener();
+    documentListeners.get('keydown')({ target: close, key: 'Escape', preventDefault() {} });
     assert.equal(inspector.listeners.has('input'), false);
     assert.equal(inspector.listeners.has('change'), false);
     assert.equal(inspector.listeners.has('click'), false);

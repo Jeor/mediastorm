@@ -38,8 +38,8 @@ if (root && status) {
     let workspaceState = null;
     let workspaceObserver = null;
     const pendingDrafts = new Map();
-    const drawerMedia = globalThis.matchMedia?.('(max-width: 1099.98px)');
     const warnBeforeUnload = (event) => { event.preventDefault(); event.returnValue = ''; return ''; };
+    const isCompactWorkspace = () => workspaceState?.band === 'compact';
 
     const renderWorkspace = () => {
         if (!editor || !workspaceState) return;
@@ -72,8 +72,15 @@ if (root && status) {
 
     const dispatchWorkspace = (action) => {
         if (!workspaceState || !workspaceReducer) return workspaceState;
+        const previousMode = workspaceState.mode;
+        const previousBand = workspaceState.band;
         workspaceState = workspaceReducer(workspaceState, action);
         renderWorkspace();
+        if (drawer && previousBand !== workspaceState.band && !isCompactWorkspace()) {
+            closeDrawer(false);
+            renderWorkspace();
+        }
+        if (workspaceState.mode !== previousMode) void renderEditor();
         return workspaceState;
     };
 
@@ -363,7 +370,7 @@ if (root && status) {
         });
         outline.renderOutline(editor.querySelector('[data-home-designer-outline]'), {
             state, dispatch: store.dispatch, liveRegion: editor.querySelector('[data-home-designer-live]'), onSelect: selectRow,
-            onConfigure: configureCatalog, onAdd: handleAddedRow,
+            onConfigure: configureCatalog, onAdd: handleAddedRow, editable: workspaceState?.mode === 'edit',
         });
         outline.renderInspector(findDesignerElement('[data-home-designer-inspector]'), {
             state: inspectorState, dispatch: store.dispatch, onSelect: selectRow,
@@ -539,12 +546,12 @@ if (root && status) {
         drawer = null;
         drawerReturnFocus = null;
         drawerDialogAttributes = null;
-        if (synchronizeWorkspace && kind && workspaceState?.band === 'compact') dispatchWorkspace({ type: `tool/${kind}`, open: false });
+        if (synchronizeWorkspace && kind && isCompactWorkspace()) dispatchWorkspace({ type: `tool/${kind}`, open: false });
         requestAnimationFrame(() => returnFocus?.focus?.());
     };
 
     const openDrawer = (kind, trigger) => {
-        if (drawerMedia && !drawerMedia.matches) return;
+        if (!isCompactWorkspace()) return;
         const target = findDesignerElement(`[data-home-designer-${kind}]`);
         if (!target) return;
         if (drawer && drawer !== target) closeDrawer(false);
@@ -565,9 +572,6 @@ if (root && status) {
     };
 
     drawerBackdrop?.addEventListener('click', closeDrawer);
-    const onDrawerMediaChange = () => { if (drawer && drawerMedia && !drawerMedia.matches) closeDrawer(false); };
-    if (drawerMedia?.addEventListener) drawerMedia.addEventListener('change', onDrawerMediaChange);
-    drawerMedia?.addListener?.(onDrawerMediaChange);
 
     const mountDrawerControls = () => {
         [['library', 'Row library'], ['inspector', 'Row inspector']].forEach(([kind, label]) => {
@@ -631,21 +635,27 @@ if (root && status) {
         delete target.dataset.homeDesignerDraft;
         clearDraft(target);
     };
+    const handleWorkspaceDragStart = () => dispatchWorkspace({ type: 'drag/start' });
+    const handleWorkspaceDragEnd = () => dispatchWorkspace({ type: 'drag/end' });
     const attachDrawerDelegates = (target) => {
         target?.addEventListener?.('click', handleClick);
         target?.addEventListener?.('input', handleInput);
         target?.addEventListener?.('change', handleChange);
+        target?.addEventListener?.('dragstart', handleWorkspaceDragStart);
+        target?.addEventListener?.('dragend', handleWorkspaceDragEnd);
     };
     const detachDrawerDelegates = (target) => {
         target?.removeEventListener?.('click', handleClick);
         target?.removeEventListener?.('input', handleInput);
         target?.removeEventListener?.('change', handleChange);
+        target?.removeEventListener?.('dragstart', handleWorkspaceDragStart);
+        target?.removeEventListener?.('dragend', handleWorkspaceDragEnd);
     };
     root.addEventListener?.('click', handleClick);
     root.addEventListener?.('input', handleInput);
     root.addEventListener?.('change', handleChange);
-    root.addEventListener?.('dragstart', () => dispatchWorkspace({ type: 'drag/start' }));
-    root.addEventListener?.('dragend', () => dispatchWorkspace({ type: 'drag/end' }));
+    root.addEventListener?.('dragstart', handleWorkspaceDragStart);
+    root.addEventListener?.('dragend', handleWorkspaceDragEnd);
 
     const connectEditor = () => {
         unsubscribe?.();

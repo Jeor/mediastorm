@@ -360,8 +360,8 @@ if (root && status) {
 
     const renderEditor = async () => {
         if (!editor || !store) return;
-        if (!editorModules) editorModules = Promise.all([import('./library.js'), import('./outline.js')]);
-        const [library, outline] = await editorModules;
+        if (!editorModules) editorModules = Promise.all([import('./library.js'), import('./outline.js'), import('./inspector.js')]);
+        const [library, outline, inspector] = await editorModules;
         if (!store) return;
         const active = document.activeElement;
         const activeInDesigner = editor.contains?.(active) || drawer?.contains(active);
@@ -385,7 +385,7 @@ if (root && status) {
             state, dispatch: store.dispatch, liveRegion: editor.querySelector('[data-home-designer-live]'), onSelect: selectRow,
             onConfigure: configureCatalog, onAdd: handleAddedRow, editable: workspaceState?.mode === 'edit',
         });
-        outline.renderInspector(findDesignerElement('[data-home-designer-inspector]'), {
+        inspector.renderInspector(findDesignerElement('[data-home-designer-inspector]'), {
             state: inspectorState, dispatch: store.dispatch, onSelect: selectRow,
             sectionValidation: validation.sectionValidation,
             onFieldEdit: (identity) => clearServerValidation(identity),

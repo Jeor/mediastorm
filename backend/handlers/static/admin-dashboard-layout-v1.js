@@ -8,6 +8,7 @@
         layoutURL: '',
         canEdit: false,
         ready: false,
+        fallback: false,
         editing: false,
         detailLevel: 'basic',
         detailBeforeEdit: 'basic',
@@ -327,6 +328,12 @@
 
     function setDetailLevel(level) {
         state.detailLevel = level === 'advanced' ? 'advanced' : 'basic';
+        if (state.fallback) {
+            document.querySelectorAll('.dashboard-module.dashboard-advanced-detail').forEach(element => {
+                element.style.display = state.detailLevel === 'advanced' ? '' : 'none';
+            });
+            return;
+        }
         if (!state.editing) applyVisibility(false);
     }
 
@@ -337,6 +344,7 @@
 
     function initializeFallback(error) {
         console.error('Dashboard layout initialization failed', error);
+        state.fallback = true;
         state.gridElement.replaceChildren();
         state.gridElement.classList.add('dashboard-grid-fallback');
         document.querySelectorAll('[data-dashboard-module]').forEach(source => {

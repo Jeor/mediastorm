@@ -139,6 +139,19 @@ const schematicLabel = (item) => {
     return { kind: 'content', label: 'Content' };
 };
 
+export const schematicKindForRow = (row = {}) => {
+    const value = `${row.type || ''} ${row.mediaType || ''} ${row.id || ''}`.toLowerCase();
+    if (value.includes('live') || value.includes('channel')) return 'live';
+    if (value.includes('series') || value.includes('show') || value.includes('tv')) return 'series';
+    if (value.includes('movie') || value.includes('film')) return 'movie';
+    return 'content';
+};
+
+export const schematicItems = (row, count) => Array.from(
+    { length: count },
+    (_, index) => ({ id: `${row.id}-schematic-${index + 1}`, mediaType: schematicKindForRow(row) }),
+);
+
 const mediaCard = (item, layout) => {
     const card = document.createElement('article');
     const schematic = schematicLabel(item);
@@ -153,8 +166,13 @@ const mediaCard = (item, layout) => {
 
 const previewRow = (row, onSelect, onRetry, cardLayout = 'landscape', presentation = '') => {
     const section = document.createElement('section');
-    section.className = `home-preview-row ${presentation}`.trim(); section.dataset.previewRowId = row.id;
-    const heading = document.createElement('button'); heading.type = 'button'; heading.className = 'home-preview-row-heading'; heading.textContent = text(row.name, 'Untitled row'); heading.addEventListener('click', () => onSelect?.(row.id)); section.append(heading);
+    section.className = `home-preview-row ${presentation}`.trim();
+    section.dataset.previewRowId = row.id;
+    section.dataset.rowEnabled = String(row.enabled !== false);
+    section.tabIndex = -1;
+    if (row.enabled === false) section.style.opacity = '0.55';
+    const heading = document.createElement('button'); heading.type = 'button'; heading.className = 'home-preview-row-heading'; heading.dataset.homeDesignerRowSelect = row.id; heading.textContent = text(row.name, 'Untitled row'); heading.addEventListener('click', () => onSelect?.(row.id)); section.append(heading);
+    if (row.enabled === false) appendText(section, 'span', 'Hidden', 'home-preview-row-hidden');
     const items = Array.isArray(row.items) ? row.items : [];
     if (row.status === 'loading') {
         const skeletons = document.createElement('div'); skeletons.className = 'home-preview-items home-preview-skeletons';
@@ -167,9 +185,12 @@ const previewRow = (row, onSelect, onRetry, cardLayout = 'landscape', presentati
     return section;
 };
 
-const resolvedRows = (state, results) => (state?.rows || []).filter((row) => row?.enabled !== false).map((row) => ({
-    ...row, ...(results?.[row.id] || { id: row.id, name: row.name, status: 'loading', items: [] }), id: row.id, name: results?.[row.id]?.name || row.name,
-}));
+const resolvedRows = (state, { editing = false, schematicCount = 5 } = {}) => (state?.rows || [])
+    .filter((row) => editing || row?.enabled !== false)
+    .map((row) => ({
+        ...row, id: row.id, name: row.name, enabled: row.enabled !== false,
+        status: 'ready', items: schematicItems(row, schematicCount),
+    }));
 
 const topRow = (settings, mode, source, rows) => {
     if (String(settings?.[mode] || '').toLowerCase() === 'disabled') return null;
@@ -179,8 +200,8 @@ const topRow = (settings, mode, source, rows) => {
 
 const scale = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 1;
 
-export const buildTVPreviewPlan = (state, results) => {
-    const rows = resolvedRows(state, results);
+export const buildTVPreviewPlan = (state, { editing = false } = {}) => {
+    const rows = resolvedRows(state, { editing, schematicCount: 5 });
     const settings = state?.rowsSettings || {};
     const hero = topRow(settings, 'tvTopShelfMode', 'tvTopShelfSourceId', rows);
     return {
@@ -189,8 +210,8 @@ export const buildTVPreviewPlan = (state, results) => {
     };
 };
 
-export const buildMobilePreviewPlan = (state, results) => {
-    const rows = resolvedRows(state, results);
+export const buildMobilePreviewPlan = (state, { editing = false } = {}) => {
+    const rows = resolvedRows(state, { editing, schematicCount: 4 });
     const settings = state?.rowsSettings || {};
     const carousel = topRow(settings, 'mobileTopShelfMode', 'mobileTopShelfSourceId', rows);
     return {
@@ -206,7 +227,7 @@ const device = (platform) => {
 export const renderTVPreview = (host, state, options = {}) => {
     if (!host) return;
     host.replaceChildren();
-    const plan = buildTVPreviewPlan(state, options.results);
+    const plan = buildTVPreviewPlan(state, options);
     const preview = device('tv'); preview.style.setProperty('--preview-tv-shelf-scale', String(plan.shelfScale)); preview.style.setProperty('--preview-tv-hero-scale', String(plan.heroScale));
     const frame = document.createElement('div'); frame.className = 'home-preview-frame';
     appendText(frame, 'nav', 'Home\nSearch\nLibrary', 'home-preview-tv-rail');
@@ -220,7 +241,7 @@ export const renderTVPreview = (host, state, options = {}) => {
 export const renderMobilePreview = (host, state, options = {}) => {
     if (!host) return;
     host.replaceChildren();
-    const plan = buildMobilePreviewPlan(state, options.results);
+    const plan = buildMobilePreviewPlan(state, options);
     const preview = device('mobile');
     const frame = document.createElement('div'); frame.className = 'home-preview-frame';
     appendText(frame, 'header', 'Home                         ◉', 'home-preview-mobile-top');

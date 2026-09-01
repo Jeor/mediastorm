@@ -18,6 +18,7 @@ var homeDesignerAssetVersion = "dev"
 var homeDesignerAssetContentTypes = map[string]string{
 	"app.js":            "text/javascript; charset=utf-8",
 	"api.js":            "text/javascript; charset=utf-8",
+	"canvas.js":         "text/javascript; charset=utf-8",
 	"home_designer.css": "text/css; charset=utf-8",
 	"inspector.js":      "text/javascript; charset=utf-8",
 	"library.js":        "text/javascript; charset=utf-8",

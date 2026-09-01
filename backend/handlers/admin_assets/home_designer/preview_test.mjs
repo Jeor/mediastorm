@@ -230,6 +230,41 @@ test('TV and mobile plans keep row order while applying distinct top and card ru
     assert.ok(mobile.rows.every((item) => item.cardLayout === 'portrait'));
 });
 
+test('default plans use fixed structural tiles without preview result maps', async () => {
+    // Break caught: the canvas becoming blank or network-dependent before its schematic rows can render.
+    const { buildMobilePreviewPlan, buildTVPreviewPlan } = await moduleFromFile('preview.js');
+    const state = { rows: [row('live-channel', { name: 'Live now', type: 'channel' }), row('film', { name: 'Films', type: 'movie' })] };
+    const tv = buildTVPreviewPlan(state);
+    const mobile = buildMobilePreviewPlan(state);
+    assert.deepEqual(tv.rows.map((item) => [item.id, item.name, item.items.length, item.items[0].mediaType]), [['live-channel', 'Live now', 5, 'live'], ['film', 'Films', 5, 'movie']]);
+    assert.deepEqual(mobile.rows.map((item) => [item.id, item.name, item.items.length, item.items[0].mediaType]), [['live-channel', 'Live now', 4, 'live'], ['film', 'Films', 4, 'movie']]);
+    const realistic = { 'live-channel': { id: 'live-channel', name: 'Network title', status: 'ready', items: [{ mediaType: 'movie' }] } };
+    assert.deepEqual(buildTVPreviewPlan(state, realistic).rows[0].items.map((item) => item.mediaType), ['live', 'live', 'live', 'live', 'live']);
+});
+
+test('edit rendering retains hidden rows with stable selection hooks while preview omits them', async () => {
+    // Break caught: a hidden row becoming impossible to select and restore from the editor canvas.
+    const { renderTVPreview } = await moduleFromFile('preview.js');
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new PreviewElement(tagName) };
+    try {
+        const state = { rows: [row('visible', { name: 'Visible' }), row('hidden', { name: 'Hidden row', enabled: false })] };
+        const preview = new PreviewElement('div');
+        renderTVPreview(preview, state, { editing: false });
+        assert.deepEqual(descendants(preview).filter((element) => element.dataset.previewRowId).map((element) => element.dataset.previewRowId), ['visible']);
+        const editing = new PreviewElement('div');
+        renderTVPreview(editing, state, { editing: true });
+        const hidden = descendants(editing).find((element) => element.dataset.previewRowId === 'hidden');
+        assert.equal(hidden.dataset.rowEnabled, 'false');
+        assert.equal(hidden.tabIndex, -1);
+        assert.equal(hidden.textContent, '');
+        assert.equal(descendants(hidden).some((element) => element.textContent === 'Hidden'), true);
+        const heading = descendants(hidden).find((element) => element.className === 'home-preview-row-heading');
+        assert.equal(heading.dataset.homeDesignerRowSelect, 'hidden');
+        assert.equal(heading.textContent, 'Hidden row');
+    } finally { globalThis.document = previousDocument; }
+});
+
 test('TV and mobile previews render labeled schematic tiles without realistic media details', async () => {
     // Break caught: poster images, titles, badges, or progress metadata returning to the simplified editor preview.
     const { renderMobilePreview, renderTVPreview } = await moduleFromFile('preview.js');
@@ -237,7 +272,7 @@ test('TV and mobile previews render labeled schematic tiles without realistic me
     globalThis.document = { createElement: (tagName) => new PreviewElement(tagName) };
     try {
         const state = {
-            rows: [row('continue', { name: 'Continue Watching' })],
+            rows: [row('continue', { name: 'Continue Watching', type: 'movie' })],
             rowsSettings: { tvTopShelfMode: 'source', tvTopShelfSourceId: 'continue', mobileTopShelfSourceId: 'continue' },
         };
         const results = { continue: { id: 'continue', name: 'Continue Watching', status: 'ready', items: [
@@ -250,7 +285,7 @@ test('TV and mobile previews render labeled schematic tiles without realistic me
             render(host, state, { results });
             const rendered = descendants(host);
             assert.equal(rendered.some((element) => element.tagName === 'IMG' || element.tagName === 'PROGRESS'), false);
-            assert.deepEqual(rendered.filter((element) => element.className.includes('home-preview-tile-label')).map((element) => element.textContent), ['Movie', 'Series', 'Live']);
+            assert.ok(rendered.filter((element) => element.className.includes('home-preview-tile-label')).every((element) => element.textContent === 'Movie'));
             assert.equal(rendered.some((element) => ['Private movie title', 'Private series title', 'Private channel title', '2026', '4K'].includes(element.textContent)), false);
             assert.equal(rendered.some((element) => element.textContent === 'Continue Watching'), true);
         }

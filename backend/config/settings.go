@@ -2042,6 +2042,11 @@ func NewManager(configPath string) *Manager {
 	return &Manager{path: configPath}
 }
 
+// ConfigPath returns the settings file used by this manager.
+func (m *Manager) ConfigPath() string {
+	return m.path
+}
+
 // GetConfig returns the current configuration (for compatibility with altmount packages)
 func (m *Manager) GetConfig() (*AltMountConfig, error) {
 	settings, err := m.Load()

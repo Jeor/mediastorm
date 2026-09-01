@@ -341,8 +341,12 @@
         state.gridElement.classList.add('dashboard-grid-fallback');
         document.querySelectorAll('[data-dashboard-module]').forEach(source => {
             source.classList.add('dashboard-module');
-            source.style.removeProperty('display');
+            const hiddenByDetail = source.classList.contains('dashboard-advanced-detail') && state.detailLevel !== 'advanced';
+            source.style.display = hiddenByDetail ? 'none' : '';
             state.gridElement.append(source);
+        });
+        document.querySelectorAll('[data-dashboard-module-source]').forEach(source => {
+            source.hidden = true;
         });
         showMessage('The saved dashboard layout could not be loaded. Showing the safe default flow.', 'error');
     }

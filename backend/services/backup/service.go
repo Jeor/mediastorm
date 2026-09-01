@@ -51,20 +51,24 @@ type Manifest struct {
 
 // Service handles backup creation, management, and restoration
 type Service struct {
-	mu            sync.RWMutex
-	backupDir     string
-	cacheDir      string
-	configManager *config.Manager
-	store         *datastore.DataStore
+	mu                  sync.RWMutex
+	backupDir           string
+	cacheDir            string
+	dashboardLayoutPath string
+	configManager       *config.Manager
+	store               *datastore.DataStore
 }
 
-// Files to backup (relative to cacheDir).
+const adminDashboardLayoutFile = "admin-dashboard-layout.json"
+
+// Files to backup. Most are relative to cacheDir; the dashboard layout lives
+// beside the configured settings file.
 // When using PostgreSQL, only settings.json is backed up as a file — everything else
 // is exported from the database as database.json.
 // The legacy JSON file list is kept for backwards compatibility with non-DB deployments.
 var backupFiles = []string{
 	"settings.json",
-	"admin-dashboard-layout.json",
+	adminDashboardLayoutFile,
 	"queue.db",
 	"users.json",
 	"watchlist.json",
@@ -76,7 +80,7 @@ var backupFiles = []string{
 
 var backupFilesDB = []string{
 	"settings.json",
-	"admin-dashboard-layout.json",
+	adminDashboardLayoutFile,
 }
 
 func (s *Service) useDB() bool { return s.store != nil }
@@ -93,11 +97,22 @@ func NewService(cacheDir string, configManager *config.Manager) (*Service, error
 		return nil, fmt.Errorf("create backup directory: %w", err)
 	}
 
-	return &Service{
+	service := &Service{
 		backupDir:     backupDir,
 		cacheDir:      cacheDir,
 		configManager: configManager,
-	}, nil
+	}
+	if configManager != nil && configManager.ConfigPath() != "" {
+		service.dashboardLayoutPath = filepath.Join(filepath.Dir(configManager.ConfigPath()), adminDashboardLayoutFile)
+	}
+	return service, nil
+}
+
+func (s *Service) sourcePath(filename string) string {
+	if filename == adminDashboardLayoutFile && s.dashboardLayoutPath != "" {
+		return s.dashboardLayoutPath
+	}
+	return filepath.Join(s.cacheDir, filename)
 }
 
 // CreateBackup creates a new backup archive
@@ -135,7 +150,7 @@ func (s *Service) CreateBackup(backupType BackupType) (*BackupInfo, error) {
 
 	// Add files to backup
 	for _, filename := range filesToBackup {
-		srcPath := filepath.Join(s.cacheDir, filename)
+		srcPath := s.sourcePath(filename)
 
 		// Check if file exists
 		stat, err := os.Stat(srcPath)
@@ -543,7 +558,7 @@ func (s *Service) restoreBackupFile(backupPath, sourceName string) error {
 			continue
 		}
 
-		destPath := filepath.Join(s.cacheDir, file.Name)
+		destPath := s.sourcePath(file.Name)
 
 		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {

@@ -15,6 +15,7 @@ import (
 const (
 	adminDashboardLayoutVersion = 1
 	adminDashboardColumns       = 12
+	adminDashboardMaxRows       = 512
 	adminDashboardMaxBodyBytes  = 32 << 10
 	adminDashboardLayoutFile    = "admin-dashboard-layout.json"
 )
@@ -129,11 +130,11 @@ func validateAdminDashboardLayout(layout adminDashboardLayout) (adminDashboardLa
 }
 
 func validateAdminDashboardModule(module adminDashboardLayoutModule, definition adminDashboardModuleDefinition) error {
-	if module.X < 0 || module.Y < 0 || module.X+module.W > adminDashboardColumns {
-		return fmt.Errorf("dashboard module %q is outside the %d-column grid", module.ID, adminDashboardColumns)
-	}
 	if module.W < definition.MinW || module.W > definition.MaxW || module.H < definition.MinH || module.H > definition.MaxH {
 		return fmt.Errorf("dashboard module %q has unsupported dimensions %dx%d", module.ID, module.W, module.H)
+	}
+	if module.X < 0 || module.Y < 0 || module.X > adminDashboardColumns-module.W || module.Y > adminDashboardMaxRows-module.H {
+		return fmt.Errorf("dashboard module %q is outside the supported grid", module.ID)
 	}
 	return nil
 }

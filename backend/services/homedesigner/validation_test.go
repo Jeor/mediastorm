@@ -50,12 +50,15 @@ func TestValidateHomeDesigner_RejectsInvalidRowsAndTheme(t *testing.T) {
 	}
 }
 
-func TestValidateHomeDesigner_MDBListOnlyAcceptsCanonicalPublicListURLs(t *testing.T) {
+func TestValidateHomeDesigner_MDBListOnlyAcceptsSafePublicListURLs(t *testing.T) {
 	for _, test := range []struct {
 		name, value string
 		valid       bool
 	}{
 		{name: "canonical", value: "https://mdblist.com/lists/user/list-name/json", valid: true},
+		{name: "canonical trailing slash", value: "https://mdblist.com/lists/user/list-name/json/", valid: true},
+		{name: "documented shorthand", value: "https://mdblist.com/lists/user/list-name", valid: true},
+		{name: "documented shorthand trailing slash", value: "https://mdblist.com/lists/user/list-name/", valid: true},
 		{name: "http", value: "http://mdblist.com/lists/user/list/json"},
 		{name: "loopback", value: "http://127.0.0.1/lists/user/list/json"},
 		{name: "link local", value: "https://169.254.169.254/lists/user/list/json"},

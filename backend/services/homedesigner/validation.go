@@ -294,7 +294,7 @@ func validateShelf(rowID string, shelf models.ShelfConfig, entry CatalogEntry) [
 		}
 		if value != "" && field.Type == "url" {
 			if shelf.Type == "mdblist" && field.Path == "listUrl" && !mdblisturl.Valid(value) {
-				errs = append(errs, rowError(rowID, field.Path, "must be a canonical https://mdblist.com/lists/{user}/{list}/json URL"))
+				errs = append(errs, rowError(rowID, field.Path, "must use https://mdblist.com/lists/{user}/{list}"))
 			} else if shelf.Type != "mdblist" && !isHTTPURL(value) {
 				errs = append(errs, rowError(rowID, field.Path, "must be an http or https URL"))
 			}

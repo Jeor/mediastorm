@@ -42,6 +42,22 @@ func TestFetchMDBListJSONRejectsRedirectsOutsideCanonicalMDBListPaths(t *testing
 	}
 }
 
+func TestFetchMDBListJSONCanonicalizesSafeShorthandBeforeTransport(t *testing.T) {
+	var requested string
+	client := &tvdbClient{httpc: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requested = req.URL.String()
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(bytes.NewBufferString(`[]`)), Request: req}, nil
+	})}}
+
+	var destination []mdblistItem
+	if err := client.fetchMDBListJSON("https://mdblist.com/lists/user/list/", &destination); err != nil {
+		t.Fatal(err)
+	}
+	if requested != "https://mdblist.com/lists/user/list/json" {
+		t.Fatalf("transport URL = %q, want canonical /json URL", requested)
+	}
+}
+
 func TestTVDBClientSetsAcceptLanguageHeader(t *testing.T) {
 	var (
 		mu        sync.Mutex

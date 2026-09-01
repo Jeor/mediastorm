@@ -669,9 +669,11 @@ func (c *tvdbClient) fetchMDBListTVShows() ([]mdblistTVShow, error) {
 // fetchMDBListJSON fetches and decodes JSON from an MDBList URL with a 15-second
 // timeout and one retry on server errors (500+/524 Cloudflare timeouts).
 func (c *tvdbClient) fetchMDBListJSON(url string, dest any) error {
-	if !mdblisturl.Valid(url) {
+	canonicalURL, ok := mdblisturl.Canonical(url)
+	if !ok {
 		return errors.New("invalid MDBList URL")
 	}
+	url = canonicalURL
 	backoff := 500 * time.Millisecond
 	var lastErr error
 

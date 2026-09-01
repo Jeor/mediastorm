@@ -47,6 +47,10 @@ class Element {
         this.disabled = false;
     }
     append(...children) { children.forEach((child) => { child.parentNode = this; this.children.push(child); }); }
+    replaceChildren(...children) {
+        this.children.forEach((child) => { child.parentNode = null; });
+        this.children = []; this.append(...children);
+    }
     insertBefore(child, before) {
         child.remove(); child.parentNode = this;
         const index = before ? this.children.indexOf(before) : -1;
@@ -177,6 +181,51 @@ test('drop indicators use model row identities instead of hero or reordered pres
             preview.viewport.listeners.get('drop')({ target, dataTransfer: { types: ['application/x-home-designer-row'], getData: (type) => type.endsWith('row') ? 'three' : '' }, preventDefault() {} });
             assert.deepEqual(moved, { type: 'rows/move', id: 'three', to: 1 });
         }
+    } finally { globalThis.document = previousDocument; }
+});
+
+test('editable mobile render, drop, and rerender keep the indicated model order with a configured promoted row', async () => {
+    // Break caught: the read-only carousel promotion becoming the reorder surface and making a drop land elsewhere after rerender.
+    const { renderMobilePreview } = await moduleFromFile('preview.js');
+    const { mountCanvasInteractions } = await moduleFromFile('canvas.js');
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new Element(tagName) };
+    try {
+        const host = new Element('div');
+        const model = structuredClone(rows);
+        const settings = { mobileTopShelfMode: 'shelf', mobileTopShelfSourceId: 'two' };
+
+        renderMobilePreview(host, { rows: model, rowsSettings: settings });
+        assert.deepEqual(host.querySelector('.home-preview-content').querySelectorAll('[data-preview-row-id]').map((row) => row.dataset.previewRowId), ['two', 'one', 'three']);
+
+        const render = () => {
+            renderMobilePreview(host, { rows: model, rowsSettings: settings }, { editing: true });
+            const viewport = host.querySelector('.home-preview-content');
+            viewport.getBoundingClientRect = () => ({ top: 0, bottom: 500 });
+            viewport.scrollBy = () => {};
+            viewport.querySelectorAll('[data-preview-row-id]').forEach((row) => { row.getBoundingClientRect = () => ({ top: 0, bottom: 100, height: 100 }); });
+            mountCanvasInteractions(host, {
+                state: { rows: model }, editing: true,
+                dispatch: (action) => {
+                    if (action.type !== 'rows/move') return;
+                    const from = model.findIndex((row) => row.id === action.id);
+                    const [moved] = model.splice(from, 1); model.splice(action.to, 0, moved);
+                },
+            });
+            return viewport;
+        };
+
+        let viewport = render();
+        assert.deepEqual(viewport.querySelectorAll('[data-preview-row-id]').map((row) => row.dataset.previewRowId), ['one', 'two', 'three']);
+        const target = viewport.querySelector('[data-preview-row-id="two"]');
+        viewport.listeners.get('dragover')({ target, clientY: 25, dataTransfer: { types: ['application/x-home-designer-row'] }, preventDefault() {} });
+        const indicator = viewport.children.find((child) => child.className === 'home-designer-drop-indicator');
+        assert.equal(viewport.children[viewport.children.indexOf(indicator) + 1], target);
+        await viewport.listeners.get('drop')({ target, dataTransfer: { types: ['application/x-home-designer-row'], getData: (type) => type.endsWith('row') ? 'three' : '' }, preventDefault() {} });
+
+        viewport = render();
+        assert.deepEqual(model.map((row) => row.id), ['one', 'three', 'two']);
+        assert.deepEqual(viewport.querySelectorAll('[data-preview-row-id]').map((row) => row.dataset.previewRowId), ['one', 'three', 'two']);
     } finally { globalThis.document = previousDocument; }
 });
 

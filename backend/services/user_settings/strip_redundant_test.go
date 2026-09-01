@@ -645,6 +645,32 @@ func TestGetWithDefaultsPreservesCustomShelfSnapshotWhenGlobalAddsRows(t *testin
 	}
 }
 
+func TestStripRedundantPreservesExplicitSnapshotAcrossLaterGlobalChanges(t *testing.T) {
+	svc := tempService(t)
+	initial := globalDefaults()
+	override := true
+	svc.settings["user1"] = models.UserSettings{HomeShelves: models.HomeShelvesSettings{
+		Shelves:         configShelvesToModel(initial.HomeShelves.Shelves),
+		ShelvesOverride: &override,
+	}}
+
+	// Saving globals must not reinterpret an explicit snapshot as inheritance,
+	// even when its current value happens to match the global rows exactly.
+	svc.StripRedundantOverrides(initial, nil, nil)
+	stored, ok := svc.settings["user1"]
+	if !ok || stored.HomeShelves.ShelvesOverride == nil || !*stored.HomeShelves.ShelvesOverride {
+		t.Fatalf("explicit snapshot was stripped after matching global save: %#v", stored.HomeShelves)
+	}
+
+	later := initial
+	later.HomeShelves.Shelves = append(later.HomeShelves.Shelves, config.ShelfConfig{ID: "later-global", Name: "Later global", Enabled: true, Order: len(later.HomeShelves.Shelves)})
+	svc.StripRedundantOverrides(later, nil, nil)
+	effective := mergeWithGlobal(svc.settings["user1"], later)
+	if findShelf(effective.HomeShelves.Shelves, "later-global") != nil {
+		t.Fatal("later global row leaked into preserved explicit snapshot")
+	}
+}
+
 func TestStripProfileLiveTVNeverStripped(t *testing.T) {
 	svc := tempService(t)
 	g := globalDefaults()

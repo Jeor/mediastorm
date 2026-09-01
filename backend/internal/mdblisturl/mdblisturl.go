@@ -9,17 +9,28 @@ import (
 
 var ErrUnsafeRedirect = errors.New("MDBList redirect target is not allowed")
 
-// Valid reports whether raw is the canonical public MDBList JSON-list shape.
-func Valid(raw string) bool {
+// Canonical validates a public MDBList path and returns its JSON endpoint.
+// The documented list-page form and one optional trailing slash are accepted
+// for compatibility, but callers always receive the exact fetchable /json URL.
+func Canonical(raw string) (string, bool) {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || parsed.Scheme != "https" || parsed.Host != "mdblist.com" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.Opaque != "" {
-		return false
+	if err != nil || parsed.Scheme != "https" || parsed.Host != "mdblist.com" || parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" || parsed.Opaque != "" {
+		return "", false
 	}
 	if strings.Contains(parsed.EscapedPath(), "%") {
-		return false
+		return "", false
 	}
-	parts := strings.Split(parsed.Path, "/")
-	return len(parts) == 5 && parts[0] == "" && parts[1] == "lists" && validSegment(parts[2]) && validSegment(parts[3]) && parts[4] == "json"
+	parts := strings.Split(strings.TrimSuffix(parsed.Path, "/"), "/")
+	if (len(parts) != 4 && len(parts) != 5) || parts[0] != "" || parts[1] != "lists" || !validSegment(parts[2]) || !validSegment(parts[3]) || (len(parts) == 5 && parts[4] != "json") {
+		return "", false
+	}
+	return "https://mdblist.com/lists/" + parts[2] + "/" + parts[3] + "/json", true
+}
+
+// Valid reports whether raw is a safe supported public MDBList URL form.
+func Valid(raw string) bool {
+	_, ok := Canonical(raw)
+	return ok
 }
 
 func validSegment(value string) bool {

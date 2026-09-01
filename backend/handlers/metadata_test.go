@@ -799,6 +799,31 @@ func TestMetadataHandler_CustomListForwardsLiteOption(t *testing.T) {
 	}
 }
 
+func TestMetadataHandler_CustomListCanonicalizesSafeDocumentedForms(t *testing.T) {
+	const want = "https://mdblist.com/lists/user/list/json"
+	for _, rawURL := range []string{
+		"https://mdblist.com/lists/user/list",
+		"https://mdblist.com/lists/user/list/",
+		want + "/",
+	} {
+		t.Run(rawURL, func(t *testing.T) {
+			fake := &fakeMetadataService{}
+			handler := NewMetadataHandler(fake, testConfigManager(t))
+			req := httptest.NewRequest(http.MethodGet, "/api/lists/custom?url="+url.QueryEscape(rawURL), nil)
+			rec := httptest.NewRecorder()
+
+			handler.CustomList(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+			}
+			if fake.lastCustomListURL != want {
+				t.Fatalf("metadata URL = %q, want %q", fake.lastCustomListURL, want)
+			}
+		})
+	}
+}
+
 func TestMetadataHandler_CustomListRejectsUnsafeMDBListURLs(t *testing.T) {
 	for _, rawURL := range []string{
 		"http://127.0.0.1/lists/user/list/json",

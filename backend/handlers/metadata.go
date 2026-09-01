@@ -1202,13 +1202,16 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Restrict remote list fetches to canonical public MDBList JSON endpoints.
-	if !mdblisturl.Valid(listURL) {
+	// Restrict remote list fetches to public MDBList paths and normalize the
+	// documented page form to the exact JSON endpoint before any transport.
+	canonicalListURL, validListURL := mdblisturl.Canonical(listURL)
+	if !validListURL {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "invalid MDBList URL format"})
 		return
 	}
+	listURL = canonicalListURL
 
 	// Build options — filtering + pagination handled inside the service
 	serviceLimit, serviceOffset := limit, offset

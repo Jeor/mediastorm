@@ -916,7 +916,7 @@ func stripHomeShelves(h *models.HomeShelvesSettings, g config.HomeShelvesSetting
 	changed := false
 	if len(h.Shelves) == 0 {
 		// continue checking scalar home shelf options
-	} else if shelfConfigsEqual(h.Shelves, g.Shelves) {
+	} else if !models.BoolVal(h.ShelvesOverride, false) && shelfConfigsEqual(h.Shelves, g.Shelves) {
 		h.Shelves = nil
 		h.ShelvesOverride = nil
 		changed = true

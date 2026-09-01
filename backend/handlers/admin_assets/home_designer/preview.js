@@ -247,8 +247,12 @@ export const renderMobilePreview = (host, state, options = {}) => {
     appendText(frame, 'header', 'Home                         ◉', 'home-preview-mobile-top');
     const main = document.createElement('main'); main.className = 'home-preview-content';
     const carousel = plan.rows.find((row) => row.id === plan.carouselRowId);
-    if (carousel) main.append(previewRow(carousel, options.onSelect, options.onRetry, 'portrait', 'home-preview-mobile-carousel'));
-    plan.rows.filter((row) => row.id !== plan.carouselRowId).forEach((row) => main.append(previewRow(row, options.onSelect, options.onRetry, 'portrait', 'home-preview-mobile-row')));
+    if (options.editing) {
+        plan.rows.forEach((row) => main.append(previewRow(row, options.onSelect, options.onRetry, 'portrait', row.id === plan.carouselRowId ? 'home-preview-mobile-carousel' : 'home-preview-mobile-row')));
+    } else {
+        if (carousel) main.append(previewRow(carousel, options.onSelect, options.onRetry, 'portrait', 'home-preview-mobile-carousel'));
+        plan.rows.filter((row) => row.id !== plan.carouselRowId).forEach((row) => main.append(previewRow(row, options.onSelect, options.onRetry, 'portrait', 'home-preview-mobile-row')));
+    }
     frame.append(main);
     appendText(frame, 'nav', 'Home     Search     Library', 'home-preview-mobile-nav');
     preview.append(frame); host.append(preview);

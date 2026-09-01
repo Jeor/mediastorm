@@ -30,6 +30,29 @@ const deferred = () => {
 };
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
+class PreviewElement {
+    constructor(tagName) {
+        this.tagName = tagName.toUpperCase();
+        this.children = [];
+        this.dataset = {};
+        this.style = { setProperty: () => {} };
+        this.attributes = new Map();
+        this.className = '';
+        this.textContent = '';
+    }
+    append(...children) { this.children.push(...children); }
+    replaceChildren(...children) { this.children = children; }
+    addEventListener() {}
+    setAttribute(name, value) { this.attributes.set(name, value); }
+}
+
+const descendants = (root) => {
+    const found = [];
+    const visit = (node) => { found.push(node); node.children?.forEach(visit); };
+    root.children?.forEach(visit);
+    return found;
+};
+
 test('preview controller debounces visible enabled rows and caps their items at twelve', async () => {
     // Break caught: a render immediately requests every row or forwards an unsafe oversized item count.
     const { createPreviewController } = await moduleFromFile('preview.js');
@@ -207,6 +230,33 @@ test('TV and mobile plans keep row order while applying distinct top and card ru
     assert.ok(mobile.rows.every((item) => item.cardLayout === 'portrait'));
 });
 
+test('TV and mobile previews render labeled schematic tiles without realistic media details', async () => {
+    // Break caught: poster images, titles, badges, or progress metadata returning to the simplified editor preview.
+    const { renderMobilePreview, renderTVPreview } = await moduleFromFile('preview.js');
+    const previousDocument = globalThis.document;
+    globalThis.document = { createElement: (tagName) => new PreviewElement(tagName) };
+    try {
+        const state = {
+            rows: [row('continue', { name: 'Continue Watching' })],
+            rowsSettings: { tvTopShelfMode: 'source', tvTopShelfSourceId: 'continue', mobileTopShelfSourceId: 'continue' },
+        };
+        const results = { continue: { id: 'continue', name: 'Continue Watching', status: 'ready', items: [
+            { title: 'Private movie title', subtitle: '2026', mediaType: 'movie', artworkUrl: 'https://images.example/poster.jpg', badges: ['4K'], progress: 42 },
+            { title: 'Private series title', mediaType: 'series' },
+            { title: 'Private channel title', mediaType: 'live' },
+        ] } };
+        for (const render of [renderTVPreview, renderMobilePreview]) {
+            const host = new PreviewElement('div');
+            render(host, state, { results });
+            const rendered = descendants(host);
+            assert.equal(rendered.some((element) => element.tagName === 'IMG' || element.tagName === 'PROGRESS'), false);
+            assert.deepEqual(rendered.filter((element) => element.className.includes('home-preview-tile-label')).map((element) => element.textContent), ['Movie', 'Series', 'Live']);
+            assert.equal(rendered.some((element) => ['Private movie title', 'Private series title', 'Private channel title', '2026', '4K'].includes(element.textContent)), false);
+            assert.equal(rendered.some((element) => element.textContent === 'Continue Watching'), true);
+        }
+    } finally { globalThis.document = previousDocument; }
+});
+
 test('continuous theme input retains the same focused control across a live render', async () => {
     // Break caught: typing a number or using a color picker replacing its focused Theme control after each input event.
     const { renderTheme } = await moduleFromFile('theme.js');
@@ -251,4 +301,12 @@ test('preview-only CSS gives each persisted button style a distinct card/control
         assert.match(css, new RegExp(`\\.home-preview-device\\[data-preview-button-style="${style}"\\] \\.home-preview-card`));
     }
     assert.doesNotMatch(css, /\.btn\[data-preview-button-style/);
+});
+
+test('schematic rows hide native scrollbars and cap tile rounding', async () => {
+    // Break caught: browser chrome or pill-shaped portrait cards making the abstract preview look like a full media UI again.
+    const css = await readFile(new URL('./home_designer.css', import.meta.url), 'utf8');
+    assert.match(css, /\.home-preview-items\s*\{[^}]*scrollbar-width:\s*none/s);
+    assert.match(css, /\.home-preview-items::-webkit-scrollbar\s*\{[^}]*display:\s*none/s);
+    assert.match(css, /\.home-preview-card\s*\{[^}]*border-radius:\s*min\(var\(--preview-button-radius\),\s*1\.25rem\)/s);
 });

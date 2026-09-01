@@ -131,27 +131,23 @@ const appendText = (parent, tag, value, className = '') => {
     return element;
 };
 
-const safeArtwork = (value) => {
-    try { const url = new URL(String(value || ''), document.baseURI); return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : ''; } catch { return ''; }
+const schematicLabel = (item) => {
+    const kind = text(item?.mediaType || item?.type, 'content').toLowerCase();
+    if (kind === 'movie' || kind === 'movies' || kind === 'film') return { kind: 'movie', label: 'Movie' };
+    if (['series', 'tv', 'show', 'episode'].includes(kind)) return { kind: 'series', label: 'Series' };
+    if (['live', 'livetv', 'live-tv', 'channel', 'channels'].includes(kind)) return { kind: 'live', label: 'Live' };
+    return { kind: 'content', label: 'Content' };
 };
 
 const mediaCard = (item, layout) => {
     const card = document.createElement('article');
-    card.className = `home-preview-card home-preview-card-${layout}`;
-    const artwork = safeArtwork(item?.artworkUrl);
-    if (artwork) {
-        const image = document.createElement('img');
-        image.className = 'home-preview-artwork'; image.src = artwork; image.alt = ''; image.loading = 'lazy'; card.append(image);
-    } else appendText(card, 'div', 'Artwork unavailable', 'home-preview-artwork home-preview-artwork-fallback');
-    const details = document.createElement('div'); details.className = 'home-preview-card-details';
-    appendText(details, 'strong', text(item?.title, 'Untitled'));
-    if (item?.subtitle) appendText(details, 'span', text(item.subtitle), 'home-preview-subtitle');
-    if (Array.isArray(item?.badges) && item.badges.length) appendText(details, 'span', item.badges.map((badge) => text(badge)).filter(Boolean).join(' · '), 'home-preview-badges');
-    if (Number.isFinite(Number(item?.progress)) && Number(item.progress) > 0) {
-        const progress = document.createElement('progress'); progress.max = 100; progress.value = Math.min(100, Math.max(0, Number(item.progress))); progress.setAttribute('aria-label', 'Watched progress'); details.append(progress);
-    }
-    if (item?.sample) appendText(details, 'span', 'Sample', 'home-preview-sample');
-    card.append(details);
+    const schematic = schematicLabel(item);
+    card.className = `home-preview-card home-preview-card-${layout} home-preview-tile`;
+    card.dataset.tileKind = schematic.kind;
+    const surface = document.createElement('div');
+    surface.className = 'home-preview-tile-surface';
+    appendText(surface, 'span', schematic.label, 'home-preview-tile-label');
+    card.append(surface);
     return card;
 };
 

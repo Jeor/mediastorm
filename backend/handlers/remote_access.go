@@ -98,6 +98,17 @@ type remoteAccessInviteResponse struct {
 	CreatedAt      time.Time  `json:"createdAt"`
 }
 
+// Identity is an unauthenticated LAN probe. It exposes only the public Iroh endpoint ID.
+func (h *RemoteAccessHandler) Identity(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	id, err := h.service.PublicIdentity()
+	if err != nil {
+		writeJSONError(w, "host identity unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	h.writeJSON(w, map[string]string{"serverId": id})
+}
+
 func (h *RemoteAccessHandler) Status(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, h.service.Status(r.Context()))
 }

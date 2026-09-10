@@ -182,6 +182,11 @@ func Register(
 		api.Handle("/video/internal-stream", localhostOnlyMiddleware(http.HandlerFunc(videoHandler.StreamVideo))).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 	}
 
+	// A credential-free LAN probe must be registered before the protected catch-all.
+	if remoteAccessHandler != nil {
+		api.HandleFunc("/remote-access/identity", remoteAccessHandler.Identity).Methods(http.MethodGet)
+	}
+
 	// Protected routes - require authentication
 	protected := api.PathPrefix("").Subrouter()
 	protected.Use(AccountAuthMiddleware(sessionsSvc, accountsSvc))

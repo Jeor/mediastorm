@@ -1489,6 +1489,7 @@ func mergeMetadataGenres(groups ...[]string) []string {
 
 // ShelfLoadOptions configures fast shelf rendering for list-style endpoints.
 type ShelfLoadOptions struct {
+	DeferArtwork  bool // use cached artwork; caller can request enrichment after rendering
 	Lite          bool
 	ArtworkLimit  int
 	SortBy        string
@@ -1583,10 +1584,15 @@ func (s *Service) TrendingWithOptions(ctx context.Context, mediaType string, opt
 			}
 		}
 		if opts.Lite {
-			genresUpdated := s.enrichLiteMissingGenres(ctx, cached)
-			artworkCacheUpdated := s.enrichShelfArtworkFromCache(cached)
-			s.enrichShelfArtwork(ctx, cached, artworkLimit)
-			if genresUpdated || artworkCacheUpdated || artworkLimit > customListLiteArtworkLimit {
+			s.enrichShelfArtworkFromCache(cached)
+			if !opts.DeferArtwork && artworkLimit <= customListLiteArtworkLimit {
+				// Initial shelf requests must not wait for remote enrichment of
+				// an already cached list. Larger artwork refreshes remain blocking
+				// so the frontend can merge the completed artwork afterwards.
+				s.refreshCachedTrendingLite(key, cached, artworkLimit)
+			} else if !opts.DeferArtwork {
+				s.enrichLiteMissingGenres(ctx, cached)
+				s.enrichShelfArtwork(ctx, cached, artworkLimit)
 				_ = s.cache.set(key, cached)
 			}
 		} else if opts.ArtworkLimit > 0 {
@@ -1616,8 +1622,7 @@ func (s *Service) TrendingWithOptions(ctx context.Context, mediaType string, opt
 		return nil, err
 	}
 	if opts.Lite {
-		s.enrichShelfArtworkFromCache(items)
-		s.enrichShelfArtwork(ctx, items, artworkLimit)
+		s.enrichShelfArtworkForLoad(ctx, items, artworkLimit, opts.DeferArtwork)
 	} else if normalized == "movie" {
 		// Enrich movies with release data (theatrical/home release)
 		s.enrichTrendingMovieReleases(enrichCtx, items)
@@ -6326,7 +6331,7 @@ func (s *Service) GetTMDBList(ctx context.Context, opts TMDBListOptions) ([]mode
 	for index, title := range cached.Titles {
 		items = append(items, models.TrendingItem{Rank: opts.Offset + index + 1, Title: title})
 	}
-	s.enrichShelfArtwork(ctx, items, opts.ArtworkLimit)
+	s.enrichShelfArtworkForLoad(ctx, items, opts.ArtworkLimit, opts.DeferArtwork)
 	ensureTrendingMovieReleaseStatuses(items)
 	return items, cached.Total, nil
 }
@@ -6472,7 +6477,7 @@ func (s *Service) discoverShelfWithOptions(ctx context.Context, mediaType string
 			break
 		}
 	}
-	s.enrichShelfArtwork(ctx, items, artworkLimit)
+	s.enrichShelfArtworkForLoad(ctx, items, artworkLimit, opts.DeferArtwork)
 
 	log.Printf(
 		"[metadata] discover %s complete type=%s startPage=%d limit=%d offset=%d source=%s count=%d total=%d duration=%s",
@@ -8331,6 +8336,7 @@ type HistoryChecker interface {
 
 // CustomListOptions configures filtering and pagination for GetCustomList.
 type CustomListOptions struct {
+	DeferArtwork     bool // use cached artwork for the initial response
 	Limit            int
 	Offset           int
 	HideUnreleased   bool
@@ -9969,8 +9975,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 		if opts.Lite {
 			genresUpdated = s.enrichLiteMissingGenres(ctx, result)
 		}
-		artworkCacheUpdated := s.enrichShelfArtworkFromCache(result)
-		s.enrichShelfArtwork(ctx, result, artworkLimit)
+		artworkCacheUpdated := s.enrichShelfArtworkForLoad(ctx, result, artworkLimit, opts.DeferArtwork)
 		if opts.Lite && (genresUpdated || artworkCacheUpdated || (opts.Offset == 0 && artworkLimit > customListLiteArtworkLimit)) {
 			_ = s.cache.set(cacheID, cached)
 		}
@@ -10074,8 +10079,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 		}(i, item)
 	}
 	wg.Wait()
-	s.enrichShelfArtworkFromCache(results)
-	s.enrichShelfArtwork(ctx, results, customListArtworkLimit(opts))
+	s.enrichShelfArtworkForLoad(ctx, results, customListArtworkLimit(opts), opts.DeferArtwork)
 
 	// Only cache full-list results when no filtering was applied
 	if !opts.HideWatched && !opts.HideUnreleased && opts.Offset == 0 &&

@@ -343,6 +343,7 @@ type TopTenResponse struct {
 
 func parseShelfLoadOptions(r *http.Request) metadatapkg.ShelfLoadOptions {
 	opts := metadatapkg.ShelfLoadOptions{
+		DeferArtwork:  strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
 		Lite:          strings.ToLower(strings.TrimSpace(r.URL.Query().Get("lite"))) == "true",
 		SortBy:        strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sortBy"))),
 		SortDirection: strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sortDirection"))),
@@ -1239,6 +1240,7 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		serviceLimit, serviceOffset = 0, 0
 	}
 	opts := metadatapkg.CustomListOptions{
+		DeferArtwork:   strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
 		Limit:          serviceLimit,
 		Offset:         serviceOffset,
 		HideUnreleased: hideUnreleased,
@@ -2060,6 +2062,7 @@ func (h *MetadataHandler) TMDBList(w http.ResponseWriter, r *http.Request) {
 	postFilterPagination := limit > 0 && (hideUnreleased || hideWatched)
 	loadOpts := parseShelfLoadOptions(r)
 	opts := metadatapkg.TMDBListOptions{
+		DeferArtwork:  loadOpts.DeferArtwork,
 		SourceType:    strings.TrimSpace(r.URL.Query().Get("sourceType")),
 		SourceID:      strings.TrimSpace(r.URL.Query().Get("sourceId")),
 		MediaType:     strings.TrimSpace(r.URL.Query().Get("mediaType")),

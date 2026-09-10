@@ -3862,6 +3862,7 @@ var tmdbShelfSourceTypes = map[string]struct{}{
 
 // TMDBListOptions identifies a TMDB-backed shelf and controls its paging.
 type TMDBListOptions struct {
+	DeferArtwork  bool
 	SourceType    string
 	SourceID      string
 	MediaType     string

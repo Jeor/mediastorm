@@ -463,7 +463,7 @@ func TestMetadataHandler_DiscoverNew(t *testing.T) {
 
 	handler := NewMetadataHandler(fake, testConfigManager(t))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/discover/new?type=Movie&lite=true&artworkLimit=20", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/discover/new?type=Movie&lite=true&artworkLimit=20&deferArtwork=true", nil)
 	rec := httptest.NewRecorder()
 
 	handler.DiscoverNew(rec, req)
@@ -474,7 +474,7 @@ func TestMetadataHandler_DiscoverNew(t *testing.T) {
 	if fake.lastTrendingType != "movie" {
 		t.Fatalf("expected media type to normalize to movie, got %q", fake.lastTrendingType)
 	}
-	if !fake.lastTrendingOptions.Lite || fake.lastTrendingOptions.ArtworkLimit != 20 {
+	if !fake.lastTrendingOptions.Lite || fake.lastTrendingOptions.ArtworkLimit != 20 || !fake.lastTrendingOptions.DeferArtwork {
 		t.Fatalf("unexpected trending options: %+v", fake.lastTrendingOptions)
 	}
 
@@ -774,7 +774,7 @@ func TestMetadataHandler_CustomListForwardsLiteOption(t *testing.T) {
 	}
 	handler := NewMetadataHandler(fake, testConfigManager(t))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/lists/custom?url=https%3A%2F%2Fmdblist.com%2Flists%2Fsnoak%2Fdisney-plus-top-10-movies%2Fjson&limit=50&lite=true&artworkLimit=20&name=Disney%2B", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/lists/custom?url=https%3A%2F%2Fmdblist.com%2Flists%2Fsnoak%2Fdisney-plus-top-10-movies%2Fjson&limit=50&lite=true&artworkLimit=20&deferArtwork=true&name=Disney%2B", nil)
 	rec := httptest.NewRecorder()
 
 	handler.CustomList(rec, req)
@@ -786,7 +786,7 @@ func TestMetadataHandler_CustomListForwardsLiteOption(t *testing.T) {
 		t.Fatalf("unexpected list URL %q", fake.lastCustomListURL)
 	}
 	opts := fake.lastCustomListOptions
-	if opts.Limit != 50 || !opts.Lite || opts.ArtworkLimit != 20 || opts.Label != "Disney+" {
+	if opts.Limit != 50 || !opts.Lite || opts.ArtworkLimit != 20 || !opts.DeferArtwork || opts.Label != "Disney+" {
 		t.Fatalf("unexpected custom list options: %+v", opts)
 	}
 

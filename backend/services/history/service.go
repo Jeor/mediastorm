@@ -1306,12 +1306,11 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 						haveFurthest = true
 					}
 				}
-				// A watched-history row only makes progress stale when that watched
-				// event is at least as new as the progress heartbeat. If playback
-				// starts again later, it is a rewatch and the partially watched
-				// episode must replace the on-deck episode as the resume target.
+				// Progress at or before the watched event is stale. Newer progress
+				// counts as a rewatch only after more than 5% has been watched,
+				// then replaces the on-deck resume target.
 				inProgressAlreadyWatched = !matchingWatchedAt.IsZero() &&
-					!t.inProgress.UpdatedAt.After(matchingWatchedAt)
+					(t.inProgress.PercentWatched <= 5 || !t.inProgress.UpdatedAt.After(matchingWatchedAt))
 				if !inProgressAlreadyWatched && haveFurthest &&
 					compareEpisodeOrder(furthestSeason, furthestEpisode, inProgressSeason, inProgressEpisode) > 0 &&
 					!t.inProgress.UpdatedAt.After(latestWatchedAt) {
@@ -1350,7 +1349,7 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 						}
 						for _, ek := range episodeKeys {
 							if watchedAt, ok := watchedEpisodeProviderTokens[idType+":"+strings.ToLower(idValue)+":"+ek]; ok &&
-								!t.inProgress.UpdatedAt.After(watchedAt) {
+								(t.inProgress.PercentWatched <= 5 || !t.inProgress.UpdatedAt.After(watchedAt)) {
 								inProgressAlreadyWatched = true
 								break
 							}

@@ -545,7 +545,7 @@ func (m *ThumbnailManager) markUnsupported(cleanPath string, durationSec float64
 	return key, nil
 }
 
-func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durationSec float64, intervalSec int, workerCount int, toneMapMode thumbnailToneMapMode, dvProfile string, chapterTimes []float64) (string, bool, error) {
+func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durationSec float64, intervalSec int, workerCount int, toneMapMode thumbnailToneMapMode, dvProfile string, chapterTimes []float64, providers ...func() bool) (string, bool, error) {
 	if m == nil {
 		return "", false, fmt.Errorf("thumbnail manager unavailable")
 	}
@@ -559,7 +559,7 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 				manifestMode = thumbnailToneMapNone
 			}
 		}
-		compatible := manifestMode == toneMapMode && strings.EqualFold(strings.TrimSpace(manifest.DVProfile), strings.TrimSpace(dvProfile)) && manifest.FilterVer == thumbnailFilterVersion
+		compatible := manifest.Phase == "seekr" || manifestMode == toneMapMode && strings.EqualFold(strings.TrimSpace(manifest.DVProfile), strings.TrimSpace(dvProfile)) && manifest.FilterVer == thumbnailFilterVersion
 		if compatible && manifest.Status == "ready" && m.manifestFilesComplete(manifest) {
 			return key, false, nil
 		}
@@ -590,6 +590,11 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 			delete(m.inFlight, key)
 			m.mu.Unlock()
 		}()
+		for _, provider := range providers {
+			if provider() {
+				return
+			}
+		}
 		m.generate(key, cleanPath, sourceURL, authHeader, durationSec, intervalSec, workerCount, toneMapMode, dvProfile, chapterTimes)
 	}()
 
@@ -915,7 +920,9 @@ func (h *VideoHandler) StartThumbnails(w http.ResponseWriter, r *http.Request) {
 	toneMap := parseThumbnailToneMapHint(r, dvProfile) || thumbnailNeedsToneMap(h.getCachedMetadata(cleanPath))
 	toneMapMode := h.thumbnailManager.thumbnailToneMapMode(toneMap, dvProfile)
 	authHeader := h.externalUsenetWebDAVAuthHeader(sourceURL)
-	key, started, err := h.thumbnailManager.start(cleanPath, sourceURL, authHeader, durationSec, intervalSec, thumbnailSettings.Workers, toneMapMode, dvProfile, chapterTimes)
+	key, started, err := h.thumbnailManager.start(cleanPath, sourceURL, authHeader, durationSec, intervalSec, thumbnailSettings.Workers, toneMapMode, dvProfile, chapterTimes, func() bool {
+		return thumbnailSettings.SeekrEnabled && h.thumbnailManager.loadSeekr(cleanPath, durationSec, r.URL.Query(), thumbnailSettings.SeekrAPIKey) == nil
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return

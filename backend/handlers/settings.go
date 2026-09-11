@@ -603,6 +603,7 @@ func redactSettings(s *config.Settings) {
 	mask(&s.Metadata.AIAPIKey)
 	mask(&s.Metadata.GeminiAPIKey)
 	mask(&s.Playback.YouTubeProxyURL)
+	mask(&s.Playback.Thumbnails.SeekrAPIKey)
 
 	// WebDAV
 	mask(&s.WebDAV.Password)
@@ -768,6 +769,7 @@ func preserveRedactedFields(incoming *config.Settings, existing *config.Settings
 	restore(&incoming.Metadata.AIAPIKey, existing.Metadata.AIAPIKey)
 	restore(&incoming.Metadata.GeminiAPIKey, existing.Metadata.GeminiAPIKey)
 	restore(&incoming.Playback.YouTubeProxyURL, existing.Playback.YouTubeProxyURL)
+	restore(&incoming.Playback.Thumbnails.SeekrAPIKey, existing.Playback.Thumbnails.SeekrAPIKey)
 
 	// WebDAV
 	restore(&incoming.WebDAV.Password, existing.WebDAV.Password)

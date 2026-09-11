@@ -525,8 +525,10 @@ type PlaybackSettings struct {
 }
 
 type PlaybackThumbnailSettings struct {
-	Enabled bool `json:"enabled"`
-	Workers int  `json:"workers"`
+	SeekrEnabled bool   `json:"seekrEnabled"`
+	SeekrAPIKey  string `json:"seekrApiKey,omitempty"`
+	Enabled      bool   `json:"enabled"`
+	Workers      int    `json:"workers"`
 }
 
 func (p *PlaybackSettings) NormalizeAllowedTrackLanguages() {

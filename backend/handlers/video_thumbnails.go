@@ -880,6 +880,13 @@ func (h *VideoHandler) StartThumbnails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	durationSec, _ := strconv.ParseFloat(strings.TrimSpace(r.URL.Query().Get("duration")), 64)
+	if parseBoolQuery(r.URL.Query().Get("seekrOnly")) {
+		key, started := h.thumbnailManager.startSeekrOnly(cleanPath, durationSec, r.URL.Query(), thumbnailSettings)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"key": key, "status": h.thumbnailStatusForKey(key), "started": started})
+		return
+	}
 	intervalSec, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("interval")))
 	chapterTimes := parseThumbnailChapterTimes(r.URL.Query()["chapter"])
 	if len(chapterTimes) == 0 {
@@ -920,8 +927,9 @@ func (h *VideoHandler) StartThumbnails(w http.ResponseWriter, r *http.Request) {
 	toneMap := parseThumbnailToneMapHint(r, dvProfile) || thumbnailNeedsToneMap(h.getCachedMetadata(cleanPath))
 	toneMapMode := h.thumbnailManager.thumbnailToneMapMode(toneMap, dvProfile)
 	authHeader := h.externalUsenetWebDAVAuthHeader(sourceURL)
+	seekrUnavailable := h.thumbnailManager.seekrRecentlyUnavailable(cleanPath)
 	key, started, err := h.thumbnailManager.start(cleanPath, sourceURL, authHeader, durationSec, intervalSec, thumbnailSettings.Workers, toneMapMode, dvProfile, chapterTimes, func() bool {
-		return thumbnailSettings.SeekrEnabled && h.thumbnailManager.loadSeekr(cleanPath, durationSec, r.URL.Query(), thumbnailSettings.SeekrAPIKey) == nil
+		return thumbnailSettings.SeekrEnabled && !seekrUnavailable && h.thumbnailManager.loadSeekr(cleanPath, durationSec, r.URL.Query(), thumbnailSettings.SeekrAPIKey) == nil
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)

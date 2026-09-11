@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"novastream/config"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -233,4 +234,40 @@ func (m *ThumbnailManager) loadSeekr(path string, duration float64, input url.Va
 	manifest.Status = "ready"
 	manifest.Total = len(manifest.Thumbnails)
 	return publish()
+}
+
+// This path never resolves or reads the playback source, including on an API miss.
+func (m *ThumbnailManager) startSeekrOnly(path string, duration float64, query url.Values, settings config.PlaybackThumbnailSettings) (string, bool) {
+	key := thumbnailKey(path)
+	if !settings.SeekrEnabled || strings.TrimSpace(settings.SeekrAPIKey) == "" {
+		return key, false
+	}
+	if _, err := seekrQuery(query, duration); err != nil {
+		return key, false
+	}
+	if manifest, err := m.readManifest(key); err == nil && manifest.Status == "ready" && m.manifestFilesComplete(manifest) {
+		return key, false
+	}
+	if m.seekrRecentlyUnavailable(path) {
+		return key, false
+	}
+	m.mu.Lock()
+	if _, exists := m.inFlight[key]; exists {
+		m.mu.Unlock()
+		return key, false
+	}
+	m.inFlight[key] = struct{}{}
+	m.mu.Unlock()
+	go func() {
+		defer func() { m.mu.Lock(); delete(m.inFlight, key); m.mu.Unlock() }()
+		if err := m.loadSeekr(path, duration, query, settings.SeekrAPIKey); err != nil {
+			_ = m.writeManifest(&thumbnailManifest{Key: key, PathHash: key, Status: "pending", Phase: "seekr-miss", DurationSec: duration})
+		}
+	}()
+	return key, true
+}
+
+func (m *ThumbnailManager) seekrRecentlyUnavailable(path string) bool {
+	manifest, err := m.readManifest(thumbnailKey(path))
+	return err == nil && manifest.Phase == "seekr-miss" && time.Since(manifest.UpdatedAt) < 5*time.Minute
 }

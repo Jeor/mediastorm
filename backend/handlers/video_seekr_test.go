@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"novastream/config"
 )
@@ -151,4 +152,49 @@ func TestSeekrLive(t *testing.T) {
 		t.Fatal("missing generated tiles")
 	}
 	t.Logf("Seekr live preview verified: %d tiles", manifest.Generated)
+}
+
+func TestSeekrOnlyMissNeverStartsLocalGeneration(t *testing.T) {
+	original := seekrHTTPTransport
+	defer func() { seekrHTTPTransport = original }()
+	requested := make(chan struct{}, 1)
+	seekrHTTPTransport = seekrTransport(func(r *http.Request) (*http.Response, error) {
+		requested <- struct{}{}
+		return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("unavailable")), Header: make(http.Header)}, nil
+	})
+	settings := config.DefaultSettings()
+	settings.Playback.Thumbnails.Enabled = true
+	settings.Playback.Thumbnails.SeekrEnabled = true
+	settings.Playback.Thumbnails.SeekrAPIKey = "test-key"
+	// No source resolver and an invalid ffmpeg path: API-only must need neither.
+	m := NewThumbnailManager(t.TempDir(), "/nonexistent/ffmpeg")
+	h := &VideoHandler{thumbnailManager: m, configManager: staticVideoConfigProvider{settings: settings}}
+	r := httptest.NewRequest(http.MethodPost, "/video/thumbnails/start?path=movie.mkv&duration=120&mediaType=movie&imdbId=tt123&seekrOnly=1", nil)
+	w := httptest.NewRecorder()
+	h.StartThumbnails(w, r)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("status %d", w.Code)
+	}
+	select {
+	case <-requested:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Seekr not requested")
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for m.isInflight(thumbnailKey("movie.mkv")) && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if m.isInflight(thumbnailKey("movie.mkv")) {
+		t.Fatal("Seekr job did not finish")
+	}
+	manifest, err := m.readManifest(thumbnailKey("movie.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Status != "pending" || manifest.Phase != "seekr-miss" || manifest.Generated != 0 {
+		t.Fatalf("unexpected local generation: %+v", manifest)
+	}
+	if !m.seekrRecentlyUnavailable("movie.mkv") {
+		t.Fatal("miss must be remembered for fallback")
+	}
 }

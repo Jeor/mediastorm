@@ -142,6 +142,7 @@ func (s *Service) Get(userID string) (*models.UserSettings, error) {
 
 	if settings, ok := s.settings[userID]; ok {
 		copy := settings
+		copy.SportsPreferences = append(json.RawMessage(nil), settings.SportsPreferences...)
 		return &copy, nil
 	}
 
@@ -229,6 +230,7 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 
 	if settings, ok := s.settings[userID]; ok {
 		// Sanitize language codes (strip stray quotes/whitespace)
+		settings.SportsPreferences = append(json.RawMessage(nil), settings.SportsPreferences...)
 		settings.Playback.PreferredAudioLanguage = sanitizeLanguageCode(settings.Playback.PreferredAudioLanguage)
 		settings.Playback.PreferredSubtitleLanguage = sanitizeLanguageCode(settings.Playback.PreferredSubtitleLanguage)
 		settings.Playback.AllowedTrackLanguages = sanitizeOptionalLanguageCodes(settings.Playback.AllowedTrackLanguages)
@@ -680,6 +682,8 @@ func (s *Service) Update(userID string, settings models.UserSettings) error {
 	defer s.mu.Unlock()
 
 	// If settings are empty, delete the entry instead of saving
+	// General settings PUTs (including older clients) cannot replace sports data.
+	settings.SportsPreferences = s.settings[userID].SportsPreferences
 	if isSettingsEmpty(settings) {
 		log.Printf("[user-settings] Update(%q): settings empty, deleting entry", userID)
 		delete(s.settings, userID)
@@ -726,6 +730,9 @@ func hasExplicitPointerOverride(value reflect.Value) bool {
 
 // isSettingsEmpty checks if user settings have no actual values set.
 func isSettingsEmpty(s models.UserSettings) bool {
+	if len(s.SportsPreferences) != 0 {
+		return false
+	}
 	if hasExplicitPointerOverride(reflect.ValueOf(s)) {
 		return false
 	}

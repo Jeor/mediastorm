@@ -112,6 +112,8 @@ func Register(
 	recordingsHandler *handlers.RecordingsHandler,
 	localMediaHandler *handlers.LocalMediaHandler,
 	epgHandler *handlers.EPGHandler,
+	sportsHandler *handlers.SportsHandler,
+	sportsLinksHandler *handlers.SportsLinksHandler,
 	userSettingsHandler *handlers.UserSettingsHandler,
 	subtitlesHandler *handlers.SubtitlesHandler,
 	clientsHandler *handlers.ClientsHandler,
@@ -467,6 +469,79 @@ func Register(
 		protected.HandleFunc("/live/epg/refresh", epgHandler.Options).Methods(http.MethodOptions)
 	}
 
+	// Sports scoreboard endpoints (ESPN-backed live scores + Live TV stream matching)
+	if sportsHandler != nil {
+		protected.HandleFunc("/sports/scoreboard", sportsHandler.GetScoreboard).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/scoreboard", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/leagues", sportsHandler.GetLeagues).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/leagues", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/cycling", sportsHandler.GetCycling).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/cycling", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/cycling/{race}/{year}/{stage}", sportsHandler.GetCyclingStage).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/cycling/{race}/{year}/{stage}", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/standings/{league}", sportsHandler.GetLeagueStandings).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/standings/{league}", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/motogp/standings", sportsHandler.GetMotoGPStandings).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/motogp/standings", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/motogp/circuit/{event}", sportsHandler.GetMotoGPCircuit).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/motogp/circuit/{event}", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/races", sportsHandler.GetRaces).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/races", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/f1/archive/{event}/{session}", sportsHandler.GetF1Archive).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/f1/archive/{event}/{session}", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/races/{league}/{event}/{session}", sportsHandler.GetRaceSession).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/races/{league}/{event}/{session}", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/hub", sportsHandler.GetHub).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/hub", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/settings", sportsHandler.GetSettings).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/settings", sportsHandler.PutSettings).Methods(http.MethodPut)
+		protected.HandleFunc("/sports/settings", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/logo-cache/clear", sportsHandler.ClearLogoCache).Methods(http.MethodPost)
+		protected.HandleFunc("/sports/logo-cache/clear", sportsHandler.Options).Methods(http.MethodOptions)
+		// Public like /images/proxy above - browser <img> tags can't attach an Authorization
+		// header, and this only ever proxies a host-allowlisted (*.espncdn.com) URL, so
+		// auth wasn't protecting anything real here - it was just silently 401ing every
+		// logo request instead.
+		api.HandleFunc("/sports/logo", sportsHandler.GetLogo).Methods(http.MethodGet, http.MethodHead)
+		api.HandleFunc("/sports/logo", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/live/search", sportsHandler.SearchLiveHub).Methods(http.MethodGet)
+		protected.HandleFunc("/live/search", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/status", sportsHandler.GetStatus).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/status", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/refresh", sportsHandler.Refresh).Methods(http.MethodPost)
+		protected.HandleFunc("/sports/refresh", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/game/{id}", sportsHandler.GetGame).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/game/{id}", sportsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/game/{id}/streams", sportsHandler.GetGameStreams).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/game/{id}/streams", sportsHandler.Options).Methods(http.MethodOptions)
+	}
+
+	// Sports Team Channels endpoints ("Manage Team Channels": persisted primary/backup
+	// channel links per team). Static "linked-channels" route registered before the
+	// {teamId} wildcard routes so gorilla/mux doesn't treat it as a team ID.
+	if sportsLinksHandler != nil {
+		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/preview", sportsLinksHandler.PreviewAutoLinks).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/preview", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/apply", sportsLinksHandler.ApplyAutoLinks).Methods(http.MethodPost)
+		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/apply", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams", sportsLinksHandler.GetTeams).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/teams", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/linked-channels", sportsLinksHandler.GetLinkedChannels).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/teams/linked-channels", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/{teamId}/links", sportsLinksHandler.GetTeamLinks).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/teams/{teamId}/links", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/{teamId}/channel-suggestions", sportsLinksHandler.GetChannelSuggestions).Methods(http.MethodGet)
+		protected.HandleFunc("/sports/teams/{teamId}/channel-suggestions", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/{teamId}/links/primary", sportsLinksHandler.SetPrimaryLink).Methods(http.MethodPut)
+		protected.HandleFunc("/sports/teams/{teamId}/links/primary", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/{teamId}/links/backup", sportsLinksHandler.AddBackupLink).Methods(http.MethodPost)
+		protected.HandleFunc("/sports/teams/{teamId}/links/backup", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/{teamId}/links/reorder", sportsLinksHandler.ReorderBackups).Methods(http.MethodPut)
+		protected.HandleFunc("/sports/teams/{teamId}/links/reorder", sportsLinksHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/sports/teams/{teamId}/links/{linkId}", sportsLinksHandler.DeleteLink).Methods(http.MethodDelete)
+		protected.HandleFunc("/sports/teams/{teamId}/links/{linkId}", sportsLinksHandler.Options).Methods(http.MethodOptions)
+	}
+
 	// VOD stream usage endpoint
 	protected.HandleFunc("/stream-usage", videoHandler.GetStreamUsage).Methods(http.MethodGet)
 	protected.HandleFunc("/stream-usage", handleOptions).Methods(http.MethodOptions)
@@ -679,6 +754,7 @@ func Register(
 	profileProtected.HandleFunc("/{userID}/kids/lists", usersHandler.Options).Methods(http.MethodOptions)
 
 	profileProtected.HandleFunc("/{userID}/settings", userSettingsHandler.GetSettings).Methods(http.MethodGet)
+	registerSportsPreferenceRoutes(profileProtected, userSettingsHandler)
 	profileProtected.HandleFunc("/{userID}/settings", userSettingsHandler.PutSettings).Methods(http.MethodPut)
 	profileProtected.HandleFunc("/{userID}/settings/frontend", userSettingsHandler.PatchFrontendSetting).Methods(http.MethodPatch)
 	profileProtected.HandleFunc("/{userID}/settings/frontend", userSettingsHandler.GetFrontendSettingState).Methods(http.MethodGet)

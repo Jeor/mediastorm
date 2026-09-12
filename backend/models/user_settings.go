@@ -1,6 +1,9 @@
 package models
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // Helper functions for creating pointers (exported for use by other packages)
 func FloatPtr(v float64) *float64 { return &v }
@@ -48,16 +51,18 @@ func StringVal(p *string, def string) string {
 // UserSettings contains per-user customizable settings.
 // These override global defaults when set.
 type UserSettings struct {
-	Playback       PlaybackSettings       `json:"playback"`
-	Metadata       MetadataSettings       `json:"metadata"`
-	HomeShelves    HomeShelvesSettings    `json:"homeShelves"`
-	Filtering      FilterSettings         `json:"filtering"`
-	AnimeFiltering AnimeFilteringSettings `json:"animeFiltering"`
-	LiveTV         LiveTVSettings         `json:"liveTV"`
-	Display        DisplaySettings        `json:"display"`
-	Network        NetworkSettings        `json:"network"`
-	Ranking        *UserRankingSettings   `json:"ranking,omitempty"`
-	Calendar       CalendarSettings       `json:"calendar"`
+	// Server-owned opaque snapshot: only the dedicated sports endpoint may update it.
+	SportsPreferences json.RawMessage        `json:"sportsPreferences,omitempty"`
+	Playback          PlaybackSettings       `json:"playback"`
+	Metadata          MetadataSettings       `json:"metadata"`
+	HomeShelves       HomeShelvesSettings    `json:"homeShelves"`
+	Filtering         FilterSettings         `json:"filtering"`
+	AnimeFiltering    AnimeFilteringSettings `json:"animeFiltering"`
+	LiveTV            LiveTVSettings         `json:"liveTV"`
+	Display           DisplaySettings        `json:"display"`
+	Network           NetworkSettings        `json:"network"`
+	Ranking           *UserRankingSettings   `json:"ranking,omitempty"`
+	Calendar          CalendarSettings       `json:"calendar"`
 }
 
 // MetadataSettings contains per-profile metadata presentation preferences.

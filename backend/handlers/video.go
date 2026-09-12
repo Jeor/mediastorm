@@ -5315,12 +5315,12 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 				BucketKey:      target.BucketKey,
 			})
 			directURL = fmt.Sprintf("/video/live-direct/%s/stream.ts", ticket)
-			if encoded := proxyParams.Encode(); encoded != "" {
+			if encoded := encodePlayerQuery(proxyParams); encoded != "" {
 				directURL += "?" + encoded
 			}
 		} else {
 			proxyParams.Set("url", liveURL)
-			directURL = fmt.Sprintf("/live/stream?%s", proxyParams.Encode())
+			directURL = fmt.Sprintf("/live/stream?%s", encodePlayerQuery(proxyParams))
 		}
 
 		log.Printf("[video] live session using direct proxy for URL: %s (provider=%s profile=%s)", requestsecurity.URLForLog(liveURL), target.Provider, profileID)
@@ -5402,6 +5402,12 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	}
 
 	log.Printf("[video] created live HLS session %s", session.ID)
+}
+
+// encodePlayerQuery uses percent encoding for spaces because the player preserves
+// bare plus signs as literal characters while normalizing routed playback URLs.
+func encodePlayerQuery(values url.Values) string {
+	return strings.ReplaceAll(values.Encode(), "+", "%20")
 }
 
 // GetLiveUsage returns current live stream usage and limits for the selected provider.

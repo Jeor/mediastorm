@@ -181,6 +181,15 @@ func TestStartLiveHLSSessionDirectIncludesProfileParams(t *testing.T) {
 	if !body.IsDirect {
 		t.Fatal("expected direct live response")
 	}
+	if strings.Contains(body.StreamURL, "+") {
+		t.Fatalf("streamUrl contains form-encoded spaces that the player treats as literal plus signs: %q", body.StreamURL)
+	}
+	if !strings.Contains(body.StreamURL, "profileName=Living%20Room") {
+		t.Fatalf("streamUrl profileName is not percent-encoded: %q", body.StreamURL)
+	}
+	if !strings.Contains(body.StreamURL, "title=Evening%20News") {
+		t.Fatalf("streamUrl title is not percent-encoded: %q", body.StreamURL)
+	}
 
 	parsed, err := url.Parse(body.StreamURL)
 	if err != nil {

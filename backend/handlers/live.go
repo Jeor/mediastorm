@@ -1989,7 +1989,7 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 			requestedSourceID,
 			time.Since(requestStartedAt).Round(time.Millisecond),
 		)
-		http.Error(w, `{"error":"failed to fetch playlist"}`, http.StatusBadGateway)
+		http.Error(w, `{"error":"No Live TV source is configured for this profile. Add a provider in settings or switch to a configured profile."}`, http.StatusConflict)
 		return
 	}
 	selectedSources := selectM3USources(sources, requestedSourceID)

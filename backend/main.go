@@ -1702,6 +1702,9 @@ func main() {
 	r.HandleFunc("/account/api/profiles/mdblist", accountUIHandler.RequireAuth(accountUIHandler.ClearProfileMdblist)).Methods(http.MethodDelete)
 	r.HandleFunc("/account/api/password", accountUIHandler.RequireAuth(accountUIHandler.ChangePassword)).Methods(http.MethodPut)
 
+	// Account settings expose the same authenticated Live TV source test as admin settings.
+	r.HandleFunc("/account/api/test/live", adminUIHandler.RequireAuth(apiusage.Track("connections.test.live", "Live TV test", "Provider Tests", adminUIHandler.TestLiveTV))).Methods(http.MethodPost)
+
 	// Protected account routes - User Settings API
 	r.HandleFunc("/account/api/user-settings", adminUIHandler.RequireAuth(adminUIHandler.GetUserSettings)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/user-settings", adminUIHandler.RequireAuth(adminUIHandler.SaveUserSettings)).Methods(http.MethodPut)

@@ -279,6 +279,11 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 		if play.Team.ID == game.AwayTeam.ID || play.Team.ID == game.HomeTeam.ID {
 			row.TeamID = play.Team.ID
 		}
+		if family == "nfl" && play.Scoring {
+			// Score deltas identify the scoring side even on defensive returns.
+			// Never infer it from possession or the drive owner.
+			row.TeamID = footballScoringTeam(play, plays[:i], game)
+		}
 		for _, person := range play.Participants {
 			if person.Athlete.ID != "" && person.Athlete.DisplayName != "" {
 				row.Participants = append(row.Participants, models.SportsPlayParticipant{ID: person.Athlete.ID, Name: person.Athlete.DisplayName})
@@ -407,4 +412,26 @@ func normalizeFootballDrives(game models.SportsGame, p teamSportSummary) []model
 		add(*p.Drives.Current, true)
 	}
 	return rows
+}
+
+func footballScoringTeam(play teamDetailPlay, earlier []teamDetailPlay, game models.SportsGame) string {
+	if !play.Scoring || play.AwayScore == nil || play.HomeScore == nil {
+		return ""
+	}
+	for i := len(earlier) - 1; i >= 0; i-- {
+		previous := earlier[i]
+		if previous.ID == play.ID || previous.AwayScore == nil || previous.HomeScore == nil {
+			continue
+		}
+		away := *play.AwayScore - *previous.AwayScore
+		home := *play.HomeScore - *previous.HomeScore
+		if away > 0 && away <= 8 && home == 0 {
+			return game.AwayTeam.ID
+		}
+		if home > 0 && home <= 8 && away == 0 {
+			return game.HomeTeam.ID
+		}
+		return ""
+	}
+	return ""
 }

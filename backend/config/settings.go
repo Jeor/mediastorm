@@ -1393,6 +1393,7 @@ type UISettings struct {
 	LoadingAnimationEnabled                   bool `json:"loadingAnimationEnabled"`
 	NavigationTabVisibilityIncludesSystemTabs bool `json:"navigationTabVisibilityIncludesSystemTabs,omitempty"`
 	NavigationTabVisibilityIncludesWatchlist  bool `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
+	NavigationTabVisibilityIncludesSports     bool `json:"navigationTabVisibilityIncludesSports,omitempty"`
 	// UserEditableSettings is the server-owner allowlist of global setting paths
 	// that may be presented in authenticated client settings screens.
 	UserEditableSettings        []string `json:"userEditableSettings,omitempty"`
@@ -1410,7 +1411,7 @@ type DisplaySettings struct {
 	// Valid values: "watchProgress", "releaseStatus", "watchState", "unwatchedCount"
 	BadgeVisibility []string `json:"badgeVisibility"`
 	// NavigationTabVisibility controls which app navigation tabs are shown.
-	// Valid values: "home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"
+	// Valid values: "home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"
 	NavigationTabVisibility []string `json:"navigationTabVisibility,omitempty"`
 	// WatchStateIconStyle controls the color of watch state icons.
 	// "colored" (default) = green/yellow circles, "white" = all white circles
@@ -1993,10 +1994,11 @@ func DefaultSettings() Settings {
 			LoadingAnimationEnabled:                   true,
 			NavigationTabVisibilityIncludesSystemTabs: true,
 			NavigationTabVisibilityIncludesWatchlist:  true,
+			NavigationTabVisibilityIncludesSports:     true,
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                        []string{"watchProgress"},
-			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
+			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"},
 			WatchStateIconStyle:                    "colored",
 			IncludeUnreleasedMoviesInLists:         true,
 			IncludeUnreleasedShowsInLists:          true,
@@ -2233,6 +2235,7 @@ func (m *Manager) Load() (Settings, error) {
 	migrateLiveSourcesRaw(raw)
 	migrateNavigationTabVisibilitySystemTabs(raw)
 	migrateNavigationTabVisibilityWatchlist(raw)
+	migrateNavigationTabVisibilitySports(raw)
 
 	if metadataRaw, ok := raw["metadata"].(map[string]interface{}); ok {
 		var migratedPrimary string
@@ -2773,7 +2776,7 @@ func (m *Manager) Load() (Settings, error) {
 		s.Display.BadgeVisibility = []string{"watchProgress"}
 	}
 	if len(s.Display.NavigationTabVisibility) == 0 {
-		s.Display.NavigationTabVisibility = []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"}
+		s.Display.NavigationTabVisibility = []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"}
 	}
 	if s.Display.WatchStateIconStyle == "" {
 		s.Display.WatchStateIconStyle = "colored"
@@ -2985,6 +2988,35 @@ func migrateNavigationTabVisibilityWatchlist(raw map[string]interface{}) {
 	}
 
 	uiMap["navigationTabVisibilityIncludesWatchlist"] = true
+}
+
+func migrateNavigationTabVisibilitySports(raw map[string]interface{}) {
+	uiMap, ok := raw["ui"].(map[string]interface{})
+	if !ok {
+		uiMap = map[string]interface{}{"loadingAnimationEnabled": true}
+		raw["ui"] = uiMap
+	}
+	if migrated, _ := uiMap["navigationTabVisibilityIncludesSports"].(bool); migrated {
+		return
+	}
+
+	if displayMap, ok := raw["display"].(map[string]interface{}); ok {
+		if tabs, ok := displayMap["navigationTabVisibility"].([]interface{}); ok && len(tabs) > 0 {
+			hasSports := false
+			for _, tab := range tabs {
+				if key, ok := tab.(string); ok && key == "sports" {
+					hasSports = true
+					break
+				}
+			}
+			if !hasSports {
+				tabs = append(tabs, "sports")
+				displayMap["navigationTabVisibility"] = tabs
+			}
+		}
+	}
+
+	uiMap["navigationTabVisibilityIncludesSports"] = true
 }
 
 func liveHasLegacySourceConfig(liveRaw map[string]interface{}) bool {

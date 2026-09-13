@@ -109,12 +109,13 @@ type DisplaySettings struct {
 	// Valid values: "watchProgress", "releaseStatus", "watchState", "unwatchedCount"
 	BadgeVisibility []string `json:"badgeVisibility"`
 	// NavigationTabVisibility controls which navigation tabs are shown in the client UI.
-	// Valid values: "home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"
+	// Valid values: "home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"
 	NavigationTabVisibility []string `json:"navigationTabVisibility,omitempty"`
 	// NavigationTabVisibilityIncludesSystemTabs marks the one-time migration that added settings/admin to existing visibility lists.
 	NavigationTabVisibilityIncludesSystemTabs bool `json:"navigationTabVisibilityIncludesSystemTabs,omitempty"`
 	// NavigationTabVisibilityIncludesWatchlist marks the one-time migration that added Watchlist to existing visibility lists.
 	NavigationTabVisibilityIncludesWatchlist bool `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
+	NavigationTabVisibilityIncludesSports    bool `json:"navigationTabVisibilityIncludesSports,omitempty"`
 	// WatchStateIconStyle controls the color of watch state icons.
 	// "colored" (default) = green/yellow circles, "white" = all white circles
 	WatchStateIconStyle string `json:"watchStateIconStyle,omitempty"`
@@ -205,6 +206,19 @@ func AddMissingWatchlistNavigationTab(tabs []string) ([]string, bool) {
 		}
 	}
 	return append(tabs, "watchlist"), true
+}
+
+// AddMissingSportsNavigationTab enables Sports once without overriding later visibility choices.
+func AddMissingSportsNavigationTab(tabs []string) ([]string, bool) {
+	if len(tabs) == 0 {
+		return tabs, false
+	}
+	for _, tab := range tabs {
+		if tab == "sports" {
+			return tabs, false
+		}
+	}
+	return append(tabs, "sports"), true
 }
 
 // AppearanceSettings controls app-wide visual accessibility and theming preferences.
@@ -1129,9 +1143,10 @@ func DefaultUserSettings() UserSettings {
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                              []string{"watchProgress"},
-			NavigationTabVisibility:                      []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
+			NavigationTabVisibility:                      []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"},
 			NavigationTabVisibilityIncludesSystemTabs:    true,
 			NavigationTabVisibilityIncludesWatchlist:     true,
+			NavigationTabVisibilityIncludesSports:        true,
 			WatchStateIconStyle:                          "colored",
 			IncludeUnreleasedMoviesInLists:               BoolPtr(true),
 			IncludeUnreleasedShowsInLists:                BoolPtr(true),

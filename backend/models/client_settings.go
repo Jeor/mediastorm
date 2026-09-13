@@ -53,6 +53,7 @@ type ClientFilterSettings struct {
 	NavigationTabVisibility                      *[]string           `json:"navigationTabVisibility,omitempty"`
 	NavigationTabVisibilityIncludesSystemTabs    *bool               `json:"navigationTabVisibilityIncludesSystemTabs,omitempty"`
 	NavigationTabVisibilityIncludesWatchlist     *bool               `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
+	NavigationTabVisibilityIncludesSports        *bool               `json:"navigationTabVisibilityIncludesSports,omitempty"`
 	Appearance                                   *AppearanceSettings `json:"appearance,omitempty"`
 
 	// Playback overrides

@@ -673,6 +673,7 @@ func (s *Service) Update(userID string, settings models.UserSettings) error {
 	if len(settings.Display.NavigationTabVisibility) > 0 {
 		settings.Display.NavigationTabVisibilityIncludesSystemTabs = true
 		settings.Display.NavigationTabVisibilityIncludesWatchlist = true
+		settings.Display.NavigationTabVisibilityIncludesSports = true
 	}
 
 	log.Printf("[user-settings] Update(%q): subMode=%q, audioLang=%q, subLang=%q",
@@ -1014,6 +1015,13 @@ func (s *Service) load() error {
 		needsSave := false
 		for userID, us := range s.settings {
 			changed := false
+			if !us.Display.NavigationTabVisibilityIncludesSports {
+				if tabs, tabsChanged := models.AddMissingSportsNavigationTab(us.Display.NavigationTabVisibility); tabsChanged {
+					us.Display.NavigationTabVisibility = tabs
+				}
+				us.Display.NavigationTabVisibilityIncludesSports = true
+				changed = true
+			}
 			if reconcileProfileHomeShelves(&us) {
 				changed = true
 			}
@@ -1124,6 +1132,14 @@ func (s *Service) load() error {
 				us.Display.NavigationTabVisibility = tabs
 			}
 			us.Display.NavigationTabVisibilityIncludesWatchlist = true
+			changed = true
+			needsSave = true
+		}
+		if !us.Display.NavigationTabVisibilityIncludesSports {
+			if tabs, tabsChanged := models.AddMissingSportsNavigationTab(us.Display.NavigationTabVisibility); tabsChanged {
+				us.Display.NavigationTabVisibility = tabs
+			}
+			us.Display.NavigationTabVisibilityIncludesSports = true
 			changed = true
 			needsSave = true
 		}

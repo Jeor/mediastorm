@@ -11,6 +11,9 @@ type Session struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UserAgent string    `json:"userAgent,omitempty"`
 	IPAddress string    `json:"ipAddress,omitempty"`
+	// ClientID binds app sessions to the stable device identity used by remote
+	// access pairing. Browser/admin sessions intentionally leave it empty.
+	ClientID string `json:"clientId,omitempty"`
 	// Scope restricts what the session may access. Empty means full account
 	// access (normal login). "stream" is a one-time share session limited to
 	// streaming/playback endpoints only.

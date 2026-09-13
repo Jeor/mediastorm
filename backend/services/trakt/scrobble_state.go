@@ -87,7 +87,15 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	}
 	sess.progress = percentWatched
 	sess.update = update
+	sessionEstablished := sess.state != stateIdle
 	t.mu.Unlock()
+	if sessionEstablished {
+		state := "playing"
+		if update.IsPaused {
+			state = "paused"
+		}
+		t.registry.Touch("trakt", userID, state, "", update, percentWatched)
+	}
 
 	accessToken, err := t.scrobbler.getAccessTokenForUser(userID)
 	if err != nil || accessToken == "" {
@@ -131,6 +139,9 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	switch sess.state {
 	case stateIdle, statePaused:
 		// Start or resume
+		if !t.registry.CanStart("trakt", userID, update) {
+			return
+		}
 		if _, err := scrobbleWithAbsoluteEpisodeFallback("start", req, func(scrobbleReq ScrobbleRequest) (*ScrobbleResponse, error) {
 			return t.client.ScrobbleStart(accessToken, scrobbleReq)
 		}); err != nil {

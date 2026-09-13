@@ -11,7 +11,11 @@ import (
 	"novastream/models"
 )
 
-const DefaultCleanupInterval = time.Hour
+const (
+	DefaultCleanupInterval        = time.Minute
+	DefaultHeartbeatPersistPeriod = 30 * time.Second
+	DefaultHeartbeatLease         = 2 * time.Minute
+)
 
 type Store interface {
 	Upsert(ctx context.Context, session *models.RealtimeScrobbleSession) error
@@ -30,18 +34,24 @@ type ActivePlaybackProvider interface {
 // Registry records successful provider-side starts and owns the single cleanup
 // worker shared by all realtime scrobblers.
 type Registry struct {
-	store    Store
-	mu       sync.RWMutex
-	cleaners map[string]Cleaner
-	active   ActivePlaybackProvider
-	interval time.Duration
+	store           Store
+	mu              sync.RWMutex
+	cleaners        map[string]Cleaner
+	active          ActivePlaybackProvider
+	blocked         map[string]bool
+	lastPersisted   map[string]time.Time
+	recoveryPending bool
+	interval        time.Duration
 }
 
 func New(store Store, interval time.Duration) *Registry {
 	if interval <= 0 {
 		interval = DefaultCleanupInterval
 	}
-	return &Registry{store: store, cleaners: make(map[string]Cleaner), interval: interval}
+	return &Registry{
+		store: store, cleaners: make(map[string]Cleaner), blocked: make(map[string]bool),
+		lastPersisted: make(map[string]time.Time), interval: interval,
+	}
 }
 
 func (r *Registry) RegisterCleaner(provider string, cleaner Cleaner) {
@@ -56,11 +66,50 @@ func (r *Registry) SetActivePlaybackProvider(provider ActivePlaybackProvider) {
 	r.active = provider
 }
 
+// CanStart reports whether a tracker may create a new provider-side session.
+// A failed restart recovery blocks only the affected item so its persisted
+// remote session key cannot be overwritten before cleanup succeeds.
+func (r *Registry) CanStart(provider, userID string, update models.PlaybackProgressUpdate) bool {
+	if r == nil || r.store == nil {
+		return true
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return !r.recoveryPending && !r.blocked[sessionRecordKey(provider, userID, update.MediaType, update.ItemID)]
+}
+
 func (r *Registry) Record(provider, userID, state, remoteKey string, update models.PlaybackProgressUpdate, percentWatched float64) {
 	if r == nil || r.store == nil {
 		return
 	}
+	if !r.CanStart(provider, userID, update) {
+		log.Printf("[realtime-sessions] refusing to overwrite unrecovered %s session user=%s item=%s", provider, userID, update.ItemID)
+		return
+	}
+	r.persist(provider, userID, state, remoteKey, update, percentWatched, false)
+}
+
+// Touch refreshes the durable heartbeat lease for an existing provider-side
+// session without increasing PostgreSQL writes to the player's heartbeat rate.
+func (r *Registry) Touch(provider, userID, state, remoteKey string, update models.PlaybackProgressUpdate, percentWatched float64) {
+	if r == nil || r.store == nil || !r.CanStart(provider, userID, update) {
+		return
+	}
+	r.persist(provider, userID, state, remoteKey, update, percentWatched, true)
+}
+
+func (r *Registry) persist(provider, userID, state, remoteKey string, update models.PlaybackProgressUpdate, percentWatched float64, throttle bool) {
 	now := time.Now().UTC()
+	key := sessionRecordKey(provider, userID, update.MediaType, update.ItemID)
+	if throttle {
+		r.mu.Lock()
+		if last := r.lastPersisted[key]; !last.IsZero() && now.Sub(last) < DefaultHeartbeatPersistPeriod {
+			r.mu.Unlock()
+			return
+		}
+		r.lastPersisted[key] = now
+		r.mu.Unlock()
+	}
 	session := models.RealtimeScrobbleSession{
 		Provider: strings.ToLower(strings.TrimSpace(provider)), UserID: userID,
 		MediaType: strings.ToLower(update.MediaType), ItemID: strings.ToLower(update.ItemID),
@@ -70,8 +119,17 @@ func (r *Registry) Record(provider, userID, state, remoteKey string, update mode
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := r.store.Upsert(ctx, &session); err != nil {
+		if throttle {
+			r.mu.Lock()
+			delete(r.lastPersisted, key)
+			r.mu.Unlock()
+		}
 		log.Printf("[realtime-sessions] record %s session failed user=%s item=%s: %v", session.Provider, userID, session.ItemID, err)
+		return
 	}
+	r.mu.Lock()
+	r.lastPersisted[key] = now
+	r.mu.Unlock()
 }
 
 func (r *Registry) Remove(provider, userID string, update models.PlaybackProgressUpdate) {
@@ -83,6 +141,9 @@ func (r *Registry) Remove(provider, userID string, update models.PlaybackProgres
 	if err := r.store.Delete(ctx, strings.ToLower(provider), userID, strings.ToLower(update.MediaType), strings.ToLower(update.ItemID)); err != nil {
 		log.Printf("[realtime-sessions] remove %s session failed user=%s item=%s: %v", provider, userID, update.ItemID, err)
 	}
+	r.mu.Lock()
+	delete(r.lastPersisted, sessionRecordKey(provider, userID, update.MediaType, update.ItemID))
+	r.mu.Unlock()
 }
 
 func (r *Registry) Start(ctx context.Context) {
@@ -98,7 +159,31 @@ func (r *Registry) Start(ctx context.Context) {
 	}
 }
 
+// Recover drains sessions left by a previous process before new playback
+// updates are accepted. Unlike a normal sweep, recovery intentionally ignores
+// the active-playback dashboard: every persisted row belongs to the old
+// in-memory tracker and must be closed before the replacement tracker starts.
+func (r *Registry) Recover(ctx context.Context) {
+	if r == nil || r.store == nil {
+		return
+	}
+	r.mu.Lock()
+	r.recoveryPending = true
+	r.mu.Unlock()
+	r.sweep(ctx, true)
+}
+
 func (r *Registry) Sweep(ctx context.Context) {
+	if r == nil || r.store == nil {
+		return
+	}
+	r.mu.RLock()
+	recoverAll := r.recoveryPending
+	r.mu.RUnlock()
+	r.sweep(ctx, recoverAll)
+}
+
+func (r *Registry) sweep(ctx context.Context, recoverAll bool) {
 	if r == nil || r.store == nil {
 		return
 	}
@@ -107,13 +192,27 @@ func (r *Registry) Sweep(ctx context.Context) {
 		log.Printf("[realtime-sessions] list failed: %v", err)
 		return
 	}
+	if recoverAll {
+		r.mu.Lock()
+		for _, session := range sessions {
+			r.blocked[sessionRecordKey(session.Provider, session.UserID, session.MediaType, session.ItemID)] = true
+		}
+		r.recoveryPending = false
+		r.mu.Unlock()
+	}
 	for _, session := range sessions {
 		r.mu.RLock()
 		active := r.active
 		cleaner := r.cleaners[session.Provider]
+		blocked := r.blocked[sessionRecordKey(session.Provider, session.UserID, session.MediaType, session.ItemID)]
 		r.mu.RUnlock()
-		if active == nil || active.IsPlaybackActive(session.UserID, session.Update) {
-			continue
+		if !recoverAll && !blocked {
+			if !session.UpdatedAt.IsZero() && time.Since(session.UpdatedAt) <= DefaultHeartbeatLease {
+				continue
+			}
+			if active == nil || active.IsPlaybackActive(session.UserID, session.Update) {
+				continue
+			}
 		}
 		if cleaner == nil {
 			log.Printf("[realtime-sessions] no cleaner registered for provider %s", session.Provider)
@@ -130,6 +229,10 @@ func (r *Registry) Sweep(ctx context.Context) {
 			log.Printf("[realtime-sessions] delete cleaned record failed provider=%s user=%s item=%s: %v", session.Provider, session.UserID, session.ItemID, err)
 			continue
 		}
+		r.mu.Lock()
+		delete(r.blocked, sessionRecordKey(session.Provider, session.UserID, session.MediaType, session.ItemID))
+		delete(r.lastPersisted, sessionRecordKey(session.Provider, session.UserID, session.MediaType, session.ItemID))
+		r.mu.Unlock()
 		log.Printf("[realtime-sessions] removed lingering %s session user=%s item=%s", session.Provider, session.UserID, session.ItemID)
 	}
 }
@@ -144,8 +247,11 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{sessions: make(map[string]models.RealtimeScrobbleSession)}
 }
 
-func recordKey(provider, userID, mediaType, itemID string) string {
-	return strings.Join([]string{provider, userID, mediaType, itemID}, "\x00")
+func sessionRecordKey(provider, userID, mediaType, itemID string) string {
+	return strings.Join([]string{
+		strings.ToLower(strings.TrimSpace(provider)), userID,
+		strings.ToLower(strings.TrimSpace(mediaType)), strings.ToLower(strings.TrimSpace(itemID)),
+	}, "\x00")
 }
 
 func (s *MemoryStore) Upsert(_ context.Context, session *models.RealtimeScrobbleSession) error {
@@ -154,7 +260,7 @@ func (s *MemoryStore) Upsert(_ context.Context, session *models.RealtimeScrobble
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	key := recordKey(session.Provider, session.UserID, session.MediaType, session.ItemID)
+	key := sessionRecordKey(session.Provider, session.UserID, session.MediaType, session.ItemID)
 	if existing, ok := s.sessions[key]; ok {
 		session.StartedAt = existing.StartedAt
 	}
@@ -176,6 +282,6 @@ func (s *MemoryStore) List(_ context.Context) ([]models.RealtimeScrobbleSession,
 func (s *MemoryStore) Delete(_ context.Context, provider, userID, mediaType, itemID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.sessions, recordKey(provider, userID, mediaType, itemID))
+	delete(s.sessions, sessionRecordKey(provider, userID, mediaType, itemID))
 	return nil
 }

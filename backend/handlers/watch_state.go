@@ -2,16 +2,31 @@ package handlers
 
 import (
 	"strconv"
+	"strings"
 
 	"novastream/internal/mediaidentity"
 	"novastream/models"
 )
+
+func stringSliceContainsFold(values []string, target string) bool {
+	for _, value := range values {
+		if strings.EqualFold(strings.TrimSpace(value), target) {
+			return true
+		}
+	}
+	return false
+}
 
 // watchStateIndex provides O(1) lookups for watch state computation.
 // Built with a single pass through each data source (3 × O(n)).
 type watchStateIndex struct {
 	movies map[string]movieState
 	series map[string]seriesState
+}
+
+type releasedEpisodeCountProvider interface {
+	GetCachedReleasedEpisodeCount(models.SeriesDetailsQuery) (int, bool)
+	WarmReleasedEpisodeCount(models.SeriesDetailsQuery)
 }
 
 type movieState struct {
@@ -38,6 +53,7 @@ func buildWatchStateIndex(
 		movies: make(map[string]movieState),
 		series: make(map[string]seriesState),
 	}
+	watchedEpisodeKeys := make(map[string]map[string]struct{})
 
 	// Pass 1: Watch history — determine watched flags
 	for _, wh := range watchHistory {
@@ -81,10 +97,21 @@ func buildWatchStateIndex(
 						s := idx.series[key]
 						s.hasWatchedEps = true
 						idx.series[key] = s
+						if watchedEpisodeKeys[key] == nil {
+							watchedEpisodeKeys[key] = make(map[string]struct{})
+						}
+						watchedEpisodeKeys[key][strconv.Itoa(wh.SeasonNumber)+":"+strconv.Itoa(wh.EpisodeNumber)] = struct{}{}
 					}
 				}
 			}
 		}
+	}
+	for key, episodes := range watchedEpisodeKeys {
+		s := idx.series[key]
+		if len(episodes) > s.watchedEpisodes {
+			s.watchedEpisodes = len(episodes)
+		}
+		idx.series[key] = s
 	}
 
 	// Pass 2: Continue watching — episode counts and progress
@@ -180,6 +207,9 @@ func (idx *watchStateIndex) computeWithExternalIDs(mediaType, itemID string, ext
 		}
 		allEpsWatched := s.totalEpisodes > 0 && s.watchedEpisodes >= s.totalEpisodes
 		unwatched := s.totalEpisodes - s.watchedEpisodes
+		if unwatched < 0 {
+			unwatched = 0
+		}
 		var unwatchedPtr *int
 		if s.totalEpisodes > 0 {
 			unwatchedPtr = intPtr(unwatched)
@@ -190,9 +220,124 @@ func (idx *watchStateIndex) computeWithExternalIDs(mediaType, itemID string, ext
 		if s.hasWatchedEps || s.hasProgress {
 			return "partial", unwatchedPtr
 		}
-		return "none", nil
+		return "none", unwatchedPtr
 	}
 	return "none", nil
+}
+
+func (idx *watchStateIndex) setSeriesEpisodeTotal(itemID string, externalIDs map[string]string, total int) {
+	if idx == nil || total <= 0 {
+		return
+	}
+	identity := mediaidentity.Resolve(mediaidentity.Input{
+		MediaType:   "series",
+		ID:          itemID,
+		ExternalIDs: externalIDs,
+	})
+	for _, key := range identity.IndexKeys() {
+		s := idx.series[key]
+		if total > s.totalEpisodes {
+			s.totalEpisodes = total
+		}
+		idx.series[key] = s
+	}
+}
+
+func seriesEpisodeCountQuery(item models.WatchlistItem) models.SeriesDetailsQuery {
+	query := models.SeriesDetailsQuery{
+		TitleID: item.ID,
+		Name:    item.Name,
+		Year:    item.Year,
+		IMDBID:  item.ExternalIDs["imdb"],
+	}
+	query.TMDBID, _ = strconv.ParseInt(item.ExternalIDs["tmdb"], 10, 64)
+	query.TVDBID, _ = strconv.ParseInt(item.ExternalIDs["tvdb"], 10, 64)
+	return query
+}
+
+// addCachedWatchlistEpisodeTotals enriches the index exclusively from local
+// metadata cache hits. Misses are warmed in the background for a later normal
+// response, keeping the current request free of provider calls.
+func addCachedWatchlistEpisodeTotals(
+	items []models.WatchlistItem,
+	idx *watchStateIndex,
+	metadata any,
+	warmMisses bool,
+) {
+	provider, ok := metadata.(releasedEpisodeCountProvider)
+	if !ok || idx == nil {
+		return
+	}
+	for _, item := range items {
+		if mediaidentity.NormalizeMediaType(item.MediaType) != "series" {
+			continue
+		}
+		query := seriesEpisodeCountQuery(item)
+		if total, cached := provider.GetCachedReleasedEpisodeCount(query); cached {
+			idx.setSeriesEpisodeTotal(item.ID, item.ExternalIDs, total)
+			continue
+		}
+		if warmMisses {
+			provider.WarmReleasedEpisodeCount(query)
+		}
+	}
+}
+
+// addCachedTrendingEpisodeTotals mirrors addCachedWatchlistEpisodeTotals for
+// metadata-backed shelves, whose watch-state fields live on TrendingItem.Title.
+// Provider misses remain asynchronous and opt-in so discovery requests do not
+// block on, or unconditionally multiply, upstream metadata calls.
+func addCachedTrendingEpisodeTotals(
+	items []models.TrendingItem,
+	idx *watchStateIndex,
+	metadata any,
+	warmMisses bool,
+) {
+	provider, ok := metadata.(releasedEpisodeCountProvider)
+	if !ok || idx == nil {
+		return
+	}
+	for i := range items {
+		title := items[i].Title
+		if mediaidentity.NormalizeMediaType(title.MediaType) != "series" {
+			continue
+		}
+		itemID := buildItemIDForHistory(items[i])
+		if itemID == "" {
+			itemID = title.ID
+		}
+		query := models.SeriesDetailsQuery{
+			TitleID: itemID,
+			Name:    title.Name,
+			Year:    title.Year,
+			TMDBID:  title.TMDBID,
+			TVDBID:  title.TVDBID,
+			IMDBID:  title.IMDBID,
+		}
+		externalIDs := titleWatchStateExternalIDs(title)
+		if total, cached := provider.GetCachedReleasedEpisodeCount(query); cached {
+			idx.setSeriesEpisodeTotal(itemID, externalIDs, total)
+			continue
+		}
+		if warmMisses {
+			provider.WarmReleasedEpisodeCount(query)
+		}
+	}
+}
+
+func enrichSearchResultsWithCachedEpisodeCounts(
+	results []models.SearchResult,
+	idx *watchStateIndex,
+	metadata any,
+) {
+	items := make([]models.TrendingItem, len(results))
+	for i := range results {
+		items[i].Title = results[i].Title
+	}
+	enrichTrendingItems(items, idx, metadata, false)
+	for i := range results {
+		results[i].Title = items[i].Title
+	}
 }
 
 func intPtr(v int) *int {
@@ -200,14 +345,16 @@ func intPtr(v int) *int {
 }
 
 // enrichWatchlistItems sets WatchState and UnwatchedCount on watchlist items in-place.
-func enrichWatchlistItems(items []models.WatchlistItem, idx *watchStateIndex) {
+func enrichWatchlistItems(items []models.WatchlistItem, idx *watchStateIndex, metadata any, warmEpisodeCounts bool) {
+	addCachedWatchlistEpisodeTotals(items, idx, metadata, warmEpisodeCounts)
 	for i := range items {
 		items[i].WatchState, items[i].UnwatchedCount = idx.computeWithExternalIDs(items[i].MediaType, items[i].ID, items[i].ExternalIDs)
 	}
 }
 
 // enrichTrendingItems sets WatchState and UnwatchedCount on trending items in-place.
-func enrichTrendingItems(items []models.TrendingItem, idx *watchStateIndex) {
+func enrichTrendingItems(items []models.TrendingItem, idx *watchStateIndex, metadata any, warmEpisodeCounts bool) {
+	addCachedTrendingEpisodeTotals(items, idx, metadata, warmEpisodeCounts)
 	for i := range items {
 		itemID := buildItemIDForHistory(items[i])
 		if itemID == "" {

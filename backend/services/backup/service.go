@@ -51,19 +51,24 @@ type Manifest struct {
 
 // Service handles backup creation, management, and restoration
 type Service struct {
-	mu            sync.RWMutex
-	backupDir     string
-	cacheDir      string
-	configManager *config.Manager
-	store         *datastore.DataStore
+	mu                  sync.RWMutex
+	backupDir           string
+	cacheDir            string
+	dashboardLayoutPath string
+	configManager       *config.Manager
+	store               *datastore.DataStore
 }
 
-// Files to backup (relative to cacheDir).
+const adminDashboardLayoutFile = "admin-dashboard-layout.json"
+
+// Files to backup. Most are relative to cacheDir; the dashboard layout lives
+// beside the configured settings file.
 // When using PostgreSQL, only settings.json is backed up as a file — everything else
 // is exported from the database as database.json.
 // The legacy JSON file list is kept for backwards compatibility with non-DB deployments.
 var backupFiles = []string{
 	"settings.json",
+	adminDashboardLayoutFile,
 	"queue.db",
 	"users.json",
 	"watchlist.json",
@@ -75,6 +80,7 @@ var backupFiles = []string{
 
 var backupFilesDB = []string{
 	"settings.json",
+	adminDashboardLayoutFile,
 }
 
 func (s *Service) useDB() bool { return s.store != nil }
@@ -91,11 +97,22 @@ func NewService(cacheDir string, configManager *config.Manager) (*Service, error
 		return nil, fmt.Errorf("create backup directory: %w", err)
 	}
 
-	return &Service{
+	service := &Service{
 		backupDir:     backupDir,
 		cacheDir:      cacheDir,
 		configManager: configManager,
-	}, nil
+	}
+	if configManager != nil && configManager.ConfigPath() != "" {
+		service.dashboardLayoutPath = filepath.Join(filepath.Dir(configManager.ConfigPath()), adminDashboardLayoutFile)
+	}
+	return service, nil
+}
+
+func (s *Service) sourcePath(filename string) string {
+	if filename == adminDashboardLayoutFile && s.dashboardLayoutPath != "" {
+		return s.dashboardLayoutPath
+	}
+	return filepath.Join(s.cacheDir, filename)
 }
 
 // CreateBackup creates a new backup archive
@@ -133,7 +150,7 @@ func (s *Service) CreateBackup(backupType BackupType) (*BackupInfo, error) {
 
 	// Add files to backup
 	for _, filename := range filesToBackup {
-		srcPath := filepath.Join(s.cacheDir, filename)
+		srcPath := s.sourcePath(filename)
 
 		// Check if file exists
 		stat, err := os.Stat(srcPath)
@@ -541,7 +558,7 @@ func (s *Service) restoreBackupFile(backupPath, sourceName string) error {
 			continue
 		}
 
-		destPath := filepath.Join(s.cacheDir, file.Name)
+		destPath := s.sourcePath(file.Name)
 
 		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
@@ -757,6 +774,18 @@ type rawRemoteAccessInvite struct {
 	CreatedAt      time.Time  `json:"createdAt"`
 }
 
+type rawRemoteAccessPairing struct {
+	ID                  string     `json:"id"`
+	InviteID            *string    `json:"inviteId,omitempty"`
+	PeerID              string     `json:"peerId"`
+	CredentialHash      string     `json:"credentialHash"`
+	PeerName            string     `json:"peerName,omitempty"`
+	CreatedBy           string     `json:"createdBy"`
+	CreatedAt           time.Time  `json:"createdAt"`
+	LastAuthenticatedAt *time.Time `json:"lastAuthenticatedAt,omitempty"`
+	RevokedAt           *time.Time `json:"revokedAt,omitempty"`
+}
+
 // localMediaItemExport includes file path fields that API models hide with json:"-".
 type localMediaItemExport struct {
 	ID               string                       `json:"id"`
@@ -805,6 +834,7 @@ type databaseExport struct {
 	Sessions                 []models.Session                       `json:"sessions"`
 	Invitations              []models.Invitation                    `json:"invitations"`
 	RemoteAccessInvites      []rawRemoteAccessInvite                `json:"remoteAccessInvites,omitempty"`
+	RemoteAccessPairings     []rawRemoteAccessPairing               `json:"remoteAccessPairings,omitempty"`
 	ShareLinks               []rawShareLink                         `json:"shareLinks,omitempty"`
 	Clients                  []models.Client                        `json:"clients"`
 	ClientSettings           map[string]models.ClientFilterSettings `json:"clientSettings"`
@@ -841,6 +871,7 @@ var databaseExportSections = []string{
 	"sessions",
 	"invitations",
 	"remoteAccessInvites",
+	"remoteAccessPairings",
 	"shareLinks",
 	"clients",
 	"clientSettings",
@@ -919,6 +950,18 @@ func (s *Service) exportDatabaseBytes() ([]byte, error) {
 			IrohInvite: inv.IrohInvite, CreatedBy: inv.CreatedBy, PeerName: inv.PeerName,
 			ExpiresAt: inv.ExpiresAt, UsedAt: inv.UsedAt, UsedByPeerID: inv.UsedByPeerID,
 			RevokedAt: inv.RevokedAt, CreatedAt: inv.CreatedAt,
+		})
+	}
+	remotePairings, err := s.store.RemoteAccessPairings().List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("export remote access pairings: %w", err)
+	}
+	export.RemoteAccessPairings = make([]rawRemoteAccessPairing, 0, len(remotePairings))
+	for _, pairing := range remotePairings {
+		export.RemoteAccessPairings = append(export.RemoteAccessPairings, rawRemoteAccessPairing{
+			ID: pairing.ID, InviteID: pairing.InviteID, PeerID: pairing.PeerID,
+			CredentialHash: pairing.CredentialHash, PeerName: pairing.PeerName, CreatedBy: pairing.CreatedBy,
+			CreatedAt: pairing.CreatedAt, LastAuthenticatedAt: pairing.LastAuthenticatedAt, RevokedAt: pairing.RevokedAt,
 		})
 	}
 
@@ -1167,6 +1210,19 @@ func (s *Service) importDatabaseBytes(data []byte) error {
 			}
 			if err := tx.RemoteAccessInvites().Create(ctx, &inv); err != nil {
 				return fmt.Errorf("restore remote access invite %s: %w", inv.ID, err)
+			}
+		}
+		for i := range export.RemoteAccessPairings {
+			pairing := models.RemoteAccessPairing{
+				ID: export.RemoteAccessPairings[i].ID, InviteID: export.RemoteAccessPairings[i].InviteID,
+				PeerID: export.RemoteAccessPairings[i].PeerID, CredentialHash: export.RemoteAccessPairings[i].CredentialHash,
+				PeerName: export.RemoteAccessPairings[i].PeerName, CreatedBy: export.RemoteAccessPairings[i].CreatedBy,
+				CreatedAt:           export.RemoteAccessPairings[i].CreatedAt,
+				LastAuthenticatedAt: export.RemoteAccessPairings[i].LastAuthenticatedAt,
+				RevokedAt:           export.RemoteAccessPairings[i].RevokedAt,
+			}
+			if err := tx.RemoteAccessPairings().Create(ctx, &pairing); err != nil {
+				return fmt.Errorf("restore remote access pairing %s: %w", pairing.ID, err)
 			}
 		}
 		for i := range export.ShareLinks {

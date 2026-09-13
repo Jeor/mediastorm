@@ -166,6 +166,78 @@ func TestCreatePersistent_LongExpiry(t *testing.T) {
 	}
 }
 
+func TestClientBoundSessionsCanBeListedAndRevoked(t *testing.T) {
+	svc, err := NewService("", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound, err := svc.CreateForClient("account-1", false, "iPhone", "127.0.0.1", "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unbound, err := svc.Create("account-1", false, "browser", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := svc.GetSessionsForClient("device-1"); len(got) != 1 || got[0].Token != bound.Token {
+		t.Fatalf("GetSessionsForClient() = %#v, want bound session", got)
+	}
+	if got := svc.RevokeAllForClient("device-1"); got != 1 {
+		t.Fatalf("RevokeAllForClient() = %d, want 1", got)
+	}
+	if _, err := svc.Validate(bound.Token); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("bound session remains valid: %v", err)
+	}
+	if _, err := svc.Validate(unbound.Token); err != nil {
+		t.Fatalf("unbound session was revoked: %v", err)
+	}
+}
+
+func TestRefreshForClientBackfillsDeviceBinding(t *testing.T) {
+	svc, err := NewService("", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := svc.Create("account-1", false, "iPhone", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshed, err := svc.RefreshForClient(legacy.Token, "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshed.ClientID != "device-1" {
+		t.Fatalf("ClientID = %q, want device-1", refreshed.ClientID)
+	}
+	if got := svc.RevokeAllForClient("device-1"); got != 1 {
+		t.Fatalf("RevokeAllForClient() = %d, want 1", got)
+	}
+}
+
+func TestBindClientBackfillsLegacySessionOnlyOnce(t *testing.T) {
+	svc, err := NewService("", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := svc.Create("account-1", false, "iPhone", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.BindClient(legacy.Token, "device-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.BindClient(legacy.Token, "device-2"); err != nil {
+		t.Fatal(err)
+	}
+	bound, err := svc.Validate(legacy.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.ClientID != "device-1" {
+		t.Fatalf("ClientID = %q, want immutable device-1", bound.ClientID)
+	}
+}
+
 func TestCreateWithDuration_CustomDuration(t *testing.T) {
 	svc := setupTestService(t)
 

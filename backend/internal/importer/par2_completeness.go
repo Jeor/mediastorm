@@ -140,7 +140,11 @@ type par2BodyPool interface {
 type poolBodyAdapter struct{ cp nntppool.UsenetConnectionPool }
 
 func (p poolBodyAdapter) BodyReader(ctx context.Context, msgID string, groups []string) (io.ReadCloser, error) {
-	return p.cp.BodyReader(ctx, msgID, groups)
+	reader, err := p.cp.BodyReader(ctx, msgID, groups)
+	if err != nil {
+		return nil, err
+	}
+	return guardNNTPBodyReader(reader), nil
 }
 
 // verifyPar2Completeness downloads the PAR2 index for a parsed NZB and verifies that

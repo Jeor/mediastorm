@@ -659,20 +659,22 @@ func (h *DisplayListHandler) requireUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *DisplayListHandler) enrich(userID string, items []models.WatchlistItem, r *http.Request) {
+	metadataSvc := h.MetadataService
+	if h.MetadataHandler != nil {
+		metadataSvc = h.MetadataHandler.serviceForUser(userID)
+	}
+
 	if h.HistoryService != nil {
 		wh, whErr := h.HistoryService.ListWatchHistory(userID)
 		cw, _ := h.HistoryService.ListSeriesStates(userID)
 		pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 		if whErr == nil {
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichWatchlistItems(items, idx)
+			warmEpisodeCounts := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("includeUnwatchedCounts")), "true")
+			enrichWatchlistItems(items, idx, metadataSvc, warmEpisodeCounts)
 		}
 	}
 
-	metadataSvc := h.MetadataService
-	if h.MetadataHandler != nil {
-		metadataSvc = h.MetadataHandler.serviceForUser(userID)
-	}
 	enrichWatchlistRatings(r.Context(), items, metadataSvc)
 	enrichWatchlistArtwork(items, metadataSvc)
 	enrichDisplayListReleases(r, items, metadataSvc)

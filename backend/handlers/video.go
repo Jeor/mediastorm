@@ -135,6 +135,12 @@ type VideoHandler struct {
 	externalProxyRequestSeq uint64
 	externalPrefixSpool     externalPrefixSpool
 
+	// Stalker tune-in URLs contain short-lived portal credentials and must never
+	// be returned to a player. Native clients receive an opaque relay ticket;
+	// the resolved URL and MAG request headers stay here on the backend.
+	liveDirectMu      sync.Mutex
+	liveDirectTargets map[string]*liveDirectTarget
+
 	// Subtitle extraction for non-HLS streams
 	subtitleExtractManager *SubtitleExtractManager
 
@@ -648,6 +654,7 @@ func newVideoHandler(transmuxEnabled bool, ffmpegPath, ffprobePath, hlsTempDir s
 		metadataCache:          make(map[string]*cachedMetadataEntry),
 		streamPool:             newStreamPool(defaultStreamFailureRegistry),
 		externalRedirects:      make(map[string]cachedExternalRedirect),
+		liveDirectTargets:      make(map[string]*liveDirectTarget),
 	}
 	h.externalProxyHTTPClient = requestsecurity.NewSafeHTTPClientWithPolicyProvider(
 		0,
@@ -2281,8 +2288,7 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 	if limit <= 0 {
 		limit = 16 * 1024 * 1024
 	}
-	sample, readErr := io.ReadAll(io.LimitReader(resp.Body, limit))
-	_ = resp.Close()
+	sample, readErr := readProviderProbeSample(ctx, resp, limit)
 	if readErr != nil && !errors.Is(readErr, io.EOF) {
 		return nil, readErr
 	}
@@ -2337,6 +2343,34 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 	}
 	h.enrichBluRayStreamLanguages(ctx, cleanPath, meta)
 	return meta, nil
+}
+
+type providerProbeReadResult struct {
+	data []byte
+	err  error
+}
+
+func readProviderProbeSample(ctx context.Context, resp *streaming.Response, limit int64) ([]byte, error) {
+	resultCh := make(chan providerProbeReadResult, 1)
+	go func() {
+		data, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+		resultCh <- providerProbeReadResult{data: data, err: err}
+	}()
+
+	select {
+	case result := <-resultCh:
+		_ = resp.Close()
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return result.data, result.err
+	case <-ctx.Done():
+		// Some virtual Usenet files hold their read mutex while waiting for an
+		// NNTP segment, so Close can itself block behind the read. Detach cleanup
+		// and let cancellation release the probe caller immediately.
+		go func() { _ = resp.Close() }()
+		return nil, ctx.Err()
+	}
 }
 
 const maxCLPIBytes = 1024 * 1024
@@ -5214,14 +5248,30 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	var providerRequestHeaders map[string]string
+	if normalizeLiveProvider(target.Provider) == "stalker" {
+		channelID := strings.TrimSpace(r.URL.Query().Get("channelId"))
+		resolvedURL, headers, resolveErr := resolveStalkerChannel(r.Context(), target.Stalker, channelID)
+		if resolveErr != nil {
+			log.Printf("[video] failed to resolve Stalker channel %q: %v", channelID, resolveErr)
+			http.Error(w, "failed to resolve live stream", http.StatusBadGateway)
+			return
+		}
+		liveURL = resolvedURL
+		providerRequestHeaders = headers
+		if !h.requireAllowedExternalPath(w, r, liveURL) {
+			return
+		}
+	}
+
+	forceHLS := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("format")), "hls") ||
+		strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("target")), "web")
+
 	// Determine stream format (default to "hls")
 	streamFormat := target.StreamFormat
 	if streamFormat == "" {
 		streamFormat = "hls"
 	}
-
-	forceHLS := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("format")), "hls") ||
-		strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("target")), "web")
 	// iOS Safari/WebKit cannot play the endless chunked MP4 that direct mode
 	// produces via <video src> (fails with MEDIA_ERR_SRC_NOT_SUPPORTED). Clients
 	// that explicitly request this HLS endpoint also need the managed HLS path
@@ -5237,7 +5287,6 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	// Direct mode: return a proxy URL using the existing /live/stream endpoint
 	if streamFormat == "direct" {
 		proxyParams := url.Values{}
-		proxyParams.Set("url", liveURL)
 		if profileID != "" {
 			proxyParams.Set("profileId", profileID)
 		}
@@ -5254,7 +5303,25 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 			proxyParams.Set("stremioStreamIndex", streamIndex)
 		}
 		addStreamMediaMetadataParams(proxyParams, mediaMetadata)
-		directURL := fmt.Sprintf("/live/stream?%s", proxyParams.Encode())
+
+		directURL := ""
+		if normalizeLiveProvider(target.Provider) == "stalker" {
+			ticket := h.registerLiveDirectTarget(liveDirectTarget{
+				URL:            liveURL,
+				ProxyURL:       target.ProxyURL,
+				RequestHeaders: providerRequestHeaders,
+				AccountID:      auth.GetAccountID(r),
+				Provider:       target.Provider,
+				BucketKey:      target.BucketKey,
+			})
+			directURL = fmt.Sprintf("/video/live-direct/%s/stream.ts", ticket)
+			if encoded := encodePlayerQuery(proxyParams); encoded != "" {
+				directURL += "?" + encoded
+			}
+		} else {
+			proxyParams.Set("url", liveURL)
+			directURL = fmt.Sprintf("/live/stream?%s", encodePlayerQuery(proxyParams))
+		}
 
 		log.Printf("[video] live session using direct proxy for URL: %s (provider=%s profile=%s)", requestsecurity.URLForLog(liveURL), target.Provider, profileID)
 
@@ -5271,7 +5338,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 
 	// HLS mode: create a segmented HLS session
 	selectedStremioStreamIndex := parseOptionalStremioStreamIndex(r.URL.Query().Get("stremioStreamIndex"))
-	var stremioRequestHeaders map[string]string
+	stremioRequestHeaders := providerRequestHeaders
 	stremioHLSInput := false
 	resolvedStremioIndex := -1
 	var availableStremioIndexes []int
@@ -5335,6 +5402,12 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	}
 
 	log.Printf("[video] created live HLS session %s", session.ID)
+}
+
+// encodePlayerQuery uses percent encoding for spaces because the player preserves
+// bare plus signs as literal characters while normalizing routed playback URLs.
+func encodePlayerQuery(values url.Values) string {
+	return strings.ReplaceAll(values.Encode(), "+", "%20")
 }
 
 // GetLiveUsage returns current live stream usage and limits for the selected provider.
@@ -5796,6 +5869,7 @@ func (h *VideoHandler) buildLiveUsageSummary(target liveStreamTarget) LiveUsageS
 	if h != nil && h.hlsManager != nil {
 		usage = h.hlsManager.GetLiveUsage(target.Provider, target.BucketKey, target.MaxStreams)
 	}
+	usage.CurrentStreams += h.countActiveLiveDirectUsage(target)
 
 	usage.Provider = normalizeLiveProvider(target.Provider)
 	usage.MaxStreams = target.MaxStreams
@@ -7143,11 +7217,13 @@ func configuredProviderHostPolicy(configManager ConfigProvider) requestsecurity.
 			addURLOrigin(settings.Live.PlaylistURL)
 			addURLOrigin(settings.Live.ManifestURL)
 			addURLOrigin(settings.Live.XtreamHost)
+			addURLOrigin(settings.Live.StalkerPortalURL)
 			for _, source := range append(settings.Live.Sources, settings.Live.PlaylistSources...) {
 				if source.Enabled == nil || *source.Enabled {
 					addURLOrigin(source.PlaylistURL)
 					addURLOrigin(source.ManifestURL)
 					addURLOrigin(source.XtreamHost)
+					addURLOrigin(source.StalkerPortalURL)
 				}
 			}
 		}

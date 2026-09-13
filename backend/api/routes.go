@@ -71,7 +71,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-PIN, X-Client-ID, Cache-Control, Pragma")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-PIN, X-Client-ID, X-Remote-Access-Credential, X-Adaptive-Throughput-Mbps, X-Adaptive-Throughput-Measured-At, Cache-Control, Pragma")
 		}
 
 		// Handle preflight requests
@@ -184,6 +184,11 @@ func Register(
 		api.Handle("/video/internal-stream", localhostOnlyMiddleware(http.HandlerFunc(videoHandler.StreamVideo))).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 	}
 
+	// A credential-free LAN probe must be registered before the protected catch-all.
+	if remoteAccessHandler != nil {
+		api.HandleFunc("/remote-access/identity", remoteAccessHandler.Identity).Methods(http.MethodGet)
+	}
+
 	// Protected routes - require authentication
 	protected := api.PathPrefix("").Subrouter()
 	protected.Use(AccountAuthMiddleware(sessionsSvc, accountsSvc))
@@ -197,6 +202,8 @@ func Register(
 		api.HandleFunc("/remote-access/invites/resolve", remoteAccessHandler.Options).Methods(http.MethodOptions)
 		api.HandleFunc("/remote-access/invites/claim", remoteAccessHandler.ClaimInvite).Methods(http.MethodPost)
 		api.HandleFunc("/remote-access/invites/claim", remoteAccessHandler.Options).Methods(http.MethodOptions)
+		api.HandleFunc("/remote-access/pairings/credential", remoteAccessHandler.UpgradePairingCredential).Methods(http.MethodPost)
+		api.HandleFunc("/remote-access/pairings/credential", remoteAccessHandler.Options).Methods(http.MethodOptions)
 
 		protected.HandleFunc("/remote-access/status", remoteAccessHandler.Status).Methods(http.MethodGet)
 		protected.HandleFunc("/remote-access/status", remoteAccessHandler.Options).Methods(http.MethodOptions)
@@ -435,6 +442,7 @@ func Register(
 	protected.HandleFunc("/library/items/{itemID}/playback", handleOptions).Methods(http.MethodOptions)
 	protected.HandleFunc("/library/items/{itemID}/artwork/{kind}", localMediaHandler.GetArtwork).Methods(http.MethodGet)
 	protected.HandleFunc("/live/hls/start", RateLimitHandlerFunc(hlsStartLimiter, videoHandler.StartLiveHLSSession)).Methods(http.MethodGet, http.MethodOptions)
+	protected.HandleFunc("/video/live-direct/{ticket}/stream.ts", videoHandler.ServeLiveDirect).Methods(http.MethodGet, http.MethodHead)
 	protected.HandleFunc("/live/usage", videoHandler.GetLiveUsage).Methods(http.MethodGet)
 	protected.HandleFunc("/live/usage", handleOptions).Methods(http.MethodOptions)
 	if recordingsHandler != nil {

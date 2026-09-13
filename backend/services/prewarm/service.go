@@ -78,6 +78,8 @@ const prewarmStableReResolveDefaultDays = 7
 const prewarmStableReResolveMinDays = 1
 const prewarmStableReResolveMaxDays = 30
 const prewarmRenewalLead = 8 * time.Minute
+const prewarmWorkerTimeout = 15 * time.Minute
+const prewarmTransientFailureRetryDelay = time.Minute
 
 const (
 	PrewarmShelfSelectionsConfigKey = "shelfSelections"
@@ -187,6 +189,7 @@ type Service struct {
 	scopedWorkerFn  playback.ScopedPrequeueWorkerFunc
 	scopeKeyFn      ScopeKeyFunc
 	jitterFn        func() time.Duration // override inter-item jitter (for testing)
+	workerTimeout   time.Duration        // override per-item resolution timeout (for testing)
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -307,10 +310,50 @@ func (s *Service) scopeKey(userID, clientID, titleID string) string {
 }
 
 func (s *Service) runWorker(ctx context.Context, titleID, titleName, imdbID, mediaType string, year int, userID, clientID, settingsScopeKey string, targetEpisode *models.EpisodeReference) (string, error) {
-	if s.scopedWorkerFn != nil {
-		return s.scopedWorkerFn(ctx, titleID, titleName, imdbID, mediaType, year, userID, clientID, settingsScopeKey, targetEpisode)
+	timeout := s.workerTimeout
+	if timeout <= 0 {
+		timeout = prewarmWorkerTimeout
 	}
-	return s.workerFn(ctx, titleID, titleName, imdbID, mediaType, year, userID, targetEpisode)
+	workerCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	type workerResult struct {
+		prequeueID string
+		err        error
+	}
+	resultCh := make(chan workerResult, 1)
+	go func() {
+		var result workerResult
+		if s.scopedWorkerFn != nil {
+			result.prequeueID, result.err = s.scopedWorkerFn(workerCtx, titleID, titleName, imdbID, mediaType, year, userID, clientID, settingsScopeKey, targetEpisode)
+		} else {
+			result.prequeueID, result.err = s.workerFn(workerCtx, titleID, titleName, imdbID, mediaType, year, userID, targetEpisode)
+		}
+		resultCh <- result
+	}()
+
+	select {
+	case result := <-resultCh:
+		return result.prequeueID, result.err
+	case <-workerCtx.Done():
+		// A resolver can become wedged after selecting a candidate if one of its
+		// cleanup goroutines never returns. Do not let that one item keep the
+		// scheduler's taskRunning flag set forever. Recover a concurrently-ready
+		// entry if possible; otherwise cancel and remove the abandoned work.
+		if s.prequeueStore != nil {
+			if entry, ok := s.prequeueStore.GetByTitleUserScope(titleID, userID, settingsScopeKey); ok {
+				if prequeueReadyForWarmReuse(entry) && playback.EpisodeReferencesMatch(targetEpisode, entry.TargetEpisode) {
+					return entry.ID, nil
+				}
+				s.prequeueStore.CancelWork(entry.ID)
+				s.prequeueStore.Delete(entry.ID)
+			}
+		}
+		if errors.Is(workerCtx.Err(), context.DeadlineExceeded) {
+			return "", fmt.Errorf("prequeue worker timed out after %s: %w", timeout, workerCtx.Err())
+		}
+		return "", fmt.Errorf("prequeue worker canceled: %w", workerCtx.Err())
+	}
 }
 
 func (s *Service) warmContinueWatchingScope(
@@ -360,7 +403,7 @@ func (s *Service) warmContinueWatchingScope(
 			log.Printf("[prewarm] Re-warming %q for user %s scope=%s: next-up episode advanced (warm=%s, next=%s)",
 				state.SeriesTitle, user.Name, settingsScopeKey,
 				episodeRefLabel(entry.TargetEpisode), episodeRefLabel(targetEpisode))
-		} else if existing.Error != "" && time.Now().Before(existing.ExpiresAt) {
+		} else if existing.Error != "" && time.Now().Before(existing.ExpiresAt) && !transientPrewarmFailureReady(existing, time.Now()) {
 			log.Printf("[prewarm] Skipping %q for user %s scope=%s: previous failure retry at %v (%s)",
 				state.SeriesTitle, user.Name, settingsScopeKey, existing.ExpiresAt, existing.Error)
 			result.Skipped++
@@ -1455,6 +1498,9 @@ func prewarmFailureRetryDelay(err error, targetEpisode *models.EpisodeReference,
 }
 
 func prewarmFailureRetryDelayAt(err error, targetEpisode *models.EpisodeReference, year int, mediaType string, now time.Time) time.Duration {
+	if isTransientPrewarmFailure(err) {
+		return prewarmTransientFailureRetryDelay
+	}
 	baseTTL := playback.DynamicTTL(
 		targetEpisodeAirDate(targetEpisode),
 		targetEpisodeAirDateTimeUTC(targetEpisode),
@@ -1475,6 +1521,28 @@ func prewarmFailureRetryDelayAt(err error, targetEpisode *models.EpisodeReferenc
 		return prewarmNoResultsCurrentYearRetryDelay
 	}
 	return baseTTL
+}
+
+func isTransientPrewarmFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	errText := strings.ToLower(err.Error())
+	return strings.Contains(errText, "cancelled") ||
+		strings.Contains(errText, "canceled") ||
+		strings.Contains(errText, "deadline exceeded") ||
+		strings.Contains(errText, "timed out") ||
+		strings.Contains(errText, "timeout")
+}
+
+func transientPrewarmFailureReady(entry *WarmEntry, now time.Time) bool {
+	if entry == nil || !isTransientPrewarmFailure(errors.New(entry.Error)) {
+		return false
+	}
+	return entry.LastResolve.IsZero() || !now.Before(entry.LastResolve.Add(prewarmTransientFailureRetryDelay))
 }
 
 func isNoResultsPrewarmFailure(err error) bool {

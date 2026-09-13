@@ -24,14 +24,61 @@ func NewRemoteAccessHandler(service *remoteaccess.Service) *RemoteAccessHandler 
 	return &RemoteAccessHandler{service: service}
 }
 
+// RemoteAccessRevocationMiddleware gates requests arriving through the trusted
+// Iroh host proxy to devices with a consumed, non-revoked pairing. Health and
+// the one-time claim operation must remain reachable before pairing completes.
+func RemoteAccessRevocationMiddleware(service *remoteaccess.Service) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Mediastorm-Iroh-Proxy") != "1" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if remoteAccessPrePairingPathAllowed(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			authorized, err := service.AuthorizePeer(
+				r.Context(),
+				r.Header.Get("X-Client-ID"),
+				r.Header.Get("X-Remote-Access-Credential"),
+			)
+			if err != nil {
+				log.Printf("remote access pairing check failed: %v", err)
+				writeJSONError(w, "remote access pairing check unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			if !authorized {
+				writeJSONError(w, "device is not paired or access has been revoked", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func remoteAccessPrePairingPathAllowed(r *http.Request) bool {
+	path := strings.TrimSuffix(r.URL.Path, "/")
+	if r.Method == http.MethodOptions || path == "/health" || path == "/api/health" {
+		return true
+	}
+	return r.Method == http.MethodPost && path == "/api/remote-access/invites/claim"
+}
+
 type createRemoteAccessInviteRequest struct {
 	PeerName       string `json:"peerName"`
 	ExpiresInHours int    `json:"expiresInHours"`
 }
 
 type claimRemoteAccessInviteRequest struct {
-	Token  string `json:"token"`
-	PeerID string `json:"peerId"`
+	Token      string `json:"token"`
+	PeerID     string `json:"peerId"`
+	Credential string `json:"credential"`
+}
+
+type upgradeRemoteAccessPairingRequest struct {
+	PeerID     string `json:"peerId"`
+	Credential string `json:"credential"`
 }
 
 type resolveRemoteAccessInviteRequest struct {
@@ -49,6 +96,17 @@ type remoteAccessInviteResponse struct {
 	UsedByPeerID   string     `json:"usedByPeerId,omitempty"`
 	RevokedAt      *time.Time `json:"revokedAt,omitempty"`
 	CreatedAt      time.Time  `json:"createdAt"`
+}
+
+// Identity is an unauthenticated LAN probe. It exposes only the public Iroh endpoint ID.
+func (h *RemoteAccessHandler) Identity(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	id, err := h.service.PublicIdentity()
+	if err != nil {
+		writeJSONError(w, "host identity unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	h.writeJSON(w, map[string]string{"serverId": id})
 }
 
 func (h *RemoteAccessHandler) Status(w http.ResponseWriter, r *http.Request) {
@@ -135,11 +193,10 @@ func (h *RemoteAccessHandler) ResolveClaimedInvite(w http.ResponseWriter, r *htt
 		return
 	}
 	h.writeJSON(w, map[string]any{
-		"id":             inv.ID,
-		"connectionCode": inv.ConnectionCode,
-		"irohInvite":     inv.IrohInvite,
-		"usedAt":         inv.UsedAt,
-		"usedByPeerId":   inv.UsedByPeerID,
+		"id":           inv.ID,
+		"hostInvite":   inv.IrohInvite,
+		"usedAt":       inv.UsedAt,
+		"usedByPeerId": inv.UsedByPeerID,
 	})
 }
 
@@ -149,7 +206,17 @@ func (h *RemoteAccessHandler) ClaimInvite(w http.ResponseWriter, r *http.Request
 		writeJSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	inv, err := h.service.ClaimInvite(r.Context(), req.Token, req.PeerID)
+	peerID := strings.TrimSpace(req.PeerID)
+	if headerPeerID := strings.TrimSpace(r.Header.Get("X-Client-ID")); headerPeerID == "" || headerPeerID != peerID {
+		writeJSONError(w, remoteaccess.ErrInvalidPeerID.Error(), http.StatusBadRequest)
+		return
+	}
+	credential := strings.TrimSpace(req.Credential)
+	if headerCredential := strings.TrimSpace(r.Header.Get("X-Remote-Access-Credential")); headerCredential == "" || headerCredential != credential {
+		writeJSONError(w, remoteaccess.ErrInvalidPairingCredential.Error(), http.StatusBadRequest)
+		return
+	}
+	inv, err := h.service.ClaimInvite(r.Context(), req.Token, peerID, credential)
 	if err != nil {
 		writeJSONError(w, err.Error(), remoteAccessErrorStatus(err))
 		return
@@ -162,9 +229,36 @@ func (h *RemoteAccessHandler) ClaimInvite(w http.ResponseWriter, r *http.Request
 	})
 }
 
+func (h *RemoteAccessHandler) UpgradePairingCredential(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("X-Mediastorm-Iroh-Proxy") != "1" {
+		writeJSONError(w, "pairing credential upgrades must use the paired Iroh transport", http.StatusForbidden)
+		return
+	}
+	var req upgradeRemoteAccessPairingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	peerID := strings.TrimSpace(req.PeerID)
+	if headerPeerID := strings.TrimSpace(r.Header.Get("X-Client-ID")); headerPeerID == "" || headerPeerID != peerID {
+		writeJSONError(w, remoteaccess.ErrInvalidPeerID.Error(), http.StatusBadRequest)
+		return
+	}
+	credential := strings.TrimSpace(req.Credential)
+	if headerCredential := strings.TrimSpace(r.Header.Get("X-Remote-Access-Credential")); headerCredential == "" || headerCredential != credential {
+		writeJSONError(w, remoteaccess.ErrInvalidPairingCredential.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := h.service.UpgradePairingCredential(r.Context(), peerID, credential); err != nil {
+		writeJSONError(w, err.Error(), remoteAccessErrorStatus(err))
+		return
+	}
+	h.writeJSON(w, map[string]any{"ok": true})
+}
+
 func (h *RemoteAccessHandler) Options(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-PIN")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-PIN, X-Client-ID, X-Remote-Access-Credential")
 	w.Header().Set("Access-Control-Max-Age", strconv.Itoa(86400))
 	w.WriteHeader(http.StatusOK)
 }
@@ -193,7 +287,7 @@ func remoteAccessErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, remoteaccess.ErrInviteNotFound):
 		return http.StatusNotFound
-	case errors.Is(err, remoteaccess.ErrInviteExpired), errors.Is(err, remoteaccess.ErrInviteUsed), errors.Is(err, remoteaccess.ErrInviteRevoked), errors.Is(err, remoteaccess.ErrInvalidToken):
+	case errors.Is(err, remoteaccess.ErrInviteExpired), errors.Is(err, remoteaccess.ErrInviteUsed), errors.Is(err, remoteaccess.ErrInviteRevoked), errors.Is(err, remoteaccess.ErrInvalidToken), errors.Is(err, remoteaccess.ErrInvalidPeerID), errors.Is(err, remoteaccess.ErrInvalidPairingCredential):
 		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError

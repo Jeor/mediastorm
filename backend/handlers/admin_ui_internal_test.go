@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -180,6 +181,76 @@ func TestAdminSettingsSaveCommitsPendingTextArrayInputs(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsGlobalSaveClearsDirtyStateBeforeImpactRefresh(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	marker := `originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // The settings write is complete at this point. Clear the dirty UI before
+                    // refreshing profile-impact metadata, which may require several requests.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();`
+	if !strings.Contains(source, marker) {
+		t.Fatal("section-level global save must clear dirty state immediately after committing its baseline")
+	}
+
+	marker = `originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // Saving is finished even though the follow-up profile-impact refresh can
+                    // take longer. Hide the sticky unsaved bar as soon as the write succeeds.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();`
+	if !strings.Contains(source, marker) {
+		t.Fatal("sticky global save must clear dirty state immediately after committing its baseline")
+	}
+
+	for _, saveFunction := range []string{"saveSection", "saveAllSettings"} {
+		start := strings.Index(source, "async function "+saveFunction+"(")
+		if start < 0 {
+			t.Fatalf("settings template missing %s", saveFunction)
+		}
+		body := source[start:]
+		clearDirty := strings.Index(body, "updateSettingsSaveStatus();")
+		impactRefresh := strings.Index(body, "await updateProfileSaveImpact(changedGroups);")
+		if clearDirty < 0 || impactRefresh < 0 || clearDirty > impactRefresh {
+			t.Fatalf("%s must clear dirty state before refreshing profile impact", saveFunction)
+		}
+	}
+}
+
+func TestAdminSettingsProfileOverrideRefreshPublishesAtomicSnapshot(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"let userOverrideRefreshPromise = null;",
+		"if (userOverrideRefreshPromise) return userOverrideRefreshPromise;",
+		"const nextUserOverrides = { ...userOverrides };",
+		"const nextUserOverrideDetails = {};",
+		"nextUserOverrideDetails[userId] = details;",
+		"userOverrides = nextUserOverrides;",
+		"userOverrideDetails = nextUserOverrideDetails;",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing atomic profile-override refresh marker %q", marker)
+		}
+	}
+
+	refreshStart := strings.Index(source, "async function recalculateAllUserOverrides()")
+	if refreshStart < 0 {
+		t.Fatal("settings template missing recalculateAllUserOverrides")
+	}
+	refreshBody := source[refreshStart:]
+	if reset := strings.Index(refreshBody, "userOverrideDetails = {};"); reset >= 0 && reset < strings.Index(refreshBody, "function handleClientChange") {
+		t.Fatal("profile override refresh must not clear shared details before its asynchronous work completes")
+	}
+}
+
 func TestAdminSettingsSensitiveFieldsAllowOnlyOneReveal(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {
@@ -279,6 +350,30 @@ func TestAdminSettingsAddListIncludesSharedActivityShelves(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsCollectionHubIncludesGenreAndDecadeTemplates(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`<option value="genres-movie">Movie Genres (18)</option>`,
+		`<option value="genres-tv">TV Genres (12)</option>`,
+		`<option value="decades-movie">Movie Decades (10)</option>`,
+		`<option value="decades-tv">TV Decades (10)</option>`,
+		"function getCollectionHubTemplate(templateId)",
+		"function applyCollectionHubTemplate()",
+		"enabled: false,",
+		"removeUnsavedCollectionHubTemplateShelves(modal",
+		"item.sourceShelfId === originalShelfId",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing collection-hub template behavior %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {
@@ -288,12 +383,12 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 
 	for _, marker := range []string{
 		`id="settingsCategoryNav"`,
-		`id="settingsBasicBtn" class="settings-level-btn" type="button" disabled aria-disabled="true"`,
+		`id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')"`,
 		`id="settingsAdvancedBtn"`,
 		`autocomplete="off" autocapitalize="none" spellcheck="false"`,
-		`const basicSettingsReady = false;`,
-		`let settingsLevel = 'advanced';`,
-		`settingsLevel = (basicSettingsReady && level === 'basic') ? 'basic' : 'advanced';`,
+		`const settingsLevels = new Set(['basic', 'advanced']);`,
+		`let settingsLevel = settingsLevels.has(storedSettingsLevel) ? storedSettingsLevel : 'basic';`,
+		`settingsLevel = settingsLevels.has(level) ? level : 'basic';`,
 		`.page-header-controls .form-select {`,
 		`height: 40px;`,
 		`function setSettingsLevel(level)`,
@@ -302,19 +397,129 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 		`'Streaming Method'`,
 		`'Adapt to Each Device'`,
 		`const settingsOverviewGroups = [`,
-		`{ id: 'sources', label: 'Sources & Providers' }`,
-		`{ id: 'search', label: 'Search & Results' }`,
+		`{ id: 'sources', label: 'Sources' }`,
+		`{ id: 'search', label: 'Search & Quality' }`,
 		`{ id: 'server', label: 'Server & Network' }`,
 		`function toggleSettingsSection(header)`,
-		`document.querySelectorAll('#settingsContainer .section.open')`,
+		`container.querySelectorAll('.section.open')`,
 		`function handleSettingsSectionKeydown(event, header)`,
 		`const firstMatch = filteredSections.values().next().value;`,
 		`propagateBtnLabel.textContent = 'Review Customizations'`,
-		`settingsLevel === 'basic' && !searchTerm && advancedSections.has(key)`,
+		`if (settingsLevel === 'basic') return !advancedSections.has(sectionKey);`,
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("settings template missing progressive-disclosure marker %q", marker)
 		}
+	}
+}
+
+func TestAdminSettingsPreservesInheritanceAndScopesPropagation(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`return isExplicitEmptyArrayOverride(section, key) ? [] : null;`,
+		`if (normValue === null) {`,
+		`const strippedSettings = stripInheritedValues(userSettings, currentSettings);`,
+		`body: JSON.stringify(strippedSettings)`,
+		`const changedGroups = changedPropagationGroupKeys(originalSettings, currentSettings);`,
+		`await updateProfileSaveImpact(changedGroups);`,
+		`clearProfilePropagationGroup(targetSettings, group);`,
+		`const strippedSettings = stripInheritedValues(targetSettings, currentSettings);`,
+		`clearClientPropagationGroup(targetSettings, group);`,
+		`for (const fieldKey of liveTVPerUserFields) {`,
+		`delete targetSettings[sectionKey];`,
+		`for (const path of group.clientPaths) {`,
+		`deleteAtPath(targetSettings, path);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing inheritance/propagation marker %q", marker)
+		}
+	}
+
+	changedGroups := strings.Index(source, `const changedGroups = changedPropagationGroupKeys(originalSettings, currentSettings);`)
+	globalSave := strings.Index(source, `body: JSON.stringify(currentSettings)`)
+	impactReview := strings.Index(source, `await updateProfileSaveImpact(changedGroups);`)
+	if changedGroups < 0 || globalSave < 0 || impactReview < 0 || !(changedGroups < globalSave && globalSave < impactReview) {
+		t.Fatal("global settings must identify changed propagation groups before save and review their impact afterward")
+	}
+}
+
+func TestAdminSettingsDesktopCommandBarKeepsAllDetailLabelsVisible(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`.settings-command-bar {`,
+		`display: flex;`,
+		`grid-template-columns: repeat(3, max-content);`,
+		`width: max-content;`,
+		`min-width: max-content;`,
+		`white-space: nowrap;`,
+		`flex: 1 1 160px;`,
+		`.settings-command-bar .settings-context-trigger-desktop > span { min-width: 0; }`,
+		`id="settingsEssentialBtn"`,
+		`id="settingsBasicBtn"`,
+		`id="settingsAdvancedBtn"`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing flexible desktop command-bar marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSettingsSupportsAllViewAndClosesScopeBeforeCustomizationReview(t *testing.T) {
+	settingsBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	settingsSource := string(settingsBytes)
+	for _, marker := range []string{
+		`requestedSettingsParams.get('view') === 'all'`,
+		`activeSettingsGroup = 'all';`,
+		`if (groupId === 'all') url.searchParams.set('view', 'all');`,
+		`activeSettingsGroup !== 'all'`,
+		`view === 'all' ? 'all'`,
+	} {
+		if !strings.Contains(settingsSource, marker) {
+			t.Fatalf("settings template missing all-settings marker %q", marker)
+		}
+	}
+	for _, functionName := range []string{"propagateSettings", "reviewOverrideImpact"} {
+		start := strings.Index(settingsSource, "function "+functionName+"(")
+		if start < 0 {
+			t.Fatalf("settings template missing %s", functionName)
+		}
+		end := strings.Index(settingsSource[start:], "\n    }")
+		if end < 0 || !strings.Contains(settingsSource[start:start+end], "closeSettingsContextSheet();") {
+			t.Fatalf("%s does not close the current-scope menu before opening customization review", functionName)
+		}
+	}
+
+	baseBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	baseSource := string(baseBytes)
+	for _, marker := range []string{
+		`settings?view=all`,
+		`data-settings-destination="all"`,
+		`<span>All settings</span>`,
+		`typeof window.setSettingsGroup !== 'function'`,
+		`window.setSettingsGroup(link.dataset.settingsDestination === 'home' ? '' : link.dataset.settingsDestination);`,
+	} {
+		if !strings.Contains(baseSource, marker) {
+			t.Fatalf("shared shell missing all-settings navigation marker %q", marker)
+		}
+	}
+	if strings.Contains(baseSource, `data-settings-destination="home"><svg`) && strings.Contains(baseSource, `settings?view=dashboard" class="sidebar-nav-link active`) {
+		t.Fatal("settings dashboard remains server-rendered active before the requested destination is resolved")
 	}
 }
 
@@ -410,6 +615,54 @@ func TestAdminSettingsRendersDebridAndTorrentProviderTablesWithoutChangingContra
 	for _, sectionKey := range []string{"debridProviders", "torrentScrapers"} {
 		if strings.Contains(source, `reorderArrayItem('`+sectionKey+`'`) {
 			t.Fatalf("%s table must preserve stable credential-bearing array indices", sectionKey)
+		}
+	}
+}
+
+func TestAdminSettingsRendersLiveTVSourcesAsExpandableCompactCards(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`function renderLiveSourceSection(sectionKey, sectionDef, items, basePath, profileInheritanceControls)`,
+		`Manage Live TV sources in a compact list. Open a source only when you need to edit it.`,
+		`const isEditing = expandedProviderEditIndexes[sectionKey] === index;`,
+		`live-source-edit-button`,
+		`(isEditing ? '<div class="live-source-groups">' + groupsHtml + '</div>' : '')`,
+		`addLiveSourceItem(\'' + sectionKey + '\', ' + items.length + ', event)`,
+		`providerTableSectionKeys.add('live.sources');`,
+		`providerTableSectionKeys.add('liveTV.sources');`,
+		`.live-source-card.editing .live-source-card-header`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing compact Live TV source marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSettingsConditionalRerendersPreserveViewportAndMenusStayOnScreen(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`const activeElementTop = document.activeElement?.getBoundingClientRect?.().top;`,
+		`window.scrollBy(0, topDelta);`,
+		`replacement.focus({ preventScroll: true });`,
+		`window.scrollTo({ top: scrollTopBeforeRender, behavior: 'auto' });`,
+		`if (window.location.hash && !isEssentials && !openSection)`,
+		`.live-source-action-menu-panel {`,
+		`right: auto;`,
+		`left: 0;`,
+		`max-width: calc(100vw - 2rem);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing stable conditional-render marker %q", marker)
 		}
 	}
 }
@@ -516,8 +769,8 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	if strings.Contains(source, `<span class="sidebar-nav-icon">`) {
 		t.Fatal("shared shell still uses mixed text-glyph navigation icons")
 	}
-	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 22 {
-		t.Fatalf("shared shell navigation SVG count = %d, want 22", got)
+	if got := strings.Count(source, `<svg class="sidebar-nav-icon"`); got != 38 {
+		t.Fatalf("shared shell navigation SVG count = %d, want 38", got)
 	}
 	for _, marker := range []string{
 		`.sidebar-nav-icon {`,
@@ -529,6 +782,98 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("shared shell missing consistent navigation icon marker %q", marker)
 		}
+	}
+}
+
+func TestSharedShellUsesConciseMaintenanceGroupLabel(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+	if !strings.Contains(source, `<span>Maintenance</span>`) {
+		t.Fatal("shared shell is missing the concise Maintenance group label")
+	}
+	if strings.Contains(source, `Maintenance &amp; records`) {
+		t.Fatal("shared shell still contains the old Maintenance & records group label")
+	}
+}
+
+func TestSharedShellOmitsWatchTogetherNavigationEntry(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+	for _, marker := range []string{`href="{{.ServerBasePath}}/watch-party"`, `<span>Watch Together</span>`} {
+		if strings.Contains(source, marker) {
+			t.Fatalf("shared shell still exposes session-only Watch Together navigation marker %q", marker)
+		}
+	}
+}
+
+func TestSharedShellHighlightsMaintenanceLeafWithoutSelectingParent(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+	summaryMarker := `<span>Maintenance</span></span><span class="sidebar-admin-badge">Admin</span>`
+	summaryIndex := strings.Index(source, summaryMarker)
+	if summaryIndex < 0 {
+		t.Fatal("shared shell is missing the Maintenance group summary")
+	}
+	detailsIndex := strings.LastIndex(source[:summaryIndex], `<details`)
+	if detailsIndex < 0 {
+		t.Fatal("shared shell is missing the Maintenance details wrapper")
+	}
+	openingTagEnd := strings.Index(source[detailsIndex:summaryIndex], `>`)
+	if openingTagEnd < 0 {
+		t.Fatal("shared shell has an invalid Maintenance details opening tag")
+	}
+	openingTag := source[detailsIndex : detailsIndex+openingTagEnd+1]
+	if !strings.Contains(openingTag, `class="sidebar-group"`) || strings.Contains(openingTag, `current`) {
+		t.Fatalf("Maintenance parent should open without selected styling, got %q", openingTag)
+	}
+	for _, destination := range []string{"prequeue", "resolved-nzbs", "bad-streams", "share-links"} {
+		if !strings.Contains(source, `hasSuffix .CurrentPath "/`+destination+`"}}active`) {
+			t.Errorf("shared shell is missing leaf active state for %s", destination)
+		}
+	}
+}
+
+func TestMaintenanceSubpagesReportTheirOwnCurrentPath(t *testing.T) {
+	pathTemplate := template.Must(template.New("base").Parse(`{{define "base"}}{{.CurrentPath}}{{end}}`))
+	handler := &AdminUIHandler{
+		shareLinksTemplate:  pathTemplate,
+		resolvedNZBTemplate: pathTemplate,
+		badStreamsTemplate:  pathTemplate,
+		prequeueTemplate:    pathTemplate,
+	}
+
+	tests := []struct {
+		name string
+		path string
+		page http.HandlerFunc
+		want string
+	}{
+		{name: "share links", path: "/admin/tools/share-links", page: handler.ShareLinksPage, want: "/admin/tools/share-links"},
+		{name: "resolved NZBs", path: "/admin/tools/resolved-nzbs", page: handler.ResolvedNZBsPage, want: "/admin/tools/resolved-nzbs"},
+		{name: "bad streams", path: "/admin/tools/bad-streams", page: handler.BadStreamsPage, want: "/admin/tools/bad-streams"},
+		{name: "prequeue", path: "/admin/prequeue", page: handler.PrequeuePage, want: "/admin/prequeue"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			tt.page(recorder, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+			}
+			if got := strings.TrimSpace(recorder.Body.String()); got != tt.want {
+				t.Fatalf("CurrentPath = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -649,6 +994,56 @@ func TestAdminMaintenanceLinksAllSubpages(t *testing.T) {
 		strings.Contains(toolsSource, "function updatePrequeueManagementSection()") {
 		t.Fatal("prequeue management link remains conditional on an enabled prewarm automation")
 	}
+	for _, unwanted := range []string{"On-page tools", "Advanced controls", "maintenance-quick-tools", "maintenance-tool-details"} {
+		if strings.Contains(toolsSource, unwanted) {
+			t.Errorf("maintenance page still contains obsolete disclosure %q", unwanted)
+		}
+	}
+	for _, marker := range []string{`id="maintenanceControlsTitle">Maintenance controls`, `class="maintenance-controls-body"`, `if (!section) return;`} {
+		if !strings.Contains(toolsSource, marker) {
+			t.Errorf("maintenance page missing flattened control marker %q", marker)
+		}
+	}
+}
+
+func TestAdminMaintenanceRestartUsesServerAPIPath(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/tools.html")
+	if err != nil {
+		t.Fatalf("read tools template: %v", err)
+	}
+	source := string(templateBytes)
+
+	if !strings.Contains(source, `fetch(basePath + '/api/restart'`) {
+		t.Fatal("maintenance restart action does not use the cookie-authenticated admin API path")
+	}
+	if strings.Contains(source, `fetch(basePath + '/api/admin/restart'`) {
+		t.Fatal("maintenance restart action incorrectly prefixes the API path with the admin UI path")
+	}
+	if strings.Contains(source, `fetch(serverBasePath + '/api/admin/restart'`) {
+		t.Fatal("maintenance restart action incorrectly uses the bearer-authenticated API path")
+	}
+}
+
+func TestAdminSearchSwitchesBetweenExclusiveWorkspaces(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/search.html")
+	if err != nil {
+		t.Fatalf("read search template: %v", err)
+	}
+	source := string(templateBytes)
+	for _, marker := range []string{
+		`.search-workspace-hidden { display: none !important; }`,
+		`id="searchDiagnostics" class="card search-diagnostics-card search-workspace-hidden" aria-labelledby="searchDiagnosticsHeading"`,
+		`function syncSearchWorkspaceDestination()`,
+		`contentSearch.classList.toggle('search-workspace-hidden', showDiagnostics);`,
+		`selected.classList.toggle('search-workspace-hidden', showDiagnostics);`,
+		`scrapeResults.classList.toggle('search-workspace-hidden', showDiagnostics);`,
+		`diagnostics.classList.toggle('search-workspace-hidden', !showDiagnostics);`,
+		`window.addEventListener('hashchange', syncSearchWorkspaceDestination);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("search template missing exclusive-workspace marker %q", marker)
+		}
+	}
 }
 
 func TestDatabaseSnapshotUploadKeepsShareLinkVisible(t *testing.T) {
@@ -762,6 +1157,18 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("status template missing basic-dashboard marker %q", marker)
 		}
+	}
+}
+
+func TestAdminDashboardKeepsModuleSourcesHiddenUntilLayoutIsReady(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := string(templateBytes)
+
+	if count := strings.Count(source, "data-dashboard-module-source hidden"); count != 6 {
+		t.Fatalf("initially hidden dashboard module sources = %d, want 6", count)
 	}
 }
 

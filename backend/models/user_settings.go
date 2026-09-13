@@ -227,17 +227,24 @@ type LiveTVSettings struct {
 	FavoriteChannels   []string `json:"favoriteChannels"`   // Channel IDs that are favorited
 	SelectedCategories []string `json:"selectedCategories"` // Selected category filters
 	// Per-profile IPTV source override (nil = use global)
-	Mode            *string              `json:"mode,omitempty"`
-	PlaylistURL     *string              `json:"playlistUrl,omitempty"`
-	ManifestURL     *string              `json:"manifestUrl,omitempty"`
-	ProxyURL        *string              `json:"proxyUrl,omitempty"`
-	Sources         []LivePlaylistSource `json:"sources,omitempty"`
-	PlaylistSources []LivePlaylistSource `json:"playlistSources,omitempty"`
-	SourcesOverride *bool                `json:"sourcesOverride,omitempty"`
-	XtreamHost      *string              `json:"xtreamHost,omitempty"`
-	XtreamUsername  *string              `json:"xtreamUsername,omitempty"`
-	XtreamPassword  *string              `json:"xtreamPassword,omitempty"`
-	MaxStreams      *int                 `json:"maxStreams,omitempty"`
+	Mode                *string              `json:"mode,omitempty"`
+	PlaylistURL         *string              `json:"playlistUrl,omitempty"`
+	ManifestURL         *string              `json:"manifestUrl,omitempty"`
+	ProxyURL            *string              `json:"proxyUrl,omitempty"`
+	Sources             []LivePlaylistSource `json:"sources,omitempty"`
+	PlaylistSources     []LivePlaylistSource `json:"playlistSources,omitempty"`
+	SourcesOverride     *bool                `json:"sourcesOverride,omitempty"`
+	XtreamHost          *string              `json:"xtreamHost,omitempty"`
+	XtreamUsername      *string              `json:"xtreamUsername,omitempty"`
+	XtreamPassword      *string              `json:"xtreamPassword,omitempty"`
+	StalkerPortalURL    *string              `json:"stalkerPortalUrl,omitempty"`
+	StalkerMAC          *string              `json:"stalkerMac,omitempty"`
+	StalkerSerialNumber *string              `json:"stalkerSerialNumber,omitempty"`
+	StalkerDeviceID     *string              `json:"stalkerDeviceId,omitempty"`
+	StalkerDeviceID2    *string              `json:"stalkerDeviceId2,omitempty"`
+	StalkerSignature    *string              `json:"stalkerSignature,omitempty"`
+	StalkerModel        *string              `json:"stalkerModel,omitempty"`
+	MaxStreams          *int                 `json:"maxStreams,omitempty"`
 	// Per-profile tuning overrides (nil = use global)
 	PlaylistCacheTTLHours *int    `json:"playlistCacheTtlHours,omitempty"`
 	ProbeSizeMB           *int    `json:"probeSizeMb,omitempty"`
@@ -261,6 +268,13 @@ type LivePlaylistSource struct {
 	XtreamHost            string                 `json:"xtreamHost,omitempty"`
 	XtreamUsername        string                 `json:"xtreamUsername,omitempty"`
 	XtreamPassword        string                 `json:"xtreamPassword,omitempty"`
+	StalkerPortalURL      string                 `json:"stalkerPortalUrl,omitempty"`
+	StalkerMAC            string                 `json:"stalkerMac,omitempty"`
+	StalkerSerialNumber   string                 `json:"stalkerSerialNumber,omitempty"`
+	StalkerDeviceID       string                 `json:"stalkerDeviceId,omitempty"`
+	StalkerDeviceID2      string                 `json:"stalkerDeviceId2,omitempty"`
+	StalkerSignature      string                 `json:"stalkerSignature,omitempty"`
+	StalkerModel          string                 `json:"stalkerModel,omitempty"`
 	MaxStreams            int                    `json:"maxStreams,omitempty"`
 	PlaylistCacheTTLHours int                    `json:"playlistCacheTtlHours,omitempty"`
 	ProbeSizeMB           int                    `json:"probeSizeMb,omitempty"`
@@ -310,6 +324,13 @@ type ResolvedLiveSource struct {
 	XtreamHost              string
 	XtreamUsername          string
 	XtreamPassword          string
+	StalkerPortalURL        string
+	StalkerMAC              string
+	StalkerSerialNumber     string
+	StalkerDeviceID         string
+	StalkerDeviceID2        string
+	StalkerSignature        string
+	StalkerModel            string
 	MaxStreams              int
 	PlaylistCacheTTLHours   int
 	ProbeSizeMB             int
@@ -360,6 +381,27 @@ func ResolveLiveSource(profile *LiveTVSettings, global *ResolvedLiveSource) Reso
 	}
 	if profile.XtreamPassword != nil {
 		r.XtreamPassword = *profile.XtreamPassword
+	}
+	if profile.StalkerPortalURL != nil {
+		r.StalkerPortalURL = *profile.StalkerPortalURL
+	}
+	if profile.StalkerMAC != nil {
+		r.StalkerMAC = *profile.StalkerMAC
+	}
+	if profile.StalkerSerialNumber != nil {
+		r.StalkerSerialNumber = *profile.StalkerSerialNumber
+	}
+	if profile.StalkerDeviceID != nil {
+		r.StalkerDeviceID = *profile.StalkerDeviceID
+	}
+	if profile.StalkerDeviceID2 != nil {
+		r.StalkerDeviceID2 = *profile.StalkerDeviceID2
+	}
+	if profile.StalkerSignature != nil {
+		r.StalkerSignature = *profile.StalkerSignature
+	}
+	if profile.StalkerModel != nil {
+		r.StalkerModel = *profile.StalkerModel
 	}
 	if profile.MaxStreams != nil {
 		r.MaxStreams = *profile.MaxStreams
@@ -1055,6 +1097,8 @@ func DefaultUserSettings() UserSettings {
 			RewindOnResumeFromPause:       IntPtr(0),
 			RewindOnPlaybackStart:         IntPtr(0),
 			DisablePrequeue:               BoolPtr(false),
+			PrerollMode:                   "artwork",
+			PrerollMediaScope:             "all",
 			CreditsAutoSkip:               BoolPtr(false),
 			StreamMigrationEnabled:        BoolPtr(true),
 			IgnoreDVCompatibilityCheck:    BoolPtr(false),
@@ -1072,9 +1116,11 @@ func DefaultUserSettings() UserSettings {
 			HomeHeroScale:                   FloatPtr(1.0),
 		},
 		Filtering: FilterSettings{
-			MaxSizeMovieGB:   FloatPtr(0),
-			MaxSizeEpisodeGB: FloatPtr(0),
-			HDRDVPolicy:      HDRDVPolicyNoExclusion,
+			MaxSizeMovieGB:             FloatPtr(0),
+			MaxSizeEpisodeGB:           FloatPtr(0),
+			HDRDVPolicy:                HDRDVPolicyNoExclusion,
+			AdaptivePlaybackEnabled:    BoolPtr(true),
+			AdaptiveTargetBufferFactor: FloatPtr(0.7),
 		},
 		LiveTV: LiveTVSettings{
 			HiddenChannels:     []string{},
@@ -1082,28 +1128,32 @@ func DefaultUserSettings() UserSettings {
 			SelectedCategories: []string{},
 		},
 		Display: DisplaySettings{
-			BadgeVisibility:                           []string{"watchProgress"},
-			NavigationTabVisibility:                   []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
-			NavigationTabVisibilityIncludesSystemTabs: true,
-			NavigationTabVisibilityIncludesWatchlist:  true,
-			WatchStateIconStyle:                       "colored",
-			IncludeUnreleasedMoviesInLists:            BoolPtr(true),
-			IncludeUnreleasedShowsInLists:             BoolPtr(true),
-			IncludeUnreleasedMoviesInSearch:           BoolPtr(true),
-			IncludeUnreleasedShowsInSearch:            BoolPtr(true),
-			DisableMobileTopCarousel:                  BoolPtr(false),
-			ShowStreamSourceInfo:                      BoolPtr(true),
-			HideContinueWatchingHeroMetadata:          BoolPtr(false),
-			MoveDetailsRatingsToMetadata:              BoolPtr(false),
-			HideDetailsPoster:                         BoolPtr(false),
-			HideTVDrawerRail:                          BoolPtr(false),
-			SimpleMode:                                BoolPtr(false),
-			SimpleModeHomeShelves:                     StringSlicePtr(DefaultSimpleModeHomeShelfIDs()),
-			DisableTVHomeCardDimming:                  BoolPtr(false),
-			EnableAnimations:                          BoolPtr(true),
-			EnableHeroArtPanning:                      BoolPtr(true),
-			EnableHeroArtRotation:                     BoolPtr(true),
-			ShowSeriesBackdropForMissingEpisodeArt:    BoolPtr(false),
+			BadgeVisibility:                              []string{"watchProgress"},
+			NavigationTabVisibility:                      []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
+			NavigationTabVisibilityIncludesSystemTabs:    true,
+			NavigationTabVisibilityIncludesWatchlist:     true,
+			WatchStateIconStyle:                          "colored",
+			IncludeUnreleasedMoviesInLists:               BoolPtr(true),
+			IncludeUnreleasedShowsInLists:                BoolPtr(true),
+			IncludeUnreleasedMoviesInSearch:              BoolPtr(true),
+			IncludeUnreleasedShowsInSearch:               BoolPtr(true),
+			DisableMobileTopCarousel:                     BoolPtr(false),
+			ShowStreamSourceInfo:                         BoolPtr(true),
+			HideContinueWatchingHeroMetadata:             BoolPtr(false),
+			MoveDetailsRatingsToMetadata:                 BoolPtr(false),
+			HideDetailsPoster:                            BoolPtr(false),
+			HideTVDrawerRail:                             BoolPtr(false),
+			SimpleMode:                                   BoolPtr(false),
+			SimpleModeHomeShelves:                        StringSlicePtr(DefaultSimpleModeHomeShelfIDs()),
+			DisableTVHomeCardDimming:                     BoolPtr(true),
+			EnableAnimations:                             BoolPtr(true),
+			EnableHeroArtPanning:                         BoolPtr(true),
+			EnableHeroArtRotation:                        BoolPtr(true),
+			ShowSeriesBackdropForMissingEpisodeArt:       BoolPtr(true),
+			BlurUnwatchedEpisodeThumbnails:               BoolPtr(true),
+			BlurUnwatchedEpisodeThumbnailsIncludeCurrent: BoolPtr(false),
+			BlurUnwatchedEpisodeOverviews:                BoolPtr(true),
+			BlurUnwatchedEpisodeOverviewsIncludeCurrent:  BoolPtr(false),
 			Appearance: AppearanceSettings{
 				FontScale:    FloatPtr(1.0),
 				ButtonStyle:  "soft",

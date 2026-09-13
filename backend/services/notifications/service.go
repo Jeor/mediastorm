@@ -84,8 +84,28 @@ const (
 	progressReapInterval             = 15 * time.Second
 )
 
+type profileProvider interface {
+	Get(string) (models.User, bool)
+}
+
+type clientProvider interface {
+	Get(string) (*models.Client, error)
+}
+
+type Option func(*Service)
+
+func WithProfiles(profiles profileProvider) Option {
+	return func(s *Service) { s.profiles = profiles }
+}
+
+func WithClients(clients clientProvider) Option {
+	return func(s *Service) { s.clients = clients }
+}
+
 // Service owns profile notification configuration, formatting, and delivery.
 type Service struct {
+	profiles   profileProvider
+	clients    clientProvider
 	repo       datastore.NotificationRepository
 	httpClient *http.Client
 	deliveries chan delivery
@@ -102,7 +122,7 @@ type Service struct {
 	progressUpdated   map[string]time.Time
 }
 
-func New(repo datastore.NotificationRepository) *Service {
+func New(repo datastore.NotificationRepository, options ...Option) *Service {
 	s := &Service{
 		repo: repo,
 		httpClient: &http.Client{
@@ -115,6 +135,9 @@ func New(repo datastore.NotificationRepository) *Service {
 		progressMessages:  make(map[string]string),
 		progressSequences: make(map[string]uint64),
 		progressUpdated:   make(map[string]time.Time),
+	}
+	for _, option := range options {
+		option(s)
 	}
 	go s.run()
 	return s
@@ -416,6 +439,7 @@ func (s *Service) HandlePlaybackUpdate(userID string, update models.PlaybackProg
 			ID:            uuid.NewString(),
 			Type:          eventType,
 			ProfileID:     userID,
+			ClientID:      update.ClientID,
 			Title:         playbackTitle(update),
 			MediaType:     update.MediaType,
 			Year:          update.Year,
@@ -901,6 +925,7 @@ func (s *Service) pruneProgressDeliveries() {
 }
 
 func (s *Service) deliver(ctx context.Context, channel models.NotificationChannel, event models.NotificationEvent) error {
+	event = s.withDeviceName(s.withProfileName(channel, event))
 	title, body := Format(channel, event)
 	var payload any
 	if channel.Type == models.NotificationChannelDiscord {
@@ -993,6 +1018,7 @@ func (s *Service) upsertDiscordProgress(ctx context.Context, item delivery, comp
 			}
 		}
 	}
+	item.event = s.withDeviceName(s.withProfileName(item.channel, item.event))
 	payload := discordPayload(item.channel, item.event)
 	bodyJSON, err := json.Marshal(payload)
 	if err != nil {
@@ -1141,10 +1167,39 @@ func discordWebhookMessageURL(rawURL, messageID string, wait bool) string {
 	return parsed.String()
 }
 
+func (s *Service) withProfileName(channel models.NotificationChannel, event models.NotificationEvent) models.NotificationEvent {
+	if s.profiles != nil {
+		if profile, ok := s.profiles.Get(channel.ProfileID); ok {
+			event.ProfileName = profile.Name
+		}
+	}
+	return event
+}
+
+func (s *Service) withDeviceName(event models.NotificationEvent) models.NotificationEvent {
+	if s.clients != nil && event.ClientID != "" {
+		if client, err := s.clients.Get(event.ClientID); err == nil && client != nil {
+			event.DeviceName = firstNonEmpty(client.Nickname, client.Name, client.DeviceName, client.DeviceType)
+		}
+	}
+	return event
+}
+
 // Format renders the two safe, non-executable notification template sections.
 func Format(channel models.NotificationChannel, event models.NotificationEvent) (string, string) {
 	values := templateValues(event)
-	return render(channel.TitleTemplate, values), render(channel.BodyTemplate, values)
+	title := render(channel.TitleTemplate, values)
+	if channel.IncludeDeviceName && channel.Type == models.NotificationChannelDiscord &&
+		strings.HasPrefix(event.Type, "watch.") && values["deviceName"] != "" &&
+		!strings.Contains(channel.TitleTemplate, "{{deviceName}}") {
+		title = values["deviceName"] + " - " + title
+	}
+	if channel.IncludeProfileName && channel.Type == models.NotificationChannelDiscord &&
+		strings.HasPrefix(event.Type, "watch.") && values["profileName"] != "" &&
+		!strings.Contains(channel.TitleTemplate, "{{profileName}}") {
+		title = values["profileName"] + " - " + title
+	}
+	return title, render(channel.BodyTemplate, values)
 }
 
 func templateValues(event models.NotificationEvent) map[string]string {
@@ -1181,6 +1236,8 @@ func templateValues(event models.NotificationEvent) map[string]string {
 	return map[string]string{
 		"event":         event.Type,
 		"eventLabel":    eventLabel(event.Type),
+		"profileName":   strings.TrimSpace(event.ProfileName),
+		"deviceName":    strings.TrimSpace(event.DeviceName),
 		"title":         title,
 		"year":          optionalInt(event.Year),
 		"mediaType":     event.MediaType,

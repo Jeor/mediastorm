@@ -467,10 +467,14 @@ type HLSSession struct {
 	BitstreamErrors           int // Count of bitstream filter errors (to detect persistent issues)
 
 	// Live TV session fields
-	IsLive       bool               // True for live TV streams (no duration, no seeking)
-	LiveProvider string             // Live TV provider identifier ("m3u" or "xtream")
-	LiveBucket   string             // Shared stream bucket identifier for limit accounting
-	LiveTuning   LiveTuningSettings // FFmpeg tuning settings for live sessions
+	IsLive                          bool               // True for live TV streams (no duration, no seeking)
+	LiveProvider                    string             // Live TV provider identifier
+	LiveBucket                      string             // Shared stream bucket identifier for limit accounting
+	LiveTuning                      LiveTuningSettings // FFmpeg tuning settings for live sessions
+	livePlaylistWindow              []livePlaylistEntry
+	livePlaylistTargetDuration      int
+	liveDiscontinuitySequence       int
+	livePlaylistIndependentSegments bool
 
 	// Closed caption support (live TV EIA-608)
 	LiveCCExtractionEnabled bool         // Resolved playback.liveClosedCaptionExtraction setting
@@ -2466,7 +2470,7 @@ func (m *HLSManager) CreateLiveSession(ctx context.Context, liveURL, provider, b
 
 	// Start live transcoding in background
 	go func() {
-		if err := m.startLiveTranscoding(bgCtx, session); err != nil {
+		if err := m.superviseLiveTranscoding(bgCtx, session); err != nil {
 			log.Printf("[hls] live session %s transcoding failed: %v", sessionID, err)
 			session.mu.Lock()
 			session.Completed = true
@@ -2500,6 +2504,8 @@ func normalizeLiveProvider(provider string) string {
 		return "xtream"
 	case "stremio":
 		return "stremio"
+	case "stalker":
+		return "stalker"
 	default:
 		return "m3u"
 	}
@@ -2558,13 +2564,22 @@ func (m *HLSManager) GetLiveUsage(provider, bucketKey string, maxStreams int) Li
 	}
 }
 
-// startLiveTranscoding starts FFmpeg for live TV HLS output
-func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSession) error {
-	log.Printf("[hls] live session %s: starting live transcoding for %s", session.ID, session.Path)
+// startLiveTranscoding starts FFmpeg for live TV HLS output. `resumeFrom` is 0 for a fresh session
+// and the next segment number when restarting a starved one, which appends to the existing playlist
+// instead of truncating it.
+func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSession, resumeFrom int) error {
+	if resumeFrom > 0 {
+		log.Printf("[hls] live session %s: restarting live transcoding for %s at segment %d",
+			session.ID, session.Path, resumeFrom)
+	} else {
+		log.Printf("[hls] live session %s: starting live transcoding for %s", session.ID, session.Path)
+	}
+	if err := os.MkdirAll(session.OutputDir, 0755); err != nil {
+		return fmt.Errorf("create output dir %s: %w", session.OutputDir, err)
+	}
 
 	playlistPath := filepath.Join(session.OutputDir, "stream.m3u8")
 	segmentPattern := filepath.Join(session.OutputDir, "segment%d.ts")
-
 	// When a proxy is configured we cannot let ffmpeg reach the provider
 	// directly: providers reject non-proxy source IPs (401) and redirect .ts
 	// requests to CDN nodes that require a User-Agent. ffmpeg also cannot use a
@@ -2631,9 +2646,10 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 			args = append(args, "-user_agent", liveStreamUserAgent)
 		}
 		args = append(args,
+			"-rw_timeout", "30000000",
 			"-reconnect", "1",
 			"-reconnect_streamed", "1",
-			"-reconnect_delay_max", "3",
+			"-reconnect_delay_max", "5",
 		)
 		if headerArg := ffmpegHeadersArg(session.LiveTuning.RequestHeaders); headerArg != "" {
 			args = append(args, "-headers", headerArg)
@@ -2662,7 +2678,7 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		log.Printf("[hls] live session %s: using compatibility transcode mode (video=libx264 audio=aac target=%q)", session.ID, session.PlaybackTarget)
 	}
 	session.mu.Unlock()
-	args = append(args, liveHLSOutputArgs(session.PlaybackTarget, segmentPattern, playlistPath)...)
+	args = append(args, liveHLSOutputArgs(session.PlaybackTarget, segmentPattern, playlistPath, resumeFrom)...)
 
 	log.Printf("[hls] live session %s: starting FFmpeg with args: %v", session.ID, args)
 
@@ -2709,6 +2725,12 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		}
 	}()
 
+	// Closed when this FFmpeg run ends, so every watcher below dies with the process it was started
+	// for. Without it a restart leaves the previous run's goroutines polling: they hold a dead `cmd`,
+	// and the idle one would still set IdleTimeoutTriggered — a flag the supervisor reads to decide
+	// the session was stopped deliberately, which would strand a channel the viewer is watching.
+	processDone := make(chan struct{})
+
 	// Start idle timeout goroutine - kills FFmpeg if no segments requested for hlsIdleTimeout
 	idleDone := make(chan struct{})
 	go func() {
@@ -2719,6 +2741,8 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		for {
 			select {
 			case <-ctx.Done():
+				return
+			case <-processDone:
 				return
 			case <-ticker.C:
 				session.mu.RLock()
@@ -2758,8 +2782,59 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		}
 	}()
 
+	// Starvation watchdog. A provider that closes its connection leaves FFmpeg alive and reconnecting
+	// while its output falls behind realtime: segments arrive every 7-16s instead of every 2, and a
+	// player at the live edge drains its buffer and freezes. FFmpeg never exits, so nothing else here
+	// notices. Killing it hands the session to the supervisor, which rebuilds it in place.
+	//
+	// Only while somebody is actually watching: a session nobody has requested a segment from yet is
+	// the startup timeout's business, and one nobody is reading any more is the idle timeout's.
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		lastSeen := nextLiveSegmentNumber(session.OutputDir)
+		lastProgress := time.Now()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-idleDone:
+				return
+			case <-processDone:
+				return
+			case <-ticker.C:
+				session.mu.RLock()
+				consumed := session.SegmentRequestCount > 0
+				session.mu.RUnlock()
+				if !consumed {
+					lastProgress = time.Now()
+					continue
+				}
+				if current := nextLiveSegmentNumber(session.OutputDir); current != lastSeen {
+					lastSeen = current
+					lastProgress = time.Now()
+					continue
+				}
+				stallTimeout := liveStallTimeoutForOutputDir(session.OutputDir)
+				if time.Since(lastProgress) < stallTimeout {
+					continue
+				}
+				log.Printf("[hls] live session %s: STARVED - no new segment for %v (budget=%v), restarting FFmpeg",
+					session.ID, time.Since(lastProgress), stallTimeout)
+				if cmd.Process != nil {
+					_ = cmd.Process.Kill()
+				}
+				return
+			}
+		}
+	}()
+
 	// Wait for FFmpeg to complete
 	err = cmd.Wait()
+	// Retires this run's watchers before anything returns, including the error paths below: a
+	// restart starts its own, and two generations polling one session is how a stale one ends up
+	// killing a healthy process or flagging a deliberate stop that never happened.
+	close(processDone)
 	if err != nil {
 		if ctx.Err() != nil {
 			log.Printf("[hls] live session %s: FFmpeg stopped (context cancelled)", session.ID)
@@ -2772,6 +2847,73 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 	return nil
 }
 
+// superviseLiveTranscoding keeps one live session running across upstream failures.
+//
+// A channel is not a file: the provider drops, the connection resets, FFmpeg falls behind realtime
+// or exits, and none of that means the viewer asked to stop. Every consumer of a live session — the
+// player, a Cast receiver, a DLNA renderer, the web app — sees the same frozen picture and cannot
+// fix it, because only this process owns the FFmpeg and knows the source. So the session is rebuilt
+// here, in place: same session ID, same playlist path, appended playlist with a discontinuity at
+// the seam, so nothing downstream has to be told anything.
+//
+// Bounded on purpose. A channel that is simply gone would otherwise restart forever and hold an
+// FFmpeg slot; after liveMaxRestarts inside liveRestartWindow the session is left to fail, which is
+// what surfaces a dead channel to the user instead of an eternal spinner.
+func (m *HLSManager) superviseLiveTranscoding(ctx context.Context, session *HLSSession) error {
+	var restarts int
+	windowStart := time.Now()
+	for {
+		resumeFrom := 0
+		if restarts > 0 {
+			session.mu.Lock()
+			session.Completed = false
+			session.FatalError = ""
+			session.IdleTimeoutTriggered = false
+			session.mu.Unlock()
+			resumeFrom = nextLiveSegmentNumber(session.OutputDir)
+		}
+		err := m.startLiveTranscoding(ctx, session, resumeFrom)
+		if ctx.Err() != nil {
+			return nil
+		}
+		session.mu.RLock()
+		idleStopped := session.IdleTimeoutTriggered
+		consumed := session.SegmentRequestCount > 0
+		session.mu.RUnlock()
+		if idleStopped && consumed {
+			// The idle timeout stopped it deliberately after playback started; viewer stopped watching.
+			return err
+		}
+		if !consumed && restarts >= 3 {
+			// Failed 3 startup attempts without any segment being consumed.
+			return err
+		}
+		if time.Since(windowStart) > liveRestartWindow {
+			restarts = 0
+			windowStart = time.Now()
+		}
+		if restarts >= liveMaxRestarts {
+			log.Printf("[hls] live session %s: giving up after %d restarts in %v (last: %v)",
+				session.ID, restarts, time.Since(windowStart), err)
+			return err
+		}
+		restarts++
+		// Short, growing pause: a provider that just dropped is often back within seconds, and
+		// hammering it is what gets an IPTV account rate-limited.
+		delay := time.Duration(restarts) * time.Second
+		if delay > 5*time.Second {
+			delay = 5 * time.Second
+		}
+		log.Printf("[hls] live session %s: rebuilding after upstream failure (attempt %d, in %v): %v",
+			session.ID, restarts, delay, err)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(delay):
+		}
+	}
+}
+
 func isNativeLivePlaybackTarget(playbackTarget string) bool {
 	switch strings.ToLower(strings.TrimSpace(playbackTarget)) {
 	case "native", "android", "ios", "tvos", "mpv", "ksplayer", "exoplayer":
@@ -2781,21 +2923,97 @@ func isNativeLivePlaybackTarget(playbackTarget string) bool {
 	}
 }
 
-// liveNativeHLSListSize is the sliding playlist window for native transmux live.
-// Larger than web because stream-copy can emit segments faster than players fetch
-// them, and we intentionally do not use FFmpeg delete_segments for native.
+// liveNativeHLSListSize is the sliding playlist window for every live target: FFmpeg's
+// on-disk window and therefore also the largest stitched playlist that can safely
+// advertise every URI. No live path uses FFmpeg delete_segments — production is unpaced
+// and can advance the window faster than players fetch — so retention is consumption-paced
+// (deleteOldLiveTransmuxSegments) and the window must cover a lagging player's backlog.
+// Named for the native transmux path it was introduced for; compatibility live matches it.
 const liveNativeHLSListSize = 30
 
 // liveNativeSegmentKeepBehind is how many completed segment files to retain on disk
-// behind the highest served/requested index when cleaning up native live sessions.
-// ~2 minutes at 2s segments; covers playlist re-poll and ExoPlayer retry windows.
+// behind the highest served/requested index when cleaning up live sessions.
+// ~2 minutes at 2s segments; covers playlist re-poll and player retry windows.
 const liveNativeSegmentKeepBehind = 60
 
-func liveHLSOutputArgs(playbackTarget, segmentPattern, playlistPath string) []string {
-	args := make([]string, 0, 40)
-	hlsFlags := "delete_segments+independent_segments+temp_file"
-	listSize := "10"
+// The watchdog must be derived from the media playlist, not -hls_time. Stream-copy can only cut
+// at source keyframes: Toonami advertises TARGETDURATION 14 even though our requested HLS time is
+// two seconds. Three target durations (42s) is the safe live-edge distance RFC 8216 recommends,
+// so the floor is 45s to avoid false restarts when local FFmpeg outputs small segments.
+const liveStallTimeoutFloor = 45 * time.Second
+const liveStallTargetDurations = 3
 
+func liveStallTimeoutForOutputDir(outputDir string) time.Duration {
+	targetDuration := readLivePlaylistTargetDuration(filepath.Join(outputDir, "stream.m3u8"))
+	derived := time.Duration(targetDuration*liveStallTargetDurations) * time.Second
+	if derived > liveStallTimeoutFloor {
+		return derived
+	}
+	return liveStallTimeoutFloor
+}
+
+func readLivePlaylistTargetDuration(playlistPath string) int {
+	content, err := os.ReadFile(playlistPath)
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "#EXT-X-TARGETDURATION:") {
+			continue
+		}
+		value, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(line, "#EXT-X-TARGETDURATION:")))
+		if err == nil && value > 0 {
+			return value
+		}
+		return 0
+	}
+	return 0
+}
+
+// liveMaxRestarts caps how many times one session is rebuilt inside liveRestartWindow. Normal
+// upstream EOFs every few minutes stay below this; a dead channel cannot hold an FFmpeg slot.
+const liveMaxRestarts = 5
+const liveRestartWindow = 5 * time.Minute
+
+// nextLiveSegmentNumber is the number a restarted FFmpeg should continue from: one past the highest
+// segment already on disk. Read from the directory rather than tracked in memory so it stays true
+// across a restart that happened while nobody was counting.
+func nextLiveSegmentNumber(outputDir string) int {
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		return 0
+	}
+	highest := -1
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".ts") {
+			continue
+		}
+		var n int
+		if _, err := fmt.Sscanf(name, "segment%d.ts", &n); err != nil {
+			continue
+		}
+		if n > highest {
+			highest = n
+		}
+	}
+	return highest + 1
+}
+
+// liveHLSOutputArgs builds the output half of the live FFmpeg command. `resumeFrom` is 0 for a fresh
+// session; anything higher continues the segment-number timeline after starvation. The in-memory
+// playlist stitcher retains the prior window, while the discontinuity tells clients to reinitialize
+// rather than decoding across the seam.
+func liveHLSOutputArgs(playbackTarget, segmentPattern, playlistPath string, resume ...int) []string {
+	resumeFrom := 0
+	if len(resume) > 0 {
+		resumeFrom = resume[0]
+	}
+	args := make([]string, 0, 44)
+	// Compatibility (cast/web) retention is the default; the native branch overrides.
+	hlsFlags := "independent_segments+temp_file"
+	listSize := strconv.Itoa(liveNativeHLSListSize)
 	if isNativeLivePlaybackTarget(playbackTarget) {
 		// Native apps (ExoPlayer / KSPlayer / MPV) demux/decode IPTV codecs themselves.
 		// Always transmux (copy) for those targets — never libx264/aac here. Web browser
@@ -2815,9 +3033,14 @@ func liveHLSOutputArgs(playbackTarget, segmentPattern, playlistPath string) []st
 		hlsFlags = "temp_file"
 		listSize = strconv.Itoa(liveNativeHLSListSize)
 	} else {
-		// Web and legacy callers retain the compatibility encode with a controlled
-		// keyframe cadence. delete_segments is safe here because re-encoding is slower
-		// than typical playlist/segment fetch cadence.
+		// Cast, web, and compatibility callers re-encode with controlled keyframes.
+		// No FFmpeg delete_segments: production is unpaced, so bursts advance the
+		// playlist window faster than the player fetches, and deleting scrolled-out
+		// segments 404s a lagging player (Chromecast starts ~14s behind the edge via
+		// EXT-X-START) whose pending fetches still need them. Retention is
+		// consumption-paced instead: ServeSegment prunes files behind the
+		// served/requested high-water mark with a keep-behind window — the same
+		// contract native live already runs on.
 		args = append(args,
 			"-c:v", "libx264",
 			"-preset", "veryfast",
@@ -2833,6 +3056,14 @@ func liveHLSOutputArgs(playbackTarget, segmentPattern, playlistPath string) []st
 			"-b:a", "128k",
 			"-ar", "48000",
 		)
+	}
+
+	if resumeFrom > 0 {
+		// discont_start marks the timeline cut so players re-initialise their decoders.
+		// Do not use append_list: with a rolling live playlist, append_list retains stale,
+		// unplayable segments from the failed run and corrupts EXT-X-MEDIA-SEQUENCE.
+		hlsFlags += "+discont_start"
+		args = append(args, "-start_number", strconv.Itoa(resumeFrom))
 	}
 
 	return append(args,
@@ -3881,6 +4112,13 @@ func (m *HLSManager) startTranscoding(ctx context.Context, session *HLSSession, 
 	// ServeSubtitleTrack serves and clearSessionSegments clears on seek.
 	if webSubtitleRendition {
 		syncedVTTPath := filepath.Join(session.OutputDir, fmt.Sprintf("subtitles_%d.vtt", webSubtitleAbsIndex))
+		if !session.CastMode {
+			args = append(args,
+				// Keep the media output's make_zero behavior, but do not let it shift this
+				// WebVTT output by the duration of a cue that overlaps the seek point.
+				"-avoid_negative_ts", "disabled",
+			)
+		}
 		args = append(args,
 			"-map", fmt.Sprintf("0:%d", webSubtitleAbsIndex),
 			"-c:s", "webvtt",
@@ -4866,6 +5104,7 @@ func (m *HLSManager) KeepAlive(w http.ResponseWriter, r *http.Request, sessionID
 	keyframeDelta := actualStartOffset - startOffset
 	duration := session.Duration
 	profileID := session.ProfileID
+	clientID := session.ClientID
 	metadata := session.MediaMetadata
 	paused := session.PlaybackPaused
 	buffering := session.PlaybackBuffering
@@ -4896,6 +5135,7 @@ func (m *HLSManager) KeepAlive(w http.ResponseWriter, r *http.Request, sessionID
 				IsBuffering:       buffering,
 				PlaybackEnded:     ended,
 				PlaybackSessionID: "hls:" + sessionID,
+				ClientID:          clientID,
 				SourcePath:        sourcePath,
 			}, metadata)
 			percent := 0.0
@@ -5341,7 +5581,16 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 			http.Error(w, "playlist not ready", http.StatusInternalServerError)
 			return
 		}
-		if playlistHasMediaSegment(content) {
+		hasMinSegments := playlistHasMediaSegment(content)
+		if session != nil && session.IsLive {
+			session.mu.RLock()
+			isInitialStartup := session.MaxSegmentRequested < 0
+			session.mu.RUnlock()
+			if isInitialStartup && playlistSegmentCount(content) < 3 && time.Since(session.StreamStartTime) < 8*time.Second {
+				hasMinSegments = false
+			}
+		}
+		if hasMinSegments {
 			break
 		}
 		if livePlaylistStartupFailed(session) {
@@ -5386,9 +5635,18 @@ func (m *HLSManager) ServePlaylist(w http.ResponseWriter, r *http.Request, sessi
 		playlistContent = buildStableCastPlaylist(session)
 	}
 
+	if session.IsLive {
+		playlistContent = m.buildSeamlessLivePlaylist(session, playlistContent)
+	}
+
 	// Build header tags to inject after #EXTM3U
 	var headerTags []string
 
+	if session.IsLive && !strings.Contains(playlistContent, "#EXT-X-START") {
+		if startTag := livePlaylistStartTag(playlistContent); startTag != "" {
+			headerTags = append(headerTags, startTag)
+		}
+	}
 	// Inject EXT-X-VIDEO-RANGE for HDR/DV content - tells iOS AVPlayer to enable HDR mode
 	// Without this, iOS treats HDR content as SDR causing color banding and incorrect display.
 	// Skip when the source was tone mapped down to SDR for the web player — the
@@ -5504,17 +5762,22 @@ func livePlaylistStartupFailed(session *HLSSession) bool {
 	}
 	session.mu.RLock()
 	defer session.mu.RUnlock()
-	return session.IsLive && session.Completed
+	return session.IsLive && session.Completed && session.FatalError != ""
 }
 
-func playlistHasMediaSegment(content []byte) bool {
+func playlistSegmentCount(content []byte) int {
+	count := 0
 	for _, line := range strings.Split(string(content), "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "segment") && (strings.HasSuffix(line, ".ts") || strings.HasSuffix(line, ".m4s")) {
-			return true
+			count++
 		}
 	}
-	return false
+	return count
+}
+
+func playlistHasMediaSegment(content []byte) bool {
+	return playlistSegmentCount(content) > 0
 }
 
 func buildStableCastPlaylist(session *HLSSession) string {
@@ -6050,14 +6313,12 @@ func (m *HLSManager) ServeSegment(w http.ResponseWriter, r *http.Request, sessio
 	m.noteCastSegmentDelivery(session, r, servedSegmentNum, segmentSize, serveDuration)
 
 	// Clean up old segments to save disk space.
-	// Web live sessions use FFmpeg's delete_segments flag (transcode path).
-	// Native live transmux deliberately omits delete_segments (see liveHLSOutputArgs)
-	// so we prune served segment files ourselves with a fixed keep-behind window.
+	// No live session uses FFmpeg's delete_segments (see liveHLSOutputArgs), so every
+	// live target — native and compatibility alike — is pruned here, consumption-paced
+	// off the served/requested high-water mark with a fixed keep-behind window.
 	// VOD uses buffer-aware deleteOldSegments.
 	if session.IsLive {
-		if isNativeLivePlaybackTarget(session.PlaybackTarget) {
-			go m.deleteOldLiveTransmuxSegments(session, servedSegmentNum)
-		}
+		go m.deleteOldLiveTransmuxSegments(session, servedSegmentNum)
 	} else {
 		go m.deleteOldSegments(session, segmentName)
 	}
@@ -6224,8 +6485,16 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 		content, _ = os.ReadFile(vttPath)
 	}
 
-	// Post-process VTT to merge karaoke character cues (from ASS conversion)
-	processedContent := withWebVTTTimestampMap(mergeKaraokeCues(string(content)), session.subtitleTimestampBase())
+	// Post-process VTT to merge karaoke character cues (from ASS conversion).
+	processedContent := mergeKaraokeCues(string(content))
+	if syncedSamePass && !session.CastMode {
+		// With negative timestamps left enabled for this output, FFmpeg preserves the
+		// correct relative timeline but may serialize the start of a cue spanning the
+		// seek point as an invalid negative WebVTT timestamp. Its visible portion starts
+		// at zero; later cue timestamps must remain unchanged.
+		processedContent = clampNegativeSyncedWebVTTCueStarts(processedContent)
+	}
+	processedContent = withWebVTTTimestampMap(processedContent, session.subtitleTimestampBase())
 
 	w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache") // Don't cache since file is growing
@@ -6243,6 +6512,28 @@ func (m *HLSManager) ServeSubtitleTrack(w http.ResponseWriter, r *http.Request, 
 
 	w.Write([]byte(processedContent))
 	log.Printf("[hls] served subtitles for session %s track %d, size=%d bytes", sessionID, requestedTrack, len(processedContent))
+}
+
+// clampNegativeSyncedWebVTTCueStarts repairs only the first edge case produced by an accurate
+// mid-file seek: a cue that began before the new media origin but ends after it. FFmpeg can emit
+// that cue with a malformed negative start (for example 00:-2.-50). Clamping that start retains
+// the visible tail without shifting any subsequent cues.
+func clampNegativeSyncedWebVTTCueStarts(content string) string {
+	lines := strings.Split(content, "\n")
+	changed := false
+	for i, line := range lines {
+		parts := strings.SplitN(line, "-->", 2)
+		if len(parts) != 2 || !strings.Contains(strings.TrimSpace(parts[0]), "-") {
+			continue
+		}
+		indent := parts[0][:len(parts[0])-len(strings.TrimLeft(parts[0], " \t"))]
+		lines[i] = indent + "00:00.000 -->" + parts[1]
+		changed = true
+	}
+	if !changed {
+		return content
+	}
+	return strings.Join(lines, "\n")
 }
 
 // subtitleTimestampBase reports where this session's MPEG-TS clock starts, in seconds.
@@ -6777,9 +7068,199 @@ func summarizeLivePlaylistState(outputDir string) string {
 	}
 }
 
-// deleteOldLiveTransmuxSegments removes native live .ts segment files that are far
-// behind the playback edge. Native live omits FFmpeg delete_segments so early
-// segments stay available for the player's first fetch; without this cleanup a long
+type livePlaylistEntry struct {
+	MediaSequence int
+	URI           string
+	ExtInf        string
+	Duration      float64
+	Discontinuity bool
+}
+
+type livePlaylistSnapshot struct {
+	Entries               []livePlaylistEntry
+	TargetDuration        int
+	MediaSequence         int
+	DiscontinuitySequence int
+	IndependentSegments   bool
+}
+
+func parseLivePlaylist(content string) livePlaylistSnapshot {
+	lines := strings.Split(content, "\n")
+	snapshot := livePlaylistSnapshot{}
+	pendingDiscontinuity := false
+	pendingExtInf := ""
+	pendingDuration := 0.0
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#EXT-X-TARGETDURATION:") {
+			if td, err := strconv.Atoi(strings.TrimPrefix(trimmed, "#EXT-X-TARGETDURATION:")); err == nil && td > 0 {
+				snapshot.TargetDuration = td
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#EXT-X-MEDIA-SEQUENCE:") {
+			if sequence, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(trimmed, "#EXT-X-MEDIA-SEQUENCE:"))); err == nil && sequence >= 0 {
+				snapshot.MediaSequence = sequence
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#EXT-X-DISCONTINUITY-SEQUENCE:") {
+			if sequence, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(trimmed, "#EXT-X-DISCONTINUITY-SEQUENCE:"))); err == nil && sequence >= 0 {
+				snapshot.DiscontinuitySequence = sequence
+			}
+			continue
+		}
+		if trimmed == "#EXT-X-INDEPENDENT-SEGMENTS" {
+			snapshot.IndependentSegments = true
+			continue
+		}
+		if trimmed == "#EXT-X-DISCONTINUITY" {
+			pendingDiscontinuity = true
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#EXTINF:") {
+			pendingExtInf = strings.TrimPrefix(trimmed, "#EXTINF:")
+			durStr := pendingExtInf
+			if idx := strings.IndexByte(durStr, ','); idx >= 0 {
+				durStr = durStr[:idx]
+			}
+			if d, err := strconv.ParseFloat(durStr, 64); err == nil && d > 0 {
+				pendingDuration = d
+			}
+			continue
+		}
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || pendingExtInf == "" || pendingDuration <= 0 {
+			continue
+		}
+		snapshot.Entries = append(snapshot.Entries, livePlaylistEntry{
+			MediaSequence: snapshot.MediaSequence + len(snapshot.Entries),
+			URI:           trimmed,
+			ExtInf:        pendingExtInf,
+			Duration:      pendingDuration,
+			Discontinuity: pendingDiscontinuity,
+		})
+		pendingDiscontinuity = false
+		pendingExtInf = ""
+		pendingDuration = 0
+	}
+	if snapshot.TargetDuration <= 0 {
+		for _, entry := range snapshot.Entries {
+			snapshot.TargetDuration = max(snapshot.TargetDuration, int(math.Ceil(entry.Duration)))
+		}
+	}
+	return snapshot
+}
+
+func (m *HLSManager) buildSeamlessLivePlaylist(session *HLSSession, onDiskContent string) string {
+	snapshot := parseLivePlaylist(onDiskContent)
+	if len(snapshot.Entries) == 0 || snapshot.TargetDuration <= 0 {
+		return onDiskContent
+	}
+
+	session.mu.Lock()
+	defer session.mu.Unlock()
+
+	isStaleSnapshot := false
+	if len(session.livePlaylistWindow) == 0 {
+		session.livePlaylistTargetDuration = snapshot.TargetDuration
+		session.liveDiscontinuitySequence = snapshot.DiscontinuitySequence
+	} else {
+		// Ignore stale concurrent reads whose highest segment is below what we already stitched.
+		highestInWindow := session.livePlaylistWindow[len(session.livePlaylistWindow)-1].MediaSequence
+		highestInSnapshot := snapshot.Entries[len(snapshot.Entries)-1].MediaSequence
+		if highestInSnapshot < highestInWindow {
+			isStaleSnapshot = true
+		}
+	}
+
+	if !isStaleSnapshot {
+		// Ensure target duration satisfies RFC 8216: must be >= ceil(duration) of every retained segment.
+		session.livePlaylistTargetDuration = max(session.livePlaylistTargetDuration, snapshot.TargetDuration)
+		for _, entry := range snapshot.Entries {
+			session.livePlaylistTargetDuration = max(session.livePlaylistTargetDuration, int(math.Ceil(entry.Duration)))
+		}
+		session.livePlaylistIndependentSegments = session.livePlaylistIndependentSegments || snapshot.IndependentSegments
+
+		bySequence := make(map[int]int, len(session.livePlaylistWindow))
+		for index, entry := range session.livePlaylistWindow {
+			bySequence[entry.MediaSequence] = index
+		}
+		for _, entry := range snapshot.Entries {
+			if index, exists := bySequence[entry.MediaSequence]; exists {
+				entry.Discontinuity = entry.Discontinuity || session.livePlaylistWindow[index].Discontinuity
+				session.livePlaylistWindow[index] = entry
+				continue
+			}
+			bySequence[entry.MediaSequence] = len(session.livePlaylistWindow)
+			session.livePlaylistWindow = append(session.livePlaylistWindow, entry)
+		}
+		sort.Slice(session.livePlaylistWindow, func(i, j int) bool {
+			return session.livePlaylistWindow[i].MediaSequence < session.livePlaylistWindow[j].MediaSequence
+		})
+	}
+	// One window for every live target, matching what FFmpeg retains on disk.
+	maxEntries := liveNativeHLSListSize
+	if len(session.livePlaylistWindow) > maxEntries {
+		trimCount := len(session.livePlaylistWindow) - maxEntries
+		for _, removed := range session.livePlaylistWindow[:trimCount] {
+			if removed.Discontinuity {
+				session.liveDiscontinuitySequence++
+			}
+		}
+		session.livePlaylistWindow = append([]livePlaylistEntry(nil), session.livePlaylistWindow[trimCount:]...)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("#EXTM3U\n")
+	sb.WriteString("#EXT-X-VERSION:3\n")
+	sb.WriteString(fmt.Sprintf("#EXT-X-TARGETDURATION:%d\n", session.livePlaylistTargetDuration))
+	sb.WriteString(fmt.Sprintf("#EXT-X-MEDIA-SEQUENCE:%d\n", session.livePlaylistWindow[0].MediaSequence))
+	if session.liveDiscontinuitySequence > 0 {
+		sb.WriteString(fmt.Sprintf("#EXT-X-DISCONTINUITY-SEQUENCE:%d\n", session.liveDiscontinuitySequence))
+	}
+	if session.livePlaylistIndependentSegments {
+		sb.WriteString("#EXT-X-INDEPENDENT-SEGMENTS\n")
+	}
+
+	for _, entry := range session.livePlaylistWindow {
+		if entry.Discontinuity {
+			sb.WriteString("#EXT-X-DISCONTINUITY\n")
+		}
+		sb.WriteString("#EXTINF:")
+		sb.WriteString(entry.ExtInf)
+		sb.WriteByte('\n')
+		sb.WriteString(entry.URI)
+		sb.WriteByte('\n')
+	}
+
+	return sb.String()
+}
+
+const liveMinimumStartOffsetSeconds = 14
+
+// RFC 8216 recommends starting an open live playlist at least three target durations behind its
+// edge. Keep the historical 14-second latency for two-second Cast transcodes, but derive a deeper
+// start for stream-copy sources with long GOPs. Omit the tag until that point exists in the window.
+func livePlaylistStartTag(content string) string {
+	snapshot := parseLivePlaylist(content)
+	if len(snapshot.Entries) == 0 || snapshot.TargetDuration <= 0 {
+		return ""
+	}
+	offset := max(liveMinimumStartOffsetSeconds, snapshot.TargetDuration*liveStallTargetDurations)
+	playlistDuration := 0.0
+	for _, entry := range snapshot.Entries {
+		playlistDuration += entry.Duration
+	}
+	if playlistDuration < float64(offset) {
+		return ""
+	}
+	return fmt.Sprintf("#EXT-X-START:TIME-OFFSET=-%d,PRECISE=YES", offset)
+}
+
+// deleteOldLiveTransmuxSegments removes live .ts segment files that are far behind
+// what the player has consumed. Live output omits FFmpeg delete_segments so segments
+// stay available for a lagging player's pending fetches; without this cleanup a long
 // session would accumulate every segment file ever written.
 func (m *HLSManager) deleteOldLiveTransmuxSegments(session *HLSSession, justServedSegment int) {
 	if session == nil || justServedSegment < 0 {
@@ -6807,14 +7288,22 @@ func (m *HLSManager) deleteOldLiveTransmuxSegments(session *HLSSession, justServ
 	}
 
 	deletedCount := 0
-	// Bound the walk: only scan the keep window trailing edge, not every segment
-	// from 0 (O(n) over multi-hour live sessions).
-	start := cutoff - liveNativeSegmentKeepBehind
-	if start < 0 {
-		start = 0
+	// Enumerate what is actually on disk so a producer that races far ahead before
+	// the player's first request cannot strand segments below a bounded numeric scan.
+	// Once cleanup has run, this directory remains limited to the retained window.
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		return
 	}
-	for i := start; i <= cutoff; i++ {
-		path := filepath.Join(outputDir, fmt.Sprintf("segment%d.ts", i))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "segment") || !strings.HasSuffix(entry.Name(), ".ts") {
+			continue
+		}
+		var segmentNumber int
+		if _, err := fmt.Sscanf(entry.Name(), "segment%d.ts", &segmentNumber); err != nil || segmentNumber > cutoff {
+			continue
+		}
+		path := filepath.Join(outputDir, entry.Name())
 		if err := os.Remove(path); err == nil {
 			deletedCount++
 		}

@@ -440,8 +440,9 @@ func main() {
 	var remoteAccessService *remoteaccess.Service
 	if store != nil {
 		remoteAccessHost = remoteaccess.NewIrohHostManager("", settings.Cache.Directory, settings.Server.Port)
-		remoteAccessService = remoteaccess.NewService(store.RemoteAccessInvites(), remoteAccessHost)
+		remoteAccessService = remoteaccess.NewService(store.RemoteAccessInvites(), remoteAccessHost, store.RemoteAccessPairings())
 		remoteAccessHandler = handlers.NewRemoteAccessHandler(remoteAccessService)
+		r.Use(handlers.RemoteAccessRevocationMiddleware(remoteAccessService))
 		defer func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
@@ -627,7 +628,7 @@ func main() {
 	if store != nil {
 		realtimeSessionStore = store.RealtimeScrobbleSessions()
 	}
-	realtimeSessionRegistry := realtimesessions.New(realtimeSessionStore, time.Hour)
+	realtimeSessionRegistry := realtimesessions.New(realtimeSessionStore, realtimesessions.DefaultCleanupInterval)
 	scrobbleTracker.SetSessionRegistry(realtimeSessionRegistry)
 	mdblistRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
 	simklRTScrobbler.SetSessionRegistry(realtimeSessionRegistry)
@@ -726,7 +727,7 @@ func main() {
 
 	// Calendar service provides upcoming content from watchlist, history, and MDBList
 	calendarService := calendar.New(metadataService, watchlistService, historyService, userSettingsService, userService)
-	notificationService := notifications.New(store.Notifications())
+	notificationService := notifications.New(store.Notifications(), notifications.WithProfiles(userService), notifications.WithClients(clientsService))
 	defer notificationService.Close()
 	calendarService.SetReleaseObserver(notificationService)
 	historyService.SetWatchStateChangedHook(calendarService.Invalidate)
@@ -827,6 +828,9 @@ func main() {
 	cleanupDashboard.SetProgressService(historyService)
 	cleanupDashboard.SetUserService(userService)
 	realtimeSessionRegistry.SetActivePlaybackProvider(cleanupDashboard)
+	realtimeRecoveryCtx, realtimeRecoveryCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	realtimeSessionRegistry.Recover(realtimeRecoveryCtx)
+	realtimeRecoveryCancel()
 	go realtimeSessionRegistry.Start(context.Background())
 
 	if videoHandler != nil && settings.WebDAV.Enabled {
@@ -1150,6 +1154,7 @@ func main() {
 	r.HandleFunc("/admin/search", adminUIHandler.RequireAuth(adminUIHandler.SearchPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/playback", adminUIHandler.RequireAuth(adminUIHandler.PlaybackPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/accounts", adminUIHandler.RequireAuth(adminUIHandler.AccountsPage)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/paired-devices", adminUIHandler.RequireMasterAuth(adminUIHandler.PairedDevicesPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/notifications", adminUIHandler.RequireAuth(adminUIHandler.NotificationsPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/library", adminUIHandler.RequireAuth(adminUIHandler.LibraryPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/kids-settings", adminUIHandler.RequireAuth(adminUIHandler.KidsSettingsPage)).Methods(http.MethodGet)
@@ -1170,7 +1175,11 @@ func main() {
 	r.HandleFunc("/admin/api/streams", adminUIHandler.RequireAuth(adminUIHandler.GetStreams)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/streams/sse", adminUIHandler.RequireAuth(adminUIHandler.GetStreamsSSE)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/streams/{streamID}/terminate", adminUIHandler.RequireAuth(adminUIHandler.TerminateStream)).Methods(http.MethodPost)
+	r.HandleFunc("/admin/api/restart", adminUIHandler.RequireMasterAuth(cleanupDashboard.RestartServer)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/dashboard/stats", adminUIHandler.RequireAuth(adminUIHandler.GetDashboardStats)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/dashboard/layout", adminUIHandler.RequireAuth(adminUIHandler.GetDashboardLayout)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/dashboard/layout", adminUIHandler.RequireMasterAuth(adminUIHandler.SaveDashboardLayout)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/api/dashboard/layout", adminUIHandler.RequireMasterAuth(adminUIHandler.ResetDashboardLayout)).Methods(http.MethodDelete)
 	if numbersStationHandler != nil {
 		numbersStationLimiter := api.NewIPRateLimiter(rate.Every(6*time.Second), 10)
 		r.HandleFunc("/admin/api/numbers-station", adminUIHandler.RequireAuth(numbersStationHandler.State)).Methods(http.MethodGet)
@@ -1289,6 +1298,7 @@ func main() {
 	r.HandleFunc("/admin/api/live/stremio/streams", adminUIHandler.RequireAuth(liveHandler.GetStremioStreamOptions)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/live/stream", adminUIHandler.RequireAuth(liveHandler.StreamChannel)).Methods(http.MethodGet, http.MethodHead)
 	r.HandleFunc("/admin/api/live/hls/start", adminUIHandler.RequireAuth(videoHandler.StartLiveHLSSession)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/admin/api/video/live-direct/{ticket}/stream.ts", adminUIHandler.RequireAuth(videoHandler.ServeLiveDirect)).Methods(http.MethodGet, http.MethodHead)
 	r.HandleFunc("/admin/api/live/epg/now", adminUIHandler.RequireAuth(epgHandler.GetNowPlaying)).Methods(http.MethodGet, http.MethodPost)
 	r.HandleFunc("/admin/api/live/epg/schedule", adminUIHandler.RequireAuth(epgHandler.GetSchedule)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/live/epg/schedule/batch", adminUIHandler.RequireAuth(epgHandler.GetScheduleMultiple)).Methods(http.MethodGet)
@@ -1338,6 +1348,8 @@ func main() {
 		r.HandleFunc("/admin/api/remote-access/invites", adminUIHandler.RequireMasterAuth(remoteAccessHandler.ListInvites)).Methods(http.MethodGet)
 		r.HandleFunc("/admin/api/remote-access/invites", adminUIHandler.RequireMasterAuth(remoteAccessHandler.CreateInvite)).Methods(http.MethodPost)
 		r.HandleFunc("/admin/api/remote-access/invites/{inviteID}", adminUIHandler.RequireMasterAuth(remoteAccessHandler.RevokeInvite)).Methods(http.MethodDelete)
+		r.HandleFunc("/admin/api/remote-access/paired-devices", adminUIHandler.RequireMasterAuth(adminUIHandler.GetPairedDevices)).Methods(http.MethodGet)
+		r.HandleFunc("/admin/api/remote-access/paired-devices/{inviteID}", adminUIHandler.RequireMasterAuth(adminUIHandler.RevokePairedDevice)).Methods(http.MethodDelete)
 	}
 
 	// Public registration endpoints (no auth required)
@@ -1597,6 +1609,7 @@ func main() {
 	r.HandleFunc("/account/api/debug/log", adminUIHandler.RequireAuth(adminUIHandler.CaptureDebugLog)).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/account/api/video/metadata", adminUIHandler.RequireAuth(videoHandler.ProbeVideo)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/account/api/video/hls/start", adminUIHandler.RequireAuth(videoHandler.StartHLSSession)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/account/api/video/live-direct/{ticket}/stream.ts", adminUIHandler.RequireAuth(videoHandler.ServeLiveDirect)).Methods(http.MethodGet, http.MethodHead)
 	r.HandleFunc("/account/api/video/hls/{sessionID}/master.m3u8", adminUIHandler.RequireAuth(videoHandler.ServeHLSMasterPlaylist)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/account/api/video/hls/{sessionID}/stream.m3u8", adminUIHandler.RequireAuth(videoHandler.ServeHLSPlaylist)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/account/api/video/hls/{sessionID}/subtitle-{track}.m3u8", adminUIHandler.RequireAuth(videoHandler.ServeHLSSubtitlePlaylist)).Methods(http.MethodGet, http.MethodOptions)
@@ -2000,7 +2013,7 @@ func main() {
 		// Start prewarm URL refresh and cache warmers after initial restore.
 		prewarmService.Start(context.Background())
 		metadataService.StartBackgroundCacheManager(2 * time.Hour)
-		metadataService.StartBackgroundTopTenWorker(12 * time.Hour)
+		metadataService.StartBackgroundTopTenWorker(time.Hour)
 		calendarService.StartBackgroundRefresh(4 * time.Hour)
 	}()
 

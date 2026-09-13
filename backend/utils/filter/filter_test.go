@@ -256,6 +256,22 @@ func TestResults_MediaTypeFiltering(t *testing.T) {
 		}
 	})
 
+	t.Run("movie search accepts nikt0 release group", func(t *testing.T) {
+		results := []models.NZBResult{
+			{Title: "Batman Death in the Family 2020 1080p BluRay x264-nikt0"},
+		}
+
+		filtered := Results(results, Options{
+			ExpectedTitle: "Batman: Death in the Family",
+			ExpectedYear:  2020,
+			IsMovie:       true,
+		})
+
+		if len(filtered) != 1 {
+			t.Fatalf("expected nikt0 movie release to pass, got %d results", len(filtered))
+		}
+	})
+
 	// Test that movie results are filtered out when searching for TV shows
 	t.Run("TV search rejects movie patterns", func(t *testing.T) {
 		results := []models.NZBResult{
@@ -906,10 +922,11 @@ func TestTitleContainmentScore(t *testing.T) {
 
 func TestSeriesPrefixExtensionMismatch(t *testing.T) {
 	tests := []struct {
-		name         string
-		parsedTitle  string
-		matchedTitle string
-		wantMismatch bool
+		name                     string
+		parsedTitle              string
+		matchedTitle             string
+		allowAnimeSeasonSubtitle bool
+		wantMismatch             bool
 	}{
 		{
 			name:         "spinoff title extends expected title",
@@ -942,18 +959,32 @@ func TestSeriesPrefixExtensionMismatch(t *testing.T) {
 			wantMismatch: false,
 		},
 		{
-			name:         "multi-word season subtitle is not a mismatch",
-			parsedTitle:  "Dr Stone New World",
-			matchedTitle: "Dr Stone",
-			wantMismatch: false,
+			name:         "multi-word ordinary series extension is a mismatch",
+			parsedTitle:  "The Fairly OddParents A New Wish",
+			matchedTitle: "The Fairly OddParents",
+			wantMismatch: true,
+		},
+		{
+			name:                     "multi-word anime season subtitle is not a mismatch",
+			parsedTitle:              "Dr Stone New World",
+			matchedTitle:             "Dr Stone",
+			allowAnimeSeasonSubtitle: true,
+			wantMismatch:             false,
+		},
+		{
+			name:                     "one-word anime extension remains a mismatch",
+			parsedTitle:              "The Rookie Feds",
+			matchedTitle:             "The Rookie",
+			allowAnimeSeasonSubtitle: true,
+			wantMismatch:             true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isSeriesPrefixExtensionMismatch(tt.parsedTitle, tt.matchedTitle)
+			got := isSeriesPrefixExtensionMismatch(tt.parsedTitle, tt.matchedTitle, tt.allowAnimeSeasonSubtitle)
 			if got != tt.wantMismatch {
-				t.Fatalf("isSeriesPrefixExtensionMismatch(%q, %q) = %v, want %v", tt.parsedTitle, tt.matchedTitle, got, tt.wantMismatch)
+				t.Fatalf("isSeriesPrefixExtensionMismatch(%q, %q, %v) = %v, want %v", tt.parsedTitle, tt.matchedTitle, tt.allowAnimeSeasonSubtitle, got, tt.wantMismatch)
 			}
 		})
 	}
@@ -1052,7 +1083,7 @@ func TestResults_SeriesYearMismatch(t *testing.T) {
 		}
 	})
 
-	t.Run("matching year rejects loose title identity", func(t *testing.T) {
+	t.Run("matching year does not override extended title identity", func(t *testing.T) {
 		results := []models.NZBResult{
 			{Title: "Show Name New Chapter 2026 S01 1080p WEB-DL"},
 		}
@@ -1067,8 +1098,8 @@ func TestResults_SeriesYearMismatch(t *testing.T) {
 		if len(filtered) != 1 || filtered[0].Passed {
 			t.Fatalf("expected loose same-year title result to be rejected, got %+v", filtered)
 		}
-		if !strings.Contains(filtered[0].RejectReason, "title identity is loose") {
-			t.Fatalf("expected loose title rejection reason, got %q", filtered[0].RejectReason)
+		if !strings.Contains(filtered[0].RejectReason, "extends expected title") {
+			t.Fatalf("expected extended title rejection reason, got %q", filtered[0].RejectReason)
 		}
 	})
 }
@@ -1099,6 +1130,58 @@ func TestResults_MissingYearIsNeutral(t *testing.T) {
 	}
 	if detailed[2].Passed || !strings.Contains(detailed[2].RejectReason, "year difference") {
 		t.Fatalf("expected explicitly wrong year to be rejected, got %+v", detailed[2])
+	}
+}
+
+func TestResults_MovieAlternateTitleProvidesStrongIdentity(t *testing.T) {
+	detailed := ResultsWithDetails([]models.NZBResult{
+		{Title: "Batman: Death in the Family 2020 1080p BluRay"},
+	}, Options{
+		ExpectedTitle:   "DC Showcase Batman: Death in the Family",
+		ExpectedYear:    2020,
+		IsMovie:         true,
+		AlternateTitles: []string{"Batman: Death in the Family"},
+	})
+
+	if len(detailed) != 1 || !detailed[0].Passed {
+		t.Fatalf("expected alternate-title release to pass, got %+v", detailed)
+	}
+	if detailed[0].Result.Attributes["titleMatch"] != "strong" {
+		t.Fatalf("titleMatch = %q, want strong", detailed[0].Result.Attributes["titleMatch"])
+	}
+}
+
+func TestResults_MovieCanonicalTitleProvidesStrongIdentityForAlternateQuery(t *testing.T) {
+	detailed := ResultsWithDetails([]models.NZBResult{
+		{Title: "DC Showcase - Batman: Death in the Family 2020 2160p WEB-DL"},
+	}, Options{
+		ExpectedTitle: "Batman: Death in the Family",
+		ExpectedYear:  2020,
+		IsMovie:       true,
+	})
+
+	if len(detailed) != 1 || !detailed[0].Passed {
+		t.Fatalf("expected canonical-title release to pass alternate query, got %+v", detailed)
+	}
+	if detailed[0].Result.Attributes["titleMatch"] != "strong" {
+		t.Fatalf("titleMatch = %q, want strong", detailed[0].Result.Attributes["titleMatch"])
+	}
+}
+
+func TestResults_MovieDCShowcaseBrandPrefixIsSymmetric(t *testing.T) {
+	detailed := ResultsWithDetails([]models.NZBResult{
+		{Title: "Batman: Death in the Family 2020 1080p BluRay"},
+	}, Options{
+		ExpectedTitle: "DC Showcase Batman: Death in the Family",
+		ExpectedYear:  2020,
+		IsMovie:       true,
+	})
+
+	if len(detailed) != 1 || !detailed[0].Passed {
+		t.Fatalf("expected unbranded release to pass branded metadata title, got %+v", detailed)
+	}
+	if detailed[0].Result.Attributes["titleMatch"] != "strong" {
+		t.Fatalf("titleMatch = %q, want strong", detailed[0].Result.Attributes["titleMatch"])
 	}
 }
 
@@ -1460,6 +1543,79 @@ func TestResults_SpinoffTitleRejection(t *testing.T) {
 			t.Fatalf("filtered title = %q, want %q", filtered[0].Title, results[0].Title)
 		}
 	})
+
+	t.Run("Fairly OddParents sequel and spinoff releases are rejected", func(t *testing.T) {
+		results := []models.NZBResult{
+			{Title: "The.Fairly.OddParents.S01E01.The.Big.Problem.1080p.WEB-DL.H.264-GROUP"},
+			{Title: "The.Fairly.OddParents.A.New.Wish.S01E01.Fly.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb"},
+			{Title: "The.Fairly.OddParents.A.New.Wish.S01E01.1080p.WEB.h264-DOLORES"},
+			{Title: "The.Fairly.OddParents.A.New.Wish.S01E01.2024.1080p.Netflix.WEB-DL.AVC.DDP.5.1-DBTV"},
+			{Title: "The.Fairly.OddParents.Fairly.Odder.S01E01.Cake.Dance.and.Solid.Gold.Pants.1080p.PMTP.WEB-DL.DDP5.1.x264-TEPES"},
+		}
+
+		opts := Options{
+			ExpectedTitle:  "The Fairly OddParents",
+			ExpectedYear:   2001,
+			IsMovie:        false,
+			TargetSeason:   1,
+			TargetEpisode:  1,
+			EpisodeAirYear: 2001,
+		}
+
+		filtered := Results(results, opts)
+		if len(filtered) != 1 {
+			t.Fatalf("expected only the original Fairly OddParents result, got %d: %#v", len(filtered), filtered)
+		}
+		if filtered[0].Title != results[0].Title {
+			t.Fatalf("filtered title = %q, want original series %q", filtered[0].Title, results[0].Title)
+		}
+	})
+
+	t.Run("other multi-word sequel titles are rejected", func(t *testing.T) {
+		results := []models.NZBResult{
+			{Title: "The.Walking.Dead.S01E01.Days.Gone.By.1080p.BluRay.x264-GROUP"},
+			{Title: "The.Walking.Dead.Dead.City.S01E01.Old.Acquaintances.1080p.WEB-DL.H.264-GROUP"},
+			{Title: "Criminal.Minds.S01E01.Extreme.Aggressor.1080p.WEB-DL.H.264-GROUP"},
+			{Title: "Criminal.Minds.Beyond.Borders.S01E01.The.Harmful.One.1080p.WEB-DL.H.264-GROUP"},
+		}
+
+		walkingDead := Results(results[:2], Options{
+			ExpectedTitle: "The Walking Dead",
+			IsMovie:       false,
+			TargetSeason:  1,
+			TargetEpisode: 1,
+		})
+		if len(walkingDead) != 1 || walkingDead[0].Title != results[0].Title {
+			t.Fatalf("Walking Dead filtering returned %#v, want only original series", walkingDead)
+		}
+
+		criminalMinds := Results(results[2:], Options{
+			ExpectedTitle: "Criminal Minds",
+			IsMovie:       false,
+			TargetSeason:  1,
+			TargetEpisode: 1,
+		})
+		if len(criminalMinds) != 1 || criminalMinds[0].Title != results[2].Title {
+			t.Fatalf("Criminal Minds filtering returned %#v, want only original series", criminalMinds)
+		}
+	})
+
+	t.Run("metadata alternate title can authorize an extended series title", func(t *testing.T) {
+		result := models.NZBResult{
+			Title: "Mystery.Show.The.New.Chapter.S01E01.1080p.WEB-DL.H.264-GROUP",
+		}
+		filtered := Results([]models.NZBResult{result}, Options{
+			ExpectedTitle:   "Mystery Show",
+			AlternateTitles: []string{"Mystery Show: The New Chapter"},
+			IsMovie:         false,
+			TargetSeason:    1,
+			TargetEpisode:   1,
+		})
+
+		if len(filtered) != 1 || filtered[0].Title != result.Title {
+			t.Fatalf("metadata-authorized extended title was rejected: %#v", filtered)
+		}
+	})
 }
 
 func TestResults_ForeignLanguageTitles(t *testing.T) {
@@ -1539,6 +1695,28 @@ func TestResults_ForeignLanguageTitles(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestResults_LocalizedMetadataTitleAcceptsEnglishFallback(t *testing.T) {
+	results := []models.NZBResult{
+		{Title: "Snoopy.in.Space.S01E01.1080p.WEB-DL"},
+	}
+	opts := Options{
+		ExpectedTitle:   "Snoopy dans l'espace",
+		ExpectedYear:    2019,
+		IsMovie:         false,
+		TargetSeason:    1,
+		TargetEpisode:   1,
+		AlternateTitles: []string{"Snoopy in Space"},
+	}
+
+	detailed := ResultsWithDetails(results, opts)
+	if len(detailed) != 1 || !detailed[0].Passed {
+		t.Fatalf("English release title should match localized metadata fallback: %+v", detailed)
+	}
+	if got := detailed[0].Result.Attributes["titleMatch"]; got != "strong" {
+		t.Fatalf("titleMatch = %q, want strong", got)
+	}
 }
 
 func TestResults_ParsedMetadataAttributes(t *testing.T) {

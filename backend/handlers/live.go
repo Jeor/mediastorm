@@ -68,7 +68,8 @@ type LiveChannel struct {
 	TvgLanguage string `json:"tvgLanguage,omitempty"`
 	SourceID    string `json:"sourceId,omitempty"`
 	SourceName  string `json:"sourceName,omitempty"`
-	StreamURL   string `json:"streamUrl,omitempty"` // Backend-proxied stream URL
+	StreamURL   string `json:"streamUrl,omitempty"`  // Backend-proxied stream URL
+	PlaybackID  string `json:"playbackId,omitempty"` // Provider-local ID used for tune-time resolution
 }
 
 // LiveSourceOption represents a selectable M3U source exposed to clients.
@@ -1045,18 +1046,26 @@ func parseM3UPlaylist(contents string) []LiveChannel {
 }
 
 type resolvedM3USource struct {
-	ID                string
-	Name              string
-	Mode              string
-	PlaylistURL       string
-	ManifestURL       string
-	ProxyURL          string
-	XtreamHost        string
-	XtreamUsername    string
-	XtreamPassword    string
-	MaxStreams        int
-	HasFilterOverride bool
-	Filter            config.LiveTVFilterSettings
+	ID                  string
+	Name                string
+	Mode                string
+	PlaylistURL         string
+	ManifestURL         string
+	ProxyURL            string
+	XtreamHost          string
+	XtreamUsername      string
+	XtreamPassword      string
+	StalkerPortalURL    string
+	StalkerMAC          string
+	StalkerSerialNumber string
+	StalkerDeviceID     string
+	StalkerDeviceID2    string
+	StalkerSignature    string
+	StalkerModel        string
+	StreamFormat        string
+	MaxStreams          int
+	HasFilterOverride   bool
+	Filter              config.LiveTVFilterSettings
 }
 
 func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
@@ -1078,6 +1087,9 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 			continue
 		}
 		if mode == "stremio" && strings.TrimSpace(candidate.ManifestURL) == "" {
+			continue
+		}
+		if mode == "stalker" && (strings.TrimSpace(candidate.StalkerPortalURL) == "" || strings.TrimSpace(candidate.StalkerMAC) == "") {
 			continue
 		}
 		if candidate.Enabled != nil && !*candidate.Enabled {
@@ -1108,18 +1120,26 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 			hasFilterOverride = true
 		}
 		sources = append(sources, resolvedM3USource{
-			ID:                id,
-			Name:              name,
-			Mode:              mode,
-			PlaylistURL:       strings.TrimSpace(candidate.PlaylistURL),
-			ManifestURL:       strings.TrimSpace(candidate.ManifestURL),
-			ProxyURL:          strings.TrimSpace(candidate.ProxyURL),
-			XtreamHost:        strings.TrimSpace(candidate.XtreamHost),
-			XtreamUsername:    strings.TrimSpace(candidate.XtreamUsername),
-			XtreamPassword:    strings.TrimSpace(candidate.XtreamPassword),
-			MaxStreams:        candidate.MaxStreams,
-			HasFilterOverride: hasFilterOverride,
-			Filter:            filter,
+			ID:                  id,
+			Name:                name,
+			Mode:                mode,
+			PlaylistURL:         strings.TrimSpace(candidate.PlaylistURL),
+			ManifestURL:         strings.TrimSpace(candidate.ManifestURL),
+			ProxyURL:            strings.TrimSpace(candidate.ProxyURL),
+			XtreamHost:          strings.TrimSpace(candidate.XtreamHost),
+			XtreamUsername:      strings.TrimSpace(candidate.XtreamUsername),
+			XtreamPassword:      strings.TrimSpace(candidate.XtreamPassword),
+			StalkerPortalURL:    strings.TrimSpace(candidate.StalkerPortalURL),
+			StalkerMAC:          strings.TrimSpace(candidate.StalkerMAC),
+			StalkerSerialNumber: strings.TrimSpace(candidate.StalkerSerialNumber),
+			StalkerDeviceID:     strings.TrimSpace(candidate.StalkerDeviceID),
+			StalkerDeviceID2:    strings.TrimSpace(candidate.StalkerDeviceID2),
+			StalkerSignature:    strings.TrimSpace(candidate.StalkerSignature),
+			StalkerModel:        strings.TrimSpace(candidate.StalkerModel),
+			StreamFormat:        strings.TrimSpace(candidate.StreamFormat),
+			MaxStreams:          candidate.MaxStreams,
+			HasFilterOverride:   hasFilterOverride,
+			Filter:              filter,
 		})
 	}
 	if len(sources) == 0 && strings.TrimSpace(src.PlaylistURL) != "" {
@@ -1142,6 +1162,23 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 			ManifestURL: strings.TrimSpace(src.ManifestURL),
 			ProxyURL:    strings.TrimSpace(src.ProxyURL),
 			MaxStreams:  src.MaxStreams,
+		})
+	}
+	if len(sources) == 0 &&
+		strings.EqualFold(strings.TrimSpace(src.Mode), "stalker") &&
+		strings.TrimSpace(src.StalkerPortalURL) != "" &&
+		strings.TrimSpace(src.StalkerMAC) != "" {
+		sources = append(sources, resolvedM3USource{
+			ID: "default", Name: "Default", Mode: "stalker",
+			ProxyURL:            strings.TrimSpace(src.ProxyURL),
+			StalkerPortalURL:    strings.TrimSpace(src.StalkerPortalURL),
+			StalkerMAC:          strings.TrimSpace(src.StalkerMAC),
+			StalkerSerialNumber: strings.TrimSpace(src.StalkerSerialNumber),
+			StalkerDeviceID:     strings.TrimSpace(src.StalkerDeviceID),
+			StalkerDeviceID2:    strings.TrimSpace(src.StalkerDeviceID2),
+			StalkerSignature:    strings.TrimSpace(src.StalkerSignature),
+			StalkerModel:        strings.TrimSpace(src.StalkerModel),
+			MaxStreams:          src.MaxStreams,
 		})
 	}
 	if len(sources) == 0 &&
@@ -1179,6 +1216,9 @@ func liveSourceIdentity(source models.LivePlaylistSource) string {
 	}
 	if strings.EqualFold(strings.TrimSpace(source.Mode), "stremio") {
 		return strings.TrimSpace(source.ManifestURL)
+	}
+	if strings.EqualFold(strings.TrimSpace(source.Mode), "stalker") {
+		return strings.TrimSpace(source.StalkerPortalURL) + "|" + strings.TrimSpace(source.StalkerMAC)
 	}
 	return strings.TrimSpace(source.PlaylistURL)
 }
@@ -1280,15 +1320,22 @@ func categoryInfosFromCounts(categoryMap map[string]int) []CategoryInfo {
 
 // filterChannels applies the filtering settings to a list of channels.
 func filterChannels(channels []LiveChannel, filter config.LiveTVFilterSettings) []LiveChannel {
+	filtered := filterChannelsByEnabledCategories(channels, filter.EnabledCategories)
+	if filter.MaxChannels > 0 && len(filtered) > filter.MaxChannels {
+		filtered = filtered[:filter.MaxChannels]
+	}
+	return filtered
+}
+
+func filterChannelsByEnabledCategories(channels []LiveChannel, enabledCategories []string) []LiveChannel {
 	if len(channels) == 0 {
 		return channels
 	}
 
-	// Step 1: Filter by enabled categories (if configured)
 	var filtered []LiveChannel
-	if len(filter.EnabledCategories) > 0 {
+	if len(enabledCategories) > 0 {
 		enabledSet := make(map[string]bool)
-		for _, cat := range filter.EnabledCategories {
+		for _, cat := range enabledCategories {
 			enabledSet[cat] = true
 		}
 		for _, ch := range channels {
@@ -1299,12 +1346,45 @@ func filterChannels(channels []LiveChannel, filter config.LiveTVFilterSettings) 
 	} else {
 		filtered = channels
 	}
+	return filtered
+}
 
-	// Step 2: Apply overall limit (if configured)
-	if filter.MaxChannels > 0 && len(filtered) > filter.MaxChannels {
-		filtered = filtered[:filter.MaxChannels]
+func filterChannelsByRequestedCategories(channels []LiveChannel, categories, favoriteIDs []string, sourceID string, includeSourceInID bool) []LiveChannel {
+	if len(channels) == 0 || len(categories) == 0 {
+		return channels
 	}
-
+	selected := make(map[string]struct{}, len(categories))
+	for _, category := range categories {
+		selected[strings.TrimSpace(category)] = struct{}{}
+	}
+	hasValidSelection := false
+	for _, channel := range channels {
+		if _, ok := selected[channel.Group]; ok {
+			hasValidSelection = true
+			break
+		}
+	}
+	if !hasValidSelection {
+		return channels
+	}
+	filtered := make([]LiveChannel, 0, len(channels))
+	for _, channel := range channels {
+		_, categorySelected := selected[channel.Group]
+		favoriteID := channel.ID
+		if includeSourceInID && sourceID != "" {
+			favoriteID = sourceID + ":" + favoriteID
+		}
+		favorite := false
+		for _, requestedFavoriteID := range favoriteIDs {
+			if requestedFavoriteID == favoriteID {
+				favorite = true
+				break
+			}
+		}
+		if categorySelected || favorite {
+			filtered = append(filtered, channel)
+		}
+	}
 	return filtered
 }
 
@@ -1591,15 +1671,22 @@ func (h *LiveHandler) WarmPlaylistCache(ctx context.Context) (int, error) {
 	}
 
 	src := models.ResolvedLiveSource{
-		Mode:            settings.Live.Mode,
-		PlaylistURL:     settings.Live.PlaylistURL,
-		ManifestURL:     settings.Live.ManifestURL,
-		ProxyURL:        settings.Live.ProxyURL,
-		XtreamHost:      settings.Live.XtreamHost,
-		XtreamUsername:  settings.Live.XtreamUsername,
-		XtreamPassword:  settings.Live.XtreamPassword,
-		PlaylistSources: configPlaylistSourcesToModel(settings.Live.PlaylistSources),
-		Sources:         configPlaylistSourcesToModel(settings.Live.Sources),
+		Mode:                settings.Live.Mode,
+		PlaylistURL:         settings.Live.PlaylistURL,
+		ManifestURL:         settings.Live.ManifestURL,
+		ProxyURL:            settings.Live.ProxyURL,
+		XtreamHost:          settings.Live.XtreamHost,
+		XtreamUsername:      settings.Live.XtreamUsername,
+		XtreamPassword:      settings.Live.XtreamPassword,
+		StalkerPortalURL:    settings.Live.StalkerPortalURL,
+		StalkerMAC:          settings.Live.StalkerMAC,
+		StalkerSerialNumber: settings.Live.StalkerSerialNumber,
+		StalkerDeviceID:     settings.Live.StalkerDeviceID,
+		StalkerDeviceID2:    settings.Live.StalkerDeviceID2,
+		StalkerSignature:    settings.Live.StalkerSignature,
+		StalkerModel:        settings.Live.StalkerModel,
+		PlaylistSources:     configPlaylistSourcesToModel(settings.Live.PlaylistSources),
+		Sources:             configPlaylistSourcesToModel(settings.Live.Sources),
 	}
 
 	sources := resolvedLiveSources(src)
@@ -1621,6 +1708,14 @@ func (h *LiveHandler) WarmPlaylistCache(ctx context.Context) (int, error) {
 			channels, err := h.fetchStremioChannels(ctx, liveSource.ManifestURL, liveSource.ProxyURL)
 			if err != nil {
 				return totalChannels, fmt.Errorf("failed to warm Stremio source %q: %w", liveSource.ID, err)
+			}
+			totalChannels += len(channels)
+			continue
+		}
+		if liveSource.Mode == "stalker" {
+			channels, err := fetchStalkerChannels(ctx, stalkerConfigFromResolvedSource(liveSource))
+			if err != nil {
+				return totalChannels, fmt.Errorf("failed to warm Stalker source %q: %w", liveSource.ID, err)
 			}
 			totalChannels += len(channels)
 			continue
@@ -1846,6 +1941,13 @@ func (h *LiveHandler) resolveProfileLiveSourceForID(profileID string, globalSett
 		XtreamHost:              globalSettings.Live.XtreamHost,
 		XtreamUsername:          globalSettings.Live.XtreamUsername,
 		XtreamPassword:          globalSettings.Live.XtreamPassword,
+		StalkerPortalURL:        globalSettings.Live.StalkerPortalURL,
+		StalkerMAC:              globalSettings.Live.StalkerMAC,
+		StalkerSerialNumber:     globalSettings.Live.StalkerSerialNumber,
+		StalkerDeviceID:         globalSettings.Live.StalkerDeviceID,
+		StalkerDeviceID2:        globalSettings.Live.StalkerDeviceID2,
+		StalkerSignature:        globalSettings.Live.StalkerSignature,
+		StalkerModel:            globalSettings.Live.StalkerModel,
 		ProxyURL:                globalSettings.Live.ProxyURL,
 		MaxStreams:              globalSettings.Live.MaxStreams,
 		PlaylistCacheTTLHours:   globalSettings.Live.PlaylistCacheTTLHours,
@@ -1937,6 +2039,9 @@ func (h *LiveHandler) FetchFilteredChannelsForRequest(r *http.Request) ([]LiveCh
 func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	requestStartedAt := time.Now()
 	var allChannels []LiveChannel
+	var categorySourceChannels []LiveChannel
+	stalkerCategoryTotal := -1
+	var stalkerAvailableCategories []string
 	request, paginated, err := parseLiveChannelsRequest(w, r)
 	if err != nil {
 		status := http.StatusBadRequest
@@ -2020,11 +2125,15 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	includeSourceInID := len(sources) > 1
 	totalBeforeFilter := 0
 	for _, liveSource := range selectedSources {
+		if request.FavoritesOnly && !liveSourceMayContainFavorites(liveSource.ID, request.FavoriteIDs, includeSourceInID) {
+			continue
+		}
 		sourceFilter := filter
 		if liveSource.HasFilterOverride {
 			sourceFilter = liveSource.Filter
 		}
 		var sourceChannels []LiveChannel
+		var availabilityChannels []LiveChannel
 		if liveSource.Mode == "xtream" {
 			channels, err := h.fetchXtreamChannels(r.Context(), liveSource.XtreamHost, liveSource.XtreamUsername, liveSource.XtreamPassword, liveSource.ProxyURL)
 			if err != nil {
@@ -2041,6 +2150,28 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			sourceChannels = channels
+		} else if liveSource.Mode == "stalker" {
+			var channels []LiveChannel
+			var err error
+			if paginated && request.Filter == "" && !request.FavoritesOnly && len(selectedSources) == 1 {
+				channels, stalkerCategoryTotal, stalkerAvailableCategories, err = fetchStalkerCategoryChannels(
+					r.Context(), stalkerConfigFromResolvedSource(liveSource), request.Categories, offset+limit,
+				)
+			} else {
+				channels, err = fetchStalkerChannels(r.Context(), stalkerConfigFromResolvedSource(liveSource))
+			}
+			if err != nil {
+				log.Printf("[live] GetChannels Stalker error for source %q: %v", liveSource.ID, err)
+				http.Error(w, `{"error":"failed to fetch channels"}`, http.StatusBadGateway)
+				return
+			}
+			sourceChannels = channels
+			if stalkerCategoryTotal >= 0 {
+				availabilityChannels = make([]LiveChannel, 0, len(stalkerAvailableCategories))
+				for _, category := range stalkerAvailableCategories {
+					availabilityChannels = append(availabilityChannels, LiveChannel{Group: category})
+				}
+			}
 		} else {
 			contents, err := h.fetchPlaylistContents(r.Context(), liveSource.PlaylistURL, liveSource.ProxyURL)
 			if err != nil {
@@ -2050,14 +2181,29 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 			}
 			sourceChannels = parseM3UPlaylist(contents)
 		}
+		if availabilityChannels == nil {
+			availabilityChannels = sourceChannels
+		}
 		totalBeforeFilter += len(sourceChannels)
-		allChannels = append(allChannels, tagChannelsWithSource(filterChannels(sourceChannels, sourceFilter), liveSource, includeSourceInID)...)
+		enabledAvailabilityChannels := filterChannelsByEnabledCategories(availabilityChannels, sourceFilter.EnabledCategories)
+		categorySourceChannels = append(categorySourceChannels, enabledAvailabilityChannels...)
+		enabledChannels := filterChannelsByEnabledCategories(sourceChannels, sourceFilter.EnabledCategories)
+		selectedChannels := filterChannelsByRequestedCategories(
+			enabledChannels, request.Categories, request.FavoriteIDs, liveSource.ID, includeSourceInID,
+		)
+		if sourceFilter.MaxChannels > 0 && len(selectedChannels) > sourceFilter.MaxChannels {
+			selectedChannels = selectedChannels[:sourceFilter.MaxChannels]
+			if stalkerCategoryTotal > sourceFilter.MaxChannels {
+				stalkerCategoryTotal = sourceFilter.MaxChannels
+			}
+		}
+		allChannels = append(allChannels, tagChannelsWithSource(selectedChannels, liveSource, includeSourceInID)...)
 	}
 
 	filteredChannels := allChannels
 
 	// Extract available categories from filtered channels (only categories with actual channels)
-	categoryInfos := extractCategories(filteredChannels)
+	categoryInfos := extractCategories(categorySourceChannels)
 	availableCategories := make([]string, len(categoryInfos))
 	for i, cat := range categoryInfos {
 		availableCategories[i] = cat.Name
@@ -2104,6 +2250,10 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	filteredChannels = orderFavoriteChannelsFirst(filteredChannels, requestedFavoriteIDs)
 
 	total := len(filteredChannels)
+	responseTotal := total
+	if stalkerCategoryTotal >= 0 {
+		responseTotal = stalkerCategoryTotal
+	}
 	pageChannels := filteredChannels
 	responseOffset := 0
 	responseLimit := total
@@ -2121,10 +2271,10 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	response := LiveChannelsResponse{
 		Channels:            pageChannels,
 		TotalBeforeFilter:   totalBeforeFilter,
-		Total:               total,
+		Total:               responseTotal,
 		Offset:              responseOffset,
 		Limit:               responseLimit,
-		HasMore:             responseOffset+len(pageChannels) < total,
+		HasMore:             responseOffset+len(pageChannels) < responseTotal,
 		AvailableCategories: availableCategories,
 		Sources:             liveSourceOptions(resolvedLiveSources(src)),
 	}
@@ -2195,6 +2345,18 @@ func (h *LiveHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 			}
 			continue
 		}
+		if liveSource.Mode == "stalker" {
+			channels, err := fetchStalkerChannels(r.Context(), stalkerConfigFromResolvedSource(liveSource))
+			if err != nil {
+				log.Printf("[live] GetCategories Stalker error for source %q: %v", liveSource.ID, err)
+				http.Error(w, `{"error":"failed to fetch categories"}`, http.StatusBadGateway)
+				return
+			}
+			for _, category := range extractCategories(channels) {
+				categoryCounts[category.Name] += category.ChannelCount
+			}
+			continue
+		}
 		categories, err := h.fetchM3UCategories(r.Context(), liveSource.PlaylistURL, liveSource.ProxyURL)
 		if err != nil {
 			log.Printf("[live] GetCategories error for source %q: %v", liveSource.ID, err)
@@ -2214,4 +2376,16 @@ func (h *LiveHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("[live] GetCategories JSON encode error: %v", err)
 	}
+}
+
+// Favorites use source-prefixed IDs in multi-source catalogs. Avoid contacting
+// unrelated providers just to discard their entire catalogs afterward.
+func liveSourceMayContainFavorites(sourceID string, favoriteIDs []string, includeSourceInID bool) bool {
+	for _, id := range favoriteIDs {
+		id = strings.TrimSpace(id)
+		if id != "" && (!includeSourceInID || sourceID == "" || strings.HasPrefix(id, sourceID+":")) {
+			return true
+		}
+	}
+	return false
 }

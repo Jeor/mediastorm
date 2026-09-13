@@ -197,8 +197,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    min-height: 72px;
-    padding: 0.8rem 0.9rem;
+    min-height: 58px;
+    padding: 0.65rem 0.8rem;
+}
+
+.live-source-card.editing .live-source-card-header {
     border-bottom: 1px solid var(--border);
 }
 
@@ -319,6 +322,11 @@
 .live-source-action-menu-panel button {
     width: 100%;
     justify-content: flex-start;
+}
+
+.live-source-edit-button[aria-expanded="true"] {
+    border-color: var(--accent);
+    color: var(--accent-hover);
 }
 
 .live-source-groups {
@@ -449,6 +457,11 @@
     .live-source-card-actions {
         justify-content: flex-start;
         flex-wrap: wrap;
+    }
+    .live-source-action-menu-panel {
+        right: auto;
+        left: 0;
+        max-width: calc(100vw - 2rem);
     }
     .live-source-card-name {
         min-width: 100%;
@@ -1109,8 +1122,7 @@
 }
 
 .settings-command-bar {
-    display: grid;
-    grid-template-columns: minmax(240px, 1fr) auto minmax(210px, 0.7fr) auto;
+    display: flex;
     gap: 0.75rem;
     align-items: center;
     margin-top: 0.75rem;
@@ -1118,6 +1130,7 @@
 
 .settings-search-wrap {
     position: relative;
+    flex: 1 1 240px;
     min-width: 0;
 }
 
@@ -1140,20 +1153,31 @@
 
 .settings-command-bar .settings-level-switch {
     display: grid;
-    width: 240px;
+    grid-template-columns: repeat(3, max-content);
+    flex: 0 0 auto;
+    width: max-content;
     height: 48px;
     padding: 0.2rem;
 }
 
 .settings-command-bar .settings-level-btn {
+    min-width: max-content;
     min-height: 0;
     height: 100%;
+    white-space: nowrap;
 }
 
-.settings-command-bar .settings-context-trigger-desktop { min-height: 48px; }
+.settings-command-bar .settings-context-trigger-desktop {
+    min-width: 0;
+    min-height: 48px;
+    flex: 1 1 160px;
+}
+
+.settings-command-bar .settings-context-trigger-desktop > span { min-width: 0; }
 
 .settings-save-state {
     display: inline-flex;
+    flex: 0 0 auto;
     min-height: 48px;
     align-items: center;
     justify-self: end;
@@ -2314,7 +2338,7 @@
             <input type="search" id="settingsSearch" class="form-input" placeholder="Search settings..." autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Search every setting" readonly aria-autocomplete="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" data-protonpass-ignore="true" data-form-type="other" onpointerdown="activateSettingsSearch(this)" onkeydown="activateSettingsSearch(this)" onbeforeinput="activateSettingsSearch(this)" oninput="handleSettingsSearchInput(this)">
         </label>
         <div class="settings-level-switch" aria-label="Settings detail level">
-            <button id="settingsEssentialBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Essential</button>
+            <button id="settingsEssentialBtn" class="settings-level-btn" type="button" disabled aria-disabled="true">Essential</button>
             <button id="settingsBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
         </div>
@@ -2377,7 +2401,7 @@
     <div class="settings-mobile-level-section">
         <span class="settings-mobile-level-label">Settings view</span>
         <div class="settings-level-switch" aria-label="Mobile settings detail level">
-            <button id="settingsMobileEssentialBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('essentials')">Essential</button>
+            <button id="settingsMobileEssentialBtn" class="settings-level-btn" type="button" disabled aria-disabled="true">Essential</button>
             <button id="settingsMobileBasicBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('basic')">Basic</button>
             <button id="settingsMobileAdvancedBtn" class="settings-level-btn" type="button" onclick="setSettingsLevel('advanced')">Advanced</button>
         </div>
@@ -2591,9 +2615,9 @@
         ['server', 'host', 'Listen Address', 'Usually left blank so mediastorm can accept connections on every network interface.'],
         ['server', 'port', 'Web Port', 'The port used to open mediastorm. The default is 7777.'],
         ['server', 'basePath', 'URL Prefix', 'Optional path used when mediastorm sits behind a reverse proxy.'],
-        ['network', 'homeWifiSSID', 'Home Wi-Fi Name', 'The Wi-Fi network that tells the app it is at home.'],
-        ['network', 'homeBackendUrl', 'Address at Home', 'The faster local address used while connected to home Wi-Fi.'],
-        ['network', 'remoteBackendUrl', 'Address Away from Home', 'The secure address used on mobile data or other networks.'],
+        ['network', 'homeWifiSSID', 'Home Wi-Fi Name', 'With Address at Home and a saved Iroh pairing, this enables automatic home and away connections.'],
+        ['network', 'homeBackendUrl', 'Address at Home', 'The local server address used at home. Paired devices verify this server before connecting directly.'],
+        ['network', 'remoteBackendUrl', 'Address Away from Home', 'The secure address used away from home by devices without Iroh. Paired devices reconnect through Iroh automatically.'],
         ['streaming', 'serviceMode', 'Streaming Method', 'Choose Usenet, debrid, or both.'],
         ['streaming', 'multiProviderMode', 'When More Than One Debrid Service Is Available', 'Choose the fastest service automatically or prefer the service order you set.'],
         ['streaming', 'indexerTimeoutSec', 'Search Wait Time', 'How long to wait for search sources before showing available results.'],
@@ -2617,8 +2641,8 @@
         ['homeShelves', 'excludeUpcomingFromContinue', 'Keep Unreleased Episodes Out of Continue Watching', 'Show unreleased next episodes in My Upcoming instead.'],
         ['display', 'badgeVisibility', 'Information Shown on Posters', 'Choose the labels and progress information shown on media cards.'],
         ['display', 'navigationTabVisibility', 'App Navigation', 'Choose which navigation tabs are visible in the apps.'],
-        ['metadata', 'tvdbApiKey', 'TVDB Key', 'Used to look up TV show and episode information.'],
-        ['metadata', 'tmdbApiKey', 'TMDB Key', 'Used to look up movie, show, and artwork information.'],
+        ['metadata', 'tvdbApiKey', 'TVDB Key (Optional)', 'Adds alternate episode orders, precise broadcast times, and extra aliases, artwork, and trailers.'],
+        ['metadata', 'tmdbApiKey', 'TMDB Key', 'Required for movie, show, episode, and artwork information.'],
         ['subtitles', 'enableTranslatedSubs', 'Translate Subtitles When Needed', 'Allow English subtitles to be translated into the profile\'s preferred subtitle language.']
     ];
     friendlySettingsCopy.forEach(([sectionKey, fieldKey, label, description]) => {
@@ -2666,7 +2690,7 @@
     // Sensitive settings may be revealed only until their first blur. Keep the
     // lock outside renderSettings so rerendering cannot make them viewable again.
     const lockedSensitiveFields = new Set();
-    const settingsLevels = new Set(['basic', 'advanced', 'essentials']);
+    const settingsLevels = new Set(['basic', 'advanced']);
     const storedSettingsLevel = localStorage.getItem('mediastorm-settings-level');
     let settingsLevel = settingsLevels.has(storedSettingsLevel) ? storedSettingsLevel : 'basic';
     let settingsContextReturnFocus = null;
@@ -2679,10 +2703,14 @@
         torrentScrapers: -1,
         usenet: -1,
         usenetEngines: -1,
+        'live.sources': -1,
+        'liveTV.sources': -1,
     };
     const providerTableSectionKeys = new Set(['indexers', 'debridProviders', 'torrentScrapers']);
     providerTableSectionKeys.add('usenet');
     providerTableSectionKeys.add('usenetEngines');
+    providerTableSectionKeys.add('live.sources');
+    providerTableSectionKeys.add('liveTV.sources');
     const settingsSectionDescriptions = {
         indexers: 'Configure indexers and search providers',
         debridProviders: 'Real-Debrid, TorBox, AllDebrid, Premiumize, Torrin',
@@ -2739,6 +2767,7 @@
         'streaming.indexerTimeoutSec',
         'streaming.healthCheckTimeoutSec',
         'streaming.maxAlternateTitleSearches',
+        'streaming.maxDailyUsenetQueries',
         'playback.thumbnails.enabled',
         'playback.thumbnails.workers',
         'playback.youtubeProxyUrl',
@@ -2809,14 +2838,10 @@
     const requestedSettingsSection = window.location.hash.replace(/^#/, '');
     const requestedSettingsParams = new URLSearchParams(window.location.search);
     const requestedSettingsCategory = requestedSettingsParams.get('category') || '';
-    if (requestedSettingsParams.get('view') === 'essentials') {
-        settingsLevel = 'essentials';
-    } else if (requestedSettingsParams.get('view') === 'dashboard' && settingsLevel === 'essentials') {
-        settingsLevel = 'basic';
-    }
-    if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
+    if (requestedSettingsParams.get('view') === 'all') {
+        activeSettingsGroup = 'all';
+    } else if (settingsLandingGroups.some(group => group.id === requestedSettingsCategory)) {
         activeSettingsGroup = requestedSettingsCategory;
-        if (settingsLevel === 'essentials') settingsLevel = 'basic';
     }
     if (requestedSettingsSection && schema[requestedSettingsSection]?.group) {
         activeSettingsGroup = settingsOverviewGroupForSection(requestedSettingsSection, schema[requestedSettingsSection]);
@@ -2834,6 +2859,9 @@
             url.searchParams.delete('category');
             url.searchParams.set('view', 'essentials');
             url.hash = '';
+        } else if (activeSettingsGroup === 'all') {
+            url.searchParams.delete('category');
+            url.searchParams.set('view', 'all');
         } else if (activeSettingsGroup) {
             url.searchParams.delete('view');
         } else {
@@ -2857,9 +2885,14 @@
         const searchInput = document.getElementById('settingsSearch');
         if (searchInput) searchInput.value = '';
         const url = new URL(window.location.href);
-        url.searchParams.delete('view');
-        if (groupId) url.searchParams.set('category', groupId);
-        else url.searchParams.delete('category');
+        url.searchParams.delete('category');
+        if (groupId === 'all') url.searchParams.set('view', 'all');
+        else if (groupId) {
+            url.searchParams.delete('view');
+            url.searchParams.set('category', groupId);
+        } else {
+            url.searchParams.set('view', 'dashboard');
+        }
         url.hash = '';
         history.pushState({}, '', url);
         syncSettingsSidebarDestination(activeSettingsGroup || 'home');
@@ -2953,7 +2986,7 @@
             if (!selectedUserId && def.inheritFrom) return false;
             return true;
         }));
-        if (activeSettingsGroup && !availableGroups.some(group => group.id === activeSettingsGroup)) {
+        if (activeSettingsGroup && activeSettingsGroup !== 'all' && !availableGroups.some(group => group.id === activeSettingsGroup)) {
             activeSettingsGroup = '';
         }
         if (nav) {
@@ -3185,7 +3218,9 @@
                 ? filteredSections.size
                 : (isEssentials
                     ? Object.entries(schema).filter(([key, def]) => def.group && !def.hidden && watchEssentialSections.has(key)).length
-                    : (group ? settingsAvailableSectionsForOverview(group.id).length : 0));
+                    : (group
+                        ? settingsAvailableSectionsForOverview(group.id).length
+                        : settingsLandingGroups.reduce((total, candidate) => total + settingsAvailableSectionsForOverview(candidate.id).length, 0)));
             summary.textContent = count + (count === 1 ? ' section' : ' sections') + ' · ' + settingsScopeDisplayName();
         }
     }
@@ -3906,9 +3941,8 @@
             }
         }
 
-        // Metadata - all required
+        // TMDB provides the baseline metadata service. TVDB is optional enrichment.
         const metadataErrors = { fields: {}, messages: [] };
-        if (isEmpty(currentSettings.metadata?.tvdbApiKey)) metadataErrors.fields.tvdbApiKey = 'TVDB API Key is required';
         if (isEmpty(currentSettings.metadata?.tmdbApiKey)) metadataErrors.fields.tmdbApiKey = 'TMDB API Key is required';
         if (Object.keys(metadataErrors.fields).length > 0) errors.metadata = metadataErrors;
 
@@ -4215,6 +4249,7 @@
 
     // Per-profile override details: { userId: { groupKey: [fieldLabel, ...] } }
     let userOverrideDetails = {};
+    let userOverrideRefreshPromise = null;
     let clientOverrideGroupsById = {};
     let overrideImpactNotice = null;
 
@@ -4367,49 +4402,65 @@
     // and compares field-by-field against global to build detailed override info.
     async function recalculateAllUserOverrides() {
         if (!userOverrides) return;
+        // Saving, opening Review Customizations, and initial page hydration can all
+        // request this refresh at once. Share one refresh and publish a complete
+        // snapshot so concurrent callers cannot clear one another's profile results.
+        if (userOverrideRefreshPromise) return userOverrideRefreshPromise;
 
-        userOverrideDetails = {};
+        const refresh = (async () => {
+            const nextUserOverrides = { ...userOverrides };
+            const nextUserOverrideDetails = {};
 
-        // Collect all user IDs from the dropdown (not just ones previously marked)
-        const userSelector = document.getElementById('userSelector');
-        if (!userSelector) return;
-        const allUserIds = Array.from(userSelector.options)
-            .filter(o => o.value)
-            .map(o => o.value);
+            // Collect all user IDs from the dropdown (not just ones previously marked)
+            const userSelector = document.getElementById('userSelector');
+            if (!userSelector) return;
+            const allUserIds = Array.from(userSelector.options)
+                .filter(o => o.value)
+                .map(o => o.value);
 
-        for (const userId of allUserIds) {
-            try {
-                const response = await fetch(basePath + '/api/user-settings?userId=' + encodeURIComponent(userId) + '&raw=true', {
-                    credentials: 'same-origin'
-                });
-                if (!response.ok) {
-                    userOverrides[userId] = false;
-                    continue;
+            for (const userId of allUserIds) {
+                try {
+                    const response = await fetch(basePath + '/api/user-settings?userId=' + encodeURIComponent(userId) + '&raw=true', {
+                        credentials: 'same-origin'
+                    });
+                    if (!response.ok) {
+                        nextUserOverrides[userId] = false;
+                        continue;
+                    }
+                    const settings = await response.json();
+                    if (!settings || Object.keys(settings).length === 0) {
+                        nextUserOverrides[userId] = false;
+                        continue;
+                    }
+
+                    const details = buildProfileOverrideDetails(settings);
+
+                    const hasOverrides = Object.keys(details).length > 0;
+                    settingsPropagationLog('recalc profile result from raw profile settings', {
+                        userId,
+                        hasOverrides,
+                        details,
+                    });
+                    nextUserOverrides[userId] = hasOverrides;
+                    if (hasOverrides) {
+                        nextUserOverrideDetails[userId] = details;
+                    }
+                } catch (e) {
+                    console.warn('Failed to load settings for user', userId, e);
                 }
-                const settings = await response.json();
-                if (!settings || Object.keys(settings).length === 0) {
-                    userOverrides[userId] = false;
-                    continue;
-                }
-
-                const details = buildProfileOverrideDetails(settings);
-
-                const hasOverrides = Object.keys(details).length > 0;
-                settingsPropagationLog('recalc profile result from raw profile settings', {
-                    userId,
-                    hasOverrides,
-                    details,
-                });
-                userOverrides[userId] = hasOverrides;
-                if (hasOverrides) {
-                    userOverrideDetails[userId] = details;
-                }
-            } catch (e) {
-                console.warn('Failed to load settings for user', userId, e);
             }
+
+            userOverrides = nextUserOverrides;
+            userOverrideDetails = nextUserOverrideDetails;
+            renderSettingsScopeTree();
+            updateRevertButtonVisibility();
+        })();
+        userOverrideRefreshPromise = refresh;
+        try {
+            await refresh;
+        } finally {
+            if (userOverrideRefreshPromise === refresh) userOverrideRefreshPromise = null;
         }
-        renderSettingsScopeTree();
-        updateRevertButtonVisibility();
     }
 
     async function handleClientChange(clientId) {
@@ -4584,6 +4635,7 @@
 
     // Open the explicit review flow for child scopes with custom settings.
     async function propagateSettings() {
+        closeSettingsContextSheet();
         if (selectedUserId) await openClientOverrideReview();
         else await openProfileOverrideReview();
     }
@@ -5300,6 +5352,7 @@
     }
 
     function reviewOverrideImpact() {
+        closeSettingsContextSheet();
         if (overrideImpactNotice?.level === 'profile') openClientOverrideReview();
         else openProfileOverrideReview();
     }
@@ -6430,6 +6483,10 @@
     }
 
     function handleFieldChange(basePath, fieldKey, value) {
+        const activeElementId = document.activeElement?.id || '';
+        const activeElementTop = document.activeElement?.getBoundingClientRect?.().top;
+        const shouldRestoreActiveElement = document.activeElement?.matches?.('select, input[type="checkbox"], input[type="color"]') === true;
+        const scrollTopBeforeRender = window.scrollY;
         // For nested config fields (e.g., config.autoClearQueue), convert booleans to strings
         // because Config is map[string]string in Go
         if (fieldKey.startsWith('config.') && typeof value === 'boolean') {
@@ -6457,6 +6514,16 @@
 
         // Re-render to update validation indicators (renderSettings runs validation)
         renderSettings();
+        requestAnimationFrame(() => {
+            const replacement = activeElementId ? document.getElementById(activeElementId) : null;
+            if (replacement && Number.isFinite(activeElementTop)) {
+                const topDelta = replacement.getBoundingClientRect().top - activeElementTop;
+                if (Math.abs(topDelta) > 0.5) window.scrollBy(0, topDelta);
+                if (shouldRestoreActiveElement) replacement.focus({ preventScroll: true });
+                return;
+            }
+            window.scrollTo({ top: scrollTopBeforeRender, behavior: 'auto' });
+        });
     }
 
     function usenetEngineDefaultsForType(type) {
@@ -7532,7 +7599,14 @@
                     proxyUrl: liveRowValue('proxyUrl'),
                     xtreamHost: liveRowValue('xtreamHost'),
                     xtreamUsername: liveRowValue('xtreamUsername'),
-                    xtreamPassword: liveRowValue('xtreamPassword')
+					xtreamPassword: liveRowValue('xtreamPassword'),
+					stalkerPortalUrl: liveRowValue('stalkerPortalUrl'),
+					stalkerMac: liveRowValue('stalkerMac'),
+					stalkerSerialNumber: liveRowValue('stalkerSerialNumber'),
+					stalkerDeviceId: liveRowValue('stalkerDeviceId'),
+					stalkerDeviceId2: liveRowValue('stalkerDeviceId2'),
+					stalkerSignature: liveRowValue('stalkerSignature'),
+					stalkerModel: liveRowValue('stalkerModel')
                 };
                 break;
             }
@@ -8717,13 +8791,16 @@
                 });
                 if (response.ok) {
                     originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // The settings write is complete at this point. Clear the dirty UI before
+                    // refreshing profile-impact metadata, which may require several requests.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                     btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
                     showToast('Settings saved successfully');
                     void loadHardwareAccelerationStatus();
                     setTimeout(() => renderSettings(), 500);
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
-                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -9018,11 +9095,13 @@
     }
 
     function liveSourceEndpointSummary(item) {
-        const rawEndpoint = item.mode === 'xtream'
+		const rawEndpoint = item.mode === 'xtream'
             ? item.xtreamHost
             : item.mode === 'stremio'
                 ? item.manifestUrl
-                : item.playlistUrl;
+				: item.mode === 'stalker'
+					? item.stalkerPortalUrl
+					: item.playlistUrl;
         if (!rawEndpoint) return 'Server not set';
         try {
             return new URL(rawEndpoint).host || 'Server configured';
@@ -9062,6 +9141,7 @@
     }
 
     function renderLiveSourceCard(sectionKey, sectionDef, item, index, fieldEntries, isTestable) {
+        const isEditing = expandedProviderEditIndexes[sectionKey] === index;
         const groupedEntries = [];
         const groupsByKey = new Map();
         for (const entry of fieldEntries) {
@@ -9107,8 +9187,10 @@
             '<summary class="btn btn-sm btn-secondary" aria-label="More actions for ' + escapeHtml(name).replace(/"/g, '&quot;') + '">' + getIcon('more-horizontal') + '</summary>' +
             '<div class="live-source-action-menu-panel"><button type="button" class="btn btn-sm btn-danger" onclick="event.preventDefault(); removeArrayItem(\'' + sectionKey + '\', ' + index + ')">' + getIcon('trash') + ' Delete</button></div>' +
         '</details>';
+        const editButton = '<button type="button" class="btn btn-sm btn-secondary live-source-edit-button" aria-expanded="' + isEditing + '" onclick="toggleProviderEditor(\'' + sectionKey + '\', ' + index + ', event)">' +
+            getIcon('edit') + ' ' + (isEditing ? 'Close' : 'Edit') + '</button>';
 
-        return '<div class="array-item live-source-card">' +
+        return '<div class="array-item live-source-card' + (isEditing ? ' editing' : '') + '">' +
             '<div class="live-source-card-header">' +
                 '<div class="live-source-card-identity">' +
                     '<div class="live-source-card-name" title="' + escapeHtml(name).replace(/"/g, '&quot;') + '">' + escapeHtml(name) + '</div>' +
@@ -9118,10 +9200,58 @@
                         '<span class="live-source-endpoint" title="' + escapeHtml(endpoint).replace(/"/g, '&quot;') + '">Server: ' + escapeHtml(endpoint) + '</span>' +
                     '</div>' +
                 '</div>' +
-                '<div class="live-source-card-actions">' + hiddenChannelsButton + testButton + deleteMenu + '</div>' +
+                '<div class="live-source-card-actions">' + hiddenChannelsButton + testButton + editButton + deleteMenu + '</div>' +
             '</div>' +
-            '<div class="live-source-groups">' + groupsHtml + '</div>' +
+            (isEditing ? '<div class="live-source-groups">' + groupsHtml + '</div>' : '') +
         '</div>';
+    }
+
+    function renderLiveSourceSection(sectionKey, sectionDef, items, basePath, profileInheritanceControls) {
+        const isTestable = testableSections.includes(sectionKey);
+        const cards = items.map((item, index) => {
+            const fieldEntries = Object.entries(sectionDef.fields)
+                .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+                .map(([fieldKey, fieldDef]) => {
+                    if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return null;
+                    if (!providerTableFieldVisible(item, fieldDef)) return null;
+                    const fieldValue = fieldKey.includes('.')
+                        ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
+                        : item[fieldKey];
+                    const fieldInputId = (basePath + '.' + index + '_' + fieldKey).replace(/\./g, '_');
+                    const isRequired = fieldDef.required === true;
+                    const isMissingRequired = isRequired && (fieldValue === undefined || fieldValue === null || String(fieldValue).trim() === '');
+                    const requiredBadge = isMissingRequired ? '<span class="settings-section-badge" style="margin-left:0.4rem;">Required</span>' : '';
+                    const requiredHint = isMissingRequired ? '<p class="form-hint" style="color:var(--warning);">Required before testing or saving this provider.</p>' : '';
+                    return {
+                        group: fieldDef.group || 'source',
+                        groupLabel: fieldDef.groupLabel || fieldDef.group || 'Source',
+                        groupDescription: fieldDef.groupDescription || '',
+                        html: '<div class="form-group' + (fieldDef.type === 'boolean' ? ' form-group-toggle' : '') + (isMissingRequired ? ' required-missing' : '') + '">' +
+                            '<label class="form-label" for="' + fieldInputId + '">' + fieldDef.label + requiredBadge + '</label>' +
+                            renderInput(fieldKey, fieldDef, fieldValue, basePath + '.' + index, sectionKey) +
+                            (fieldDef.description ? '<p class="form-hint">' + fieldDef.description + '</p>' : '') +
+                            requiredHint + renderAdditionalFieldHint(sectionKey, fieldKey, item) + renderApiKeyFormatWarning(fieldKey, fieldValue) +
+                        '</div>',
+                    };
+                }).filter(Boolean);
+            return renderLiveSourceCard(sectionKey, sectionDef, item, index, fieldEntries, isTestable);
+        }).join('');
+        const cardsHtml = items.length
+            ? '<div class="array-items">' + cards + '</div>'
+            : '<div class="indexer-empty-state"><strong>No Live TV sources configured</strong><p class="form-hint">Add a source to make Live TV channels available.</p></div>';
+        const hasChanges = sectionHasChanges(sectionKey);
+        const saveLabel = !selectedUserId && !selectedClientId ? 'Save All Changes' : 'Save Changes';
+        return profileInheritanceControls +
+            '<p class="form-hint" style="margin:0 0 0.45rem;">Manage Live TV sources in a compact list. Open a source only when you need to edit it.</p>' +
+            cardsHtml +
+            '<div class="indexer-section-actions"><button type="button" class="btn btn-primary" onclick="addLiveSourceItem(\'' + sectionKey + '\', ' + items.length + ', event)">+ Add Live TV Source</button>' +
+            '<button type="button" class="section-save-btn" onclick="saveSection(\'' + sectionKey + '\', event)" ' + (hasChanges ? '' : 'disabled') + '>' + saveLabel + '</button></div>';
+    }
+
+    function addLiveSourceItem(sectionKey, nextIndex, event) {
+        event?.stopPropagation();
+        expandedProviderEditIndexes[sectionKey] = nextIndex;
+        addArrayItem(sectionKey);
     }
 
     function renderArraySection(sectionKey, sectionDef) {
@@ -9211,6 +9341,9 @@
                         ? '<button type="button" class="btn btn-sm btn-secondary" onclick="resetLiveSourcesToGlobal(event)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Re-inherit from Global</button>'
                         : '') +
                 '</div>';
+        }
+        if (isLiveSourceSection(sectionKey)) {
+            return renderLiveSourceSection(sectionKey, sectionDef, items, basePath, profileInheritanceControls);
         }
         const itemsHtml = items.map((item, index) => {
             let typeBadgesHtml = '';
@@ -9547,6 +9680,9 @@
             '.streaming-service-fields[hidden]{display:none!important;}'+
             '.streaming-service-field{display:flex;flex-direction:column;gap:0.35rem;font-size:0.75rem;color:var(--text-secondary);font-weight:500;}'+
             '.streaming-service-field-wide{grid-column:span 2;}'+
+            '.collection-hub-template-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:0.75rem;margin-bottom:12px;}'+
+            '.collection-hub-template-row .streaming-service-field-wide{grid-column:auto;}'+
+            '.collection-hub-template-row .btn{min-height:38px;}'+
             '.collection-hub-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.75rem;margin-bottom:12px;}'+
             '.collection-hub-option{display:flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--text-secondary);font-weight:500;line-height:1.3;}'+
             '.collection-hub-option input{flex:0 0 auto;}'+
@@ -9568,6 +9704,8 @@
                 '.streaming-service-row-controls .toggle{gap:0;}'+
                 '.streaming-service-fields{grid-template-columns:1fr;}'+
                 '.streaming-service-field-wide{grid-column:auto;}'+
+                '.collection-hub-template-row{grid-template-columns:1fr;}'+
+                '.collection-hub-template-row .btn{min-height:44px;}'+
                 '.collection-hub-options{grid-template-columns:1fr;}'+
             '}'+
             '</style>';
@@ -11212,8 +11350,6 @@
 
     // Delete custom shelf
     function deleteCustomShelf(shelfId) {
-        if (!confirm('Delete this custom list?')) return;
-
         const isPerUserSection = perUserSections.includes('homeShelves.shelves');
         let shelves;
         if (selectedUserId && userSettings && isPerUserSection) {
@@ -11226,6 +11362,23 @@
 
         const index = shelves.findIndex(s => s.id === shelfId);
         if (index !== -1) {
+            const shelf = shelves[index];
+            const referencingHubs = shelves.filter((candidate) =>
+                candidate.type === 'collection-hub' &&
+                Array.isArray(candidate.collectionItems) &&
+                candidate.collectionItems.some((item) => item.sourceShelfId === shelfId)
+            );
+            let message = shelf.type === 'collection-hub'
+                ? 'Delete this collection hub? Its source shelves will be kept.'
+                : 'Delete this custom list?';
+            if (referencingHubs.length > 0) {
+                const hubNames = referencingHubs.map((hub) => hub.name || hub.id).join(', ');
+                message = `This shelf is used by ${referencingHubs.length} collection hub${referencingHubs.length === 1 ? '' : 's'} (${hubNames}). Delete it and remove those hub cards?`;
+            }
+            if (!confirm(message)) return;
+            for (const hub of referencingHubs) {
+                hub.collectionItems = hub.collectionItems.filter((item) => item.sourceShelfId !== shelfId);
+            }
             shelves.splice(index, 1);
             renderSettings();
         }
@@ -11429,6 +11582,100 @@
 
     const COLLECTION_HUB_ITEM_CAP = 20;
 
+    function getCollectionHubTemplate(templateId) {
+        const [group, mediaType] = String(templateId || '').split('-');
+        const mediaLabel = mediaType === 'tv' ? 'TV Shows' : 'Movies';
+        if (group === 'genres' && (mediaType === 'movie' || mediaType === 'tv')) {
+            return (GENRE_SHELVES[mediaType] || []).map((genre) => ({
+                sourceShelfId: `genre-${genre.id}-${mediaType}`,
+                itemName: genre.name,
+                shelfName: `${genre.name} ${mediaLabel}`,
+                type: 'genre',
+            }));
+        }
+        if (group === 'decades' && (mediaType === 'movie' || mediaType === 'tv')) {
+            return DECADE_SHELVES.map((decade) => ({
+                sourceShelfId: `decade-${decade}-${mediaType}`,
+                itemName: `${decade}s`,
+                shelfName: `${decade}s ${mediaLabel}`,
+                type: 'decade',
+            }));
+        }
+        return [];
+    }
+
+    function removeUnsavedCollectionHubTemplateShelves(modal, keepSourceShelfIds = new Set()) {
+        const createdShelfIds = new Set(modal?.collectionHubCreatedShelfIds || []);
+        if (createdShelfIds.size === 0) return;
+        const shelves = getEditableHomeShelves();
+        for (let index = shelves.length - 1; index >= 0; index--) {
+            if (createdShelfIds.has(shelves[index].id) && !keepSourceShelfIds.has(shelves[index].id)) {
+                shelves.splice(index, 1);
+            }
+        }
+        if (modal) {
+            modal.collectionHubCreatedShelfIds = Array.from(keepSourceShelfIds).filter((id) => createdShelfIds.has(id));
+        }
+    }
+
+    function applyCollectionHubTemplate() {
+        const modal = document.getElementById('collectionHubModal');
+        const templateId = document.getElementById('collectionHubTemplate')?.value || '';
+        const template = getCollectionHubTemplate(templateId);
+        if (!modal || template.length === 0) return;
+
+        const items = readCollectionHubEditorRows();
+        const includedSourceShelfIds = new Set(items.map((item) => item.sourceShelfId));
+        const additions = template.filter((entry) => !includedSourceShelfIds.has(entry.sourceShelfId));
+        const availableSlots = COLLECTION_HUB_ITEM_CAP - items.length;
+        if (additions.length > availableSlots) {
+            alert(`This template needs ${additions.length} more slots, but this hub only has ${availableSlots}. Remove some collections first.`);
+            return;
+        }
+
+        const shelves = getEditableHomeShelves();
+        const sourceById = new Map(shelves.map((shelf) => [shelf.id, shelf]));
+        const createdShelfIds = new Set(modal.collectionHubCreatedShelfIds || []);
+        let maxOrder = Math.max(...shelves.map((shelf) => shelf.order || 0), -1);
+        for (const entry of additions) {
+            let sourceShelf = sourceById.get(entry.sourceShelfId);
+            if (!sourceShelf) {
+                sourceShelf = {
+                    id: entry.sourceShelfId,
+                    name: entry.shelfName,
+                    enabled: false,
+                    order: ++maxOrder,
+                    type: entry.type,
+                    limit: 0,
+                };
+                shelves.push(sourceShelf);
+                sourceById.set(sourceShelf.id, sourceShelf);
+                createdShelfIds.add(sourceShelf.id);
+            }
+            items.push({
+                id: `collection-${entry.sourceShelfId}`,
+                name: entry.itemName,
+                enabled: true,
+                order: items.length,
+                sourceShelfId: entry.sourceShelfId,
+                logoUrl: '',
+                heroArtUrl: '',
+                tintColor: 'rgba(148,163,184,0.18)',
+            });
+        }
+        modal.collectionHubCreatedShelfIds = Array.from(createdShelfIds);
+        const showTitles = document.getElementById('collectionHubShowTitles');
+        if (showTitles) showTitles.checked = true;
+        rerenderCollectionHubEditor(items);
+        const status = document.getElementById('collectionHubTemplateStatus');
+        if (status) {
+            const reused = template.length - additions.length;
+            status.textContent = additions.length > 0
+                ? `Added ${additions.length} collection${additions.length === 1 ? '' : 's'}${reused > 0 ? `; ${reused} already included` : ''}.`
+                : 'Every collection from this template is already included.';
+        }
+    }
+
     function isCollectionHubSourceShelf(shelf, currentShelfId) {
         if (!shelf || shelf.id === currentShelfId) return false;
         if (shelf.type === 'collection-hub') return false;
@@ -11549,6 +11796,19 @@
                     </div>
                     <div class="test-modal-body streaming-services-modal-body">
                         <label class="streaming-service-field streaming-service-field-wide" style="display:block;margin-bottom:12px;">Collection Title<input id="collectionHubTitleInput" class="form-input" value="${escapeHtml(shelf.name || 'Collection Hub').replace(/"/g, '&quot;')}" placeholder="Collection Hub"></label>
+                        <div class="collection-hub-template-row">
+                            <label class="streaming-service-field streaming-service-field-wide">Add from template
+                                <select id="collectionHubTemplate" class="form-input">
+                                    <option value="">Choose a grouping...</option>
+                                    <option value="genres-movie">Movie Genres (18)</option>
+                                    <option value="genres-tv">TV Genres (12)</option>
+                                    <option value="decades-movie">Movie Decades (10)</option>
+                                    <option value="decades-tv">TV Decades (10)</option>
+                                </select>
+                            </label>
+                            <button type="button" class="btn btn-secondary" onclick="applyCollectionHubTemplate()">Add template</button>
+                        </div>
+                        <p id="collectionHubTemplateStatus" class="form-hint" style="margin:-4px 0 12px;">Templates reuse matching shelves and create missing sources as hidden home shelves.</p>
                         <div class="collection-hub-options">
                             <label class="collection-hub-option"><input type="checkbox" id="collectionHubShowTitles" ${(shelf.showCollectionTitles || shelf.collectionItems?.some(item => item.showTitle)) ? 'checked' : ''}> Include item titles</label>
                             <label class="collection-hub-option"><input type="checkbox" id="collectionHubShowCounts" ${(shelf.showCollectionCounts || shelf.collectionItems?.some(item => item.showItemCount)) ? 'checked' : ''}> Include item counts</label>
@@ -11569,9 +11829,10 @@
         });
     }
 
-    function closeCollectionHubModal(event) {
+    function closeCollectionHubModal(event, preserveCreatedShelves = false) {
         if (event && event.target && event.target.id !== 'collectionHubModal') return;
         const modal = document.getElementById('collectionHubModal');
+        if (modal && !preserveCreatedShelves) removeUnsavedCollectionHubTemplateShelves(modal);
         if (modal) modal.remove();
         document.body.style.overflow = '';
     }
@@ -11649,7 +11910,9 @@
         shelf.showCollectionCounts = showCounts;
         shelf.animateLogoOnlyOnFocus = animateLogoOnlyOnFocus;
         shelf.collectionItems = items;
-        closeCollectionHubModal();
+        const modal = document.getElementById('collectionHubModal');
+        removeUnsavedCollectionHubTemplateShelves(modal, new Set(items.map((item) => item.sourceShelfId)));
+        closeCollectionHubModal(null, true);
         renderSettings();
     }
 
@@ -12114,6 +12377,7 @@
 
         const shelf = shelves.find(s => s.id === shelfId);
         if (!shelf) return;
+        const originalShelfId = shelf.id;
 
         if (!name) {
             alert('Please enter a name');
@@ -12229,6 +12493,14 @@
                 return;
             }
             shelf.listUrl = fixShelfUrl(shelf.type, url);
+        }
+        if (shelf.id !== originalShelfId) {
+            for (const candidate of shelves) {
+                if (candidate.type !== 'collection-hub' || !Array.isArray(candidate.collectionItems)) continue;
+                for (const item of candidate.collectionItems) {
+                    if (item.sourceShelfId === originalShelfId) item.sourceShelfId = shelf.id;
+                }
+            }
         }
         closeEditShelfModal();
         renderSettings();
@@ -13349,7 +13621,14 @@
                     proxyUrl: getValue(sectionKey + '.proxyUrl') || '',
                     xtreamHost: getValue(sectionKey + '.xtreamHost') || '',
                     xtreamUsername: getValue(sectionKey + '.xtreamUsername') || '',
-                    xtreamPassword: getValue(sectionKey + '.xtreamPassword') || ''
+					xtreamPassword: getValue(sectionKey + '.xtreamPassword') || '',
+					stalkerPortalUrl: getValue(sectionKey + '.stalkerPortalUrl') || '',
+					stalkerMac: getValue(sectionKey + '.stalkerMac') || '',
+					stalkerSerialNumber: getValue(sectionKey + '.stalkerSerialNumber') || '',
+					stalkerDeviceId: getValue(sectionKey + '.stalkerDeviceId') || '',
+					stalkerDeviceId2: getValue(sectionKey + '.stalkerDeviceId2') || '',
+					stalkerSignature: getValue(sectionKey + '.stalkerSignature') || '',
+					stalkerModel: getValue(sectionKey + '.stalkerModel') || ''
                 };
                 break;
             default:
@@ -14256,7 +14535,7 @@
 
         // Add validation warning banner if there are issues
         const visibleErrorKeys = Object.keys(validationErrors).filter(key => {
-            if (!activeSettingsGroup || searchTerm || !schema[key]) return true;
+            if (!activeSettingsGroup || activeSettingsGroup === 'all' || searchTerm || !schema[key]) return true;
             return settingsOverviewGroupForSection(key, schema[key]) === activeSettingsGroup;
         });
         const totalErrors = visibleErrorKeys.length;
@@ -14276,7 +14555,7 @@
         let totalMatchingSections = 0;
 
         for (const group of settingsOverviewGroups) {
-            if (activeSettingsGroup && !searchTerm && group.id !== activeSettingsGroup) continue;
+            if (activeSettingsGroup && activeSettingsGroup !== 'all' && !searchTerm && group.id !== activeSettingsGroup) continue;
             const groupSections = Object.entries(schema).filter(([key, def]) => {
                 if (!def.group || settingsOverviewGroupForSection(key, def) !== group.id) return false;
                 // Skip hidden sections
@@ -14332,7 +14611,9 @@
             }
         }
 
-        if (window.location.hash && !isEssentials) {
+        // Honor a deep link on the initial/category render. Routine field edits already
+        // restore the open section above and must not repeatedly scroll it to the top.
+        if (window.location.hash && !isEssentials && !openSection) {
             const section = document.getElementById('section-'+window.location.hash.substring(1));
             if (section) {
                 requestAnimationFrame(() => openSettingsSection(section.id.replace('section-', ''), { focus: false, scroll: true, historyMode: 'none' }));
@@ -14482,12 +14763,15 @@
                 });
                 if (response.ok) {
                     originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    // Saving is finished even though the follow-up profile-impact refresh can
+                    // take longer. Hide the sticky unsaved bar as soon as the write succeeds.
+                    updateSettingsSaveStatus();
+                    announceSettingsSaved();
                     showToast('Settings saved successfully');
                     void loadHardwareAccelerationStatus();
                     if (committedPendingTextArrays) renderSettings();
                     await updateProfileSaveImpact(changedGroups);
                     renderSettings();
-                    announceSettingsSaved();
                 } else {
                     const result = await response.json();
                     showToast(result.error || 'Failed to save settings', 'error');
@@ -14575,11 +14859,10 @@
     window.addEventListener('popstate', () => {
         const params = new URLSearchParams(window.location.search);
         const category = params.get('category') || '';
+        const view = params.get('view') || '';
         const storedLevel = settingsLevels.has(localStorage.getItem('mediastorm-settings-level')) ? localStorage.getItem('mediastorm-settings-level') : 'basic';
-        settingsLevel = params.get('view') === 'essentials'
-            ? 'essentials'
-            : ((params.get('view') === 'dashboard' || category) && storedLevel === 'essentials' ? 'basic' : storedLevel);
-        activeSettingsGroup = settingsLandingGroups.some(group => group.id === category) ? category : '';
+        settingsLevel = storedLevel;
+        activeSettingsGroup = view === 'all' ? 'all' : (settingsLandingGroups.some(group => group.id === category) ? category : '');
         syncSettingsSidebarDestination(activeSettingsGroup || 'home');
         renderSettings();
     });

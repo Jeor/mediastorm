@@ -16,6 +16,55 @@ type fakeInviteRepo struct {
 	byHash map[string]string
 }
 
+type fakePairingRepo struct {
+	byID   map[string]models.RemoteAccessPairing
+	byPeer map[string]string
+}
+
+func newFakePairingRepo() *fakePairingRepo {
+	return &fakePairingRepo{byID: make(map[string]models.RemoteAccessPairing), byPeer: make(map[string]string)}
+}
+
+func (r *fakePairingRepo) Get(_ context.Context, id string) (*models.RemoteAccessPairing, error) {
+	pairing, ok := r.byID[id]
+	if !ok {
+		return nil, nil
+	}
+	return &pairing, nil
+}
+
+func (r *fakePairingRepo) GetByPeerID(ctx context.Context, peerID string) (*models.RemoteAccessPairing, error) {
+	return r.Get(ctx, r.byPeer[peerID])
+}
+
+func (r *fakePairingRepo) List(context.Context) ([]models.RemoteAccessPairing, error) {
+	result := make([]models.RemoteAccessPairing, 0, len(r.byID))
+	for _, pairing := range r.byID {
+		result = append(result, pairing)
+	}
+	return result, nil
+}
+
+func (r *fakePairingRepo) Create(_ context.Context, pairing *models.RemoteAccessPairing) error {
+	r.byID[pairing.ID] = *pairing
+	r.byPeer[pairing.PeerID] = pairing.ID
+	return nil
+}
+
+func (r *fakePairingRepo) Update(ctx context.Context, pairing *models.RemoteAccessPairing) error {
+	return r.Create(ctx, pairing)
+}
+
+func (r *fakePairingRepo) Delete(_ context.Context, id string) error {
+	if pairing, ok := r.byID[id]; ok {
+		delete(r.byPeer, pairing.PeerID)
+	}
+	delete(r.byID, id)
+	return nil
+}
+
+func (r *fakePairingRepo) Count(context.Context) (int64, error) { return int64(len(r.byID)), nil }
+
 type fakeHost struct {
 	invite         string
 	running        bool
@@ -129,6 +178,155 @@ func (r *fakeInviteRepo) Delete(ctx context.Context, id string) error {
 
 func (r *fakeInviteRepo) Count(ctx context.Context) (int64, error) {
 	return int64(len(r.byID)), nil
+}
+
+func TestRevokePeerRevokesEveryClaimedInviteForDevice(t *testing.T) {
+	repo := newFakeInviteRepo()
+	host := &fakeHost{}
+	svc := NewService(repo, host)
+	now := time.Now().UTC()
+	for _, inv := range []models.RemoteAccessInvite{
+		{ID: "one", UsedAt: &now, UsedByPeerID: "device-1", ExpiresAt: now.Add(time.Hour)},
+		{ID: "two", UsedAt: &now, UsedByPeerID: "device-1", ExpiresAt: now.Add(time.Hour)},
+		{ID: "other", UsedAt: &now, UsedByPeerID: "device-2", ExpiresAt: now.Add(time.Hour)},
+	} {
+		copy := inv
+		repo.byID[inv.ID] = copy
+	}
+	authorized, err := svc.IsPeerAuthorized(context.Background(), "device-1")
+	if err != nil || !authorized {
+		t.Fatalf("IsPeerAuthorized() before revoke = %v, %v; want true, nil", authorized, err)
+	}
+	count, err := svc.RevokePeer(context.Background(), "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatalf("RevokePeer() = %d, want 2", count)
+	}
+	if repo.byID["one"].RevokedAt == nil || repo.byID["two"].RevokedAt == nil {
+		t.Fatal("matching claimed invites were not revoked")
+	}
+	if repo.byID["other"].RevokedAt != nil {
+		t.Fatal("unrelated device invite was revoked")
+	}
+	revoked, err := svc.IsPeerRevoked(context.Background(), "device-1")
+	if err != nil || !revoked {
+		t.Fatalf("IsPeerRevoked() = %v, %v; want true, nil", revoked, err)
+	}
+	otherRevoked, err := svc.IsPeerRevoked(context.Background(), "device-2")
+	if err != nil || otherRevoked {
+		t.Fatalf("other IsPeerRevoked() = %v, %v; want false, nil", otherRevoked, err)
+	}
+	authorized, err = svc.IsPeerAuthorized(context.Background(), "device-1")
+	if err != nil || authorized {
+		t.Fatalf("IsPeerAuthorized() after revoke = %v, %v; want false, nil", authorized, err)
+	}
+	otherAuthorized, err := svc.IsPeerAuthorized(context.Background(), "device-2")
+	if err != nil || !otherAuthorized {
+		t.Fatalf("other IsPeerAuthorized() = %v, %v; want true, nil", otherAuthorized, err)
+	}
+}
+
+func TestCredentialPairingRetiresInviteSecretAndAuthorizesOnlyMatchingSecret(t *testing.T) {
+	invites := newFakeInviteRepo()
+	pairings := newFakePairingRepo()
+	svc := NewService(invites, &fakeHost{}, pairings)
+	credential := strings.Repeat("a", 43)
+
+	inv, err := svc.CreateInvite(context.Background(), "account-1", CreateInviteRequest{ExpiresIn: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1", credential)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := invites.byID[claimed.ID]
+	if stored.ConnectionCode != "" || stored.TokenHash != "claimed:"+claimed.ID {
+		t.Fatalf("claimed invite retained secret material: %+v", stored)
+	}
+	pairing, err := pairings.GetByPeerID(context.Background(), "device-1")
+	if err != nil || pairing == nil || pairing.CredentialHash == "" {
+		t.Fatalf("pairing = %+v, err = %v", pairing, err)
+	}
+	if authorized, err := svc.AuthorizePeer(context.Background(), "device-1", credential); err != nil || !authorized {
+		t.Fatalf("matching credential authorized=%v err=%v", authorized, err)
+	}
+	if authorized, err := svc.AuthorizePeer(context.Background(), "device-1", strings.Repeat("b", 43)); err != nil || authorized {
+		t.Fatalf("wrong credential authorized=%v err=%v", authorized, err)
+	}
+
+	// The staged client can retry after the claim response is lost even though the
+	// one-time token has already been scrubbed.
+	retry, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1", credential)
+	if err != nil || retry.ID != claimed.ID {
+		t.Fatalf("idempotent credential retry = %+v, %v", retry, err)
+	}
+	if err := svc.RevokeInvite(context.Background(), claimed.ID); err != nil {
+		t.Fatal(err)
+	}
+	if authorized, _ := svc.AuthorizePeer(context.Background(), "device-1", credential); authorized {
+		t.Fatal("revoking the pairing's invite left the device authorized")
+	}
+}
+
+func TestNewPairingRequiresDeviceCredential(t *testing.T) {
+	invites := newFakeInviteRepo()
+	pairings := newFakePairingRepo()
+	svc := NewService(invites, &fakeHost{}, pairings)
+	inv, err := svc.CreateInvite(context.Background(), "account-1", CreateInviteRequest{ExpiresIn: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1"); err != ErrInvalidPairingCredential {
+		t.Fatalf("ClaimInvite() error = %v, want ErrInvalidPairingCredential", err)
+	}
+	stored := invites.byID[inv.ID]
+	if stored.UsedAt != nil {
+		t.Fatal("invite was consumed without a device credential")
+	}
+}
+
+func TestLegacyPairingCanUpgradeOnceToCredential(t *testing.T) {
+	pairings := newFakePairingRepo()
+	pairing := &models.RemoteAccessPairing{ID: "legacy-1", PeerID: "device-1", CreatedBy: "account-1"}
+	if err := pairings.Create(context.Background(), pairing); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(newFakeInviteRepo(), &fakeHost{}, pairings)
+	if authorized, err := svc.AuthorizePeer(context.Background(), "device-1", ""); err != nil || !authorized {
+		t.Fatalf("legacy authorization = %v, %v", authorized, err)
+	}
+	credential := strings.Repeat("c", 43)
+	if err := svc.UpgradePairingCredential(context.Background(), "device-1", credential); err != nil {
+		t.Fatal(err)
+	}
+	if authorized, _ := svc.AuthorizePeer(context.Background(), "device-1", ""); authorized {
+		t.Fatal("upgraded pairing still accepts peer ID without credential")
+	}
+	if authorized, _ := svc.AuthorizePeer(context.Background(), "device-1", credential); !authorized {
+		t.Fatal("upgraded pairing rejected its credential")
+	}
+	if err := svc.UpgradePairingCredential(context.Background(), "device-1", strings.Repeat("d", 43)); err != ErrInvalidPairingCredential {
+		t.Fatalf("credential replacement error = %v, want ErrInvalidPairingCredential", err)
+	}
+}
+
+func TestClaimInviteRejectsMissingOrOversizedPeerID(t *testing.T) {
+	repo := newFakeInviteRepo()
+	svc := NewService(repo, &fakeHost{})
+
+	for name, peerID := range map[string]string{
+		"missing":   "   ",
+		"oversized": strings.Repeat("x", 257),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := svc.ClaimInvite(context.Background(), "mshost-ABCDEF-GHJKMN-PQRSTV", peerID); err != ErrInvalidPeerID {
+				t.Fatalf("ClaimInvite() error = %v, want ErrInvalidPeerID", err)
+			}
+		})
+	}
 }
 
 func TestCreateInviteStartsSharedIrohHost(t *testing.T) {
@@ -260,6 +458,37 @@ func TestResolveInviteRejectsClaimedInvite(t *testing.T) {
 
 	if _, err := svc.ResolveInvite(context.Background(), inv.Token); err != ErrInviteUsed {
 		t.Fatalf("ResolveInvite error = %v, want ErrInviteUsed", err)
+	}
+}
+
+func TestClaimInviteRetryIsIdempotentOnlyForTheSameDevice(t *testing.T) {
+	repo := newFakeInviteRepo()
+	svc := NewService(repo, &fakeHost{})
+	now := time.Date(2026, 5, 28, 12, 0, 0, 0, time.UTC)
+	svc.now = func() time.Time { return now }
+
+	inv, err := svc.CreateInvite(context.Background(), "account-1", CreateInviteRequest{ExpiresIn: time.Hour})
+	if err != nil {
+		t.Fatalf("CreateInvite returned error: %v", err)
+	}
+	first, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1")
+	if err != nil {
+		t.Fatalf("first ClaimInvite returned error: %v", err)
+	}
+
+	// Simulate a retry after the phone received the server response but failed to
+	// persist its local connection state. The same stable device may recover.
+	now = now.Add(2 * time.Hour)
+	retry, err := svc.ClaimInvite(context.Background(), inv.Token, "device-1")
+	if err != nil {
+		t.Fatalf("same-device retry returned error: %v", err)
+	}
+	if retry.ID != first.ID || retry.UsedByPeerID != "device-1" {
+		t.Fatalf("same-device retry = %+v, want original pairing", retry)
+	}
+
+	if _, err := svc.ClaimInvite(context.Background(), inv.Token, "device-2"); err != ErrInviteExpired {
+		t.Fatalf("different-device retry error = %v, want ErrInviteExpired", err)
 	}
 }
 

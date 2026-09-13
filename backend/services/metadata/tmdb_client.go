@@ -473,6 +473,8 @@ func (c *tmdbClient) fetchImages(ctx context.Context, mediaType string, tmdbID i
 		if selectedLogo, ok := c.selectLogoCandidate(ctx, payload.Logos, preferredLang); ok {
 			result.Logo = buildTMDBImage(selectedLogo.FilePath, tmdbLogoSize, "logo")
 			if result.Logo != nil {
+				result.Logo.Width = selectedLogo.Width
+				result.Logo.Height = selectedLogo.Height
 				result.Logo.Language = selectedLogo.ISO6391
 				result.Logo.IsFallbackLanguage = selectedLogo.ISO6391 != preferredLang
 				result.Logo.IsDark = c.isImageDark(ctx, result.Logo.URL)
@@ -1265,7 +1267,7 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 	if err != nil {
 		return nil, err
 	}
-	endpoint = endpoint + "?api_key=" + c.apiKey + "&append_to_response=external_ids"
+	endpoint = endpoint + "?api_key=" + c.apiKey + "&append_to_response=external_ids,alternative_titles"
 	if lang := strings.TrimSpace(c.language); lang != "" {
 		endpoint += "&language=" + normalizeLanguage(lang)
 	}
@@ -1290,7 +1292,12 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 		Networks []struct {
 			Name string `json:"name"`
 		} `json:"networks"`
-		ExternalIDs tmdbExternalIDsResponse `json:"external_ids"`
+		ExternalIDs       tmdbExternalIDsResponse `json:"external_ids"`
+		AlternativeTitles struct {
+			Results []struct {
+				Title string `json:"title"`
+			} `json:"results"`
+		} `json:"alternative_titles"`
 	}
 
 	if err := c.doGET(ctx, endpoint, &payload); err != nil {
@@ -1333,6 +1340,19 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 	}
 	if len(payload.OriginCountry) > 0 {
 		title.CountryCode = strings.TrimSpace(payload.OriginCountry[0])
+	}
+	seenAliases := make(map[string]struct{})
+	for _, alternate := range payload.AlternativeTitles.Results {
+		name := strings.TrimSpace(alternate.Title)
+		key := strings.ToLower(name)
+		if name == "" || strings.EqualFold(name, title.Name) || strings.EqualFold(name, title.OriginalName) {
+			continue
+		}
+		if _, exists := seenAliases[key]; exists {
+			continue
+		}
+		seenAliases[key] = struct{}{}
+		title.AlternateTitles = append(title.AlternateTitles, name)
 	}
 	return title, nil
 }
@@ -1525,10 +1545,57 @@ func (c *tmdbClient) seriesSeasonDetails(ctx context.Context, tmdbID int64, summ
 		return episodes[i].EpisodeNumber < episodes[j].EpisodeNumber
 	})
 	season.Episodes = episodes
+	normalizeTMDBGlobalSeasonEpisodeNumbers(&season)
 	if len(episodes) > season.EpisodeCount {
 		season.EpisodeCount = len(episodes)
 	}
 	return season, nil
+}
+
+// normalizeTMDBGlobalSeasonEpisodeNumbers handles anime where TMDB groups
+// episodes into seasons/arcs but keeps episode_number globally increasing. The
+// raw TMDB number is retained while the app-facing coordinate is rebased.
+func normalizeTMDBGlobalSeasonEpisodeNumbers(season *models.SeriesSeason) bool {
+	if season == nil || season.Number <= 1 || len(season.Episodes) < 2 {
+		return false
+	}
+	first, last, numbered := 0, 0, 0
+	for _, episode := range season.Episodes {
+		if episode.EpisodeNumber <= 0 {
+			continue
+		}
+		numbered++
+		if first == 0 || episode.EpisodeNumber < first {
+			first = episode.EpisodeNumber
+		}
+		if episode.EpisodeNumber > last {
+			last = episode.EpisodeNumber
+		}
+	}
+	if first <= 1 || numbered < 2 || last-first+1 != numbered {
+		return false
+	}
+
+	changed := false
+	for index := range season.Episodes {
+		episode := &season.Episodes[index]
+		if episode.EpisodeNumber <= 0 {
+			continue
+		}
+		rawNumber := episode.EpisodeNumber
+		localNumber := rawNumber - first + 1
+		if episode.TMDBEpisodeNumber <= 0 {
+			episode.TMDBEpisodeNumber = rawNumber
+		}
+		if strings.EqualFold(strings.TrimSpace(episode.Name), fmt.Sprintf("Episode %d", rawNumber)) {
+			episode.Name = fmt.Sprintf("Episode %d", localNumber)
+		}
+		if localNumber != rawNumber {
+			episode.EpisodeNumber = localNumber
+			changed = true
+		}
+	}
+	return changed
 }
 
 func (c *tmdbClient) searchTitles(ctx context.Context, query, mediaType string, limit int, includeAdult bool) ([]models.SearchResult, error) {
@@ -1983,7 +2050,7 @@ func (c *tmdbClient) movieDetails(ctx context.Context, tmdbID int64) (*models.Ti
 	// unlike the in-memory singleflight map below.
 	var cacheID string
 	if c.cache != nil {
-		cacheID = cacheKey("tmdb", "movie", "details", "v1", c.language, fmt.Sprintf("%d", tmdbID))
+		cacheID = cacheKey("tmdb", "movie", "details", "v2", c.language, fmt.Sprintf("%d", tmdbID))
 		var cached models.Title
 		if ok, _ := c.cache.get(cacheID, &cached); ok && cached.TMDBID > 0 {
 			return &cached, nil
@@ -2030,6 +2097,9 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 	} else {
 		q.Set("language", "en-US")
 	}
+	// Alternative titles are needed by release-name filtering. Appending them
+	// to the existing details request avoids a second TMDB request per movie.
+	q.Set("append_to_response", "alternative_titles")
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.httpc.Do(req)
@@ -2066,6 +2136,11 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 			PosterPath   string `json:"poster_path"`
 			BackdropPath string `json:"backdrop_path"`
 		} `json:"belongs_to_collection"`
+		AlternativeTitles struct {
+			Titles []struct {
+				Title string `json:"title"`
+			} `json:"titles"`
+		} `json:"alternative_titles"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&movie); err != nil {
 		return nil, err
@@ -2082,6 +2157,24 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 	}
 	if originalTitle := strings.TrimSpace(movie.OriginalTitle); originalTitle != "" && !strings.EqualFold(originalTitle, movie.Title) {
 		title.OriginalName = originalTitle
+	}
+	seenTitles := map[string]struct{}{
+		strings.ToLower(strings.TrimSpace(title.Name)): {},
+	}
+	if original := strings.TrimSpace(title.OriginalName); original != "" {
+		seenTitles[strings.ToLower(original)] = struct{}{}
+	}
+	for _, alternate := range movie.AlternativeTitles.Titles {
+		value := strings.TrimSpace(alternate.Title)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, exists := seenTitles[key]; exists {
+			continue
+		}
+		seenTitles[key] = struct{}{}
+		title.AlternateTitles = append(title.AlternateTitles, value)
 	}
 	if originalLanguage := strings.TrimSpace(movie.OriginalLanguage); originalLanguage != "" {
 		title.Language = originalLanguage
@@ -2740,6 +2833,57 @@ func (c *tmdbClient) findTVByIMDBID(ctx context.Context, imdbID string) (int64, 
 	return 0, lastErr
 }
 
+// findByTVDBID resolves a stored legacy TVDB title ID through TMDB. This keeps
+// old identities useful even when TVDB itself is disabled.
+func (c *tmdbClient) findByTVDBID(ctx context.Context, tvdbID int64, mediaType string) (int64, error) {
+	if !c.isConfigured() {
+		return 0, errors.New("tmdb api key not configured")
+	}
+	if tvdbID <= 0 {
+		return 0, errors.New("tvdb id required")
+	}
+	kind := "series"
+	if strings.EqualFold(strings.TrimSpace(mediaType), "movie") {
+		kind = "movie"
+	}
+	cacheID := cacheKey("tmdb", "find", "tvdb", kind, strconv.FormatInt(tvdbID, 10))
+	if c.cache != nil {
+		var cached int64
+		if ok, _ := c.cache.get(cacheID, &cached); ok && cached > 0 {
+			return cached, nil
+		}
+	}
+
+	endpoint := fmt.Sprintf("%s/find/%d?api_key=%s&external_source=tvdb_id", tmdbBaseURL, tvdbID, c.apiKey)
+	var result struct {
+		MovieResults []struct {
+			ID int64 `json:"id"`
+		} `json:"movie_results"`
+		TVResults []struct {
+			ID int64 `json:"id"`
+		} `json:"tv_results"`
+	}
+	if err := c.doGET(ctx, endpoint, &result); err != nil {
+		return 0, err
+	}
+	if kind == "movie" {
+		if len(result.MovieResults) > 0 {
+			id := result.MovieResults[0].ID
+			if c.cache != nil {
+				_ = c.cache.set(cacheID, id)
+			}
+			return id, nil
+		}
+	} else if len(result.TVResults) > 0 {
+		id := result.TVResults[0].ID
+		if c.cache != nil {
+			_ = c.cache.set(cacheID, id)
+		}
+		return id, nil
+	}
+	return 0, fmt.Errorf("no %s found for TVDB ID %d", mediaType, tvdbID)
+}
+
 func mapTMDBReleaseType(releaseType int) string {
 	switch releaseType {
 	case 1:
@@ -2774,6 +2918,108 @@ type tmdbSimilarResponse struct {
 		FirstAirDate     string  `json:"first_air_date"`
 		ReleaseDate      string  `json:"release_date"`
 	} `json:"results"`
+}
+
+type tmdbDailyTrendingResponse struct {
+	Results []struct {
+		ID               int64   `json:"id"`
+		Name             string  `json:"name"`
+		Title            string  `json:"title"`
+		OriginalName     string  `json:"original_name"`
+		OriginalTitle    string  `json:"original_title"`
+		Overview         string  `json:"overview"`
+		OriginalLanguage string  `json:"original_language"`
+		PosterPath       string  `json:"poster_path"`
+		BackdropPath     string  `json:"backdrop_path"`
+		Popularity       float64 `json:"popularity"`
+		VoteCount        int     `json:"vote_count"`
+		FirstAirDate     string  `json:"first_air_date"`
+		ReleaseDate      string  `json:"release_date"`
+		GenreIDs         []int   `json:"genre_ids"`
+		Adult            bool    `json:"adult"`
+		Video            bool    `json:"video"`
+	} `json:"results"`
+}
+
+// trendingDaily returns TMDB's ordered daily trending chart for one media type.
+// Adult entries and movie results classified as videos are excluded before the
+// service chooses the first eligible titles for Top 10 Today.
+func (c *tmdbClient) trendingDaily(ctx context.Context, mediaType string) ([]models.TrendingItem, error) {
+	return c.trendingDailyPage(ctx, mediaType, 1)
+}
+
+func (c *tmdbClient) trendingDailyPage(ctx context.Context, mediaType string, page int) ([]models.TrendingItem, error) {
+	if !c.isConfigured() {
+		return nil, errors.New("tmdb api key not configured")
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	apiMediaType := strings.ToLower(strings.TrimSpace(mediaType))
+	if apiMediaType != "movie" {
+		apiMediaType = "tv"
+	}
+	endpoint, err := url.JoinPath(tmdbBaseURL, "trending", apiMediaType, "day")
+	if err != nil {
+		return nil, err
+	}
+	query := url.Values{"api_key": {c.apiKey}, "page": {strconv.Itoa(page)}}
+	if lang := strings.TrimSpace(c.language); lang != "" {
+		query.Set("language", normalizeLanguage(lang))
+	}
+	endpoint += "?" + query.Encode()
+
+	var payload tmdbDailyTrendingResponse
+	if err := c.doGET(ctx, endpoint, &payload); err != nil {
+		return nil, fmt.Errorf("tmdb daily trending %s failed: %w", apiMediaType, err)
+	}
+
+	resultMediaType := "movie"
+	if apiMediaType == "tv" {
+		resultMediaType = "series"
+	}
+	items := make([]models.TrendingItem, 0, len(payload.Results))
+	for _, result := range payload.Results {
+		if result.ID <= 0 || result.Adult || (apiMediaType == "movie" && result.Video) {
+			continue
+		}
+		name := strings.TrimSpace(pickTMDBName(apiMediaType, result.Name, result.Title))
+		if name == "" {
+			continue
+		}
+		originalName := strings.TrimSpace(result.OriginalTitle)
+		if apiMediaType == "tv" {
+			originalName = strings.TrimSpace(result.OriginalName)
+		}
+		if strings.EqualFold(originalName, name) {
+			originalName = ""
+		}
+
+		title := models.Title{
+			ID:           fmt.Sprintf("tmdb:%s:%d", apiMediaType, result.ID),
+			Name:         name,
+			OriginalName: originalName,
+			Overview:     strings.TrimSpace(result.Overview),
+			Language:     strings.TrimSpace(result.OriginalLanguage),
+			MediaType:    resultMediaType,
+			TMDBID:       result.ID,
+			Popularity:   result.Popularity,
+			VoteCount:    result.VoteCount,
+			Genres:       resolveGenreIDs(result.GenreIDs, apiMediaType),
+			Adult:        result.Adult,
+		}
+		title.Year = parseTMDBYear(result.ReleaseDate, result.FirstAirDate)
+		if apiMediaType == "movie" {
+			title.Status = models.MovieReleaseStatusFromReleaseDate(result.ReleaseDate)
+		} else {
+			title.Status = models.SeriesReleaseStatusFromDate(result.FirstAirDate)
+		}
+		title.Poster = buildTMDBImage(result.PosterPath, tmdbPosterSize, "poster")
+		title.Backdrop = buildTMDBImage(result.BackdropPath, tmdbBackdropSize, "backdrop")
+		items = append(items, models.TrendingItem{Rank: (page-1)*20 + len(items) + 1, Title: title})
+	}
+	return items, nil
 }
 
 // fetchPersonDetails retrieves detailed information about a person from TMDB
@@ -3616,6 +3862,7 @@ var tmdbShelfSourceTypes = map[string]struct{}{
 
 // TMDBListOptions identifies a TMDB-backed shelf and controls its paging.
 type TMDBListOptions struct {
+	DeferArtwork  bool
 	SourceType    string
 	SourceID      string
 	MediaType     string

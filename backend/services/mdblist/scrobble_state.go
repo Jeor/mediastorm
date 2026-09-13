@@ -80,7 +80,15 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	}
 	sess.progress = percentWatched
 	sess.update = update
+	sessionEstablished := sess.state != stateIdle
 	t.mu.Unlock()
+	if sessionEstablished {
+		state := "playing"
+		if update.IsPaused {
+			state = "paused"
+		}
+		t.registry.Touch("mdblist", userID, state, "", update, percentWatched)
+	}
 
 	// Resolve API key from user's linked account
 	account := t.scrobbler.getAccountForUser(userID)
@@ -119,6 +127,9 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 
 	switch sess.state {
 	case stateIdle, statePaused:
+		if !t.registry.CanStart("mdblist", userID, update) {
+			return
+		}
 		if err := t.scrobbleWithHybridFallback("start", update, percentWatched, req); err != nil {
 			log.Printf("[mdblist-scrobble] start failed for %s: %v", key, err)
 			if is400(err) || isEpisodeNotFound(err) {

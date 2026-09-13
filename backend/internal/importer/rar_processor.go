@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"path/filepath"
 	"sort"
@@ -198,7 +199,13 @@ func (rh *rarProcessor) analyzeRarWithStreamingProgressive(ctx context.Context, 
 	ufs := NewUsenetFileSystem(ctx, cp, sortFiles, rh.maxWorkers, rh.maxCacheSizeMB)
 	password := archivePassword(sortFiles)
 	if password != "" {
-		return rh.analyzePasswordProtectedRar(ctx, ufs, sortFiles, mainRarFile, password, callback)
+		return rh.analyzeRarWithDecoder(ctx, ufs, sortFiles, mainRarFile, password, callback)
+	}
+
+	if rar3, err := isRar3Archive(ufs, mainRarFile); err != nil {
+		return nil, err
+	} else if rar3 {
+		return rh.analyzeRarWithDecoder(ctx, ufs, sortFiles, mainRarFile, "", callback)
 	}
 
 	analysisStart := time.Now()
@@ -324,17 +331,17 @@ func archivePassword(files []ParsedFile) string {
 	return ""
 }
 
-// analyzePasswordProtectedRar mirrors AltMount's encrypted-RAR path. rarlist
-// intentionally does not support encrypted headers, while rardecode can use the
-// NZB password to derive the per-file AES key and IV needed for random access.
-func (rh *rarProcessor) analyzePasswordProtectedRar(
+// analyzeRarWithDecoder reads declared payload offsets and lengths for RAR3,
+// and derives random-access encryption credentials for password-protected RARs.
+// rarlist v1.1.4 misreads RAR3 PACK_SIZE and guesses a fixed trailer length.
+func (rh *rarProcessor) analyzeRarWithDecoder(
 	ctx context.Context,
-	ufs *UsenetFileSystem,
+	ufs fs.FS,
 	rarFiles []ParsedFile,
 	mainRarFile, password string,
 	callback FileDiscoveryCallback,
 ) ([]rarContent, error) {
-	rh.log.Info("Analyzing password-protected RAR archive", "main_file", mainRarFile, "total_parts", len(rarFiles))
+	rh.log.Info("Analyzing RAR archive with header-based decoder", "main_file", mainRarFile, "total_parts", len(rarFiles))
 
 	// A cancelled candidate must not spend its remaining lifetime decrypting
 	// headers: the archive analysis is the last uncancellable-looking stage
@@ -355,20 +362,26 @@ func (rh *rarProcessor) analyzePasswordProtectedRar(
 	}
 	files, err := rardecode.ListArchiveInfo(mainRarFile, opts...)
 	if err != nil {
-		return nil, NewNonRetryableError("failed to analyze password-protected RAR archive", err)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, NewNonRetryableError("failed to analyze RAR archive headers", err)
 	}
 	if len(files) == 0 {
-		return nil, NewNonRetryableError("no valid files found in password-protected RAR archive", nil)
+		return nil, NewNonRetryableError("no valid files found in RAR archive", nil)
 	}
 	for _, file := range files {
-		if file.Compressed {
+		if file.AnyEncrypted && password == "" {
+			return nil, NewNonRetryableError("RAR archive requires a password", nil)
+		}
+		if file.Compressed || !file.AllStored {
 			return nil, NewNonRetryableError(fmt.Sprintf("compressed files are not supported: %s", file.Name), nil)
 		}
 	}
 
-	contents, err := rh.convertEncryptedFilesToRarContent(files, rarFiles)
+	contents, err := rh.convertDecodedFilesToRarContent(files, rarFiles)
 	if err != nil {
-		return nil, NewNonRetryableError("convert password-protected RAR contents", err)
+		return nil, NewNonRetryableError("convert RAR contents", err)
 	}
 	for _, content := range contents {
 		if err := ctx.Err(); err != nil {
@@ -381,7 +394,7 @@ func (rh *rarProcessor) analyzePasswordProtectedRar(
 	return contents, nil
 }
 
-func (rh *rarProcessor) convertEncryptedFilesToRarContent(files []rardecode.ArchiveFileInfo, rarFiles []ParsedFile) ([]rarContent, error) {
+func (rh *rarProcessor) convertDecodedFilesToRarContent(files []rardecode.ArchiveFileInfo, rarFiles []ParsedFile) ([]rarContent, error) {
 	fileIndex := make(map[string]*ParsedFile, len(rarFiles)*2)
 	for i := range rarFiles {
 		file := &rarFiles[i]
@@ -419,6 +432,15 @@ func (rh *rarProcessor) convertEncryptedFilesToRarContent(files []rardecode.Arch
 				return nil, fmt.Errorf("RAR part %q covers %d of %d bytes", part.Path, covered, part.PackedSize)
 			}
 			content.Segments = append(content.Segments, sliced...)
+		}
+		if !file.AnyEncrypted {
+			var covered int64
+			for _, segment := range content.Segments {
+				covered += segment.EndOffset - segment.StartOffset + 1
+			}
+			if covered != file.TotalUnpackedSize {
+				return nil, fmt.Errorf("RAR file %q covers %d of %d bytes", file.Name, covered, file.TotalUnpackedSize)
+			}
 		}
 		contents = append(contents, content)
 	}
@@ -462,6 +484,12 @@ func (rh *rarProcessor) analyzeRarWithMemoryPreload(ctx context.Context, cp nntp
 	memoryFS := NewMemoryFileSystem(memoryFiles)
 
 	// Phase 3: Fast sequential analysis on in-memory data
+	if rar3, err := isRar3Archive(memoryFS, mainRarFile); err != nil {
+		return nil, err
+	} else if rar3 {
+		return rh.analyzeRarWithDecoder(ctx, memoryFS, sortFiles, mainRarFile, archivePassword(sortFiles), nil)
+	}
+
 	analysisStart := time.Now()
 	aggregatedFiles, err := rarlist.ListFilesFS(memoryFS, mainRarFile)
 	if err != nil {
@@ -495,6 +523,12 @@ func (rh *rarProcessor) analyzeRarWithStreaming(ctx context.Context, cp nntppool
 	// Create Usenet filesystem for RAR access - this enables rarlist to access
 	// RAR part files directly from Usenet without downloading
 	ufs := NewUsenetFileSystem(ctx, cp, sortFiles, rh.maxWorkers, rh.maxCacheSizeMB)
+
+	if rar3, err := isRar3Archive(ufs, mainRarFile); err != nil {
+		return nil, err
+	} else if rar3 {
+		return rh.analyzeRarWithDecoder(ctx, ufs, sortFiles, mainRarFile, archivePassword(sortFiles), nil)
+	}
 
 	analysisStart := time.Now()
 	aggregatedFiles, err := rarlist.ListFilesFS(ufs, mainRarFile)

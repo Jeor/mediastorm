@@ -139,13 +139,15 @@ type thumbnailRateLimitCooldown struct {
 }
 
 func NewThumbnailManager(baseDir, ffmpegPath string) *ThumbnailManager {
-	return &ThumbnailManager{
+	manager := &ThumbnailManager{
 		baseDir:      baseDir,
 		ffmpegPath:   ffmpegPath,
 		sourceBridge: newThumbnailSourceBridge(),
 		inFlight:     make(map[string]struct{}),
 		prewarmed:    make(map[string]time.Time),
 	}
+	manager.pruneSharedSourceCache(time.Now())
+	return manager
 }
 
 func thumbnailKey(cleanPath string) string {
@@ -543,7 +545,7 @@ func (m *ThumbnailManager) markUnsupported(cleanPath string, durationSec float64
 	return key, nil
 }
 
-func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durationSec float64, intervalSec int, workerCount int, toneMapMode thumbnailToneMapMode, dvProfile string, chapterTimes []float64) (string, bool, error) {
+func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durationSec float64, intervalSec int, workerCount int, toneMapMode thumbnailToneMapMode, dvProfile string, chapterTimes []float64, providers ...func() bool) (string, bool, error) {
 	if m == nil {
 		return "", false, fmt.Errorf("thumbnail manager unavailable")
 	}
@@ -557,7 +559,7 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 				manifestMode = thumbnailToneMapNone
 			}
 		}
-		compatible := manifestMode == toneMapMode && strings.EqualFold(strings.TrimSpace(manifest.DVProfile), strings.TrimSpace(dvProfile)) && manifest.FilterVer == thumbnailFilterVersion
+		compatible := manifest.Phase == "seekr" || manifestMode == toneMapMode && strings.EqualFold(strings.TrimSpace(manifest.DVProfile), strings.TrimSpace(dvProfile)) && manifest.FilterVer == thumbnailFilterVersion
 		if compatible && manifest.Status == "ready" && m.manifestFilesComplete(manifest) {
 			return key, false, nil
 		}
@@ -579,6 +581,8 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 	}
 	m.inFlight[key] = struct{}{}
 	m.mu.Unlock()
+	m.removeSharedSourceCache(key)
+	m.pruneSharedSourceCache(time.Now())
 
 	go func() {
 		defer func() {
@@ -586,6 +590,11 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 			delete(m.inFlight, key)
 			m.mu.Unlock()
 		}()
+		for _, provider := range providers {
+			if provider() {
+				return
+			}
+		}
 		m.generate(key, cleanPath, sourceURL, authHeader, durationSec, intervalSec, workerCount, toneMapMode, dvProfile, chapterTimes)
 	}()
 
@@ -593,6 +602,7 @@ func (m *ThumbnailManager) start(cleanPath, sourceURL, authHeader string, durati
 }
 
 func (m *ThumbnailManager) generate(key, cleanPath, sourceURL, authHeader string, durationSec float64, requestedInterval int, workerCount int, toneMapMode thumbnailToneMapMode, dvProfile string, chapterTimes []float64) {
+	defer m.removeSharedSourceCache(key)
 	interval, targets := thumbnailGenerationTargets(durationSec, requestedInterval, chapterTimes)
 	workerCount = thumbnailWorkerCountFromSetting(workerCount)
 	manifest := &thumbnailManifest{
@@ -870,6 +880,13 @@ func (h *VideoHandler) StartThumbnails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	durationSec, _ := strconv.ParseFloat(strings.TrimSpace(r.URL.Query().Get("duration")), 64)
+	if parseBoolQuery(r.URL.Query().Get("seekrOnly")) {
+		key, started := h.thumbnailManager.startSeekrOnly(cleanPath, durationSec, r.URL.Query(), thumbnailSettings)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"key": key, "status": h.thumbnailStatusForKey(key), "started": started})
+		return
+	}
 	intervalSec, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("interval")))
 	chapterTimes := parseThumbnailChapterTimes(r.URL.Query()["chapter"])
 	if len(chapterTimes) == 0 {
@@ -910,7 +927,10 @@ func (h *VideoHandler) StartThumbnails(w http.ResponseWriter, r *http.Request) {
 	toneMap := parseThumbnailToneMapHint(r, dvProfile) || thumbnailNeedsToneMap(h.getCachedMetadata(cleanPath))
 	toneMapMode := h.thumbnailManager.thumbnailToneMapMode(toneMap, dvProfile)
 	authHeader := h.externalUsenetWebDAVAuthHeader(sourceURL)
-	key, started, err := h.thumbnailManager.start(cleanPath, sourceURL, authHeader, durationSec, intervalSec, thumbnailSettings.Workers, toneMapMode, dvProfile, chapterTimes)
+	seekrUnavailable := h.thumbnailManager.seekrRecentlyUnavailable(cleanPath)
+	key, started, err := h.thumbnailManager.start(cleanPath, sourceURL, authHeader, durationSec, intervalSec, thumbnailSettings.Workers, toneMapMode, dvProfile, chapterTimes, func() bool {
+		return thumbnailSettings.SeekrEnabled && !seekrUnavailable && h.thumbnailManager.loadSeekr(cleanPath, durationSec, r.URL.Query(), thumbnailSettings.SeekrAPIKey) == nil
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return

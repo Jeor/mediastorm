@@ -2,9 +2,11 @@ package prewarm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -612,6 +614,63 @@ func TestRunOnce_HandlesWorkerFailure(t *testing.T) {
 	}
 }
 
+func TestRunOnce_TimesOutStuckWorkerAndContinues(t *testing.T) {
+	store := playback.NewPrequeueStore(30 * time.Minute)
+	users := []models.User{{ID: "user1", Name: "Alice"}}
+	continueWatching := map[string][]models.SeriesWatchState{
+		"user1": {
+			{
+				SeriesID:    "title1",
+				SeriesTitle: "Stuck Show",
+				UpdatedAt:   time.Now().UTC(),
+				NextEpisode: &models.EpisodeReference{SeasonNumber: 1, EpisodeNumber: 1},
+			},
+		},
+	}
+
+	workerStarted := make(chan struct{})
+	releaseWorker := make(chan struct{})
+	svc := NewService(nil, "")
+	svc.SetHistoryService(&mockHistoryProvider{continueWatching: continueWatching})
+	svc.SetUsersService(&mockUsersProvider{users: users})
+	svc.SetPrequeueStore(store)
+	svc.SetWorkerFunc(func(context.Context, string, string, string, string, int, string, *models.EpisodeReference) (string, error) {
+		return "", errors.New("unscoped worker should not be called")
+	})
+	svc.workerTimeout = 25 * time.Millisecond
+	svc.SetScopedWorkerFunc(func(ctx context.Context, titleID, titleName, imdbID, mediaType string, year int, userID, clientID, settingsScopeKey string, targetEpisode *models.EpisodeReference) (string, error) {
+		entry, _ := store.CreateScoped(titleID, titleName, userID, mediaType, year, targetEpisode, "prewarm", settingsScopeKey)
+		close(workerStarted)
+		<-releaseWorker
+		return entry.ID, nil
+	})
+
+	startedAt := time.Now()
+	result, err := svc.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("RunOnce failed: %v", err)
+	}
+	if elapsed := time.Since(startedAt); elapsed > time.Second {
+		t.Fatalf("RunOnce remained blocked for %s", elapsed)
+	}
+	select {
+	case <-workerStarted:
+	default:
+		t.Fatal("worker was not started")
+	}
+	if result.Failed != 1 || result.Warmed != 0 {
+		t.Fatalf("result = %+v, want failed=1 warmed=0", result)
+	}
+	if _, ok := store.GetByTitleUserScope("title1", "user1", playback.DefaultPrequeueSettingsScopeKey); ok {
+		t.Fatal("timed-out prequeue entry was not removed")
+	}
+	entry := svc.entries[entryKey("title1", "user1")]
+	if entry == nil || !strings.Contains(entry.Error, "timed out") {
+		t.Fatalf("warm entry error = %#v, want timeout failure", entry)
+	}
+	close(releaseWorker)
+}
+
 func TestRunOnce_RejectsResolvedPrequeueWithoutReusablePreparation(t *testing.T) {
 	store := playback.NewPrequeueStore(30 * time.Minute)
 
@@ -805,6 +864,13 @@ func TestPrewarmFailureRetryDelay_NoResultsUsesReleaseWindow(t *testing.T) {
 			year: now.Year(),
 			want: prewarmNoResultsCurrentYearRetryDelay,
 		},
+		{
+			name:          "cancelled worker retries promptly",
+			err:           fmt.Errorf("prequeue failed: cancelled"),
+			targetEpisode: &models.EpisodeReference{SeasonNumber: 1, EpisodeNumber: 5},
+			year:          now.Year(),
+			want:          prewarmTransientFailureRetryDelay,
+		},
 	}
 
 	for _, tt := range tests {
@@ -814,6 +880,22 @@ func TestPrewarmFailureRetryDelay_NoResultsUsesReleaseWindow(t *testing.T) {
 				t.Fatalf("prewarmFailureRetryDelayAt() = %s, want %s", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTransientPrewarmFailureReadyOverridesLegacyLongBackoff(t *testing.T) {
+	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	entry := &WarmEntry{
+		Error:       "prequeue failed: cancelled",
+		LastResolve: now.Add(-2 * time.Minute),
+		ExpiresAt:   now.Add(24 * time.Hour),
+	}
+	if !transientPrewarmFailureReady(entry, now) {
+		t.Fatal("legacy cancellation should retry after the transient delay despite its persisted long expiry")
+	}
+	entry.LastResolve = now.Add(-30 * time.Second)
+	if transientPrewarmFailureReady(entry, now) {
+		t.Fatal("recent cancellation should retain the short retry delay")
 	}
 }
 

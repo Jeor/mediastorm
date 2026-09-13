@@ -317,6 +317,14 @@ var SettingsSchema = map[string]interface{}{
 				"label":       "Max Alternate Title Searches",
 				"description": "Maximum alternate/international titles to search per item (0 = unlimited). Titles matching your metadata language are prioritized.",
 			},
+			"maxDailyUsenetQueries": map[string]interface{}{
+				"type":        "number",
+				"label":       "Max Daily-show Usenet Queries",
+				"description": "Maximum tiered query attempts per Usenet indexer for a daily episode (default: 5). Successful formats are tried first on later episodes.",
+				"min":         1,
+				"max":         10,
+				"step":        1,
+			},
 			"resolutionSettleWindowMs": map[string]interface{}{
 				"type":        "number",
 				"label":       "Better-ranked Candidate Grace (ms)",
@@ -395,7 +403,7 @@ var SettingsSchema = map[string]interface{}{
 		"is_array":    true,
 		"fields": map[string]interface{}{
 			"name":    map[string]interface{}{"type": "text", "label": "Name", "description": "Display name", "order": 0},
-			"type":    map[string]interface{}{"type": "select", "label": "Engine", "options": []map[string]string{{"value": "altmount", "label": "AltMount"}, {"value": "nzbdav", "label": "NZBDav"}, {"value": "nzbdavex", "label": "NZBDavEx"}, {"value": "decypharr", "label": "Decypharr"}}, "description": "External engine type", "required": true, "order": 1},
+			"type":    map[string]interface{}{"type": "select", "label": "Engine", "options": []map[string]string{{"value": "altmount", "label": "AltMount"}, {"value": "nzbdav", "label": "NZBDav (InfiniDysk)"}, {"value": "nzbdavex", "label": "NZBDavEx"}, {"value": "decypharr", "label": "Decypharr"}}, "description": "External engine type", "required": true, "order": 1},
 			"baseUrl": map[string]interface{}{"type": "text", "label": "API URL", "description": "URL used to reach the engine API. You can paste the root URL or the full SAB-compatible API URL.", "placeholder": "http://engine:8080/sabnzbd/api", "required": true, "order": 2},
 			"apiPath": map[string]interface{}{
 				"type":        "text",
@@ -625,13 +633,20 @@ var SettingsSchema = map[string]interface{}{
 		"order":    2,
 		"testable": true,
 		"fields": map[string]interface{}{
-			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}}, "description": "How to source the IPTV playlist", "order": 0},
+			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source the IPTV playlist", "order": 0},
 			"playlistUrl":                 map[string]interface{}{"type": "text", "label": "Playlist URL", "description": "M3U playlist URL", "showWhen": map[string]interface{}{"field": "mode", "value": "m3u"}, "order": 1},
 			"manifestUrl":                 map[string]interface{}{"type": "text", "label": "Manifest URL", "description": "Stremio addon manifest URL (e.g. https://example.com/manifest.json). Channels are built from the addon's catalogs.", "placeholder": "https://example.com/manifest.json", "showWhen": map[string]interface{}{"field": "mode", "value": "stremio"}, "order": 1},
 			"proxyUrl":                    map[string]interface{}{"type": "text", "label": "Proxy URL", "description": "Optional proxy for Live TV provider requests (for example socks5://127.0.0.1:18080).", "placeholder": "socks5://127.0.0.1:18080", "order": 2},
 			"xtreamHost":                  map[string]interface{}{"type": "text", "label": "Server URL", "description": "Xtream Codes server URL (e.g., http://example.com:8080)", "placeholder": "http://example.com:8080", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 2},
 			"xtreamUsername":              map[string]interface{}{"type": "text", "label": "Username", "description": "Xtream Codes username", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 3},
 			"xtreamPassword":              map[string]interface{}{"type": "password", "label": "Password", "description": "Xtream Codes password", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 4},
+			"stalkerPortalUrl":            map[string]interface{}{"type": "text", "label": "Portal URL", "description": "Stalker/Ministra portal URL.", "placeholder": "http://provider.example/stalker_portal/c/", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 2},
+			"stalkerMac":                  map[string]interface{}{"type": "password", "label": "MAC Address", "description": "Authorized MAG device MAC address.", "placeholder": "00:1A:79:00:00:00", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 3},
+			"stalkerModel":                map[string]interface{}{"type": "text", "label": "MAG Model", "description": "Device model sent to the portal (default MAG254).", "placeholder": "MAG254", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 4},
+			"stalkerSerialNumber":         map[string]interface{}{"type": "password", "label": "Serial Number", "description": "Optional provider-issued MAG serial number.", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 5},
+			"stalkerDeviceId":             map[string]interface{}{"type": "password", "label": "Device ID", "description": "Optional portal device ID.", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 6},
+			"stalkerDeviceId2":            map[string]interface{}{"type": "password", "label": "Device ID 2", "description": "Optional secondary portal device ID.", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 7},
+			"stalkerSignature":            map[string]interface{}{"type": "password", "label": "Signature", "description": "Optional portal device signature.", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 8},
 			"maxStreams":                  map[string]interface{}{"type": "number", "label": "Max Streams", "description": "Maximum concurrent Live TV streams per provider (0 = unlimited)", "order": 5},
 			"streamFormat":                map[string]interface{}{"type": "select", "label": "Stream Format", "description": "HLS re-segments the stream via FFmpeg (more compatible). Direct proxies the source stream (lower latency, less CPU).", "options": []map[string]string{{"value": "hls", "label": "HLS"}, {"value": "direct", "label": "Direct (MPEG-TS)"}}, "order": 6},
 			"playlistCacheTtlHours":       map[string]interface{}{"type": "number", "label": "Cache TTL (hours)", "description": "Playlist cache duration", "order": 7},
@@ -659,7 +674,7 @@ var SettingsSchema = map[string]interface{}{
 		"fields": map[string]interface{}{
 			"id":      map[string]interface{}{"type": "text", "label": "ID", "description": "Stable source identifier. Leave blank to auto-generate.", "order": 0, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
 			"name":    map[string]interface{}{"type": "text", "label": "Name", "description": "Display name shown in the apps.", "order": 1, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
-			"mode":    map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}}, "description": "How to source this IPTV provider.", "order": 2, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
+			"mode":    map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source this IPTV provider.", "order": 2, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
 			"enabled": map[string]interface{}{"type": "boolean", "label": "Enabled", "description": "Include this source in Live TV.", "order": 3, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
 			"allowedProfiles": map[string]interface{}{
 				"type":             "multiselect",
@@ -677,6 +692,13 @@ var SettingsSchema = map[string]interface{}{
 			"xtreamHost":                  map[string]interface{}{"type": "text", "label": "Server URL", "description": "Xtream Codes server URL (e.g., http://example.com:8080)", "placeholder": "http://example.com:8080", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 8, "group": "connection", "groupLabel": "Connection", "groupDescription": "Server, proxy, and credentials for reaching this provider."},
 			"xtreamUsername":              map[string]interface{}{"type": "text", "label": "Username", "description": "Xtream Codes username", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 9, "group": "connection", "groupLabel": "Connection", "groupDescription": "Server, proxy, and credentials for reaching this provider."},
 			"xtreamPassword":              map[string]interface{}{"type": "password", "label": "Password", "description": "Xtream Codes password", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 10, "group": "connection", "groupLabel": "Connection", "groupDescription": "Server, proxy, and credentials for reaching this provider."},
+			"stalkerPortalUrl":            map[string]interface{}{"type": "text", "label": "Portal URL", "description": "Stalker/Ministra portal URL.", "placeholder": "http://provider.example/stalker_portal/c/", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 8, "group": "connection"},
+			"stalkerMac":                  map[string]interface{}{"type": "password", "label": "MAC Address", "description": "Authorized MAG device MAC address.", "placeholder": "00:1A:79:00:00:00", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 9, "group": "connection"},
+			"stalkerModel":                map[string]interface{}{"type": "text", "label": "MAG Model", "placeholder": "MAG254", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 10, "group": "connection"},
+			"stalkerSerialNumber":         map[string]interface{}{"type": "password", "label": "Serial Number", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 11, "group": "connection"},
+			"stalkerDeviceId":             map[string]interface{}{"type": "password", "label": "Device ID", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 12, "group": "connection"},
+			"stalkerDeviceId2":            map[string]interface{}{"type": "password", "label": "Device ID 2", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 13, "group": "connection"},
+			"stalkerSignature":            map[string]interface{}{"type": "password", "label": "Signature", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 14, "group": "connection"},
 			"maxStreams":                  map[string]interface{}{"type": "number", "label": "Max Streams", "description": "Maximum concurrent Live TV streams for this source (0 = unlimited)", "order": 11, "group": "playback", "groupLabel": "Playback", "groupDescription": "Stream limits and FFmpeg tuning for this source."},
 			"streamFormat":                map[string]interface{}{"type": "select", "label": "Stream Format", "description": "HLS re-segments the stream via FFmpeg (more compatible). Direct proxies the source stream (lower latency, less CPU).", "options": []map[string]string{{"value": "hls", "label": "HLS"}, {"value": "direct", "label": "Direct (MPEG-TS)"}}, "order": 12, "group": "playback", "groupLabel": "Playback", "groupDescription": "Stream limits and FFmpeg tuning for this source."},
 			"playlistCacheTtlHours":       map[string]interface{}{"type": "number", "label": "Cache TTL (hours)", "description": "Playlist cache duration", "order": 13, "group": "playback", "groupLabel": "Playback", "groupDescription": "Stream limits and FFmpeg tuning for this source."},
@@ -785,6 +807,8 @@ var SettingsSchema = map[string]interface{}{
 			"maxResultsPerResolution":     map[string]interface{}{"type": "number", "label": "Max Results Per Resolution", "description": "Maximum number of results per resolution tier (0 = no limit)", "order": 107},
 			"thumbnails.enabled":          map[string]interface{}{"type": "boolean", "label": "Seek Preview Thumbnails", "description": "Generate seek-preview thumbnails during playback. Off by default to avoid extra provider and CPU load.", "order": 108, "group": "seekPreviewThumbnails", "groupLabel": "Seek Preview Thumbnails", "groupDescription": "Server-side thumbnail generation used by the playback scrubber.", "globalOnly": true},
 			"thumbnails.workers":          map[string]interface{}{"type": "number", "label": "Thumbnail Workers", "description": "Concurrent ffmpeg thumbnail workers per generation pass. Default 1.", "step": 1, "min": 1, "max": 8, "order": 109, "group": "seekPreviewThumbnails", "groupLabel": "Seek Preview Thumbnails", "groupDescription": "Server-side thumbnail generation used by the playback scrubber.", "globalOnly": true},
+			"thumbnails.seekrEnabled":     map[string]interface{}{"type": "boolean", "label": "Use Seekr First", "description": "Try Seekr before generating thumbnails. Requires seek preview thumbnails enabled; unavailable titles fall back to generation.", "order": 110, "group": "seekPreviewThumbnails", "globalOnly": true},
+			"thumbnails.seekrApiKey":      map[string]interface{}{"type": "password", "label": "Seekr API Key", "description": "Server-side API key for api.seekr.tv.", "order": 111, "group": "seekPreviewThumbnails", "globalOnly": true},
 			"youtubeProxyUrl":             map[string]interface{}{"type": "password", "label": "Proxy URL", "description": "Optional HTTP proxy for YouTube extraction and HLS playback. For Gluetun, use http://gluetun:8888.", "placeholder": "http://gluetun:8888", "order": 110, "group": "youtubeYTDLP", "groupLabel": "YouTube / yt-dlp", "groupDescription": "Server-side YouTube extraction settings used for trailers, YouTube video search, and HLS playback.", "globalOnly": true},
 			"ytdlpCookies":                map[string]interface{}{"type": "file_upload", "label": "Cookies", "description": "Upload a Netscape-format cookies.txt file to help yt-dlp bypass YouTube restrictions on VPS/cloud servers. Export cookies from a browser where you are logged into YouTube using a browser extension like 'Get cookies.txt LOCALLY'.", "order": 111, "endpoint": "/admin/api/ytdlp-cookies", "accept": ".txt", "globalOnly": true, "group": "youtubeYTDLP", "groupLabel": "YouTube / yt-dlp", "groupDescription": "Server-side YouTube extraction settings used for trailers, YouTube video search, and HLS playback."},
 		},
@@ -1157,8 +1181,8 @@ var SettingsSchema = map[string]interface{}{
 		"order":    0,
 		"testable": true,
 		"fields": map[string]interface{}{
-			"tvdbApiKey": map[string]interface{}{"type": "password", "label": "TVDB API Key", "description": "TheTVDB API key", "globalOnly": true},
-			"tmdbApiKey": map[string]interface{}{"type": "password", "label": "TMDB API Key", "description": "TheMovieDB API key", "globalOnly": true},
+			"tvdbApiKey": map[string]interface{}{"type": "password", "label": "TVDB API Key (Optional)", "description": "Adds alternate episode orders, precise broadcast times, and extra aliases, artwork, and trailers", "globalOnly": true},
+			"tmdbApiKey": map[string]interface{}{"type": "password", "label": "TMDB API Key", "description": "Required baseline movie and show metadata provider", "globalOnly": true},
 			"aiProvider": map[string]interface{}{
 				"type":        "select",
 				"label":       "AI Provider",
@@ -1331,7 +1355,7 @@ var SettingsSchema = map[string]interface{}{
 				"label":       "Source Type",
 				"description": "How to source the IPTV playlist for this profile.",
 				"order":       0,
-				"options":     []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}},
+				"options":     []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}},
 			},
 			"playlistUrl": map[string]interface{}{
 				"type":        "text",
@@ -1377,6 +1401,13 @@ var SettingsSchema = map[string]interface{}{
 				"order":       4,
 				"showWhen":    map[string]interface{}{"field": "mode", "value": "xtream"},
 			},
+			"stalkerPortalUrl":    map[string]interface{}{"type": "text", "label": "Portal URL", "placeholder": "http://provider.example/stalker_portal/c/", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 2},
+			"stalkerMac":          map[string]interface{}{"type": "password", "label": "MAC Address", "placeholder": "00:1A:79:00:00:00", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 3},
+			"stalkerModel":        map[string]interface{}{"type": "text", "label": "MAG Model", "placeholder": "MAG254", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 4},
+			"stalkerSerialNumber": map[string]interface{}{"type": "password", "label": "Serial Number", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 5},
+			"stalkerDeviceId":     map[string]interface{}{"type": "password", "label": "Device ID", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 6},
+			"stalkerDeviceId2":    map[string]interface{}{"type": "password", "label": "Device ID 2", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 7},
+			"stalkerSignature":    map[string]interface{}{"type": "password", "label": "Signature", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 8},
 			"maxStreams": map[string]interface{}{
 				"type":        "number",
 				"label":       "Max Streams",
@@ -1476,13 +1507,20 @@ var SettingsSchema = map[string]interface{}{
 		"fields": map[string]interface{}{
 			"id":                          map[string]interface{}{"type": "text", "label": "ID", "description": "Stable source identifier. Leave blank to auto-generate.", "order": 0},
 			"name":                        map[string]interface{}{"type": "text", "label": "Name", "description": "Display name shown in the apps.", "order": 1},
-			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}}, "description": "How to source this IPTV provider.", "order": 2},
+			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source this IPTV provider.", "order": 2},
 			"playlistUrl":                 map[string]interface{}{"type": "text", "label": "Playlist URL", "description": "M3U playlist URL.", "showWhen": map[string]interface{}{"field": "mode", "value": "m3u"}, "order": 3},
 			"manifestUrl":                 map[string]interface{}{"type": "text", "label": "Manifest URL", "description": "Stremio addon manifest URL (e.g. https://example.com/manifest.json). Channels are built from the addon's catalogs.", "placeholder": "https://example.com/manifest.json", "showWhen": map[string]interface{}{"field": "mode", "value": "stremio"}, "order": 3},
 			"proxyUrl":                    map[string]interface{}{"type": "text", "label": "Proxy URL", "description": "Optional proxy for this Live TV source (for example socks5://127.0.0.1:18080).", "placeholder": "socks5://127.0.0.1:18080", "order": 4},
 			"xtreamHost":                  map[string]interface{}{"type": "text", "label": "Server URL", "description": "Xtream Codes server URL (e.g., http://example.com:8080)", "placeholder": "http://example.com:8080", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 4},
 			"xtreamUsername":              map[string]interface{}{"type": "text", "label": "Username", "description": "Xtream Codes username", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 5},
 			"xtreamPassword":              map[string]interface{}{"type": "password", "label": "Password", "description": "Xtream Codes password", "showWhen": map[string]interface{}{"field": "mode", "value": "xtream"}, "order": 6},
+			"stalkerPortalUrl":            map[string]interface{}{"type": "text", "label": "Portal URL", "placeholder": "http://provider.example/stalker_portal/c/", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 4},
+			"stalkerMac":                  map[string]interface{}{"type": "password", "label": "MAC Address", "placeholder": "00:1A:79:00:00:00", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 5},
+			"stalkerModel":                map[string]interface{}{"type": "text", "label": "MAG Model", "placeholder": "MAG254", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 6},
+			"stalkerSerialNumber":         map[string]interface{}{"type": "password", "label": "Serial Number", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 7},
+			"stalkerDeviceId":             map[string]interface{}{"type": "password", "label": "Device ID", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 8},
+			"stalkerDeviceId2":            map[string]interface{}{"type": "password", "label": "Device ID 2", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 9},
+			"stalkerSignature":            map[string]interface{}{"type": "password", "label": "Signature", "showWhen": map[string]interface{}{"field": "mode", "value": "stalker"}, "order": 10},
 			"maxStreams":                  map[string]interface{}{"type": "number", "label": "Max Streams", "description": "Maximum concurrent Live TV streams for this source (0 = unlimited)", "order": 7},
 			"streamFormat":                map[string]interface{}{"type": "select", "label": "Stream Format", "description": "HLS re-segments the stream via FFmpeg (more compatible). Direct proxies the source stream (lower latency, less CPU).", "options": []map[string]string{{"value": "hls", "label": "HLS"}, {"value": "direct", "label": "Direct (MPEG-TS)"}}, "order": 8},
 			"playlistCacheTtlHours":       map[string]interface{}{"type": "number", "label": "Cache TTL (hours)", "description": "Playlist cache duration", "order": 9},
@@ -1516,6 +1554,7 @@ type AdminUIHandler struct {
 	loginTemplate         *template.Template
 	registerTemplate      *template.Template
 	accountsTemplate      *template.Template
+	pairedDevicesTemplate *template.Template
 	libraryTemplate       *template.Template
 	kidsSettingsTemplate  *template.Template
 	backupTemplate        *template.Template
@@ -1867,6 +1906,7 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		loginTemplate:         loginTmpl,
 		registerTemplate:      registerTmpl,
 		accountsTemplate:      createPageTemplate("accounts.html"),
+		pairedDevicesTemplate: createPageTemplate("paired_devices.html"),
 		libraryTemplate:       createPageTemplate("library.html"),
 		kidsSettingsTemplate:  createPageTemplate("kids_settings.html"),
 		backupTemplate:        createPageTemplate("backup.html"),
@@ -2124,7 +2164,7 @@ func (h *AdminUIHandler) buildOnboardingStatus() (onboardingStatus, error) {
 		status.HasStreamingProvider = status.EnabledDebridProviders > 0 && status.EnabledUsenetProviders > 0
 		status.HasSearchSource = status.EnabledTorrentScrapers > 0 && status.EnabledUsenetIndexers > 0
 	}
-	status.HasMetadataProvider = strings.TrimSpace(settings.Metadata.TMDBAPIKey) != "" && strings.TrimSpace(settings.Metadata.TVDBAPIKey) != ""
+	status.HasMetadataProvider = strings.TrimSpace(settings.Metadata.TMDBAPIKey) != ""
 	status.HasUsableProfile = status.ProfileCount > 0
 	status.SetupComplete = !status.DefaultPassword && status.HasStreamingProvider && status.HasSearchSource && status.HasMetadataProvider && status.HasUsableProfile
 	status.NeedsOnboarding = !status.Completed && !status.Skipped && !status.SetupComplete
@@ -3821,28 +3861,32 @@ func (h *AdminUIHandler) GetUserSettings(w http.ResponseWriter, r *http.Request)
 			MaxStreams:         &maxStreams,
 		},
 		Display: models.DisplaySettings{
-			BadgeVisibility:                        globalSettings.Display.BadgeVisibility,
-			NavigationTabVisibility:                globalSettings.Display.NavigationTabVisibility,
-			WatchStateIconStyle:                    globalSettings.Display.WatchStateIconStyle,
-			IncludeUnreleasedMoviesInLists:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInLists),
-			IncludeUnreleasedShowsInLists:          models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInLists),
-			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
-			IncludeUnreleasedShowsInSearch:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
-			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
-			ShowStreamSourceInfo:                   models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
-			DisableMobileTopCarousel:               models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
-			HideContinueWatchingHeroMetadata:       models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
-			MoveDetailsRatingsToMetadata:           models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),
-			HideDetailsPoster:                      models.BoolPtr(globalSettings.Display.HideDetailsPoster),
-			HideTVDrawerRail:                       models.BoolPtr(globalSettings.Display.HideTVDrawerRail),
-			SimpleMode:                             models.BoolPtr(globalSettings.Display.SimpleMode),
-			SimpleModeHomeShelves:                  models.StringSlicePtr(globalSettings.Display.SimpleModeHomeShelves),
-			DisableTVHomeCardDimming:               models.BoolPtr(globalSettings.Display.DisableTVHomeCardDimming),
-			EnableAnimations:                       models.BoolPtr(globalSettings.Display.EnableAnimations),
-			EnableHeroArtPanning:                   models.BoolPtr(globalSettings.Display.EnableHeroArtPanning),
-			EnableHeroArtRotation:                  models.BoolPtr(globalSettings.Display.EnableHeroArtRotation),
-			ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(globalSettings.Display.ShowSeriesBackdropForMissingEpisodeArt),
-			AppLanguage:                            globalSettings.Display.AppLanguage,
+			BadgeVisibility:                              globalSettings.Display.BadgeVisibility,
+			NavigationTabVisibility:                      globalSettings.Display.NavigationTabVisibility,
+			WatchStateIconStyle:                          globalSettings.Display.WatchStateIconStyle,
+			IncludeUnreleasedMoviesInLists:               models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInLists),
+			IncludeUnreleasedShowsInLists:                models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInLists),
+			IncludeUnreleasedMoviesInSearch:              models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
+			IncludeUnreleasedShowsInSearch:               models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
+			BypassFilteringForAIOStreamsOnly:             models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                         models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
+			DisableMobileTopCarousel:                     models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
+			HideContinueWatchingHeroMetadata:             models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
+			MoveDetailsRatingsToMetadata:                 models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),
+			HideDetailsPoster:                            models.BoolPtr(globalSettings.Display.HideDetailsPoster),
+			HideTVDrawerRail:                             models.BoolPtr(globalSettings.Display.HideTVDrawerRail),
+			SimpleMode:                                   models.BoolPtr(globalSettings.Display.SimpleMode),
+			SimpleModeHomeShelves:                        models.StringSlicePtr(globalSettings.Display.SimpleModeHomeShelves),
+			DisableTVHomeCardDimming:                     models.BoolPtr(globalSettings.Display.DisableTVHomeCardDimming),
+			EnableAnimations:                             models.BoolPtr(globalSettings.Display.EnableAnimations),
+			EnableHeroArtPanning:                         models.BoolPtr(globalSettings.Display.EnableHeroArtPanning),
+			EnableHeroArtRotation:                        models.BoolPtr(globalSettings.Display.EnableHeroArtRotation),
+			ShowSeriesBackdropForMissingEpisodeArt:       models.BoolPtr(globalSettings.Display.ShowSeriesBackdropForMissingEpisodeArt),
+			BlurUnwatchedEpisodeThumbnails:               models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeThumbnails),
+			BlurUnwatchedEpisodeThumbnailsIncludeCurrent: models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeThumbnailsIncludeCurrent),
+			BlurUnwatchedEpisodeOverviews:                models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeOverviews),
+			BlurUnwatchedEpisodeOverviewsIncludeCurrent:  models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeOverviewsIncludeCurrent),
+			AppLanguage:                                  globalSettings.Display.AppLanguage,
 			Appearance: models.AppearanceSettings{
 				FontScale:            globalSettings.Display.Appearance.FontScale,
 				AccentColor:          globalSettings.Display.Appearance.AccentColor,
@@ -9745,13 +9789,20 @@ func (h *AdminUIHandler) DisconnectSimklAccount(w http.ResponseWriter, r *http.R
 
 // TestLiveTVRequest represents a request to test a Live TV connection
 type TestLiveTVRequest struct {
-	Mode           string `json:"mode"`
-	PlaylistURL    string `json:"playlistUrl"`
-	ManifestURL    string `json:"manifestUrl"`
-	ProxyURL       string `json:"proxyUrl"`
-	XtreamHost     string `json:"xtreamHost"`
-	XtreamUsername string `json:"xtreamUsername"`
-	XtreamPassword string `json:"xtreamPassword"`
+	Mode                string `json:"mode"`
+	PlaylistURL         string `json:"playlistUrl"`
+	ManifestURL         string `json:"manifestUrl"`
+	ProxyURL            string `json:"proxyUrl"`
+	XtreamHost          string `json:"xtreamHost"`
+	XtreamUsername      string `json:"xtreamUsername"`
+	XtreamPassword      string `json:"xtreamPassword"`
+	StalkerPortalURL    string `json:"stalkerPortalUrl"`
+	StalkerMAC          string `json:"stalkerMac"`
+	StalkerSerialNumber string `json:"stalkerSerialNumber"`
+	StalkerDeviceID     string `json:"stalkerDeviceId"`
+	StalkerDeviceID2    string `json:"stalkerDeviceId2"`
+	StalkerSignature    string `json:"stalkerSignature"`
+	StalkerModel        string `json:"stalkerModel"`
 }
 
 // TestLiveTV tests a Live TV source connection (M3U or Xtream)
@@ -9912,6 +9963,21 @@ func (h *AdminUIHandler) TestLiveTV(w http.ResponseWriter, r *http.Request) {
 			"success": true,
 			"message": fmt.Sprintf("Connected to %s (%d catalogs)", name, len(manifest.Catalogs)),
 		})
+
+	case "stalker":
+		probeCtx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
+		genreCount, err := probeStalkerPortal(probeCtx, stalkerSourceConfig{
+			PortalURL: req.StalkerPortalURL, MAC: req.StalkerMAC,
+			SerialNumber: req.StalkerSerialNumber, DeviceID: req.StalkerDeviceID,
+			DeviceID2: req.StalkerDeviceID2, Signature: req.StalkerSignature,
+			Model: req.StalkerModel, ProxyURL: req.ProxyURL,
+		})
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": fmt.Sprintf("Connection failed: %v", err)})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": fmt.Sprintf("Connected and authenticated (%d genres)", genreCount)})
 
 	default:
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -10707,7 +10773,7 @@ func (h *AdminUIHandler) ShareLinksPage(w http.ResponseWriter, r *http.Request) 
 	usersList := h.getScopedUsers(isAdmin, accountID)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/tools/share-links",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -10734,7 +10800,7 @@ func (h *AdminUIHandler) ResolvedNZBsPage(w http.ResponseWriter, r *http.Request
 	usersList := h.getScopedUsers(isAdmin, accountID)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/tools/resolved-nzbs",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -10761,7 +10827,7 @@ func (h *AdminUIHandler) BadStreamsPage(w http.ResponseWriter, r *http.Request) 
 	usersList := h.getScopedUsers(isAdmin, accountID)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/tools/bad-streams",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -10826,7 +10892,7 @@ func (h *AdminUIHandler) PrequeuePage(w http.ResponseWriter, r *http.Request) {
 	isAdmin, accountID, basePath, username := h.getPageRoleInfo(r)
 
 	data := AdminPageData{
-		CurrentPath:    basePath + "/tools",
+		CurrentPath:    basePath + "/prequeue",
 		BasePath:       basePath,
 		ServerBasePath: h.serverBasePath,
 		IsAdmin:        isAdmin,
@@ -12173,29 +12239,37 @@ func (h *AdminUIHandler) PlexImportWatchlist(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 
 	for _, item := range req.Items {
-		// Determine the best ID to use - prefer TMDB, then IMDB, then Plex ratingKey
-		itemID := item.RatingKey
-		if tmdbID, ok := item.ExternalIDs["tmdb"]; ok && tmdbID != "" {
-			itemID = tmdbID
-		} else if imdbID, ok := item.ExternalIDs["imdb"]; ok && imdbID != "" {
-			itemID = imdbID
-		}
-
-		// Fetch overview from metadata service if available
-		var overview string
+		metadata := itemMetadata{}
 		if h.metadataService != nil {
-			overview = h.fetchOverviewForItem(ctx, item.MediaType, item.Title, item.Year, item.ExternalIDs)
+			metadata = h.fetchMetadataForItem(ctx, item.MediaType, item.Title, item.Year, item.ExternalIDs)
+		}
+		externalIDs := mergeImportedWatchlistIDs(item.ExternalIDs, metadata.ExternalIDs)
+		if externalIDs == nil {
+			externalIDs = make(map[string]string)
+		}
+		externalIDs["plex"] = item.RatingKey
+		name := item.Title
+		if metadata.Name != "" {
+			name = metadata.Name
 		}
 
 		input := models.WatchlistUpsert{
-			ID:          itemID,
-			MediaType:   item.MediaType,
-			Name:        item.Title,
-			Overview:    overview,
-			Year:        item.Year,
-			PosterURL:   item.PosterURL,
-			BackdropURL: item.BackdropURL,
-			ExternalIDs: item.ExternalIDs,
+			ID:              item.RatingKey,
+			MediaType:       item.MediaType,
+			Name:            name,
+			Overview:        metadata.Overview,
+			Year:            item.Year,
+			PosterURL:       item.PosterURL,
+			BackdropURL:     item.BackdropURL,
+			ExternalIDs:     externalIDs,
+			Status:          metadata.Status,
+			LifecycleStatus: metadata.LifecycleStatus,
+		}
+		if input.PosterURL == "" {
+			input.PosterURL = metadata.PosterURL
+		}
+		if input.BackdropURL == "" {
+			input.BackdropURL = metadata.BackdropURL
 		}
 
 		_, err := h.watchlistService.AddOrUpdate(req.ProfileID, input)
@@ -12222,9 +12296,13 @@ func (h *AdminUIHandler) PlexImportWatchlist(w http.ResponseWriter, r *http.Requ
 
 // itemMetadata holds metadata fetched for watchlist import
 type itemMetadata struct {
-	Overview    string
-	PosterURL   string
-	BackdropURL string
+	Name            string
+	Overview        string
+	PosterURL       string
+	BackdropURL     string
+	Status          string
+	LifecycleStatus string
+	ExternalIDs     map[string]string
 }
 
 // fetchMetadataForItem fetches overview and artwork for a watchlist item from metadata service
@@ -12262,7 +12340,11 @@ func (h *AdminUIHandler) fetchMetadataForItem(ctx context.Context, mediaType, na
 			TVDBID: tvdbID,
 		}
 		if title, err := h.metadataService.MovieDetails(ctx, query); err == nil && title != nil {
+			result.Name = title.Name
 			result.Overview = title.Overview
+			result.Status = title.Status
+			result.LifecycleStatus = title.LifecycleStatus
+			result.ExternalIDs = importedTitleExternalIDs(title)
 			if title.Poster != nil {
 				result.PosterURL = title.Poster.URL
 			}
@@ -12278,7 +12360,11 @@ func (h *AdminUIHandler) fetchMetadataForItem(ctx context.Context, mediaType, na
 			TVDBID: tvdbID,
 		}
 		if title, err := h.metadataService.SeriesInfo(ctx, query); err == nil && title != nil {
+			result.Name = title.Name
 			result.Overview = title.Overview
+			result.Status = title.Status
+			result.LifecycleStatus = title.LifecycleStatus
+			result.ExternalIDs = importedTitleExternalIDs(title)
 			if title.Poster != nil {
 				result.PosterURL = title.Poster.URL
 			}
@@ -12289,6 +12375,41 @@ func (h *AdminUIHandler) fetchMetadataForItem(ctx context.Context, mediaType, na
 	}
 
 	return result
+}
+
+func importedTitleExternalIDs(title *models.Title) map[string]string {
+	if title == nil {
+		return nil
+	}
+	ids := make(map[string]string, 3)
+	if title.TMDBID > 0 {
+		ids["tmdb"] = strconv.FormatInt(title.TMDBID, 10)
+	}
+	if title.TVDBID > 0 {
+		ids["tvdb"] = strconv.FormatInt(title.TVDBID, 10)
+	}
+	if strings.TrimSpace(title.IMDBID) != "" {
+		ids["imdb"] = strings.TrimSpace(title.IMDBID)
+	}
+	return ids
+}
+
+func mergeImportedWatchlistIDs(base, resolved map[string]string) map[string]string {
+	ids := make(map[string]string, len(base)+len(resolved))
+	for key, value := range base {
+		if value = strings.TrimSpace(value); value != "" {
+			ids[strings.ToLower(strings.TrimSpace(key))] = value
+		}
+	}
+	for key, value := range resolved {
+		if value = strings.TrimSpace(value); value != "" {
+			ids[strings.ToLower(strings.TrimSpace(key))] = value
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return ids
 }
 
 // fetchOverviewForItem fetches the overview/description for a watchlist item from metadata service
@@ -12823,37 +12944,40 @@ func (h *AdminUIHandler) TraktImportWatchlist(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 
 	for _, item := range req.Items {
-		// Determine the best ID to use - prefer TMDB, then IMDB, then Trakt
-		itemID := ""
-		if tmdbID, ok := item.ExternalIDs["tmdb"]; ok && tmdbID != "" {
-			itemID = tmdbID
-		} else if imdbID, ok := item.ExternalIDs["imdb"]; ok && imdbID != "" {
-			itemID = imdbID
-		} else if traktID, ok := item.ExternalIDs["trakt"]; ok && traktID != "" {
-			itemID = traktID
-		}
-
-		if itemID == "" {
-			errorCount++
-			errors = append(errors, fmt.Sprintf("%s: no valid ID found", item.Title))
-			continue
-		}
-
 		// Fetch metadata (overview and artwork) from metadata service if available
 		var metadata itemMetadata
 		if h.metadataService != nil {
 			metadata = h.fetchMetadataForItem(ctx, item.MediaType, item.Title, item.Year, item.ExternalIDs)
 		}
+		externalIDs := mergeImportedWatchlistIDs(item.ExternalIDs, metadata.ExternalIDs)
+		itemID := ""
+		for _, key := range []string{"tmdb", "imdb", "tvdb", "trakt"} {
+			if value := strings.TrimSpace(externalIDs[key]); value != "" {
+				itemID = value
+				break
+			}
+		}
+		if itemID == "" {
+			errorCount++
+			errors = append(errors, fmt.Sprintf("%s: no valid ID found", item.Title))
+			continue
+		}
+		name := item.Title
+		if metadata.Name != "" {
+			name = metadata.Name
+		}
 
 		input := models.WatchlistUpsert{
-			ID:          itemID,
-			MediaType:   item.MediaType,
-			Name:        item.Title,
-			Overview:    metadata.Overview,
-			Year:        item.Year,
-			PosterURL:   metadata.PosterURL,
-			BackdropURL: metadata.BackdropURL,
-			ExternalIDs: item.ExternalIDs,
+			ID:              itemID,
+			MediaType:       item.MediaType,
+			Name:            name,
+			Overview:        metadata.Overview,
+			Year:            item.Year,
+			PosterURL:       metadata.PosterURL,
+			BackdropURL:     metadata.BackdropURL,
+			ExternalIDs:     externalIDs,
+			Status:          metadata.Status,
+			LifecycleStatus: metadata.LifecycleStatus,
 		}
 
 		_, err := h.watchlistService.AddOrUpdate(req.ProfileID, input)

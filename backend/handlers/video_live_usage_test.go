@@ -181,6 +181,15 @@ func TestStartLiveHLSSessionDirectIncludesProfileParams(t *testing.T) {
 	if !body.IsDirect {
 		t.Fatal("expected direct live response")
 	}
+	if strings.Contains(body.StreamURL, "+") {
+		t.Fatalf("streamUrl contains form-encoded spaces that the player treats as literal plus signs: %q", body.StreamURL)
+	}
+	if !strings.Contains(body.StreamURL, "profileName=Living%20Room") {
+		t.Fatalf("streamUrl profileName is not percent-encoded: %q", body.StreamURL)
+	}
+	if !strings.Contains(body.StreamURL, "title=Evening%20News") {
+		t.Fatalf("streamUrl title is not percent-encoded: %q", body.StreamURL)
+	}
 
 	parsed, err := url.Parse(body.StreamURL)
 	if err != nil {
@@ -204,6 +213,21 @@ func TestStartLiveHLSSessionDirectIncludesProfileParams(t *testing.T) {
 	}
 	if got := values.Get("title"); got != "Evening News" {
 		t.Fatalf("title = %q, want Evening News", got)
+	}
+}
+
+func TestResolveLiveStreamTargetUsesPerSourceStreamFormat(t *testing.T) {
+	handler := NewVideoHandler(false, "", "")
+	handler.SetConfigManager(fakeLiveUsageConfigProvider{settings: config.Settings{Live: config.LiveSettings{
+		StreamFormat: "hls",
+		Sources: []config.LivePlaylistSource{
+			{ID: "portal", Name: "Portal", Mode: "stalker", StalkerPortalURL: "https://portal.example/c/", StalkerMAC: "00:1A:79:00:00:01", StreamFormat: "direct"},
+		},
+	}}})
+
+	target := handler.resolveLiveStreamTargetForSource("", "portal")
+	if target.StreamFormat != "direct" {
+		t.Fatalf("stream format = %q, want source-specific direct", target.StreamFormat)
 	}
 }
 

@@ -37,7 +37,18 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		return fmt.Errorf("set dialect: %w", err)
 	}
 
-	if err := goose.UpContext(ctx, db, "migrations"); err != nil {
+	// Early Sports Hub databases applied sports versions 56–58 before upstream
+	// introduced version 55. Apply that missing migration before the numbered
+	// compatibility repair; ordinary upstream databases keep strict ordering.
+	var legacySportsSchema bool
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('sports_teams') IS NOT NULL AND to_regclass('remote_access_pairings') IS NULL`).Scan(&legacySportsSchema); err != nil {
+		return fmt.Errorf("check legacy sports schema: %w", err)
+	}
+	var options []goose.OptionsFunc
+	if legacySportsSchema {
+		options = append(options, goose.WithAllowMissing())
+	}
+	if err := goose.UpContext(ctx, db, "migrations", options...); err != nil {
 		return fmt.Errorf("goose up: %w", err)
 	}
 

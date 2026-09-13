@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -3773,7 +3774,13 @@ func TestUpdatePlaybackProgress_NewEpisodeClearsHiddenMarker(t *testing.T) {
 			SeriesName:    "Record of Ragnarok",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,
-			ExternalIDs:   map[string]string{"imdb": "tt13676344", "tvdb": "393810", "tmdb": "114868"},
+			ExternalIDs: map[string]string{
+				"imdb":            "tt13676344",
+				"tvdb":            "393810",
+				"tmdb":            "114868",
+				"episodeTvdb":     "100001",
+				"absoluteEpisode": "1",
+			},
 		},
 	})
 	if err != nil {
@@ -3794,7 +3801,13 @@ func TestUpdatePlaybackProgress_NewEpisodeClearsHiddenMarker(t *testing.T) {
 		SeriesName:     "Record of Ragnarok",
 		SeasonNumber:   1,
 		EpisodeNumber:  2,
-		ExternalIDs:    map[string]string{"imdb": "tt13676344", "tvdb": "393810", "tmdb": "114868"},
+		ExternalIDs: map[string]string{
+			"imdb":            "tt13676344",
+			"tvdb":            "393810",
+			"tmdb":            "114868",
+			"episodeTvdb":     "100002",
+			"absoluteEpisode": "2",
+		},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
@@ -3809,6 +3822,107 @@ func TestUpdatePlaybackProgress_NewEpisodeClearsHiddenMarker(t *testing.T) {
 		if p.ItemID == seriesID && p.SeriesID == seriesID {
 			t.Fatal("expected hidden series marker to be removed when a genuinely new episode gets progress")
 		}
+	}
+}
+
+func TestUpdatePlaybackProgress_CompletedEpisodeThenNextEpisodeClearsHiddenMarker(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+
+	const (
+		userID   = "user-1"
+		seriesID = "tmdb:tv:91249"
+		duration = 498.048
+	)
+	episodeIDs := func(episode int) map[string]string {
+		return map[string]string{
+			"imdb":            "tt10659366",
+			"tvdb":            "367015",
+			"tmdb":            "91249",
+			"titleId":         seriesID,
+			"episodeTvdb":     map[int]string{1: "7362761", 2: "7429165"}[episode],
+			"absoluteEpisode": strconv.Itoa(episode),
+		}
+	}
+	updateEpisode := func(episode int, position float64, ended bool) {
+		t.Helper()
+		_, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+			MediaType:     "episode",
+			ItemID:        fmt.Sprintf("%s:s01e%02d", seriesID, episode),
+			Position:      position,
+			Duration:      duration,
+			PlaybackEnded: ended,
+			SeriesID:      seriesID,
+			SeriesName:    "Snoopy in Space",
+			SeasonNumber:  1,
+			EpisodeNumber: episode,
+			EpisodeName:   fmt.Sprintf("Mission %d", episode),
+			ExternalIDs:   episodeIDs(episode),
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlaybackProgress(S01E%02d) error = %v", episode, err)
+		}
+	}
+
+	updateEpisode(1, 28, false)
+	if err := svc.HideFromContinueWatching(userID, seriesID); err != nil {
+		t.Fatalf("HideFromContinueWatching() error = %v", err)
+	}
+	updateEpisode(1, 250, false)
+	updateEpisode(1, 497.8, true)
+	updateEpisode(2, 54.054, false)
+
+	progress, err := svc.ListPlaybackProgress(userID)
+	if err != nil {
+		t.Fatalf("ListPlaybackProgress() error = %v", err)
+	}
+	for _, p := range progress {
+		if p.HiddenFromContinueWatching && p.ItemID == seriesID && p.SeriesID == seriesID {
+			t.Fatal("expected stale Snoopy series marker to be removed after S01E02 progress")
+		}
+	}
+}
+
+func TestClearSupersededSeriesHiddenMarkersFromStoredProgress(t *testing.T) {
+	hiddenAt := time.Date(2026, 8, 28, 20, 38, 2, 0, time.UTC)
+	progressAt := time.Date(2026, 8, 28, 23, 55, 51, 0, time.UTC)
+	seriesID := "tmdb:tv:91249"
+	perUser := map[string]models.PlaybackProgress{
+		"episode:" + seriesID: {
+			ID:                         "episode:" + seriesID,
+			MediaType:                  "episode",
+			ItemID:                     seriesID,
+			SeriesID:                   seriesID,
+			ExternalIDs:                map[string]string{"imdb": "tt10659366", "tmdb": "91249", "tvdb": "367015"},
+			UpdatedAt:                  hiddenAt,
+			HiddenFromContinueWatching: true,
+		},
+		"episode:" + seriesID + ":s01e02": {
+			ID:             "episode:" + seriesID + ":s01e02",
+			MediaType:      "episode",
+			ItemID:         seriesID + ":s01e02",
+			SeriesID:       seriesID,
+			SeasonNumber:   1,
+			EpisodeNumber:  2,
+			Position:       54.054,
+			Duration:       498.048,
+			PercentWatched: 10.85,
+			ExternalIDs:    map[string]string{"episodeTvdb": "7429165", "imdb": "tt10659366", "tmdb": "91249", "tvdb": "367015"},
+			UpdatedAt:      progressAt,
+		},
+	}
+
+	if removed := clearSupersededSeriesHiddenMarkersFromStoredProgress(perUser); removed != 1 {
+		t.Fatalf("removed %d stale markers, want 1", removed)
+	}
+	if _, exists := perUser["episode:"+seriesID]; exists {
+		t.Fatal("stale series-level hidden marker still exists")
+	}
+	if _, exists := perUser["episode:"+seriesID+":s01e02"]; !exists {
+		t.Fatal("newer episode progress was removed")
 	}
 }
 
@@ -3913,7 +4027,7 @@ func TestContinueWatching_IgnoresVisibleSeriesMarkerRows(t *testing.T) {
 //
 // Progress that predates a watched event is stale and must be cleaned up when
 // an episode is marked watched, regardless of ID format mismatches. Progress
-// created after that event represents a rewatch and remains resumable.
+// created after that event represents a resumable rewatch only above 5%.
 // =============================================================================
 
 func TestEpisodeState_ImportClearsProgressSameIDs(t *testing.T) {
@@ -4190,64 +4304,79 @@ func TestEpisodeState_ContinueWatchingSkipsWatchedInProgress(t *testing.T) {
 }
 
 func TestEpisodeState_ContinueWatchingResumesNewerPartialRewatch(t *testing.T) {
-	dir := t.TempDir()
-	svc, err := NewService(dir)
-	if err != nil {
-		t.Fatalf("NewService() error = %v", err)
-	}
+	for _, tc := range []struct {
+		name    string
+		percent float64
+		episode int
+	}{
+		{"below threshold", 4.1, 8},
+		{"exact threshold", 5, 8},
+		{"above threshold", 5.01, 7},
+		{"established rewatch", 50, 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			svc, err := NewService(dir)
+			if err != nil {
+				t.Fatalf("NewService() error = %v", err)
+			}
 
-	seriesID := "tvdb:series:12345"
-	userID := "user-cw-rewatch"
-	watchedAt := time.Now().UTC().Add(-time.Hour)
-	progressAt := watchedAt.Add(30 * time.Minute)
+			seriesID := "tvdb:series:12345"
+			userID := "user-cw-rewatch"
+			watchedAt := time.Now().UTC().Add(-time.Hour)
+			progressAt := watchedAt.Add(30 * time.Minute)
 
-	svc.SetMetadataService(&mockMetadataService{
-		seriesDetails: &models.SeriesDetails{
-			Title: models.Title{ID: seriesID, Name: "Test Show", TVDBID: 12345},
-			Seasons: []models.SeriesSeason{{
-				Number: 1,
-				Episodes: []models.SeriesEpisode{
-					{ID: "ep-7", Name: "Ep 7", SeasonNumber: 1, EpisodeNumber: 7, AiredDate: "2025-02-12"},
-					{ID: "ep-8", Name: "Ep 8", SeasonNumber: 1, EpisodeNumber: 8, AiredDate: "2025-02-19"},
+			svc.SetMetadataService(&mockMetadataService{
+				seriesDetails: &models.SeriesDetails{
+					Title: models.Title{ID: seriesID, Name: "Test Show", TVDBID: 12345},
+					Seasons: []models.SeriesSeason{{
+						Number: 1,
+						Episodes: []models.SeriesEpisode{
+							{ID: "ep-7", Name: "Ep 7", SeasonNumber: 1, EpisodeNumber: 7, AiredDate: "2025-02-12"},
+							{ID: "ep-8", Name: "Ep 8", SeasonNumber: 1, EpisodeNumber: 8, AiredDate: "2025-02-19"},
+						},
+					}},
 				},
-			}},
-		},
-	})
+			})
 
-	watched := true
-	if _, err := svc.UpdateWatchHistory(userID, models.WatchHistoryUpdate{
-		MediaType: "episode", ItemID: seriesID + ":s01e07", Name: "Ep 7",
-		Watched: &watched, WatchedAt: watchedAt, SeriesID: seriesID,
-		SeriesName: "Test Show", SeasonNumber: 1, EpisodeNumber: 7,
-		ExternalIDs: map[string]string{"tvdb": "12345"},
-	}); err != nil {
-		t.Fatalf("UpdateWatchHistory() error = %v", err)
-	}
+			watched := true
+			if _, err := svc.UpdateWatchHistory(userID, models.WatchHistoryUpdate{
+				MediaType: "episode", ItemID: seriesID + ":s01e07", Name: "Ep 7",
+				Watched: &watched, WatchedAt: watchedAt, SeriesID: seriesID,
+				SeriesName: "Test Show", SeasonNumber: 1, EpisodeNumber: 7,
+				ExternalIDs: map[string]string{"tvdb": "12345"},
+			}); err != nil {
+				t.Fatalf("UpdateWatchHistory() error = %v", err)
+			}
 
-	if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
-		MediaType: "episode", ItemID: seriesID + ":s01e07", Position: 1200, Duration: 2400,
-		Timestamp: progressAt, SeriesID: seriesID, SeriesName: "Test Show",
-		EpisodeName: "Ep 7", SeasonNumber: 1, EpisodeNumber: 7,
-		ExternalIDs: map[string]string{"tvdb": "12345"},
-	}); err != nil {
-		t.Fatalf("UpdatePlaybackProgress() error = %v", err)
-	}
+			if _, err := svc.UpdatePlaybackProgress(userID, models.PlaybackProgressUpdate{
+				MediaType: "episode", ItemID: seriesID + ":s01e07", Position: tc.percent * 24, Duration: 2400,
+				Timestamp: progressAt, SeriesID: seriesID, SeriesName: "Test Show",
+				EpisodeName: "Ep 7", SeasonNumber: 1, EpisodeNumber: 7,
+				ExternalIDs: map[string]string{"tvdb": "12345"},
+			}); err != nil {
+				t.Fatalf("UpdatePlaybackProgress() error = %v", err)
+			}
 
-	items, err := svc.ListContinueWatching(userID)
-	if err != nil {
-		t.Fatalf("ListContinueWatching() error = %v", err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("expected 1 continue watching item, got %d: %+v", len(items), items)
-	}
-	if items[0].NextEpisode == nil || items[0].NextEpisode.SeasonNumber != 1 || items[0].NextEpisode.EpisodeNumber != 7 {
-		t.Fatalf("expected partial rewatch S01E07 to replace on-deck S01E08, got %+v", items[0].NextEpisode)
-	}
-	if items[0].PercentWatched != 50 || items[0].ResumePercent != 50 {
-		t.Fatalf("expected 50%% rewatch progress, got percent=%.2f resume=%.2f", items[0].PercentWatched, items[0].ResumePercent)
-	}
-	if !items[0].UpdatedAt.Equal(progressAt) {
-		t.Fatalf("expected ordering timestamp %s, got %s", progressAt, items[0].UpdatedAt)
+			items, err := svc.ListContinueWatching(userID)
+			if err != nil {
+				t.Fatalf("ListContinueWatching() error = %v", err)
+			}
+			if len(items) != 1 {
+				t.Fatalf("expected 1 continue watching item, got %d: %+v", len(items), items)
+			}
+			if items[0].NextEpisode == nil || items[0].NextEpisode.SeasonNumber != 1 || items[0].NextEpisode.EpisodeNumber != tc.episode {
+				t.Fatalf("expected episode %d at %.2f%% progress, got %+v", tc.episode, tc.percent, items[0].NextEpisode)
+			}
+			if tc.episode == 7 {
+				if math.Abs(items[0].PercentWatched-tc.percent) > 0.001 || math.Abs(items[0].ResumePercent-tc.percent) > 0.001 {
+					t.Fatalf("unexpected rewatch progress, got percent=%.2f resume=%.2f", items[0].PercentWatched, items[0].ResumePercent)
+				}
+				if !items[0].UpdatedAt.Equal(progressAt) {
+					t.Fatalf("expected ordering timestamp %s, got %s", progressAt, items[0].UpdatedAt)
+				}
+			}
+		})
 	}
 }
 
@@ -5175,6 +5304,37 @@ func TestContinueWatching_RecentlyReleasedNextEpisodePromotesItem(t *testing.T) 
 	}
 	if items[0].NextEpisode == nil || items[0].NextEpisode.EpisodeNumber != 2 {
 		t.Fatalf("expected promoted item to keep immediate next episode E02, got %+v", items[0].NextEpisode)
+	}
+	if !items[0].UpdatedAt.Equal(now.Add(-48 * time.Hour)) {
+		t.Fatalf("expected promotion not to change genuine activity timestamp, got %s", items[0].UpdatedAt)
+	}
+	if items[0].SortAt.IsZero() || items[0].SortAt.Before(releaseTime.Add(-time.Minute)) || items[0].SortAt.After(releaseTime.Add(time.Minute)) {
+		t.Fatalf("expected release ordering timestamp near %s, got %s", releaseTime, items[0].SortAt)
+	}
+}
+
+func TestContinueWatching_ReleaseOrderingPersistsBeyondNewBadgeWindow(t *testing.T) {
+	now := time.Now().UTC()
+	releaseTime := now.Add(-7 * 24 * time.Hour)
+	nextEpisode := &models.EpisodeReference{AirDateTimeUTC: releaseTime.Format(time.RFC3339)}
+
+	sortAt, ok := continueWatchingReleaseTime(nextEpisode)
+	if !ok {
+		t.Fatal("expected an already released next episode to retain a release ordering timestamp")
+	}
+	if !sortAt.Equal(releaseTime.Truncate(time.Second)) {
+		t.Fatalf("expected sort timestamp %s, got %s", releaseTime.Truncate(time.Second), sortAt)
+	}
+
+	state := models.SeriesWatchState{
+		UpdatedAt: now.Add(-14 * 24 * time.Hour),
+		SortAt:    sortAt,
+	}
+	if got := continueWatchingSortTime(state); !got.Equal(sortAt) {
+		t.Fatalf("expected durable release ordering timestamp %s, got %s", sortAt, got)
+	}
+	if !state.UpdatedAt.Equal(now.Add(-14 * 24 * time.Hour)) {
+		t.Fatalf("expected genuine activity timestamp to remain unchanged, got %s", state.UpdatedAt)
 	}
 }
 

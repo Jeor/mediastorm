@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,19 @@ import (
 
 const thumbnailSourcePrewarmTimeout = 15 * time.Second
 const thumbnailSourcePrewarmTTL = 5 * time.Minute
+
+const (
+	thumbnailSharedSourceCacheDir     = "shared-source-cache"
+	thumbnailSharedSourceCacheMaxAge  = 6 * time.Hour
+	thumbnailSharedSourceCacheMaxSize = int64(2 * 1024 * 1024 * 1024)
+)
+
+type thumbnailSourceCacheEntry struct {
+	name    string
+	path    string
+	modTime time.Time
+	size    int64
+}
 
 // thumbnailSourceBridge keeps one upstream HTTP transport alive for all frame
 // extraction processes. Stable FFmpeg releases do not yet have the shared:
@@ -286,7 +300,7 @@ func (m *ThumbnailManager) frameInput(key, sourceURL, authHeader string) (string
 	bridgeURL, bridgeErr := m.sourceBridge.register(key, sourceURL, authHeader)
 	httpOptions := m.ffmpegHTTPOptions()
 	if m.sharedProtocolAvailable() {
-		cacheDir := filepath.Join(m.baseDir, "shared-source-cache")
+		cacheDir := m.sharedSourceCacheDir(key)
 		if bridgeErr == nil {
 			if err := os.MkdirAll(cacheDir, 0o755); err == nil {
 				return "shared:" + bridgeURL, "", append([]string{"-cache_dir", cacheDir}, httpOptions...)
@@ -298,6 +312,104 @@ func (m *ThumbnailManager) frameInput(key, sourceURL, authHeader string) (string
 	}
 	log.Printf("[thumbnails] source bridge unavailable key=%s: %v", key, bridgeErr)
 	return sourceURL, authHeader, nil
+}
+
+func (m *ThumbnailManager) sharedSourceCacheRoot() string {
+	return filepath.Join(m.baseDir, thumbnailSharedSourceCacheDir)
+}
+
+func (m *ThumbnailManager) sharedSourceCacheDir(key string) string {
+	return filepath.Join(m.sharedSourceCacheRoot(), key)
+}
+
+func (m *ThumbnailManager) removeSharedSourceCache(key string) {
+	if m == nil || !validThumbnailKey(key) {
+		return
+	}
+	if err := os.RemoveAll(m.sharedSourceCacheDir(key)); err != nil {
+		log.Printf("[thumbnails] unable to remove transient source cache key=%s: %v", key, err)
+	}
+}
+
+func thumbnailSourceCacheEntrySize(path string) int64 {
+	var total int64
+	_ = filepath.WalkDir(path, func(current string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil
+		}
+		if info, infoErr := entry.Info(); infoErr == nil {
+			total += info.Size()
+		}
+		return nil
+	})
+	return total
+}
+
+// pruneSharedSourceCache removes cache files orphaned by older releases or an
+// interrupted thumbnail generation. Active generations are kept even when the
+// remaining cache temporarily exceeds the configured ceiling.
+func (m *ThumbnailManager) pruneSharedSourceCache(now time.Time) {
+	if m == nil {
+		return
+	}
+	root := m.sharedSourceCacheRoot()
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("[thumbnails] unable to inspect transient source cache: %v", err)
+		}
+		return
+	}
+
+	m.mu.Lock()
+	active := make(map[string]struct{}, len(m.inFlight))
+	for key := range m.inFlight {
+		active[key] = struct{}{}
+	}
+	m.mu.Unlock()
+
+	candidates := make([]thumbnailSourceCacheEntry, 0, len(entries))
+	var total int64
+	for _, entry := range entries {
+		if _, ok := active[entry.Name()]; ok {
+			continue
+		}
+		path := filepath.Join(root, entry.Name())
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			continue
+		}
+		// Flat files are leftovers from releases that did not isolate cache data
+		// per media key. No running generation can own one after this version starts.
+		if !entry.IsDir() || now.Sub(info.ModTime()) > thumbnailSharedSourceCacheMaxAge {
+			if removeErr := os.RemoveAll(path); removeErr != nil {
+				log.Printf("[thumbnails] unable to prune orphaned source cache %q: %v", entry.Name(), removeErr)
+			}
+			continue
+		}
+		size := thumbnailSourceCacheEntrySize(path)
+		total += size
+		candidates = append(candidates, thumbnailSourceCacheEntry{
+			name:    entry.Name(),
+			path:    path,
+			modTime: info.ModTime(),
+			size:    size,
+		})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].modTime.Before(candidates[j].modTime)
+	})
+	for _, candidate := range candidates {
+		if total <= thumbnailSharedSourceCacheMaxSize {
+			break
+		}
+		if removeErr := os.RemoveAll(candidate.path); removeErr != nil {
+			log.Printf("[thumbnails] unable to enforce source cache limit for %q: %v", candidate.name, removeErr)
+			continue
+		}
+		total -= candidate.size
+	}
 }
 
 func (m *ThumbnailManager) prewarm(cleanPath, sourceURL, authHeader string) {

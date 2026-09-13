@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1205,6 +1206,59 @@ func TestRunFFProbeFromProviderDoesNotFallbackAfterCancellation(t *testing.T) {
 	}
 	if calls := provider.streamCalls.Load(); calls != 0 {
 		t.Fatalf("piped fallback calls = %d, want 0 after cancellation", calls)
+	}
+}
+
+type cancellationBlockingProbeBody struct {
+	readStarted chan struct{}
+	closed      chan struct{}
+	readOnce    sync.Once
+	closeOnce   sync.Once
+}
+
+func (b *cancellationBlockingProbeBody) Read([]byte) (int, error) {
+	b.readOnce.Do(func() { close(b.readStarted) })
+	<-b.closed
+	return 0, io.ErrClosedPipe
+}
+
+func (b *cancellationBlockingProbeBody) Close() error {
+	b.closeOnce.Do(func() { close(b.closed) })
+	return nil
+}
+
+func TestReadProviderProbeSampleCancellationClosesBlockingBody(t *testing.T) {
+	body := &cancellationBlockingProbeBody{
+		readStarted: make(chan struct{}),
+		closed:      make(chan struct{}),
+	}
+	resp := &streaming.Response{Body: body}
+	ctx, cancel := context.WithCancel(context.Background())
+	resultCh := make(chan error, 1)
+	go func() {
+		_, err := readProviderProbeSample(ctx, resp, 1024)
+		resultCh <- err
+	}()
+
+	select {
+	case <-body.readStarted:
+	case <-time.After(time.Second):
+		t.Fatal("probe sample read did not start")
+	}
+	cancel()
+
+	select {
+	case err := <-resultCh:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("read error = %v, want context.Canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("probe sample read did not return after cancellation")
+	}
+	select {
+	case <-body.closed:
+	case <-time.After(time.Second):
+		t.Fatal("blocking provider body was not closed after cancellation")
 	}
 }
 

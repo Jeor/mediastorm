@@ -148,6 +148,93 @@ func TestThumbnailRateLimitCooldownBackoff(t *testing.T) {
 	}
 }
 
+func TestThumbnailSharedSourceCacheIsIsolatedAndRemoved(t *testing.T) {
+	manager := NewThumbnailManager(t.TempDir(), "ffmpeg")
+	key := thumbnailKey("/movie.mkv")
+	cacheDir := manager.sharedSourceCacheDir(key)
+	if !strings.HasSuffix(cacheDir, filepath.Join(thumbnailSharedSourceCacheDir, key)) {
+		t.Fatalf("cache dir = %q, want per-key directory", cacheDir)
+	}
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatalf("create cache dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheDir, "source.cache"), []byte("cache"), 0o644); err != nil {
+		t.Fatalf("write cache file: %v", err)
+	}
+	manager.removeSharedSourceCache(key)
+	if _, err := os.Stat(cacheDir); !os.IsNotExist(err) {
+		t.Fatalf("cache dir still exists after removal: %v", err)
+	}
+}
+
+func TestThumbnailSharedSourceCachePrunesLegacyStaleAndOverLimitEntries(t *testing.T) {
+	manager := NewThumbnailManager(t.TempDir(), "ffmpeg")
+	root := manager.sharedSourceCacheRoot()
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("create cache root: %v", err)
+	}
+	now := time.Now()
+
+	legacy := filepath.Join(root, "legacy.cache")
+	if err := os.WriteFile(legacy, []byte("legacy"), 0o644); err != nil {
+		t.Fatalf("write legacy cache: %v", err)
+	}
+
+	staleKey := thumbnailKey("/stale.mkv")
+	staleDir := manager.sharedSourceCacheDir(staleKey)
+	if err := os.MkdirAll(staleDir, 0o755); err != nil {
+		t.Fatalf("create stale cache: %v", err)
+	}
+	if err := os.Chtimes(staleDir, now.Add(-thumbnailSharedSourceCacheMaxAge-time.Hour), now.Add(-thumbnailSharedSourceCacheMaxAge-time.Hour)); err != nil {
+		t.Fatalf("age stale cache: %v", err)
+	}
+
+	oldKey := thumbnailKey("/old.mkv")
+	newKey := thumbnailKey("/new.mkv")
+	for _, item := range []struct {
+		key  string
+		age  time.Duration
+		size int64
+	}{
+		{key: oldKey, age: 2 * time.Hour, size: 1200 * 1024 * 1024},
+		{key: newKey, age: time.Hour, size: 1200 * 1024 * 1024},
+	} {
+		dir := manager.sharedSourceCacheDir(item.key)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("create cache %s: %v", item.key, err)
+		}
+		cachePath := filepath.Join(dir, "source.cache")
+		file, err := os.Create(cachePath)
+		if err != nil {
+			t.Fatalf("create cache %s: %v", item.key, err)
+		}
+		if err := file.Truncate(item.size); err != nil {
+			file.Close()
+			t.Fatalf("size cache %s: %v", item.key, err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatalf("close cache %s: %v", item.key, err)
+		}
+		if err := os.Chtimes(dir, now.Add(-item.age), now.Add(-item.age)); err != nil {
+			t.Fatalf("age cache %s: %v", item.key, err)
+		}
+	}
+
+	manager.pruneSharedSourceCache(now)
+
+	for _, removed := range []string{legacy, staleDir} {
+		if _, err := os.Stat(removed); !os.IsNotExist(err) {
+			t.Fatalf("expected %q to be pruned, err=%v", removed, err)
+		}
+	}
+	if _, err := os.Stat(manager.sharedSourceCacheDir(oldKey)); !os.IsNotExist(err) {
+		t.Fatalf("expected oldest cache to be pruned, err=%v", err)
+	}
+	if _, err := os.Stat(manager.sharedSourceCacheDir(newKey)); err != nil {
+		t.Fatalf("expected newest cache to remain: %v", err)
+	}
+}
+
 func TestStartThumbnailsDisabledBySettings(t *testing.T) {
 	settings := config.DefaultSettings()
 	settings.Playback.Thumbnails.Enabled = false

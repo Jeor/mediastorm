@@ -920,7 +920,7 @@ func (s *Service) ResolveExternalUsenetForProbe(ctx context.Context, candidate m
 			}
 			return "", "", true, fmt.Errorf("%w: %s", ErrQueueItemFailed, errMsg)
 		case usenetengine.StatusCompleted:
-			if statusFileNameMatchesSubmission && externalOutputPathMatchesSubmitted(status.OutputPath, strings.TrimSpace(candidate.Title), sourceNZBPath) {
+			if statusFileNameMatchesSubmission && externalOutputPathMatchesSubmitted(engineSettings.Type, status.OutputPath, strings.TrimSpace(candidate.Title), sourceNZBPath) {
 				resolvedURL, resolveErr := s.resolveExternalWebDAVStream(pollCtx, engineSettings, status.OutputPath)
 				if resolveErr != nil {
 					return "", "", true, resolveErr
@@ -1037,7 +1037,7 @@ func (s *Service) externalQueueStatus(ctx context.Context, queueID int64) (*mode
 				queueID, job.EngineJobID, job.SubmittedTitle, sourceNZBPath, statusFileName)
 		}
 		streamURL := ""
-		if statusFileNameMatchesSubmission && externalOutputPathMatchesSubmitted(status.OutputPath, job.SubmittedTitle, sourceNZBPath) {
+		if statusFileNameMatchesSubmission && externalOutputPathMatchesSubmitted(job.Engine.Type, status.OutputPath, job.SubmittedTitle, sourceNZBPath) {
 			var urlErr error
 			streamURL, urlErr = s.resolveExternalWebDAVStream(ctx, job.Engine, status.OutputPath)
 			if urlErr != nil {
@@ -1132,13 +1132,55 @@ func externalStatusFileNameMatchesSubmission(engineType, value, submittedTitle, 
 	return stripped != base && externalReleaseNameMatchesSubmitted(stripped, submittedTitle, sourceNZBPath)
 }
 
-func externalOutputPathMatchesSubmitted(outputPath, submittedTitle, sourceNZBPath string) bool {
+func externalOutputPathMatchesSubmitted(engineType, outputPath, submittedTitle, sourceNZBPath string) bool {
 	outputPath = strings.TrimSpace(outputPath)
 	if outputPath == "" {
 		return false
 	}
 	for _, releaseName := range externalFallbackReleaseNames(submittedTitle, sourceNZBPath) {
 		if externalPathHasExactRelease(outputPath, releaseName) {
+			return true
+		}
+		if isNZBDavEngineType(engineType) && externalPathHasNZBDavDuplicateRelease(outputPath, releaseName) {
+			return true
+		}
+	}
+	return false
+}
+
+func isNZBDavEngineType(engineType string) bool {
+	switch strings.ToLower(strings.TrimSpace(engineType)) {
+	case "nzbdav", "nzbdavex":
+		return true
+	default:
+		return false
+	}
+}
+
+func externalPathHasNZBDavDuplicateRelease(rawPath, releaseName string) bool {
+	releaseName = strings.TrimSpace(releaseName)
+	if releaseName == "" {
+		return false
+	}
+	pathText := strings.TrimSpace(rawPath)
+	if parsed, err := url.Parse(pathText); err == nil && parsed.Path != "" {
+		pathText = parsed.Path
+	}
+	if decoded, err := url.PathUnescape(pathText); err == nil {
+		pathText = decoded
+	}
+	for _, segment := range strings.Split(strings.Trim(pathText, "/"), "/") {
+		segment = strings.TrimSpace(segment)
+		idx := strings.LastIndex(segment, " (")
+		if idx <= 0 || !strings.EqualFold(segment[:idx], releaseName) {
+			continue
+		}
+		suffix := segment[idx:]
+		if !strings.HasSuffix(suffix, ")") {
+			continue
+		}
+		n, err := strconv.Atoi(suffix[2 : len(suffix)-1])
+		if err == nil && n > 0 {
 			return true
 		}
 	}
@@ -1396,6 +1438,12 @@ func externalFallbackBasePaths(engine config.UsenetEngineSettings) []string {
 				path.Join("completed-symlinks", category),
 				path.Join("completed-downloads", category),
 				path.Join("content", category),
+			)
+		} else {
+			out = append(out,
+				path.Join("completed-symlinks", "uncategorized"),
+				path.Join("completed-downloads", "uncategorized"),
+				path.Join("content", "uncategorized"),
 			)
 		}
 		out = append(out, "completed-symlinks", "completed-downloads", "content", "")

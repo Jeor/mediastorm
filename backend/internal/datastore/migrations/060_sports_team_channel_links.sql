@@ -1,5 +1,5 @@
 -- +goose Up
-CREATE TABLE sports_teams (
+CREATE TABLE IF NOT EXISTS sports_teams (
     id            TEXT PRIMARY KEY,        -- "{league}:{espn_team_id}", e.g. "mlb:135"
     league        TEXT NOT NULL,
     espn_team_id  TEXT NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE sports_teams (
     UNIQUE (league, espn_team_id)
 );
 
-CREATE TABLE sports_team_channel_links (
+CREATE TABLE IF NOT EXISTS sports_team_channel_links (
     id                TEXT PRIMARY KEY,
     team_id           TEXT NOT NULL REFERENCES sports_teams(id) ON DELETE CASCADE,
     slot              TEXT NOT NULL CHECK (slot IN ('primary', 'backup')),
@@ -32,8 +32,8 @@ CREATE TABLE sports_team_channel_links (
     UNIQUE (team_id, slot, position)
 );
 
-CREATE INDEX idx_sports_team_channel_links_team ON sports_team_channel_links(team_id);
-CREATE INDEX idx_sports_team_channel_links_tvg ON sports_team_channel_links(channel_tvg_id) WHERE channel_tvg_id <> '';
+CREATE INDEX IF NOT EXISTS idx_sports_team_channel_links_team ON sports_team_channel_links(team_id);
+CREATE INDEX IF NOT EXISTS idx_sports_team_channel_links_tvg ON sports_team_channel_links(channel_tvg_id) WHERE channel_tvg_id <> '';
 
 -- +goose Down
 DROP TABLE IF EXISTS sports_team_channel_links;

@@ -1,8 +1,8 @@
 -- +goose Up
 ALTER TABLE sports_team_channel_links
-    ADD COLUMN auto_linked BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN link_confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
-    ADD COLUMN match_reason TEXT NOT NULL DEFAULT '';
+    ADD COLUMN IF NOT EXISTS auto_linked BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS link_confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS match_reason TEXT NOT NULL DEFAULT '';
 
 -- +goose Down
 ALTER TABLE sports_team_channel_links

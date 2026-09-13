@@ -63,7 +63,7 @@ func TestDisplayListRoutesWatchTMDBSentinelToTMDBShelf(t *testing.T) {
 	displayListHandler := handlers.NewDisplayListHandler(nil, nil, &mockUserServiceStartup{exists: true})
 	displayListHandler.SetMetadataHandler(metadataHandler)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/users/user1/display-list?source=mdblist&url=mediastorm%3Atmdb%3Atmdb-production-company-2&limit=50&offset=0&includeFacets=true", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/users/user1/display-list?source=mdblist&url=mediastorm%3Atmdb%3Atmdb-production-company-2&limit=20&offset=0&includeFacets=true&deferArtwork=true", nil)
 	req = mux.SetURLVars(req, map[string]string{"userID": "user1"})
 	rec := httptest.NewRecorder()
 	displayListHandler.Get(rec, req)
@@ -83,19 +83,19 @@ func TestDisplayListRoutesWatchTMDBSentinelToTMDBShelf(t *testing.T) {
 		t.Fatalf("unexpected response: %+v", response)
 	}
 	if got := metadataService.options; got.SourceType != "production-company" || got.SourceID != "2" ||
-		got.MediaType != "movie" || got.Sort != "popularity.desc" || got.DiscoverQuery != "genres=16" || got.Limit != 50 {
+		got.MediaType != "movie" || got.Sort != "popularity.desc" || got.DiscoverQuery != "genres=16" || got.Limit != 20 || !got.DeferArtwork {
 		t.Fatalf("unexpected TMDB options: %+v", got)
 	}
 
-	nextReq := httptest.NewRequest(http.MethodGet, "/api/users/user1/display-list?source=mdblist&url=mediastorm%3Atmdb%3Atmdb-production-company-2&limit=50&offset=50&includeFacets=true", nil)
+	nextReq := httptest.NewRequest(http.MethodGet, "/api/users/user1/display-list?source=mdblist&url=mediastorm%3Atmdb%3Atmdb-production-company-2&limit=50&offset=20&includeFacets=true", nil)
 	nextReq = mux.SetURLVars(nextReq, map[string]string{"userID": "user1"})
 	nextRec := httptest.NewRecorder()
 	displayListHandler.Get(nextRec, nextReq)
 	if nextRec.Code != http.StatusOK {
 		t.Fatalf("next page: expected 200, got %d: %s", nextRec.Code, nextRec.Body.String())
 	}
-	if got := metadataService.options; got.Limit != 50 || got.Offset != 50 {
-		t.Fatalf("next page pagination = limit %d offset %d, want 50/50", got.Limit, got.Offset)
+	if got := metadataService.options; got.Limit != 50 || got.Offset != 20 || got.DeferArtwork {
+		t.Fatalf("next page pagination = limit %d offset %d, want 50/20", got.Limit, got.Offset)
 	}
 }
 

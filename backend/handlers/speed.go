@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const (
@@ -12,6 +14,7 @@ const (
 )
 
 func ServeSpeedTest(w http.ResponseWriter, r *http.Request) {
+	startedAt := time.Now()
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -36,6 +39,23 @@ func ServeSpeedTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var sent int64
+	sampleID, _ := strconv.ParseInt(r.URL.Query().Get("sampleId"), 10, 64)
+	flow, _ := strconv.Atoi(r.URL.Query().Get("flow"))
+	streams, _ := strconv.Atoi(r.URL.Query().Get("streams"))
+	defer func() {
+		log.Printf(
+			"[speed-test] complete sampleId=%d flow=%d/%d requestedBytes=%d sentBytes=%d elapsedMs=%d method=%s",
+			sampleID,
+			flow,
+			streams,
+			size,
+			sent,
+			time.Since(startedAt).Milliseconds(),
+			r.Method,
+		)
+	}()
+
 	chunk := make([]byte, speedTestChunkBytes)
 	for i := range chunk {
 		chunk[i] = byte((i * 31) % 251)
@@ -51,9 +71,14 @@ func ServeSpeedTest(w http.ResponseWriter, r *http.Request) {
 		if remaining < toWrite {
 			toWrite = remaining
 		}
-		if _, err := w.Write(chunk[:toWrite]); err != nil {
+		written, err := w.Write(chunk[:toWrite])
+		sent += int64(written)
+		if err != nil {
 			return
 		}
-		remaining -= toWrite
+		if written == 0 {
+			return
+		}
+		remaining -= int64(written)
 	}
 }

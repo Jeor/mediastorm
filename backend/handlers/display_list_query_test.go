@@ -1,11 +1,20 @@
 package handlers
 
 import (
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"novastream/models"
 )
+
+func TestDisplayListQueryUnwatchedCountsActivatesEnrichment(t *testing.T) {
+	req := httptest.NewRequest("GET", "/?includeUnwatchedCounts=true", nil)
+	query := parseDisplayListQuery(req)
+	if !query.IncludeUnwatchedCounts || !query.Active() {
+		t.Fatalf("unwatched-count query did not activate enrichment: %#v", query)
+	}
+}
 
 func TestDisplayListQueryAppliesBeforePagination(t *testing.T) {
 	items := []models.TrendingItem{

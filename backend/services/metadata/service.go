@@ -630,13 +630,13 @@ func (s *Service) GetTopTenWorkerStatus() TopTenWorkerStatus {
 
 	var allItems, movieItems, tvItems []models.TrendingItem
 	if ok, _ := s.cache.get(topTenCacheKey("all", nil, s.client.language), &allItems); ok {
-		status.AllCached = len(allItems)
+		status.AllCached = len(selectDailyTopTen(allItems, "all"))
 	}
 	if ok, _ := s.cache.get(topTenCacheKey("movie", nil, s.client.language), &movieItems); ok {
-		status.MoviesCached = len(movieItems)
+		status.MoviesCached = len(selectDailyTopTen(movieItems, "movie"))
 	}
 	if ok, _ := s.cache.get(topTenCacheKey("tv", nil, s.client.language), &tvItems); ok {
-		status.TVCached = len(tvItems)
+		status.TVCached = len(selectDailyTopTen(tvItems, "tv"))
 	}
 
 	return status
@@ -670,7 +670,7 @@ func topTenCacheKey(mediaType string, customListURLs []string, language string) 
 	}
 	sort.Strings(trimmed)
 
-	parts := []string{"topten", "v2", normalized, language}
+	parts := []string{"topten", "tmdb-daily-v3", normalized, language}
 	parts = append(parts, trimmed...)
 	return cacheKey(parts...)
 }
@@ -768,19 +768,50 @@ func (s *Service) refreshTopTenCache(ctx context.Context, mediaType string, cust
 		close(call.done)
 	}()
 
-	items, debug, err := s.getTopTenUncached(ctx, mediaType, customListURLs)
+	items, err := s.getDailyTopTenCandidates(ctx, mediaType)
 	if err != nil {
 		call.err = err
 		return nil, nil, err
 	}
+	s.enrichShelfArtwork(ctx, items, len(items))
+	rotatingArtwork, singleArtwork, missingArtwork := 0, 0, 0
+	for i := range items {
+		seenArtwork := make(map[string]struct{})
+		if items[i].Title.Backdrop != nil {
+			if key := comparableArtworkURL(items[i].Title.Backdrop.URL); key != "" {
+				seenArtwork[key] = struct{}{}
+			}
+		}
+		for _, backdrop := range items[i].Title.Backdrops {
+			if key := comparableArtworkURL(backdrop.URL); key != "" {
+				seenArtwork[key] = struct{}{}
+			}
+		}
+		artworkCount := len(seenArtwork)
+		switch {
+		case artworkCount > 1:
+			rotatingArtwork++
+		case artworkCount == 1:
+			singleArtwork++
+		default:
+			missingArtwork++
+		}
+	}
+	log.Printf(
+		"[topten] artwork enrichment mediaType=%s items=%d rotating=%d single=%d missing=%d",
+		mediaType,
+		len(items),
+		rotatingArtwork,
+		singleArtwork,
+		missingArtwork,
+	)
 	if len(items) > 0 {
 		if err := s.cache.set(cacheID, items); err != nil {
 			log.Printf("[topten] failed to cache results mediaType=%s: %v", mediaType, err)
 		}
 	}
 	call.items = items
-	call.debug = debug
-	return items, debug, nil
+	return items, nil, nil
 }
 
 // warmTrendingCache pre-fetches and enriches trending data and custom MDBList lists.
@@ -1124,7 +1155,7 @@ func (s *Service) GetCachedArtworkURLs(mediaType string, tmdbID int64, tvdbID in
 			if ok, _ := s.cache.get(cacheID, &cached); ok {
 				mergeTitle(cached)
 			}
-			imagesKey := cacheKey("tmdb", "images", "v9", s.client.language, "movie", fmt.Sprintf("%d", tmdbID))
+			imagesKey := cacheKey("tmdb", "images", "v10", s.client.language, "movie", fmt.Sprintf("%d", tmdbID))
 			var images tmdbImagesResult
 			if ok, _ := s.cache.get(imagesKey, &images); ok {
 				mergeImages(images)
@@ -1164,7 +1195,7 @@ func (s *Service) GetCachedArtworkURLs(mediaType string, tmdbID int64, tvdbID in
 			}
 		}
 		if tmdbID > 0 {
-			imagesKey := cacheKey("tmdb", "images", "v9", s.client.language, "series", fmt.Sprintf("%d", tmdbID))
+			imagesKey := cacheKey("tmdb", "images", "v10", s.client.language, "series", fmt.Sprintf("%d", tmdbID))
 			var images tmdbImagesResult
 			if ok, _ := s.cache.get(imagesKey, &images); ok {
 				mergeImages(images)
@@ -1191,10 +1222,12 @@ func (s *Service) GetCachedOverview(mediaType string, tmdbID int64, tvdbID int64
 	overview := ""
 	if mediaType == "movie" {
 		if tmdbID > 0 {
-			cacheID := cacheKey("tmdb", "movie", "details", "v3", s.client.language, strconv.FormatInt(tmdbID, 10))
-			var cached models.Title
-			if ok, _ := s.cache.get(cacheID, &cached); ok {
-				overview = mergeOverview(overview, cached.Overview)
+			for _, version := range []string{"v4", "v3", "v2"} {
+				cacheID := cacheKey("tmdb", "movie", "details", version, s.client.language, strconv.FormatInt(tmdbID, 10))
+				var cached models.Title
+				if ok, _ := s.cache.get(cacheID, &cached); ok {
+					overview = mergeOverview(overview, cached.Overview)
+				}
 			}
 		}
 
@@ -1213,11 +1246,20 @@ func (s *Service) GetCachedOverview(mediaType string, tmdbID int64, tvdbID int64
 				overview = mergeOverview(overview, cached.Overview)
 			}
 		}
-	} else if tvdbID > 0 {
-		cacheID := seriesDetailsCacheKey(s.client.language, tvdbID, "")
-		var cached models.SeriesDetails
-		if ok, _ := s.cache.get(cacheID, &cached); ok {
-			overview = mergeOverview(overview, cached.Title.Overview)
+	} else {
+		if tmdbID > 0 {
+			cacheID := cacheKey("tmdb", "series", "details-fallback", "v4", s.client.language, strconv.FormatInt(tmdbID, 10))
+			var cached models.SeriesDetails
+			if ok, _ := s.cache.get(cacheID, &cached); ok {
+				overview = mergeOverview(overview, cached.Title.Overview)
+			}
+		}
+		if tvdbID > 0 {
+			cacheID := seriesDetailsCacheKey(s.client.language, tvdbID, "")
+			var cached models.SeriesDetails
+			if ok, _ := s.cache.get(cacheID, &cached); ok {
+				overview = mergeOverview(overview, cached.Title.Overview)
+			}
 		}
 	}
 	return overview
@@ -1409,7 +1451,7 @@ func seriesDetailsCacheKey(lang string, tvdbID int64, seasonType string) string 
 	if st == "" {
 		st = "default"
 	}
-	return cacheKey("tvdb", "series", "details", "v16", lang, strconv.FormatInt(tvdbID, 10), st)
+	return cacheKey("tvdb", "series", "details", "v17", lang, strconv.FormatInt(tvdbID, 10), st)
 }
 
 func applyTVDBSeriesIdentity(title *models.Title, extended tvdbSeriesExtendedData) {
@@ -1447,6 +1489,7 @@ func mergeMetadataGenres(groups ...[]string) []string {
 
 // ShelfLoadOptions configures fast shelf rendering for list-style endpoints.
 type ShelfLoadOptions struct {
+	DeferArtwork  bool // use cached artwork; caller can request enrichment after rendering
 	Lite          bool
 	ArtworkLimit  int
 	SortBy        string
@@ -1541,10 +1584,15 @@ func (s *Service) TrendingWithOptions(ctx context.Context, mediaType string, opt
 			}
 		}
 		if opts.Lite {
-			genresUpdated := s.enrichLiteMissingGenres(ctx, cached)
-			artworkCacheUpdated := s.enrichShelfArtworkFromCache(cached)
-			s.enrichShelfArtwork(ctx, cached, artworkLimit)
-			if genresUpdated || artworkCacheUpdated || artworkLimit > customListLiteArtworkLimit {
+			s.enrichShelfArtworkFromCache(cached)
+			if !opts.DeferArtwork && artworkLimit <= customListLiteArtworkLimit {
+				// Initial shelf requests must not wait for remote enrichment of
+				// an already cached list. Larger artwork refreshes remain blocking
+				// so the frontend can merge the completed artwork afterwards.
+				s.refreshCachedTrendingLite(key, cached, artworkLimit)
+			} else if !opts.DeferArtwork {
+				s.enrichLiteMissingGenres(ctx, cached)
+				s.enrichShelfArtwork(ctx, cached, artworkLimit)
 				_ = s.cache.set(key, cached)
 			}
 		} else if opts.ArtworkLimit > 0 {
@@ -1574,8 +1622,7 @@ func (s *Service) TrendingWithOptions(ctx context.Context, mediaType string, opt
 		return nil, err
 	}
 	if opts.Lite {
-		s.enrichShelfArtworkFromCache(items)
-		s.enrichShelfArtwork(ctx, items, artworkLimit)
+		s.enrichShelfArtworkForLoad(ctx, items, artworkLimit, opts.DeferArtwork)
 	} else if normalized == "movie" {
 		// Enrich movies with release data (theatrical/home release)
 		s.enrichTrendingMovieReleases(enrichCtx, items)
@@ -1597,6 +1644,16 @@ func (s *Service) enrichDemoArtwork(ctx context.Context, items []models.Trending
 	for idx := range items {
 		title := &items[idx].Title
 		if title.TVDBID <= 0 {
+			continue
+		}
+		if !s.client.isConfigured() {
+			if s.tmdb == nil || !s.tmdb.isConfigured() {
+				continue
+			}
+			if tmdbID, err := s.tmdb.findByTVDBID(ctx, title.TVDBID, mediaType); err == nil && tmdbID > 0 {
+				title.TMDBID = tmdbID
+				s.enrichTitleFromTMDB(ctx, title)
+			}
 			continue
 		}
 
@@ -1972,6 +2029,13 @@ func (s *Service) getRecentMoviesLite(ctx context.Context) ([]models.TrendingIte
 
 // enrichMovieTVDB enriches a single movie Title with TVDB artwork and metadata.
 func (s *Service) enrichMovieTVDB(title *models.Title, movie mdblistMovie) {
+	if !s.client.isConfigured() {
+		if movie.TVDBID != nil {
+			title.TVDBID = *movie.TVDBID
+		}
+		s.enrichTitleFromTMDB(context.Background(), title)
+		return
+	}
 	var found bool
 	var searchResult *tvdbSearchResult
 
@@ -2086,6 +2150,9 @@ func (s *Service) enrichMovieTVDB(title *models.Title, movie mdblistMovie) {
 			}
 		}
 	} else if !found {
+		if s.enrichTitleFromTMDB(context.Background(), title) {
+			return
+		}
 		currentYear := time.Now().Year()
 		if movie.ReleaseYear > currentYear {
 			title.Overview = fmt.Sprintf("Upcoming movie scheduled for release in %d", movie.ReleaseYear)
@@ -2124,13 +2191,14 @@ func (s *Service) getMovieDetailsFromTMDB(ctx context.Context, req models.MovieD
 	log.Printf("[metadata] fetching movie details from TMDB tmdbId=%d name=%q", req.TMDBID, req.Name)
 
 	// Check cache with TMDB key
-	cacheID := cacheKey("tmdb", "movie", "details", "v3", s.client.language, strconv.FormatInt(req.TMDBID, 10))
+	cacheID := cacheKey("tmdb", "movie", "details", "v4", s.client.language, strconv.FormatInt(req.TMDBID, 10))
 	var cached models.Title
 	if ok, _ := s.cache.get(cacheID, &cached); ok && cached.ID != "" {
 		metadataTracef("[metadata] movie details cache hit (TMDB) tmdbId=%d lang=%s", req.TMDBID, s.client.language)
 		if s.applyCachedTMDBImages(ctx, &cached, "movie", req.TMDBID) {
 			_ = s.cache.set(cacheID, cached)
 		}
+		s.hydrateTMDBRatings(ctx, &cached, req.IMDBID, "movie")
 		return &cached, nil
 	}
 
@@ -2182,10 +2250,30 @@ func (s *Service) getMovieDetailsFromTMDB(ctx context.Context, req models.MovieD
 	// and clean artwork variants come from its separate images endpoint.
 	s.applyCachedTMDBImages(ctx, &movieTitle, "movie", req.TMDBID)
 
+	s.hydrateTMDBRatings(ctx, &movieTitle, req.IMDBID, "movie")
+
 	// Cache the result
 	_ = s.cache.set(cacheID, movieTitle)
 
 	return &movieTitle, nil
+}
+
+// hydrateTMDBRatings keeps TMDB-only details consistent with the TVDB path.
+// Run on cache hits too so existing metadata gains ratings and display settings apply.
+func (s *Service) hydrateTMDBRatings(ctx context.Context, title *models.Title, fallbackIMDBID, mediaType string) {
+	imdbID := title.IMDBID
+	if imdbID == "" {
+		imdbID = fallbackIMDBID
+	}
+	if imdbID == "" || s.mdblist == nil || !s.mdblist.IsEnabled() {
+		return
+	}
+	ratings, err := s.getMDBListDisplayRatings(ctx, imdbID, mediaType, 3*time.Second)
+	if err != nil {
+		log.Printf("[metadata] failed to hydrate TMDB ratings mediaType=%s imdbId=%s: %v", mediaType, imdbID, err)
+		return
+	}
+	title.Ratings = ratings
 }
 
 // searchTVDBMovie searches for a movie in TVDB by title, year, or remote ID
@@ -2452,6 +2540,13 @@ func (s *Service) getTrendingSeriesLite(ctx context.Context) ([]models.TrendingI
 
 // enrichSeriesTVDB enriches a single series Title with TVDB artwork and metadata.
 func (s *Service) enrichSeriesTVDB(title *models.Title, tvShow mdblistTVShow) {
+	if !s.client.isConfigured() {
+		if tvShow.TVDBID != nil {
+			title.TVDBID = *tvShow.TVDBID
+		}
+		s.enrichTitleFromTMDB(context.Background(), title)
+		return
+	}
 	var found bool
 
 	if tvShow.TVDBID != nil && *tvShow.TVDBID > 0 {
@@ -2574,7 +2669,9 @@ func (s *Service) enrichSeriesTVDB(title *models.Title, tvShow mdblistTVShow) {
 	}
 
 	if !found && title.Overview == "" {
-		title.Overview = fmt.Sprintf("TV series from %d", tvShow.ReleaseYear)
+		if !s.enrichTitleFromTMDB(context.Background(), title) {
+			title.Overview = fmt.Sprintf("TV series from %d", tvShow.ReleaseYear)
+		}
 	}
 }
 
@@ -2663,9 +2760,12 @@ func (s *Service) Search(ctx context.Context, query string, mediaType string) ([
 		mediaType = "series"
 	}
 	params := url.Values{"query": []string{q}, "type": []string{t}, "limit": []string{"20"}}
-	tvdbErr := s.client.doGET("https://api4.thetvdb.com/v4/search", params, &resp)
-	if tvdbErr != nil {
-		log.Printf("[metadata] TVDB search failed query=%q type=%s err=%v", q, mediaType, tvdbErr)
+	var tvdbErr error
+	if s.client.isConfigured() {
+		tvdbErr = s.client.doGET("https://api4.thetvdb.com/v4/search", params, &resp)
+		if tvdbErr != nil {
+			log.Printf("[metadata] TVDB search failed query=%q type=%s err=%v", q, mediaType, tvdbErr)
+		}
 	}
 
 	results := make([]models.SearchResult, 0, len(resp.Data))
@@ -2862,7 +2962,9 @@ func (s *Service) enrichSearchResults(ctx context.Context, results []models.Sear
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			title := &results[idx].Title
-			s.applySearchTranslation(title)
+			if s.client.isConfigured() {
+				s.applySearchTranslation(title)
+			}
 			s.applyTMDBTranslation(ctx, title)
 			if title.TMDBID > 0 {
 				mediaType := "movie"
@@ -3134,8 +3236,53 @@ func (s *Service) FetchAliasesWithLanguage(mediaType string, tvdbID int64) []mod
 	return s.fetchTVDBAliasesWithLanguage(mediaType, tvdbID)
 }
 
+// FetchAliasesForTitle combines provider aliases, using TMDB when TVDB is
+// disabled or when the title has no TVDB mapping.
+func (s *Service) FetchAliasesForTitle(ctx context.Context, mediaType string, tmdbID, tvdbID int64) []models.LanguageAlias {
+	aliases := append([]models.LanguageAlias(nil), s.fetchTVDBAliasesWithLanguage(mediaType, tvdbID)...)
+	if s.tmdb == nil || !s.tmdb.isConfigured() {
+		return aliases
+	}
+	if tmdbID <= 0 && tvdbID > 0 {
+		tmdbID, _ = s.tmdb.findByTVDBID(ctx, tvdbID, mediaType)
+	}
+	if tmdbID <= 0 {
+		return aliases
+	}
+	var title *models.Title
+	if strings.EqualFold(strings.TrimSpace(mediaType), "movie") {
+		title, _ = s.tmdb.movieDetails(ctx, tmdbID)
+	} else {
+		title, _ = s.tmdb.seriesDetails(ctx, tmdbID)
+	}
+	if title == nil {
+		return aliases
+	}
+	seen := make(map[string]struct{}, len(aliases)+len(title.AlternateTitles)+1)
+	for _, alias := range aliases {
+		seen[strings.ToLower(strings.TrimSpace(alias.Name))] = struct{}{}
+	}
+	add := func(name, language string) {
+		name = strings.TrimSpace(name)
+		key := strings.ToLower(name)
+		if name == "" || strings.EqualFold(name, title.Name) {
+			return
+		}
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		aliases = append(aliases, models.LanguageAlias{Name: name, Language: strings.TrimSpace(language)})
+	}
+	add(title.OriginalName, title.Language)
+	for _, alternate := range title.AlternateTitles {
+		add(alternate, "")
+	}
+	return aliases
+}
+
 func (s *Service) fetchTVDBAliasesWithLanguage(mediaType string, tvdbID int64) []models.LanguageAlias {
-	if s.client == nil || s.cache == nil || tvdbID <= 0 {
+	if s.cache == nil || tvdbID <= 0 {
 		return nil
 	}
 
@@ -3154,6 +3301,9 @@ func (s *Service) fetchTVDBAliasesWithLanguage(mediaType string, tvdbID int64) [
 	var cached []models.LanguageAlias
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return cached
+	}
+	if !s.client.isConfigured() {
+		return nil
 	}
 
 	aliases, err := fetch(tvdbID)
@@ -3176,7 +3326,7 @@ func (s *Service) fetchTVDBAliasesWithLanguage(mediaType string, tvdbID int64) [
 }
 
 func (s *Service) fetchTVDBAliases(mediaType string, tvdbID int64) []string {
-	if s.client == nil || s.cache == nil || tvdbID <= 0 {
+	if s.cache == nil || tvdbID <= 0 {
 		return nil
 	}
 
@@ -3195,6 +3345,9 @@ func (s *Service) fetchTVDBAliases(mediaType string, tvdbID int64) []string {
 	var cached []string
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return cached
+	}
+	if !s.client.isConfigured() {
+		return nil
 	}
 
 	aliases, err := fetch(tvdbID)
@@ -3265,6 +3418,23 @@ func (s *Service) resolveSeriesTVDBID(ctx context.Context, req models.SeriesDeta
 	s.inflightMu.Unlock()
 
 	return id, err
+}
+
+func (s *Service) cachedTVDBSeriesID(req models.SeriesDetailsQuery) int64 {
+	if req.TVDBID > 0 {
+		return req.TVDBID
+	}
+	if id := parseTVDBIDFromTitleID(req.TitleID); id > 0 {
+		return id
+	}
+	if req.TMDBID <= 0 || s == nil || s.cache == nil {
+		return 0
+	}
+	var tvdbID int64
+	if ok, _ := s.cache.get(seriesTVDBResolutionCacheKey(req.TMDBID), &tvdbID); ok && tvdbID > 0 {
+		return tvdbID
+	}
+	return 0
 }
 
 // tryFallbackSeriesTVDBID is called when a TVDB series fetch returns 404 (stub entry).
@@ -3339,6 +3509,9 @@ func (s *Service) resolveSeriesTVDBIDActual(ctx context.Context, req models.Seri
 				}
 			}
 		}
+	}
+	if !s.client.isConfigured() {
+		return 0, fmt.Errorf("tvdb api key not configured")
 	}
 	if name == "" {
 		return 0, fmt.Errorf("series name required to resolve tvdb id")
@@ -3609,7 +3782,143 @@ func newTVDBImage(urlValue, imageType string, width, height int) *models.Image {
 	return &models.Image{URL: normalized, Type: imageType, Width: width, Height: height}
 }
 
+func (s *Service) resolveTMDBSeriesID(ctx context.Context, req models.SeriesDetailsQuery) int64 {
+	if req.TMDBID > 0 {
+		return req.TMDBID
+	}
+	if id := parseTMDBIDFromTitleID(req.TitleID); id > 0 {
+		return id
+	}
+	if s == nil || s.tmdb == nil || !s.tmdb.isConfigured() {
+		return 0
+	}
+	tvdbID := req.TVDBID
+	if tvdbID <= 0 {
+		tvdbID = parseTVDBIDFromTitleID(req.TitleID)
+	}
+	if tvdbID > 0 {
+		key := cacheKey("tmdb", "resolve", "series", "tvdb", strconv.FormatInt(tvdbID, 10))
+		var cached int64
+		if ok, _ := s.cache.get(key, &cached); ok && cached > 0 {
+			return cached
+		}
+		if id, err := s.tmdb.findByTVDBID(ctx, tvdbID, "series"); err == nil && id > 0 {
+			_ = s.cache.set(key, id)
+			return id
+		}
+	}
+	if imdbID := strings.TrimSpace(req.IMDBID); imdbID != "" {
+		if id, err := s.tmdb.findTVByIMDBID(ctx, imdbID); err == nil && id > 0 {
+			return id
+		}
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return 0
+	}
+	results, err := s.tmdb.searchTitles(ctx, name, "series", 5, false)
+	if err != nil {
+		log.Printf("[metadata] tmdb series title/year fallback search error title=%q year=%d err=%v", name, req.Year, err)
+		return 0
+	}
+	for _, result := range results {
+		if result.Title.TMDBID <= 0 || !strings.EqualFold(strings.TrimSpace(result.Title.MediaType), "series") {
+			continue
+		}
+		if !normalizedListTitleYearEqual(name, result.Title.Name, req.Year) && !normalizedListTitleYearEqual(name, result.Title.OriginalName, req.Year) {
+			continue
+		}
+		if req.Year > 0 && result.Title.Year > 0 && req.Year != result.Title.Year {
+			continue
+		}
+		return result.Title.TMDBID
+	}
+	return 0
+}
+
+func (s *Service) tmdbSeriesInfoFallback(ctx context.Context, req models.SeriesDetailsQuery) (*models.Title, error) {
+	if s.tmdb == nil || !s.tmdb.isConfigured() {
+		return nil, fmt.Errorf("tmdb client not configured")
+	}
+	tmdbID := s.resolveTMDBSeriesID(ctx, req)
+	if tmdbID <= 0 {
+		return nil, fmt.Errorf("unable to resolve tmdb id for series")
+	}
+	cacheID := cacheKey("tmdb", "series", "info", "v1", s.client.language, strconv.FormatInt(tmdbID, 10))
+	var cached models.Title
+	if ok, _ := s.cache.get(cacheID, &cached); ok && strings.TrimSpace(cached.Name) != "" {
+		return &cached, nil
+	}
+	title, err := s.tmdb.seriesDetails(ctx, tmdbID)
+	if err != nil {
+		return nil, err
+	}
+	if title == nil {
+		return nil, fmt.Errorf("tmdb returned nil series")
+	}
+	s.applyCachedTMDBImages(ctx, title, "series", tmdbID)
+	s.enrichTVContentRating(ctx, title, tmdbID)
+	_ = s.cache.set(cacheID, *title)
+	return title, nil
+}
+
+// enrichTitleFromTMDB replaces TVDB list enrichment when TVDB is unavailable.
+// It keeps any provider IDs already supplied by the list so legacy identities
+// continue to match while TMDB becomes the canonical title source.
+func (s *Service) enrichTitleFromTMDB(ctx context.Context, title *models.Title) bool {
+	if title == nil || s == nil || s.tmdb == nil || !s.tmdb.isConfigured() {
+		return false
+	}
+	original := *title
+	mediaType := strings.ToLower(strings.TrimSpace(title.MediaType))
+	var (
+		hydrated *models.Title
+		err      error
+	)
+	if mediaType == "movie" {
+		tmdbID := title.TMDBID
+		if tmdbID <= 0 && title.TVDBID > 0 {
+			tmdbID, _ = s.tmdb.findByTVDBID(ctx, title.TVDBID, "movie")
+		}
+		if tmdbID <= 0 && strings.TrimSpace(title.IMDBID) != "" {
+			tmdbID, _ = s.tmdb.findMovieByIMDBID(ctx, title.IMDBID)
+		}
+		if tmdbID <= 0 {
+			tmdbID = s.resolveTMDBMovieByTitleYear(ctx, title.Name, title.Year)
+		}
+		if tmdbID > 0 {
+			hydrated, err = s.tmdb.movieDetails(ctx, tmdbID)
+		}
+	} else {
+		tmdbID := s.resolveTMDBSeriesID(ctx, models.SeriesDetailsQuery{
+			Name: title.Name, Year: title.Year, TMDBID: title.TMDBID, TVDBID: title.TVDBID, IMDBID: title.IMDBID,
+		})
+		if tmdbID > 0 {
+			hydrated, err = s.tmdb.seriesDetails(ctx, tmdbID)
+		}
+	}
+	if err != nil || hydrated == nil {
+		return false
+	}
+	if hydrated.TVDBID == 0 {
+		hydrated.TVDBID = original.TVDBID
+	}
+	if strings.TrimSpace(hydrated.IMDBID) == "" {
+		hydrated.IMDBID = original.IMDBID
+	}
+	if hydrated.Popularity == 0 {
+		hydrated.Popularity = original.Popularity
+	}
+	*title = *hydrated
+	s.applyCachedTMDBImages(ctx, title, mediaType, title.TMDBID)
+	s.enrichTitleCertification(ctx, title)
+	return true
+}
+
 func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.SeriesDetailsQuery, cause error) (*models.SeriesDetails, error) {
+	if req.TMDBID <= 0 {
+		req.TMDBID = s.resolveTMDBSeriesID(ctx, req)
+	}
 	if req.TMDBID <= 0 || s.tmdb == nil || !s.tmdb.isConfigured() {
 		return nil, cause
 	}
@@ -3617,10 +3926,33 @@ func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.Seri
 	var cached models.SeriesDetails
 	if ok, _ := s.cache.get(cacheID, &cached); ok && strings.TrimSpace(cached.Title.Name) != "" {
 		normalizeSeriesDetailsReleaseStatus(&cached)
-		models.NormalizeReleaseAbsoluteEpisodeNumbers(&cached)
+		cacheUpdated := false
+		for index := range cached.Seasons {
+			if normalizeTMDBGlobalSeasonEpisodeNumbers(&cached.Seasons[index]) {
+				cacheUpdated = true
+			}
+		}
+		if models.NormalizeReleaseAbsoluteEpisodeNumbers(&cached) {
+			cacheUpdated = true
+		}
 		if s.backfillSeriesIMDBID(ctx, &cached.Title, req) {
+			cacheUpdated = true
+		}
+		if cached.Title.Credits == nil {
+			if credits, creditsErr := s.cachedFetchCredits(ctx, "series", req.TMDBID); creditsErr == nil && credits != nil && len(credits.Cast) > 0 {
+				cached.Title.Credits = credits
+				cacheUpdated = true
+			} else if creditsErr != nil {
+				log.Printf("[metadata] TMDB series fallback credits enrichment failed tmdbId=%d err=%v", req.TMDBID, creditsErr)
+			}
+		}
+		if cached.Title.Certification == "" && s.enrichTVContentRating(ctx, &cached.Title, req.TMDBID) {
+			cacheUpdated = true
+		}
+		if cacheUpdated {
 			_ = s.cache.set(cacheID, cached)
 		}
+		s.hydrateTMDBRatings(ctx, &cached.Title, req.IMDBID, "show")
 		return &cached, nil
 	}
 
@@ -3649,11 +3981,19 @@ func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.Seri
 	} else if imageErr != nil {
 		log.Printf("[metadata] TMDB series fallback image enrichment failed tmdbId=%d err=%v", req.TMDBID, imageErr)
 	}
+	if credits, creditsErr := s.cachedFetchCredits(ctx, "series", req.TMDBID); creditsErr == nil && credits != nil && len(credits.Cast) > 0 {
+		details.Title.Credits = credits
+	} else if creditsErr != nil {
+		log.Printf("[metadata] TMDB series fallback credits enrichment failed tmdbId=%d err=%v", req.TMDBID, creditsErr)
+	}
+	s.enrichTVContentRating(ctx, &details.Title, req.TMDBID)
 	if details.Seasons == nil {
 		details.Seasons = []models.SeriesSeason{}
 	}
+	details.ActiveOrdering = "official"
 	models.NormalizeReleaseAbsoluteEpisodeNumbers(details)
 	metadataTracef("[metadata] using TMDB series details fallback tmdbId=%d name=%q seasons=%d cause=%v", req.TMDBID, details.Title.Name, len(details.Seasons), cause)
+	s.hydrateTMDBRatings(ctx, &details.Title, req.IMDBID, "show")
 	_ = s.cache.set(cacheID, *details)
 	return details, nil
 }
@@ -3663,7 +4003,13 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		return nil, fmt.Errorf("tvdb client not configured")
 	}
 	req = normalizeSeriesDetailsQueryIDs(req)
-
+	if !s.client.isConfigured() {
+		if cachedTVDBID := s.cachedTVDBSeriesID(req); cachedTVDBID > 0 {
+			req.TVDBID = cachedTVDBID
+		} else {
+			return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("tvdb api key not configured"))
+		}
+	}
 	metadataTracef("[metadata] series details request titleId=%q name=%q year=%d tvdbId=%d",
 
 		strings.TrimSpace(req.TitleID), strings.TrimSpace(req.Name), req.Year, req.TVDBID)
@@ -3715,7 +4061,7 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		// If cached data doesn't have backdrop, enrich with artworks
-		if cached.Title.Backdrop == nil {
+		if cached.Title.Backdrop == nil && s.client.isConfigured() {
 			log.Printf("[metadata] cached series missing backdrop, fetching artworks tvdbId=%d", tvdbID)
 			if extended, err := s.cachedSeriesExtended(tvdbID, []string{"artworks"}); err == nil {
 				log.Printf("[metadata] received %d artworks for cached series tvdbId=%d", len(extended.Artworks), tvdbID)
@@ -3770,7 +4116,7 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			}()
 		}
 
-		if cached.Title.Logo == nil && tmdbOK {
+		if logoNeedsIntrinsicDimensions(cached.Title.Logo) && tmdbOK {
 			enrichWg.Add(1)
 			go func() {
 				defer enrichWg.Done()
@@ -3804,13 +4150,15 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		genericSeasonIDs := make([]int64, 0)
-		for _, season := range cached.Seasons {
-			trimmedName := strings.TrimSpace(season.Name)
-			if season.TVDBID <= 0 || trimmedName == "" {
-				continue
-			}
-			if strings.EqualFold(trimmedName, fmt.Sprintf("Season %d", season.Number)) {
-				genericSeasonIDs = append(genericSeasonIDs, season.TVDBID)
+		if s.client.isConfigured() {
+			for _, season := range cached.Seasons {
+				trimmedName := strings.TrimSpace(season.Name)
+				if season.TVDBID <= 0 || trimmedName == "" {
+					continue
+				}
+				if strings.EqualFold(trimmedName, fmt.Sprintf("Season %d", season.Number)) {
+					genericSeasonIDs = append(genericSeasonIDs, season.TVDBID)
+				}
 			}
 		}
 		if len(genericSeasonIDs) > 0 {
@@ -3899,15 +4247,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		// Date-based release detection depends on genres, so run after parallel block.
-		if !cached.Title.IsDaily && len(cached.Title.Genres) > 0 {
-			for _, genre := range cached.Title.Genres {
-				if isDateBasedSeriesClassification(genre) {
-					cached.Title.IsDaily = true
-					log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
-					cacheUpdated = true
-					break
-				}
-			}
+		if changed, genre := applyDateBasedSeriesClassification(&cached.Title); changed {
+			log.Printf("[metadata] cached series marked for date-based episode matching tvdbId=%d genre=%q", tvdbID, genre)
+			cacheUpdated = true
 		}
 
 		if cacheUpdated {
@@ -3941,6 +4283,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 		}
 
 		return &cached, nil
+	}
+	if !s.client.isConfigured() {
+		return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("tvdb api key not configured"))
 	}
 
 	log.Printf("[metadata] series details fetch tvdbId=%d", tvdbID)
@@ -4416,14 +4761,8 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 			log.Printf("[metadata] fetched %d genres for series tmdbId=%d", len(genres), tmdbIDForEnrichment)
 
 			// Also check for genres that commonly use date-based episode naming.
-			if !seriesTitle.IsDaily {
-				for _, genre := range genres {
-					if isDateBasedSeriesClassification(genre) {
-						seriesTitle.IsDaily = true
-						log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
-						break
-					}
-				}
+			if changed, genre := applyDateBasedSeriesClassification(&seriesTitle); changed {
+				log.Printf("[metadata] series marked for date-based episode matching based on TMDB genre tvdbId=%d genre=%q", tvdbID, genre)
 			}
 			details.Title = seriesTitle
 		} else if err != nil {
@@ -4441,6 +4780,9 @@ func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQue
 
 	populateAiredDateTimeUTC(&details)
 	seriesTitle.Status = models.SeriesReleaseStatusFromSeasons(details.Seasons)
+	if changed, genre := applyDateBasedSeriesClassification(&seriesTitle); changed {
+		log.Printf("[metadata] series marked for date-based episode matching from final genres tvdbId=%d genre=%q", tvdbID, genre)
+	}
 	details.Title = seriesTitle
 
 	// If we fell back to a parent series (e.g. "Company Retreat" → "Jury Duty"),
@@ -4698,16 +5040,22 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 		return nil, fmt.Errorf("tvdb client not configured")
 	}
 	req = normalizeSeriesDetailsQueryIDs(req)
-
+	if !s.client.isConfigured() {
+		if cachedTVDBID := s.cachedTVDBSeriesID(req); cachedTVDBID > 0 {
+			req.TVDBID = cachedTVDBID
+		} else {
+			return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("tvdb api key not configured"))
+		}
+	}
 	metadataTracef("[metadata] series details lite request titleId=%q name=%q year=%d tvdbId=%d",
 		strings.TrimSpace(req.TitleID), strings.TrimSpace(req.Name), req.Year, req.TVDBID)
 
 	tvdbID, err := s.resolveSeriesTVDBID(ctx, req)
 	if err != nil {
-		return nil, err
+		return s.tmdbSeriesDetailsFallback(ctx, req, err)
 	}
 	if tvdbID <= 0 {
-		return nil, fmt.Errorf("unable to resolve tvdb id for series")
+		return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("unable to resolve tvdb id for series"))
 	}
 
 	fullCacheID := seriesDetailsCacheKey(s.client.language, tvdbID, req.SeasonType)
@@ -4726,6 +5074,16 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 		if !fullCached.EpisodeTMDBEnriched && s.enrichCachedTMDBEpisodeMetadata(ctx, &fullCached, req.TMDBID) {
 			cacheChanged = true
 		}
+		logoTMDBID := fullCached.Title.TMDBID
+		if logoTMDBID == 0 {
+			logoTMDBID = req.TMDBID
+		}
+		if logoNeedsIntrinsicDimensions(fullCached.Title.Logo) && logoTMDBID > 0 {
+			if images, imageErr := s.cachedFetchImages(ctx, "series", logoTMDBID); imageErr == nil && images != nil && images.Logo != nil {
+				fullCached.Title.Logo = images.Logo
+				cacheChanged = true
+			}
+		}
 		if cacheChanged {
 			_ = s.cache.set(fullCacheID, fullCached)
 		}
@@ -4736,7 +5094,7 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	if liteSeasonType == "" {
 		liteSeasonType = "default"
 	}
-	cacheID := cacheKey("tvdb", "series", "details", "v15-lite", s.client.language, strconv.FormatInt(tvdbID, 10), liteSeasonType)
+	cacheID := cacheKey("tvdb", "series", "details", "v16-lite", s.client.language, strconv.FormatInt(tvdbID, 10), liteSeasonType)
 	var cached models.SeriesDetails
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached.Seasons) > 0 {
 		normalizeSeriesDetailsReleaseStatus(&cached)
@@ -4753,10 +5111,23 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 		if !cached.EpisodeTMDBEnriched && s.enrichCachedTMDBEpisodeMetadata(ctx, &cached, req.TMDBID) {
 			cacheChanged = true
 		}
+		logoTMDBID := cached.Title.TMDBID
+		if logoTMDBID == 0 {
+			logoTMDBID = req.TMDBID
+		}
+		if logoNeedsIntrinsicDimensions(cached.Title.Logo) && logoTMDBID > 0 {
+			if images, imageErr := s.cachedFetchImages(ctx, "series", logoTMDBID); imageErr == nil && images != nil && images.Logo != nil {
+				cached.Title.Logo = images.Logo
+				cacheChanged = true
+			}
+		}
 		if cacheChanged {
 			_ = s.cache.set(cacheID, cached)
 		}
 		return &cached, nil
+	}
+	if !s.client.isConfigured() {
+		return s.tmdbSeriesDetailsFallback(ctx, req, fmt.Errorf("tvdb api key not configured"))
 	}
 
 	log.Printf("[metadata] series details lite fetch tvdbId=%d", tvdbID)
@@ -4897,6 +5268,10 @@ func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetail
 	applyAirTimeFromTVDB(&seriesTitle, extended.AirsTime, extended.OriginalNetwork.Name, extended.OriginalNetwork.Country)
 	if extended.Status.Name != "" {
 		seriesTitle.LifecycleStatus = extended.Status.Name
+	}
+	if isDateBasedSeriesClassification(extended.Type) {
+		seriesTitle.IsDaily = true
+		log.Printf("[metadata] lite series marked for date-based episode matching based on TVDB type tvdbId=%d type=%q", tvdbID, extended.Type)
 	}
 
 	// Artwork: poster + backdrop
@@ -5142,12 +5517,10 @@ func (s *Service) BatchSeriesDetails(ctx context.Context, queries []models.Serie
 
 		// Try to get from cache using the same logic as SeriesDetails
 		tvdbID, err := s.resolveSeriesTVDBID(ctx, query)
-		if err != nil {
-			results[i].Error = err.Error()
-			continue
-		}
-		if tvdbID <= 0 {
-			results[i].Error = "unable to resolve tvdb id for series"
+		if err != nil || tvdbID <= 0 {
+			// The individual details path owns provider fallback. A missing TVDB
+			// mapping must not make a valid TMDB-only batch item terminal here.
+			tasksToFetch = append(tasksToFetch, fetchTask{index: i, query: query})
 			continue
 		}
 
@@ -5293,12 +5666,8 @@ func (s *Service) BatchSeriesTitleFields(ctx context.Context, queries []models.S
 		results[i].Query = query
 
 		tvdbID, err := s.resolveSeriesTVDBID(ctx, query)
-		if err != nil {
-			results[i].Error = err.Error()
-			continue
-		}
-		if tvdbID <= 0 {
-			results[i].Error = "unable to resolve tvdb id for series"
+		if err != nil || tvdbID <= 0 {
+			tasksToFetch = append(tasksToFetch, fetchTask{index: i, query: query})
 			continue
 		}
 
@@ -5633,7 +6002,13 @@ func (s *Service) SeriesInfo(ctx context.Context, req models.SeriesDetailsQuery)
 		return nil, fmt.Errorf("tvdb client not configured")
 	}
 	req = normalizeSeriesDetailsQueryIDs(req)
-
+	if !s.client.isConfigured() {
+		if cachedTVDBID := s.cachedTVDBSeriesID(req); cachedTVDBID > 0 {
+			req.TVDBID = cachedTVDBID
+		} else {
+			return s.tmdbSeriesInfoFallback(ctx, req)
+		}
+	}
 	log.Printf("[metadata] series info request (lightweight) titleId=%q name=%q year=%d tvdbId=%d",
 		strings.TrimSpace(req.TitleID), strings.TrimSpace(req.Name), req.Year, req.TVDBID)
 
@@ -5641,7 +6016,7 @@ func (s *Service) SeriesInfo(ctx context.Context, req models.SeriesDetailsQuery)
 	if err != nil {
 		log.Printf("[metadata] series info resolve error titleId=%q name=%q year=%d err=%v",
 			strings.TrimSpace(req.TitleID), strings.TrimSpace(req.Name), req.Year, err)
-		return nil, err
+		return s.tmdbSeriesInfoFallback(ctx, req)
 	}
 	if tvdbID <= 0 {
 		log.Printf("[metadata] series info resolve missing tvdbId titleId=%q name=%q year=%d",
@@ -5657,6 +6032,9 @@ func (s *Service) SeriesInfo(ctx context.Context, req models.SeriesDetailsQuery)
 		log.Printf("[metadata] series info cache hit tvdbId=%d lang=%s hasPoster=%v hasBackdrop=%v",
 			tvdbID, s.client.language, cached.Poster != nil, cached.Backdrop != nil)
 		return &cached, nil
+	}
+	if !s.client.isConfigured() {
+		return s.tmdbSeriesInfoFallback(ctx, req)
 	}
 
 	log.Printf("[metadata] series info fetch tvdbId=%d", tvdbID)
@@ -5953,7 +6331,7 @@ func (s *Service) GetTMDBList(ctx context.Context, opts TMDBListOptions) ([]mode
 	for index, title := range cached.Titles {
 		items = append(items, models.TrendingItem{Rank: opts.Offset + index + 1, Title: title})
 	}
-	s.enrichShelfArtwork(ctx, items, opts.ArtworkLimit)
+	s.enrichShelfArtworkForLoad(ctx, items, opts.ArtworkLimit, opts.DeferArtwork)
 	ensureTrendingMovieReleaseStatuses(items)
 	return items, cached.Total, nil
 }
@@ -6099,7 +6477,7 @@ func (s *Service) discoverShelfWithOptions(ctx context.Context, mediaType string
 			break
 		}
 	}
-	s.enrichShelfArtwork(ctx, items, artworkLimit)
+	s.enrichShelfArtworkForLoad(ctx, items, artworkLimit, opts.DeferArtwork)
 
 	log.Printf(
 		"[metadata] discover %s complete type=%s startPage=%d limit=%d offset=%d source=%s count=%d total=%d duration=%s",
@@ -6497,6 +6875,26 @@ func (s *Service) movieDetailsInternal(ctx context.Context, req models.MovieDeta
 
 	metadataTracef("[metadata] movie details request titleId=%q name=%q year=%d tvdbId=%d tmdbId=%d imdbId=%s",
 		strings.TrimSpace(req.TitleID), strings.TrimSpace(req.Name), req.Year, req.TVDBID, req.TMDBID, strings.TrimSpace(req.IMDBID))
+	// A stored TVDB identifier is still useful for cross-provider matching, but it
+	// must not force a TVDB request when the provider itself is disabled.
+	if !s.client.isConfigured() {
+		if req.TMDBID <= 0 {
+			req.TMDBID = parseTMDBIDFromTitleID(req.TitleID)
+		}
+		if req.TMDBID <= 0 && strings.TrimSpace(req.IMDBID) != "" && s.tmdb != nil && s.tmdb.isConfigured() {
+			if tmdbID, err := s.tmdb.findMovieByIMDBID(ctx, req.IMDBID); err == nil {
+				req.TMDBID = tmdbID
+			}
+		}
+		if req.TMDBID <= 0 && strings.TrimSpace(req.Name) != "" {
+			req.TMDBID = s.resolveTMDBMovieByTitleYear(ctx, req.Name, req.Year)
+		}
+		if req.TMDBID > 0 && s.tmdb != nil && s.tmdb.isConfigured() {
+			return s.getMovieDetailsFromTMDB(ctx, req)
+		}
+		// Preserve access to an existing TVDB cache entry when TMDB is not
+		// configured. A cache miss will still fail without making a network call.
+	}
 
 	// Try to resolve TVDB ID
 	tvdbID := req.TVDBID
@@ -7302,7 +7700,7 @@ func (s *Service) Trailers(ctx context.Context, req models.TrailerQuery) (*model
 		}
 	}
 
-	if tvdbID > 0 && s.client != nil {
+	if tvdbID > 0 && s.client.isConfigured() {
 		var (
 			tvdbTrailers []models.Trailer
 			err          error
@@ -7849,31 +8247,32 @@ func (s *Service) ResolveIMDBID(ctx context.Context, title string, mediaType str
 	var results []tvdbSearchResult
 	var err error
 
-	// Search based on media type
-	if mediaType == "movie" {
-		results, err = s.searchTVDBMovie(title, year, "")
-	} else {
-		// Default to series search (covers "series", "tv", "" and other values)
-		results, err = s.searchTVDBSeries(title, year, "")
-	}
-
-	if err != nil {
-		log.Printf("[metadata] ResolveIMDBID TVDB search failed: %v", err)
-		results = nil
-	}
-
-	// TVDB applies the year filter strictly, but announced and regional movie
-	// release years often move by one. Retry without the remote year filter and
-	// validate the returned year locally before accepting an IMDb ID.
-	if len(results) == 0 && year > 0 {
+	if s.client.isConfigured() {
+		// Search based on media type
 		if mediaType == "movie" {
-			results, err = s.searchTVDBMovie(title, 0, "")
+			results, err = s.searchTVDBMovie(title, year, "")
 		} else {
-			results, err = s.searchTVDBSeries(title, 0, "")
+			results, err = s.searchTVDBSeries(title, year, "")
 		}
+
 		if err != nil {
-			log.Printf("[metadata] ResolveIMDBID TVDB search without year failed: %v", err)
+			log.Printf("[metadata] ResolveIMDBID TVDB search failed: %v", err)
 			results = nil
+		}
+
+		// TVDB applies the year filter strictly, but announced and regional movie
+		// release years often move by one. Retry without the remote year filter and
+		// validate the returned year locally before accepting an IMDb ID.
+		if len(results) == 0 && year > 0 {
+			if mediaType == "movie" {
+				results, err = s.searchTVDBMovie(title, 0, "")
+			} else {
+				results, err = s.searchTVDBSeries(title, 0, "")
+			}
+			if err != nil {
+				log.Printf("[metadata] ResolveIMDBID TVDB search without year failed: %v", err)
+				results = nil
+			}
 		}
 	}
 
@@ -7937,6 +8336,7 @@ type HistoryChecker interface {
 
 // CustomListOptions configures filtering and pagination for GetCustomList.
 type CustomListOptions struct {
+	DeferArtwork     bool // use cached artwork for the initial response
 	Limit            int
 	Offset           int
 	HideUnreleased   bool
@@ -8079,7 +8479,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	if s.tmdb == nil || !s.tmdb.isConfigured() {
 		return nil, errors.New("tmdb api key not configured")
 	}
-	key := cacheKey("tmdb", "images", "v9", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
+	key := cacheKey("tmdb", "images", "v10", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, nil
@@ -8113,7 +8513,7 @@ func (s *Service) cachedTMDBImagesOnly(mediaType string, tmdbID int64) (*tmdbIma
 	if s.client != nil {
 		language = s.client.language
 	}
-	key := cacheKey("tmdb", "images", "v9", language, mediaType, fmt.Sprintf("%d", tmdbID))
+	key := cacheKey("tmdb", "images", "v10", language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, true
@@ -8164,6 +8564,10 @@ func applyTMDBImagesToTitle(title *models.Title, images *tmdbImagesResult) bool 
 		updated = true
 	}
 	return updated
+}
+
+func logoNeedsIntrinsicDimensions(logo *models.Image) bool {
+	return logo == nil || logo.Width <= 0 || logo.Height <= 0
 }
 
 func (s *Service) applyCachedTMDBImages(ctx context.Context, title *models.Title, mediaType string, tmdbID int64) bool {
@@ -8541,7 +8945,7 @@ func buildLiteCustomListItem(item mdblistItem) models.TrendingItem {
 	}
 	if item.TVDBID != nil && *item.TVDBID > 0 {
 		title.TVDBID = *item.TVDBID
-		if mediaType == "series" {
+		if mediaType == "series" && title.TMDBID == 0 {
 			title.ID = fmt.Sprintf("tvdb:series:%d", *item.TVDBID)
 		} else if title.TMDBID == 0 {
 			title.ID = fmt.Sprintf("tvdb:movie:%d", *item.TVDBID)
@@ -8585,7 +8989,7 @@ func (s *Service) enrichLiteCustomListItem(ctx context.Context, item mdblistItem
 	translationDone := make(chan struct{})
 	go func() {
 		defer close(translationDone)
-		if s == nil || s.client == nil || s.cache == nil || strings.TrimSpace(s.client.apiKey) == "" {
+		if s == nil || s.client == nil || s.cache == nil {
 			return
 		}
 		if title.MediaType == "movie" {
@@ -8611,7 +9015,9 @@ func (s *Service) enrichLiteCustomListItem(ctx context.Context, item mdblistItem
 		ext, err := s.cachedMovieExtended(tvdbID, []string{"artwork"})
 		if err != nil {
 			applyTranslation()
-			s.applyTMDBGenreFallback(ctx, title)
+			if !s.enrichTitleFromTMDB(ctx, title) {
+				s.applyTMDBGenreFallback(ctx, title)
+			}
 			return result
 		}
 		if ext.Name != "" {
@@ -8630,7 +9036,9 @@ func (s *Service) enrichLiteCustomListItem(ctx context.Context, item mdblistItem
 	ext, err := s.cachedSeriesExtended(tvdbID, []string{"artworks"})
 	if err != nil {
 		applyTranslation()
-		s.applyTMDBGenreFallback(ctx, title)
+		if !s.enrichTitleFromTMDB(ctx, title) {
+			s.applyTMDBGenreFallback(ctx, title)
+		}
 		return result
 	}
 	if ext.Name != "" {
@@ -8867,7 +9275,7 @@ func (s *Service) preFilterUnreleased(ctx context.Context, items []mdblistItem) 
 				}
 			} else {
 				// Series: check status via lightweight extended call (no artworks)
-				if it.TVDBID != nil && *it.TVDBID > 0 {
+				if s.client.isConfigured() && it.TVDBID != nil && *it.TVDBID > 0 {
 					ext, err := s.cachedSeriesExtended(*it.TVDBID, []string{"episodes"})
 					if err == nil {
 						status := seriesReleaseStatusFromTVDBExtended(ext, models.Title{
@@ -8875,6 +9283,13 @@ func (s *Service) preFilterUnreleased(ctx context.Context, items []mdblistItem) 
 							Year:      it.ReleaseYear,
 						})
 						if status != models.SeriesReleaseStatusReleased {
+							keep[idx] = false
+						}
+					}
+				} else if s.tmdb != nil && s.tmdb.isConfigured() {
+					tmdbID := s.resolveTMDBSeriesID(ctx, models.SeriesDetailsQuery{Name: it.Title, Year: it.ReleaseYear, IMDBID: it.IMDBID})
+					if tmdbID > 0 {
+						if title, err := s.tmdb.seriesDetails(ctx, tmdbID); err == nil && title != nil && title.Status != models.SeriesReleaseStatusReleased {
 							keep[idx] = false
 						}
 					}
@@ -8967,6 +9382,9 @@ func (s *Service) enrichCustomListItem(ctx context.Context, item mdblistItem, li
 	if item.TMDBID != nil && *item.TMDBID > 0 {
 		title.TMDBID = *item.TMDBID
 	}
+	if item.TVDBID != nil && *item.TVDBID > 0 {
+		title.TVDBID = *item.TVDBID
+	}
 
 	var found bool
 	gotTranslatedOverview := false
@@ -9050,7 +9468,7 @@ func (s *Service) enrichCustomListItem(ctx context.Context, item mdblistItem, li
 	}
 
 	// Fallback: search TVDB by title/year if no TVDB ID or direct lookup failed
-	if !found {
+	if !found && s.client.isConfigured() {
 		remoteID := item.IMDBID
 		if mediaType == "movie" {
 			searchResults, err := s.searchTVDBMovie(item.Title, item.ReleaseYear, remoteID)
@@ -9180,7 +9598,11 @@ func (s *Service) enrichCustomListItem(ctx context.Context, item mdblistItem, li
 	}
 
 	if !found {
-		log.Printf("[metadata] no tvdb match for custom list item title=%q year=%d type=%s imdbId=%q", item.Title, item.ReleaseYear, mediaType, item.IMDBID)
+		if s.enrichTitleFromTMDB(ctx, &title) {
+			found = true
+		} else {
+			log.Printf("[metadata] no metadata match for custom list item title=%q year=%d type=%s imdbId=%q", item.Title, item.ReleaseYear, mediaType, item.IMDBID)
+		}
 	}
 
 	// Enrich movies with release data from TMDB (parallel where possible)
@@ -9397,7 +9819,7 @@ func selectTMDBMovieSearchResult(title string, year int, results []models.Search
 		if result.Title.TMDBID <= 0 {
 			continue
 		}
-		if !normalizedListTitleEqual(title, result.Title.Name) && !normalizedListTitleEqual(title, result.Title.OriginalName) {
+		if !normalizedListTitleYearEqual(title, result.Title.Name, year) && !normalizedListTitleYearEqual(title, result.Title.OriginalName, year) {
 			continue
 		}
 		if year > 0 && result.Title.Year > 0 && result.Title.Year != year {
@@ -9449,6 +9871,33 @@ func normalizedListTitleEqual(left, right string) bool {
 		return false
 	}
 	return leftNorm == rightNorm || stripLeadingListTitleArticle(leftNorm) == stripLeadingListTitleArticle(rightNorm)
+}
+
+// normalizedListTitleYearEqual accepts provider display titles that append the
+// already-known release year, such as "Dark Matter (2024)". Some sync sources
+// use that form to disambiguate remakes while TMDB returns the canonical title
+// without the suffix.
+func normalizedListTitleYearEqual(left, right string, year int) bool {
+	if normalizedListTitleEqual(left, right) {
+		return true
+	}
+	if year <= 0 {
+		return false
+	}
+	return normalizedListTitleEqual(stripTrailingListTitleYear(left, year), stripTrailingListTitleYear(right, year))
+}
+
+func stripTrailingListTitleYear(title string, year int) string {
+	title = strings.TrimSpace(title)
+	for _, suffix := range []string{
+		fmt.Sprintf(" (%d)", year),
+		fmt.Sprintf(" [%d]", year),
+	} {
+		if strings.HasSuffix(title, suffix) {
+			return strings.TrimSpace(strings.TrimSuffix(title, suffix))
+		}
+	}
+	return title
 }
 
 func normalizeListTitleForMatch(title string) string {
@@ -9526,8 +9975,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 		if opts.Lite {
 			genresUpdated = s.enrichLiteMissingGenres(ctx, result)
 		}
-		artworkCacheUpdated := s.enrichShelfArtworkFromCache(result)
-		s.enrichShelfArtwork(ctx, result, artworkLimit)
+		artworkCacheUpdated := s.enrichShelfArtworkForLoad(ctx, result, artworkLimit, opts.DeferArtwork)
 		if opts.Lite && (genresUpdated || artworkCacheUpdated || (opts.Offset == 0 && artworkLimit > customListLiteArtworkLimit)) {
 			_ = s.cache.set(cacheID, cached)
 		}
@@ -9631,8 +10079,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 		}(i, item)
 	}
 	wg.Wait()
-	s.enrichShelfArtworkFromCache(results)
-	s.enrichShelfArtwork(ctx, results, customListArtworkLimit(opts))
+	s.enrichShelfArtworkForLoad(ctx, results, customListArtworkLimit(opts), opts.DeferArtwork)
 
 	// Only cache full-list results when no filtering was applied
 	if !opts.HideWatched && !opts.HideUnreleased && opts.Offset == 0 &&
@@ -10080,13 +10527,21 @@ type TopTenDebugEntry struct {
 	FinalScore          float64  `json:"finalScore"`
 }
 
-// GetTopTen aggregates content from trending lists, all streaming network lists,
-// and TMDB genre discovery, then scores each unique item by cross-list frequency,
-// rank, and "today" recency signals. It returns the top 10 results.
-//
-// mediaType: "all" (default), "movie", or "tv"
-// customListURLs: optional additional MDBList /json URLs (e.g. from user settings)
+// GetTopTen returns TMDB's daily trending chart. The mixed variant takes the
+// first five eligible movies and shows and interleaves them in source order.
+// customListURLs remains in the interface for compatibility with the retired
+// multi-source implementation and is intentionally ignored by the daily chart.
 func (s *Service) GetTopTen(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, error) {
+	items, err := s.GetTopTenCandidates(ctx, mediaType, customListURLs)
+	if err != nil {
+		return nil, err
+	}
+	return selectDailyTopTen(items, mediaType), nil
+}
+
+// GetTopTenCandidates returns enough ordered daily-trending candidates for the
+// HTTP handler to apply profile visibility rules before choosing the final ten.
+func (s *Service) GetTopTenCandidates(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, error) {
 	var cached []models.TrendingItem
 	cacheID := topTenCacheKey(mediaType, customListURLs, s.client.language)
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
@@ -10098,10 +10553,177 @@ func (s *Service) GetTopTen(ctx context.Context, mediaType string, customListURL
 }
 
 func (s *Service) GetTopTenDebug(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
-	return s.getTopTenUncached(ctx, mediaType, customListURLs)
+	items, err := s.GetTopTen(ctx, mediaType, customListURLs)
+	return items, nil, err
 }
 
-func (s *Service) getTopTenUncached(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
+func (s *Service) getDailyTopTenCandidates(ctx context.Context, mediaType string) ([]models.TrendingItem, error) {
+	normalized := normalizeTopTenMediaType(mediaType)
+	if s.tmdb == nil || !s.tmdb.isConfigured() {
+		return nil, errors.New("tmdb api key not configured")
+	}
+
+	if normalized == "movie" || normalized == "tv" {
+		if normalized == "movie" {
+			return s.releasedDailyTrendingMovies(ctx, 20)
+		}
+		return s.tmdb.trendingDaily(ctx, normalized)
+	}
+
+	type result struct {
+		mediaType string
+		items     []models.TrendingItem
+		err       error
+	}
+	results := make(chan result, 2)
+	for _, kind := range []string{"movie", "tv"} {
+		kind := kind
+		go func() {
+			var items []models.TrendingItem
+			var err error
+			if kind == "movie" {
+				items, err = s.releasedDailyTrendingMovies(ctx, 20)
+			} else {
+				items, err = s.tmdb.trendingDaily(ctx, kind)
+			}
+			results <- result{mediaType: kind, items: items, err: err}
+		}()
+	}
+
+	var movies, shows []models.TrendingItem
+	for range 2 {
+		result := <-results
+		if result.err != nil {
+			return nil, result.err
+		}
+		if result.mediaType == "movie" {
+			movies = result.items
+		} else {
+			shows = result.items
+		}
+	}
+	return interleaveDailyTrending(movies, shows, 0), nil
+}
+
+func (s *Service) releasedDailyTrendingMovies(ctx context.Context, target int) ([]models.TrendingItem, error) {
+	if target < 1 {
+		target = 10
+	}
+	const maxPages = 3
+	released := make([]models.TrendingItem, 0, target)
+	seen := make(map[int64]struct{}, target)
+	for page := 1; page <= maxPages && len(released) < target; page++ {
+		items, err := s.tmdb.trendingDailyPage(ctx, "movie", page)
+		if err != nil {
+			if page == 1 {
+				return nil, err
+			}
+			log.Printf("[topten] daily movie backfill page %d skipped: %v", page, err)
+			break
+		}
+		items = s.filterReleasedDailyTrendingMovies(ctx, items)
+		for _, item := range items {
+			if _, ok := seen[item.Title.TMDBID]; ok {
+				continue
+			}
+			seen[item.Title.TMDBID] = struct{}{}
+			released = append(released, item)
+		}
+	}
+	for i := range released {
+		released[i].Rank = i + 1
+	}
+	return released, nil
+}
+
+func (s *Service) filterReleasedDailyTrendingMovies(ctx context.Context, items []models.TrendingItem) []models.TrendingItem {
+	const maxConcurrent = 5
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	for i := range items {
+		if items[i].Title.TMDBID <= 0 {
+			continue
+		}
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			s.enrichMovieReleases(ctx, &items[index].Title, items[index].Title.TMDBID)
+		}(i)
+	}
+	wg.Wait()
+
+	released := make([]models.TrendingItem, 0, len(items))
+	for _, item := range items {
+		status := models.MovieReleaseStatus(item.Title)
+		item.Title.Status = status
+		if status == models.MovieReleaseStatusReleased {
+			released = append(released, item)
+		}
+	}
+	return released
+}
+
+func normalizeTopTenMediaType(mediaType string) string {
+	switch strings.ToLower(strings.TrimSpace(mediaType)) {
+	case "movie", "movies":
+		return "movie"
+	case "tv", "series", "show", "shows":
+		return "tv"
+	default:
+		return "all"
+	}
+}
+
+func selectDailyTopTen(items []models.TrendingItem, mediaType string) []models.TrendingItem {
+	if normalizeTopTenMediaType(mediaType) != "all" {
+		limit := minInt(10, len(items))
+		selected := append([]models.TrendingItem(nil), items[:limit]...)
+		for i := range selected {
+			selected[i].Rank = i + 1
+		}
+		return selected
+	}
+
+	movies := make([]models.TrendingItem, 0, 5)
+	shows := make([]models.TrendingItem, 0, 5)
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Title.MediaType), "movie") {
+			movies = append(movies, item)
+		} else if isTopTenTVTitle(item.Title) {
+			shows = append(shows, item)
+		}
+	}
+	return interleaveDailyTrending(movies, shows, 5)
+}
+
+func interleaveDailyTrending(movies, shows []models.TrendingItem, perTypeLimit int) []models.TrendingItem {
+	if perTypeLimit <= 0 {
+		perTypeLimit = maxInt(len(movies), len(shows))
+	}
+	result := make([]models.TrendingItem, 0, minInt(perTypeLimit, len(movies))+minInt(perTypeLimit, len(shows)))
+	for i := 0; i < perTypeLimit; i++ {
+		if i < len(movies) {
+			result = append(result, movies[i])
+		}
+		if i < len(shows) {
+			result = append(result, shows[i])
+		}
+	}
+	for i := range result {
+		result[i].Rank = i + 1
+	}
+	return result
+}
+
+// GetLegacyTopTenDebug preserves the original multi-source scoring engine for
+// evaluation or a future rollback without keeping it on the production path.
+func (s *Service) GetLegacyTopTenDebug(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
+	return s.getLegacyTopTenUncached(ctx, mediaType, customListURLs)
+}
+
+func (s *Service) getLegacyTopTenUncached(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []TopTenDebugEntry, error) {
 	normalized := strings.ToLower(strings.TrimSpace(mediaType))
 	switch normalized {
 	case "movie", "movies":
@@ -10765,4 +11387,17 @@ func isDateBasedSeriesClassification(value string) bool {
 	default:
 		return false
 	}
+}
+
+func applyDateBasedSeriesClassification(title *models.Title) (bool, string) {
+	if title == nil || title.IsDaily {
+		return false, ""
+	}
+	for _, genre := range title.Genres {
+		if isDateBasedSeriesClassification(genre) {
+			title.IsDaily = true
+			return true, genre
+		}
+	}
+	return false, ""
 }

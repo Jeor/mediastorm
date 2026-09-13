@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -462,7 +463,7 @@ func TestMetadataHandler_DiscoverNew(t *testing.T) {
 
 	handler := NewMetadataHandler(fake, testConfigManager(t))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/discover/new?type=Movie&lite=true&artworkLimit=20", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/discover/new?type=Movie&lite=true&artworkLimit=20&deferArtwork=true", nil)
 	rec := httptest.NewRecorder()
 
 	handler.DiscoverNew(rec, req)
@@ -473,7 +474,7 @@ func TestMetadataHandler_DiscoverNew(t *testing.T) {
 	if fake.lastTrendingType != "movie" {
 		t.Fatalf("expected media type to normalize to movie, got %q", fake.lastTrendingType)
 	}
-	if !fake.lastTrendingOptions.Lite || fake.lastTrendingOptions.ArtworkLimit != 20 {
+	if !fake.lastTrendingOptions.Lite || fake.lastTrendingOptions.ArtworkLimit != 20 || !fake.lastTrendingOptions.DeferArtwork {
 		t.Fatalf("unexpected trending options: %+v", fake.lastTrendingOptions)
 	}
 
@@ -773,7 +774,7 @@ func TestMetadataHandler_CustomListForwardsLiteOption(t *testing.T) {
 	}
 	handler := NewMetadataHandler(fake, testConfigManager(t))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/lists/custom?url=https%3A%2F%2Fmdblist.com%2Flists%2Fsnoak%2Fdisney-plus-top-10-movies%2Fjson&limit=50&lite=true&artworkLimit=20&name=Disney%2B", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/lists/custom?url=https%3A%2F%2Fmdblist.com%2Flists%2Fsnoak%2Fdisney-plus-top-10-movies%2Fjson&limit=50&lite=true&artworkLimit=20&deferArtwork=true&name=Disney%2B", nil)
 	rec := httptest.NewRecorder()
 
 	handler.CustomList(rec, req)
@@ -785,7 +786,7 @@ func TestMetadataHandler_CustomListForwardsLiteOption(t *testing.T) {
 		t.Fatalf("unexpected list URL %q", fake.lastCustomListURL)
 	}
 	opts := fake.lastCustomListOptions
-	if opts.Limit != 50 || !opts.Lite || opts.ArtworkLimit != 20 || opts.Label != "Disney+" {
+	if opts.Limit != 50 || !opts.Lite || opts.ArtworkLimit != 20 || !opts.DeferArtwork || opts.Label != "Disney+" {
 		t.Fatalf("unexpected custom list options: %+v", opts)
 	}
 
@@ -1044,9 +1045,9 @@ func TestMetadataHandler_SearchKidsContentListReturnsEmpty(t *testing.T) {
 func TestMetadataHandler_TopTenKidsRatingFilters(t *testing.T) {
 	fake := &fakeMetadataService{
 		trendingResp: []models.TrendingItem{
-			{Title: models.Title{Name: "Kids Movie", MediaType: "movie", Certification: "G"}},
-			{Title: models.Title{Name: "Adult Movie", MediaType: "movie", Certification: "R"}},
-			{Title: models.Title{Name: "Unrated Movie", MediaType: "movie"}},
+			{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Kids Movie", MediaType: "movie", Certification: "G"}},
+			{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Adult Movie", MediaType: "movie", Certification: "R"}},
+			{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Unrated Movie", MediaType: "movie"}},
 		},
 	}
 	handler := NewMetadataHandler(fake, testConfigManager(t))
@@ -1076,8 +1077,8 @@ func TestMetadataHandler_TopTenKidsRatingFilters(t *testing.T) {
 func TestMetadataHandler_TopTenNoFilterForAdult(t *testing.T) {
 	fake := &fakeMetadataService{
 		trendingResp: []models.TrendingItem{
-			{Title: models.Title{Name: "Kids Movie", MediaType: "movie", Certification: "G"}},
-			{Title: models.Title{Name: "Adult Movie", MediaType: "movie", Certification: "R"}},
+			{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Kids Movie", MediaType: "movie", Certification: "G"}},
+			{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Adult Movie", MediaType: "movie", Certification: "R"}},
 		},
 	}
 	handler := NewMetadataHandler(fake, testConfigManager(t))
@@ -2182,8 +2183,8 @@ func TestMetadataHandler_BatchSeriesDetails_EmptyFields(t *testing.T) {
 
 func TestMetadataHandler_TopTen(t *testing.T) {
 	items := []models.TrendingItem{
-		{Rank: 1, Title: models.Title{Name: "Inception", MediaType: "movie", IMDBID: "tt1375666", Popularity: 90}},
-		{Rank: 2, Title: models.Title{Name: "Breaking Bad", MediaType: "series", IMDBID: "tt0903747", Popularity: 85}},
+		{Rank: 1, Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Inception", MediaType: "movie", IMDBID: "tt1375666", Popularity: 90}},
+		{Rank: 2, Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Breaking Bad", MediaType: "series", IMDBID: "tt0903747", Popularity: 85}},
 	}
 	fake := &fakeMetadataService{trendingResp: items}
 	handler := NewMetadataHandler(fake, testConfigManager(t))
@@ -2218,10 +2219,10 @@ func TestMetadataHandler_TopTenFiltersUnreleasedByListPolicy(t *testing.T) {
 		t.Fatalf("save settings: %v", err)
 	}
 	items := []models.TrendingItem{
-		{Rank: 1, Title: models.Title{Name: "Toy Story 2", MediaType: "movie", Year: 1999}},
-		{Rank: 2, Title: models.Title{Name: "Toy Story 5", MediaType: "movie", Year: time.Now().Year() + 1}},
-		{Rank: 3, Title: models.Title{Name: "Released Show", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
-		{Rank: 4, Title: models.Title{Name: "Unreleased Show", MediaType: "series", Status: models.SeriesReleaseStatusUnreleased}},
+		{Rank: 1, Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Toy Story 2", MediaType: "movie", Year: 1999}},
+		{Rank: 2, Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Toy Story 5", MediaType: "movie", Year: time.Now().Year() + 1}},
+		{Rank: 3, Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Released Show", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Rank: 4, Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Unreleased Show", MediaType: "series", Status: models.SeriesReleaseStatusUnreleased}},
 	}
 	fake := &fakeMetadataService{trendingResp: items}
 	handler := NewMetadataHandler(fake, cfg)
@@ -2244,6 +2245,57 @@ func TestMetadataHandler_TopTenFiltersUnreleasedByListPolicy(t *testing.T) {
 	}
 	if resp.Items[0].Title.Name != "Toy Story 2" || resp.Items[1].Title.Name != "Released Show" {
 		t.Fatalf("unexpected top-ten items: %+v", resp.Items)
+	}
+}
+
+func TestMetadataHandler_TopTenBackfillsAfterVisibilityFiltering(t *testing.T) {
+	cfg := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	settings := config.DefaultSettings()
+	settings.Display.IncludeUnreleasedMoviesInLists = false
+	settings.Display.IncludeUnreleasedShowsInLists = false
+	if err := cfg.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	items := []models.TrendingItem{
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Future Movie", MediaType: "movie", Status: models.MovieReleaseStatusUpcoming}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Movie 1", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Movie 2", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Movie 3", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Movie 4", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Movie 5", MediaType: "movie", Status: models.MovieReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Future Show", MediaType: "series", Status: models.SeriesReleaseStatusUnreleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Show 1", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Show 2", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Show 3", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Show 4", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+		{Title: models.Title{TMDBID: 1, Poster: &models.Image{URL: "https://image.tmdb.org/t/p/w500/poster.jpg"}, Name: "Show 5", MediaType: "series", Status: models.SeriesReleaseStatusReleased}},
+	}
+	handler := NewMetadataHandler(&fakeMetadataService{trendingResp: items}, cfg)
+	req := httptest.NewRequest(http.MethodGet, "/api/discover/top-ten?type=all", nil)
+	rec := httptest.NewRecorder()
+
+	handler.TopTen(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	var resp TopTenResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Items) != 10 {
+		t.Fatalf("items = %d, want ten backfilled results: %#v", len(resp.Items), resp.Items)
+	}
+	for i, item := range resp.Items {
+		position := i/2 + 1
+		wantName := fmt.Sprintf("Movie %d", position)
+		if i%2 == 1 {
+			wantName = fmt.Sprintf("Show %d", position)
+		}
+		if item.Title.Name != wantName || item.Rank != i+1 {
+			t.Fatalf("items[%d] = name %q rank %d, want name %q rank %d", i, item.Title.Name, item.Rank, wantName, i+1)
+		}
 	}
 }
 

@@ -856,8 +856,10 @@ func TestLiveHLSOutputArgsWebRetainsCompatibilityTranscode(t *testing.T) {
 		"-c:v libx264",
 		"-c:a aac",
 		"-force_key_frames expr:gte(t,n_forced*1)",
-		"delete_segments+independent_segments+temp_file",
-		"-hls_list_size 10",
+		// Same wide window and consumption-paced retention as native live:
+		// no delete_segments, pruned by ServeSegment behind the served high-water mark.
+		"independent_segments+temp_file",
+		fmt.Sprintf("-hls_list_size %d", liveNativeHLSListSize),
 	} {
 		if !strings.Contains(joined, expected) {
 			t.Fatalf("web live args %q missing %q", joined, expected)
@@ -865,6 +867,9 @@ func TestLiveHLSOutputArgsWebRetainsCompatibilityTranscode(t *testing.T) {
 	}
 	if strings.Contains(joined, "-c:v copy") {
 		t.Fatalf("web live args should re-encode, not copy: %q", joined)
+	}
+	if strings.Contains(joined, "delete_segments") {
+		t.Fatalf("web live args must not use delete_segments (unpaced production deletes unread segments): %q", joined)
 	}
 }
 
@@ -1324,6 +1329,91 @@ func TestHLSManager_ServeSubtitleTrackReportsVideoTimestampBase(t *testing.T) {
 	}
 	if got := rr.Header().Get("X-Subtitle-Timestamp-Base"); got != "1.400" {
 		t.Fatalf("subtitle timestamp base = %q, want 1.400", got)
+	}
+}
+
+func TestHLSManager_ServeSyncedSubtitleClampsOnlySpanningCueStart(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewHLSManager(tmpDir, "", "", nil)
+	defer manager.Shutdown()
+
+	const sessionID = "synced-subtitle-negative-start-test"
+	outputDir := filepath.Join(tmpDir, sessionID)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	input := "WEBVTT\n\n00:-2.-50 --> 00:00.510\noverlap\n\n00:00.590 --> 00:02.670\nnext\n"
+	if err := os.WriteFile(filepath.Join(outputDir, "subtitles_7.vtt"), []byte(input), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	session := &HLSSession{
+		ID:                    sessionID,
+		OutputDir:             outputDir,
+		CreatedAt:             time.Now(),
+		LastAccess:            time.Now(),
+		SubtitleTrackIndex:    7,
+		UsesSubtitleRendition: true,
+		Completed:             true,
+	}
+	manager.mu.Lock()
+	manager.sessions[sessionID] = session
+	manager.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodGet, "/video/hls/"+sessionID+"/subtitles-7.vtt", nil)
+	rr := httptest.NewRecorder()
+	manager.ServeSubtitleTrack(rr, req, sessionID, 7, false)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rr.Code)
+	}
+	if got := rr.Header().Get("X-Subtitle-Synced"); got != "true" {
+		t.Fatalf("synced header = %q, want true", got)
+	}
+	want := "WEBVTT\n\n00:00.000 --> 00:00.510\noverlap\n\n00:00.590 --> 00:02.670\nnext\n"
+	if got := rr.Body.String(); got != want {
+		t.Fatalf("served synced VTT changed the relative cue timeline:\n got %q\nwant %q", got, want)
+	}
+}
+
+func TestHLSManager_ServeCastSubtitleLeavesTimestampProcessingUnchanged(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewHLSManager(tmpDir, "", "", nil)
+	defer manager.Shutdown()
+
+	const sessionID = "cast-subtitle-timestamp-test"
+	outputDir := filepath.Join(tmpDir, sessionID)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	input := "WEBVTT\n\n00:-2.-50 --> 00:00.510\noverlap\n"
+	if err := os.WriteFile(filepath.Join(outputDir, "subtitles_7.vtt"), []byte(input), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	session := &HLSSession{
+		ID:                    sessionID,
+		OutputDir:             outputDir,
+		CreatedAt:             time.Now(),
+		LastAccess:            time.Now(),
+		SubtitleTrackIndex:    7,
+		UsesSubtitleRendition: true,
+		CastMode:              true,
+		Completed:             true,
+	}
+	manager.mu.Lock()
+	manager.sessions[sessionID] = session
+	manager.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodGet, "/video/hls/"+sessionID+"/subtitles-7.vtt", nil)
+	rr := httptest.NewRecorder()
+	manager.ServeSubtitleTrack(rr, req, sessionID, 7, false)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rr.Code)
+	}
+	if got := rr.Body.String(); got != input {
+		t.Fatalf("cast subtitle timestamp processing changed:\n got %q\nwant %q", got, input)
 	}
 }
 

@@ -74,6 +74,9 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 
 	session := t.sessions[key]
 	if session == nil {
+		if !t.registry.CanStart("scrob", userID, update) {
+			return
+		}
 		account := t.scrobbler.getAccountForUser(userID)
 		if !scrobAccountCanPush(account) {
 			return
@@ -98,12 +101,13 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 	}
 
 	session.lastActivity = now
-	if !session.lastSent.IsZero() && session.paused == update.IsPaused && now.Sub(session.lastSent) < t.refreshInterval {
-		return
-	}
 	state := "playing"
 	if update.IsPaused {
 		state = "paused"
+	}
+	t.registry.Touch("scrob", userID, state, session.remoteKey, update, percentWatched)
+	if !session.lastSent.IsZero() && session.paused == update.IsPaused && now.Sub(session.lastSent) < t.refreshInterval {
+		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	err := t.client.UpdateSession(ctx, session.account.BaseURL, session.account.APIKey, session.token, session.remoteKey, ManualSessionUpdate{
@@ -124,6 +128,12 @@ func (t *ScrobbleStateTracker) HandleProgressUpdate(userID string, update models
 		cancel()
 	}
 	if err != nil {
+		if isNotFound(err) {
+			delete(t.sessions, key)
+			t.registry.Remove("scrob", userID, update)
+			log.Printf("[scrob-now-playing] remote session disappeared for %s; will recreate on next heartbeat", key)
+			return
+		}
 		log.Printf("[scrob-now-playing] update failed for %s: %v", key, err)
 		return
 	}
@@ -160,7 +170,7 @@ func (t *ScrobbleStateTracker) stop(key string) {
 		}
 		cancel()
 	}
-	if err != nil {
+	if err != nil && !isNotFound(err) {
 		log.Printf("[scrob-now-playing] stop failed for %s: %v", key, err)
 		return
 	}
@@ -182,11 +192,19 @@ func (t *ScrobbleStateTracker) CleanupRealtimeSession(ctx context.Context, sessi
 	if strings.TrimSpace(session.RemoteKey) == "" {
 		return fmt.Errorf("Scrob session has no remote key")
 	}
-	return t.client.StopSession(ctx, account.BaseURL, account.APIKey, token, session.RemoteKey)
+	err = t.client.StopSession(ctx, account.BaseURL, account.APIKey, token, session.RemoteKey)
+	if isNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 func isUnauthorized(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "HTTP 401")
+}
+
+func isNotFound(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "HTTP 404")
 }
 
 func (t *ScrobbleStateTracker) StartCleanup(ctx context.Context) {
@@ -243,7 +261,11 @@ func buildManualSessionStart(update models.PlaybackProgressUpdate) (ManualSessio
 		if showTMDBID == 0 {
 			showTMDBID = idFromPrefixes(update.SeriesID, "tmdb:tv:", "tmdb:")
 		}
-		if tmdbID == 0 && showTMDBID == 0 {
+		// Scrob can only resolve an episode session deterministically from the
+		// episode's own TMDB ID. Starting with only the show ID makes Scrob create
+		// a new temporary media row on every backend restart; those orphaned
+		// sessions can later be auto-completed as watched.
+		if tmdbID == 0 {
 			return ManualSessionStart{}, false
 		}
 		season, episode := update.SeasonNumber, update.EpisodeNumber

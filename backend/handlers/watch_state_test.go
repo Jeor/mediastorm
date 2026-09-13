@@ -6,6 +6,20 @@ import (
 	"novastream/models"
 )
 
+type fakeReleasedEpisodeCountProvider struct {
+	counts map[string]int
+	warmed []models.SeriesDetailsQuery
+}
+
+func (f *fakeReleasedEpisodeCountProvider) GetCachedReleasedEpisodeCount(query models.SeriesDetailsQuery) (int, bool) {
+	count, ok := f.counts[query.TitleID]
+	return count, ok
+}
+
+func (f *fakeReleasedEpisodeCountProvider) WarmReleasedEpisodeCount(query models.SeriesDetailsQuery) {
+	f.warmed = append(f.warmed, query)
+}
+
 func TestBuildWatchStateIndex_Empty(t *testing.T) {
 	idx := buildWatchStateIndex(nil, nil, nil)
 	state, unwatched := idx.compute("movie", "test-id")
@@ -148,6 +162,116 @@ func TestCompute_SeriesNone(t *testing.T) {
 	}
 }
 
+func TestCompute_SeriesNoneWithKnownEpisodeTotal(t *testing.T) {
+	idx := buildWatchStateIndex(nil, nil, nil)
+	idx.setSeriesEpisodeTotal("tvdb:999", map[string]string{"tvdb": "999"}, 12)
+
+	state, unwatched := idx.computeWithExternalIDs("series", "tmdb:tv:123", map[string]string{"tvdb": "999"})
+	if state != "none" {
+		t.Errorf("expected 'none', got %q", state)
+	}
+	if unwatched == nil || *unwatched != 12 {
+		t.Errorf("expected unwatched=12, got %v", unwatched)
+	}
+}
+
+func TestCompute_SeriesUsesWatchedEpisodeHistoryWithKnownTotal(t *testing.T) {
+	idx := buildWatchStateIndex(
+		[]models.WatchHistoryItem{
+			{MediaType: "episode", SeriesID: "tvdb:999", ExternalIDs: map[string]string{"tvdb": "999"}, Watched: true, SeasonNumber: 1, EpisodeNumber: 1},
+			{MediaType: "episode", SeriesID: "tvdb:999", ExternalIDs: map[string]string{"tvdb": "999"}, Watched: true, SeasonNumber: 1, EpisodeNumber: 2},
+			// Duplicate aliases should not inflate the watched count.
+			{MediaType: "episode", SeriesID: "tmdb:tv:123", ExternalIDs: map[string]string{"tvdb": "999"}, Watched: true, SeasonNumber: 1, EpisodeNumber: 2},
+		},
+		nil,
+		nil,
+	)
+	idx.setSeriesEpisodeTotal("tvdb:999", map[string]string{"tvdb": "999"}, 12)
+
+	state, unwatched := idx.computeWithExternalIDs("series", "tmdb:tv:123", map[string]string{"tvdb": "999"})
+	if state != "partial" {
+		t.Errorf("expected 'partial', got %q", state)
+	}
+	if unwatched == nil {
+		t.Fatal("expected unwatched=10, got nil")
+	}
+	if *unwatched != 10 {
+		t.Errorf("expected unwatched=10, got %d", *unwatched)
+	}
+}
+
+func TestAddCachedWatchlistEpisodeTotals_UsesCacheAndWarmsMisses(t *testing.T) {
+	idx := buildWatchStateIndex(nil, nil, nil)
+	provider := &fakeReleasedEpisodeCountProvider{counts: map[string]int{"cached": 8}}
+	items := []models.WatchlistItem{
+		{ID: "cached", MediaType: "series", ExternalIDs: map[string]string{"tvdb": "100"}},
+		{ID: "missing", MediaType: "series", ExternalIDs: map[string]string{"tvdb": "200"}},
+		{ID: "movie", MediaType: "movie"},
+	}
+
+	enrichWatchlistItems(items, idx, provider, true)
+
+	state, unwatched := idx.computeWithExternalIDs("series", "alias", map[string]string{"tvdb": "100"})
+	if state != "none" || unwatched == nil || *unwatched != 8 {
+		t.Fatalf("cached series = state %q unwatched %v, want none/8", state, unwatched)
+	}
+	if len(provider.warmed) != 1 || provider.warmed[0].TitleID != "missing" {
+		t.Fatalf("warmed queries = %#v, want only missing series", provider.warmed)
+	}
+}
+
+func TestAddCachedTrendingEpisodeTotals_UsesCacheAndWarmsMisses(t *testing.T) {
+	idx := buildWatchStateIndex(nil, nil, nil)
+	provider := &fakeReleasedEpisodeCountProvider{counts: map[string]int{"tvdb:100": 8}}
+	items := []models.TrendingItem{
+		{Title: models.Title{ID: "tvdb:series:100", Name: "Cached", MediaType: "series", TVDBID: 100}},
+		{Title: models.Title{ID: "tvdb:series:200", Name: "Missing", MediaType: "series", TVDBID: 200}},
+		{Title: models.Title{ID: "tmdb:movie:300", Name: "Movie", MediaType: "movie", TMDBID: 300}},
+	}
+
+	enrichTrendingItems(items, idx, provider, true)
+
+	if items[0].Title.WatchState != "none" || items[0].Title.UnwatchedCount == nil || *items[0].Title.UnwatchedCount != 8 {
+		t.Fatalf("cached series = state %q unwatched %v, want none/8", items[0].Title.WatchState, items[0].Title.UnwatchedCount)
+	}
+	if len(provider.warmed) != 1 || provider.warmed[0].TitleID != "tvdb:200" {
+		t.Fatalf("warmed queries = %#v, want only missing series", provider.warmed)
+	}
+}
+
+func TestEnrichSearchResultsWithCachedEpisodeCounts_DoesNotWarmMisses(t *testing.T) {
+	idx := buildWatchStateIndex(nil, nil, nil)
+	provider := &fakeReleasedEpisodeCountProvider{counts: map[string]int{"tvdb:100": 8}}
+	results := []models.SearchResult{
+		{Title: models.Title{ID: "tvdb:series:100", Name: "Cached", MediaType: "series", TVDBID: 100}},
+		{Title: models.Title{ID: "tvdb:series:200", Name: "Missing", MediaType: "series", TVDBID: 200}},
+	}
+
+	enrichSearchResultsWithCachedEpisodeCounts(results, idx, provider)
+
+	if results[0].Title.UnwatchedCount == nil || *results[0].Title.UnwatchedCount != 8 {
+		t.Fatalf("cached search result unwatched = %v, want 8", results[0].Title.UnwatchedCount)
+	}
+	if results[1].Title.UnwatchedCount != nil {
+		t.Fatalf("missing search result unwatched = %v, want nil", results[1].Title.UnwatchedCount)
+	}
+	if len(provider.warmed) != 0 {
+		t.Fatalf("search warmed provider queries: %#v", provider.warmed)
+	}
+}
+
+func TestCachedEpisodeCountsManifestHashChangesWhenWarmCompletes(t *testing.T) {
+	items := []models.WatchlistItem{{ID: "series-1", MediaType: "series"}}
+	provider := &fakeReleasedEpisodeCountProvider{counts: map[string]int{}}
+	missingHash := cachedEpisodeCountsManifestHash(items, provider)
+
+	provider.counts["series-1"] = 8
+	cachedHash := cachedEpisodeCountsManifestHash(items, provider)
+	if missingHash == cachedHash {
+		t.Fatalf("manifest hash did not change after episode count became cached: %q", cachedHash)
+	}
+}
+
 func TestCompute_SpecialEpisodesIgnored(t *testing.T) {
 	// Season 0 (specials) should not count as hasWatchedEps
 	idx := buildWatchStateIndex(
@@ -180,7 +304,7 @@ func TestEnrichWatchlistItems(t *testing.T) {
 		{ID: "m2", MediaType: "movie"},
 	}
 
-	enrichWatchlistItems(items, idx)
+	enrichWatchlistItems(items, idx, nil, false)
 
 	if items[0].WatchState != "complete" {
 		t.Errorf("movie m1: expected 'complete', got %q", items[0].WatchState)
@@ -209,7 +333,7 @@ func TestEnrichTrendingItems(t *testing.T) {
 		{Rank: 2, Title: models.Title{ID: "tvdb:60", MediaType: "series", TVDBID: 60}},
 	}
 
-	enrichTrendingItems(items, idx)
+	enrichTrendingItems(items, idx, nil, false)
 
 	if items[0].Title.WatchState != "complete" {
 		t.Errorf("movie: expected 'complete', got %q", items[0].Title.WatchState)

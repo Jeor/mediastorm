@@ -131,6 +131,9 @@ func AccountAuthMiddleware(sessionsSvc *sessions.Service, accountsSvc *accounts.
 				json.NewEncoder(w).Encode(map[string]string{"error": "invalid or expired session"})
 				return
 			}
+			if session.ClientID == "" {
+				_ = sessionsSvc.BindClient(token, r.Header.Get("X-Client-ID"))
+			}
 
 			// Check if the account has expired
 			if accountsSvc != nil && accountsSvc.IsExpired(session.AccountID) {
@@ -259,6 +262,7 @@ func extractToken(r *http.Request) string {
 
 func queryTokenAllowed(path string) bool {
 	if path == "/api/video/stream" || strings.HasPrefix(path, "/api/video/stream/") ||
+		strings.HasPrefix(path, "/api/video/live-direct/") ||
 		path == "/api/video/share-progress" || isStreamScopedSessionPath(path) {
 		return true
 	}

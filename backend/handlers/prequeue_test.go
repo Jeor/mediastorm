@@ -40,6 +40,32 @@ func TestNormalizePrequeueSeriesTitle(t *testing.T) {
 	}
 }
 
+func TestResolveFirstReadySourceForWorker(t *testing.T) {
+	if !resolveFirstReadySourceForWorker(true, prequeueWorkerInteractive) {
+		t.Fatal("interactive prequeue must honor enabled early resolution")
+	}
+	if resolveFirstReadySourceForWorker(true, prequeueWorkerScheduledPrewarm) {
+		t.Fatal("scheduled pre-warm must ignore enabled early resolution")
+	}
+	if resolveFirstReadySourceForWorker(false, prequeueWorkerInteractive) {
+		t.Fatal("interactive prequeue must preserve disabled early resolution")
+	}
+}
+
+func TestCombinedPrequeueSearchOptionsPreservesAlternateTitles(t *testing.T) {
+	opts := combinedPrequeueSearchOptions(indexer.SearchOptions{
+		Query:           "Batman: Death in the Family",
+		AlternateTitles: []string{"DC Showcase - Batman: Death in the Family"},
+	})
+
+	if !opts.IncludeFiltered {
+		t.Fatal("combined prequeue search must include filtered results")
+	}
+	if len(opts.AlternateTitles) != 1 || opts.AlternateTitles[0] != "DC Showcase - Batman: Death in the Family" {
+		t.Fatalf("alternate titles = %v, want canonical DC Showcase title", opts.AlternateTitles)
+	}
+}
+
 func TestHasReusablePreparationRequiresCompleteDolbyVisionConfiguration(t *testing.T) {
 	legacy := &playback.PrequeueEntry{
 		HasDolbyVision:     true,
@@ -66,6 +92,57 @@ func TestHasReusablePreparationRequiresCompleteDolbyVisionConfiguration(t *testi
 	legacy.DolbyVisionConfiguration.PixelFormat = "yuv420p10le"
 	if !hasReusablePreparation(legacy) {
 		t.Fatal("Dolby Vision entry with decoder configuration and pixel format should remain reusable")
+	}
+}
+
+func TestAdaptiveThroughputDoesNotChangePrequeueScope(t *testing.T) {
+	base := prequeueScopeSignature{
+		Filtering: models.FilterSettings{
+			MaxSizeEpisodeGB: models.FloatPtr(0),
+			HDRDVPolicy:      models.HDRDVPolicyIncludeHDR,
+		},
+	}
+
+	fast := base
+	displayPolicy := models.HDRDVPolicyIncludeHDRDV
+	applyAdaptiveScopePolicy(&fast.Filtering, models.AdaptiveCaps{
+		MaxSizeEpisodeGB: models.FloatPtr(32),
+		HDRDVPolicy:      &displayPolicy,
+	})
+
+	slower := base
+	applyAdaptiveScopePolicy(&slower.Filtering, models.AdaptiveCaps{
+		MaxSizeEpisodeGB: models.FloatPtr(8),
+		HDRDVPolicy:      &displayPolicy,
+	})
+
+	if got, want := prequeueScopeHash(fast), prequeueScopeHash(slower); got != want {
+		t.Fatalf("throughput-only cap change altered scope: fast=%s slower=%s", got, want)
+	}
+
+	sdr := base
+	sdrPolicy := models.HDRDVPolicyNoExclusion
+	applyAdaptiveScopePolicy(&sdr.Filtering, models.AdaptiveCaps{HDRDVPolicy: &sdrPolicy})
+	if prequeueScopeHash(fast) == prequeueScopeHash(sdr) {
+		t.Fatal("display compatibility change should still alter scope")
+	}
+}
+
+func TestReadyEntryFitsAdaptiveCaps(t *testing.T) {
+	const gib = int64(1024 * 1024 * 1024)
+
+	episode := &playback.PrequeueEntry{MediaType: "series", FileSize: 6 * gib}
+	if !readyEntryFitsAdaptiveCaps(episode, models.AdaptiveCaps{MaxSizeEpisodeGB: models.FloatPtr(8)}) {
+		t.Fatal("ready episode below the new throughput cap should remain reusable")
+	}
+	if readyEntryFitsAdaptiveCaps(episode, models.AdaptiveCaps{MaxSizeEpisodeGB: models.FloatPtr(5)}) {
+		t.Fatal("ready episode above the new throughput cap should require fresh resolution")
+	}
+	if readyEntryFitsAdaptiveCaps(&playback.PrequeueEntry{MediaType: "series"}, models.AdaptiveCaps{MaxSizeEpisodeGB: models.FloatPtr(8)}) {
+		t.Fatal("entry with unknown size cannot be proven safe under an adaptive cap")
+	}
+	if !readyEntryFitsAdaptiveCaps(episode, models.AdaptiveCaps{}) {
+		t.Fatal("entry should remain reusable when adaptive throughput supplies no size cap")
 	}
 }
 
@@ -257,6 +334,113 @@ func TestRacePrequeueResolutionsAdoptsFastSecondCandidate(t *testing.T) {
 	}
 	if elapsed >= time.Second {
 		t.Fatalf("race took %v; the slow candidate was not cancelled when the bounded window elapsed (serial sum would be >3s)", elapsed)
+	}
+}
+
+func TestPrequeuePreferenceBucketsIgnoreServicePriority(t *testing.T) {
+	scored := []models.ScoredNZBResult{
+		{NZBResult: models.NZBResult{Title: "preferred-service-2160"}, ScoreBreakdown: []models.ScoreBreakdownItem{
+			{Criterion: "Service Priority", Points: 30_000},
+			{Criterion: "Resolution", Points: 40_000},
+		}},
+		{NZBResult: models.NZBResult{Title: "other-service-2160"}, ScoreBreakdown: []models.ScoreBreakdownItem{
+			{Criterion: "Service Priority", Points: 0},
+			{Criterion: "Resolution", Points: 40_000},
+		}},
+		{NZBResult: models.NZBResult{Title: "preferred-service-1080"}, ScoreBreakdown: []models.ScoreBreakdownItem{
+			{Criterion: "Service Priority", Points: 30_000},
+			{Criterion: "Resolution", Points: 20_000},
+		}},
+	}
+
+	buckets, criterion := prequeuePreferenceBuckets(scored)
+	if criterion != "Resolution" {
+		t.Fatalf("criterion = %q, want Resolution", criterion)
+	}
+	if want := []int{0, 0, 1}; !reflect.DeepEqual(buckets, want) {
+		t.Fatalf("buckets = %v, want %v", buckets, want)
+	}
+}
+
+func TestPrequeuePreferenceBucketsRankScoresRegardlessOfCandidateOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		points []int
+		want   []int
+	}{
+		{"promoted 720p before 2160p and 1080p", []int{10000, 40000, 20000, 10000, 20000}, []int{2, 0, 1, 2, 1}},
+		{"negative preference scores", []int{-200, 0, -100, -200}, []int{2, 0, 1, 2}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scored := make([]models.ScoredNZBResult, len(tc.points))
+			for i, points := range tc.points {
+				scored[i].ScoreBreakdown = []models.ScoreBreakdownItem{{Criterion: "Resolution", Points: points}}
+			}
+			buckets, criterion := prequeuePreferenceBuckets(scored)
+			if criterion != "Resolution" || !reflect.DeepEqual(buckets, tc.want) {
+				t.Fatalf("buckets = %v (%s), want %v (Resolution)", buckets, criterion, tc.want)
+			}
+		})
+	}
+}
+
+func TestRacePrequeueResolutionsDoesNotStartLowerPreferenceBucketEarly(t *testing.T) {
+	src := newStreamCandidateSource()
+	topStarted := make(chan struct{}, 1)
+	lowerStarted := make(chan struct{}, 1)
+	releaseTop := make(chan struct{})
+
+	process := func(_ context.Context, i int, candidate models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if candidate.Title == "2160-dead" {
+			topStarted <- struct{}{}
+			<-releaseTop
+			return nil, nil, errors.New("top bucket unavailable")
+		}
+		lowerStarted <- struct{}{}
+		return &candidateResolution{
+			index:      i,
+			result:     candidate,
+			resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/1080.mkv"},
+		}, nil, nil
+	}
+
+	type outcome struct {
+		winner *candidateResolution
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		winner, _, err := racePrequeueResolutions(context.Background(), src, 8, process, nil, 25*time.Millisecond, true)
+		done <- outcome{winner: winner, err: err}
+	}()
+	go func() {
+		src.feedRanked(prequeueRankedCandidate{result: models.NZBResult{Title: "2160-dead"}, bucket: 0})
+		src.feedRanked(prequeueRankedCandidate{result: models.NZBResult{Title: "1080-fast"}, bucket: 1})
+		src.Close()
+	}()
+
+	select {
+	case <-topStarted:
+	case <-time.After(time.Second):
+		t.Fatal("preferred bucket did not start")
+	}
+	select {
+	case <-lowerStarted:
+		t.Fatal("lower preference bucket started while the preferred bucket was viable")
+	case <-time.After(75 * time.Millisecond):
+	}
+	close(releaseTop)
+
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatalf("race returned error: %v", got.err)
+		}
+		if got.winner == nil || got.winner.result.Title != "1080-fast" {
+			t.Fatalf("winner = %+v, want lower bucket after preferred bucket failed", got.winner)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("race did not advance after preferred bucket failed")
 	}
 }
 
@@ -873,6 +1057,47 @@ func TestRacePrequeueResolutionsCancelledContext(t *testing.T) {
 	}
 	if err == nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled race returned err=%v, want context.Canceled", err)
+	}
+}
+
+func TestRacePrequeueResolutionsDetachesLoserThatIgnoresCancellation(t *testing.T) {
+	loserStarted := make(chan struct{})
+	releaseLoser := make(chan struct{})
+	defer close(releaseLoser)
+
+	process := func(ctx context.Context, i int, _ models.NZBResult) (*candidateResolution, *candidateResolution, error) {
+		if i == 1 {
+			close(loserStarted)
+			<-releaseLoser // Deliberately ignore ctx, matching a wedged provider read.
+			return nil, nil, ctx.Err()
+		}
+		<-loserStarted
+		return &candidateResolution{
+			index:      0,
+			result:     models.NZBResult{Title: "winner"},
+			resolution: &models.PlaybackResolution{WebDAVPath: "/webdav/winner.mkv"},
+		}, nil, nil
+	}
+
+	startedAt := time.Now()
+	winner, usedFallback, err := racePrequeueResolutionsWithJoinTimeout(
+		context.Background(),
+		newSliceCandidateSource([]models.NZBResult{{Title: "winner"}, {Title: "stuck-loser"}}),
+		2,
+		process,
+		nil,
+		0,
+		true,
+		25*time.Millisecond,
+	)
+	if err != nil {
+		t.Fatalf("race returned error: %v", err)
+	}
+	if usedFallback || winner == nil || winner.index != 0 {
+		t.Fatalf("race returned winner=%d usedFallback=%t, want winner 0", winnerIndex(winner), usedFallback)
+	}
+	if elapsed := time.Since(startedAt); elapsed > time.Second {
+		t.Fatalf("race waited %s for a loser that ignored cancellation", elapsed)
 	}
 }
 
@@ -1516,31 +1741,6 @@ func TestUnknownTrackPolicyRejects(t *testing.T) {
 			got, _ := unknownTrackPolicyRejects(tt.policy, tt.audio, tt.subtitles)
 			if got != tt.want {
 				t.Fatalf("unknownTrackPolicyRejects() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestAllowedAudioTracksReject(t *testing.T) {
-	tests := []struct {
-		name     string
-		allowed  []string
-		streams  []AudioStreamInfo
-		rejected bool
-	}{
-		{name: "empty allowlist permits all", streams: []AudioStreamInfo{{Language: "rus"}}},
-		{name: "allowed language present", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Language: "rus"}, {Language: "eng"}}},
-		{name: "language in title is recognized", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Title: "English Dolby Atmos"}}},
-		{name: "disallowed language is rejected", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Language: "rus"}}, rejected: true},
-		{name: "unknown language is rejected", allowed: []string{"eng"}, streams: []AudioStreamInfo{{Index: 1}}, rejected: true},
-		{name: "missing audio tracks is rejected", allowed: []string{"eng"}, rejected: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, _ := allowedAudioTracksReject(tt.allowed, tt.streams)
-			if got != tt.rejected {
-				t.Fatalf("allowedAudioTracksReject() = %v, want %v", got, tt.rejected)
 			}
 		})
 	}

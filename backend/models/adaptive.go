@@ -31,6 +31,31 @@ type AdaptivePlaybackSettings struct {
 	DisplayDV    *bool    `json:"displayDv,omitempty"`    // Display reports Dolby Vision support
 }
 
+// AdaptiveThroughputContext is volatile, route-specific state supplied with a
+// search or prequeue request. It is never stored in client settings.
+type AdaptiveThroughputContext struct {
+	MeasuredMbps float64
+	MeasuredAt   int64
+}
+
+// AdaptiveSettingsForRequest combines durable display capability with the
+// caller's current route estimate. Persisted legacy throughput is ignored.
+func AdaptiveSettingsForRequest(display *AdaptivePlaybackSettings, throughput *AdaptiveThroughputContext) *AdaptivePlaybackSettings {
+	if display == nil && throughput == nil {
+		return nil
+	}
+	combined := &AdaptivePlaybackSettings{}
+	if display != nil {
+		combined.DisplayHDR = display.DisplayHDR
+		combined.DisplayDV = display.DisplayDV
+	}
+	if throughput != nil {
+		combined.MeasuredMbps = FloatPtr(throughput.MeasuredMbps)
+		combined.MeasuredAt = &throughput.MeasuredAt
+	}
+	return combined
+}
+
 // AdaptiveCaps is the result of evaluating AdaptivePlaybackSettings. Each field is
 // nil when adaptive should not override that filter value, so callers can overlay
 // only what was actually computed.
@@ -119,4 +144,14 @@ func ComputeAdaptiveCaps(enabled bool, bufferFactor float64, a *AdaptivePlayback
 	}
 
 	return caps
+}
+
+// AdaptiveSearchSummary describes the actual adaptive filter used by a search.
+type AdaptiveSearchSummary struct {
+	Enabled       bool     `json:"enabled"`
+	MeasuredMbps  float64  `json:"measuredMbps,omitempty"`
+	MeasuredAt    int64    `json:"measuredAt,omitempty"`
+	MaxSizeGB     *float64 `json:"maxSizeGB,omitempty"`
+	FilteredCount int      `json:"filteredCount"`
+	Bypassed      bool     `json:"bypassed,omitempty"`
 }

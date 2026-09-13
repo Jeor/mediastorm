@@ -92,8 +92,9 @@ var (
 	// Daily show date patterns
 	// Matches: "2026.01.21", "2026-01-21", "2026 01 21", "2026_01_21",
 	// and non-zero-padded month/day variants used by some indexer titles.
-	dailyDatePattern      = regexp.MustCompile(`(?:^|[.\-_\s])(\d{4})[.\-_\s](\d{1,2})[.\-_\s](\d{1,2})(?:[.\-_\s]|$)`)
-	humanDailyDatePattern = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(\d{1,2})(?:st|nd|rd|th)?[.\-_\s]*([a-z]{3,9})[.\-_\s]*(\d{4})(?:[^a-z0-9]|$)`)
+	dailyDatePattern        = regexp.MustCompile(`(?:^|[.\-_\s])(\d{4})[.\-_\s](\d{1,2})[.\-_\s](\d{1,2})(?:[.\-_\s]|$)`)
+	compactDailyDatePattern = regexp.MustCompile(`(?:^|[^0-9])((?:19|20)\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[^0-9]|$)`)
+	humanDailyDatePattern   = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(\d{1,2})(?:st|nd|rd|th)?[.\-_\s]*([a-z]{3,9})[.\-_\s]*(\d{4})(?:[^a-z0-9]|$)`)
 )
 
 // SelectBestCandidate applies SXXEXX matching and fuzzy title similarity against a list of candidates.
@@ -641,6 +642,23 @@ func ParseDailyDate(value string) (year, month, day int, ok bool) {
 			return 0, 0, 0, false
 		}
 
+		return year, month, day, true
+	}
+
+	matches = compactDailyDatePattern.FindStringSubmatch(value)
+	if len(matches) == 4 {
+		year, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return 0, 0, 0, false
+		}
+		month, err = strconv.Atoi(matches[2])
+		if err != nil {
+			return 0, 0, 0, false
+		}
+		day, err = strconv.Atoi(matches[3])
+		if err != nil {
+			return 0, 0, 0, false
+		}
 		return year, month, day, true
 	}
 

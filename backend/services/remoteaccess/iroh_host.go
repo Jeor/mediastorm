@@ -150,9 +150,9 @@ func (m *IrohHostManager) publishRendezvousRecord(ctx context.Context, code, inv
 		if msg == "" {
 			msg = err.Error()
 		}
-		return fmt.Errorf("publish rendezvous code %s: %s", code, msg)
+		return fmt.Errorf("publish rendezvous record: %s", redactIrohLogLine(msg))
 	}
-	log.Printf("[remote-access][iroh] rendezvous published code=%s", code)
+	log.Printf("[remote-access][iroh] rendezvous published")
 	return nil
 }
 
@@ -263,7 +263,7 @@ func (m *IrohHostManager) scanOutput(output io.Reader, isErr bool) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if shouldLogIrohLine(line, isErr) {
-			log.Printf("[remote-access][iroh] %s", line)
+			log.Printf("[remote-access][iroh] %s", redactIrohLogLine(line))
 		}
 		m.mu.Lock()
 		// Only the host's "invite=<blob>" line carries the invite. Match the prefix
@@ -278,10 +278,28 @@ func (m *IrohHostManager) scanOutput(output io.Reader, isErr bool) {
 			}
 		}
 		if isErr && shouldRecordIrohError(line) {
-			m.lastErr = line
+			m.lastErr = redactIrohLogLine(line)
 		}
 		m.mu.Unlock()
 	}
+}
+
+func redactIrohLogLine(line string) string {
+	line = strings.TrimSpace(line)
+	if strings.HasPrefix(line, "invite=") {
+		return "invite=[redacted]"
+	}
+	for _, field := range []string{"code=", "code_key="} {
+		if index := strings.Index(line, field); index >= 0 {
+			valueStart := index + len(field)
+			valueEnd := valueStart
+			for valueEnd < len(line) && line[valueEnd] != ' ' {
+				valueEnd++
+			}
+			line = line[:valueStart] + "[redacted]" + line[valueEnd:]
+		}
+	}
+	return line
 }
 
 func shouldLogIrohLine(line string, isErr bool) bool {
@@ -346,12 +364,12 @@ func (m *IrohHostManager) wait(cmd *exec.Cmd) {
 
 func (m *IrohHostManager) validateWorkDirLocked() error {
 	if m.workDir == "" {
-		m.lastErr = "iroh-direct-spike directory not found"
+		m.lastErr = "iroh host directory not found"
 		m.state = "not_configured"
 		return errors.New(m.lastErr)
 	}
 	if stat, err := os.Stat(m.workDir); err != nil || !stat.IsDir() {
-		m.lastErr = fmt.Sprintf("iroh-direct-spike directory unavailable: %s", m.workDir)
+		m.lastErr = fmt.Sprintf("iroh host directory unavailable: %s", m.workDir)
 		m.state = "not_configured"
 		return errors.New(m.lastErr)
 	}
@@ -363,15 +381,15 @@ func (m *IrohHostManager) validateWorkDirForPublish() error {
 	workDir := m.workDir
 	m.mu.RUnlock()
 	if workDir == "" {
-		return errors.New("iroh-direct-spike directory not found")
+		return errors.New("iroh host directory not found")
 	}
 	if stat, err := os.Stat(workDir); err != nil || !stat.IsDir() {
-		return fmt.Errorf("iroh-direct-spike directory unavailable: %s", workDir)
+		return fmt.Errorf("iroh host directory unavailable: %s", workDir)
 	}
 	return nil
 }
 
-// irohBinaryName is the compiled host binary produced by the Rust spike.
+// irohBinaryName is the compiled host binary produced by the Rust host.
 const irohBinaryName = "iroh-direct-spike"
 
 // irohBinaryCandidates lists, in priority order, where a prebuilt host binary may live
@@ -478,8 +496,8 @@ func discoverIrohWorkDir() string {
 		return ""
 	}
 	candidates := []string{
-		filepath.Join(cwd, "experiments", "iroh-direct-spike"),
-		filepath.Join(cwd, "..", "experiments", "iroh-direct-spike"),
+		filepath.Join(cwd, "backend", "iroh-host"),
+		filepath.Join(cwd, "iroh-host"),
 	}
 	for _, candidate := range candidates {
 		if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {

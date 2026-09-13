@@ -146,6 +146,10 @@ type topTenDebugService interface {
 	GetTopTenDebug(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, []metadatapkg.TopTenDebugEntry, error)
 }
 
+type topTenCandidatesService interface {
+	GetTopTenCandidates(ctx context.Context, mediaType string, customListURLs []string) ([]models.TrendingItem, error)
+}
+
 var _ metadataService = (*metadatapkg.Service)(nil)
 
 // userSettingsProvider retrieves per-user settings.
@@ -339,6 +343,7 @@ type TopTenResponse struct {
 
 func parseShelfLoadOptions(r *http.Request) metadatapkg.ShelfLoadOptions {
 	opts := metadatapkg.ShelfLoadOptions{
+		DeferArtwork:  strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
 		Lite:          strings.ToLower(strings.TrimSpace(r.URL.Query().Get("lite"))) == "true",
 		SortBy:        strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sortBy"))),
 		SortDirection: strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sortDirection"))),
@@ -423,7 +428,7 @@ func (h *MetadataHandler) DiscoverNew(w http.ResponseWriter, r *http.Request) {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichTrendingItems(items, idx)
+			enrichTrendingItems(items, idx, service, strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true"))
 		}
 	}
 
@@ -511,6 +516,18 @@ func (h *MetadataHandler) Search(w http.ResponseWriter, r *http.Request) {
 				tvRating = user.KidsMaxRating
 			}
 			results = kids.FilterSearchByRatings(results, movieRating, tvRating)
+		}
+	}
+
+	// Search is intentionally cache-only: expose counts already learned from
+	// user-owned shelves without turning each debounced query into provider work.
+	if userID != "" && h.HistoryService != nil &&
+		(mediaType == "series" || mediaType == "tv" || mediaType == "show") {
+		wh, whErr := h.HistoryService.ListWatchHistory(userID)
+		if whErr == nil {
+			cw, _ := h.HistoryService.ListSeriesStates(userID)
+			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
+			enrichSearchResultsWithCachedEpisodeCounts(results, buildWatchStateIndex(wh, cw, pp), service)
 		}
 	}
 
@@ -1223,6 +1240,7 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		serviceLimit, serviceOffset = 0, 0
 	}
 	opts := metadatapkg.CustomListOptions{
+		DeferArtwork:   strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
 		Limit:          serviceLimit,
 		Offset:         serviceOffset,
 		HideUnreleased: hideUnreleased,
@@ -1271,7 +1289,8 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		if whErr == nil {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
-			enrichTrendingItems(items, buildWatchStateIndex(wh, cw, pp))
+			idx := buildWatchStateIndex(wh, cw, pp)
+			enrichTrendingItems(items, idx, service, strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true"))
 		}
 	}
 
@@ -1984,7 +2003,7 @@ func (h *MetadataHandler) CuratedList(w http.ResponseWriter, r *http.Request) {
 			cw, _ := h.HistoryService.ListSeriesStates(userID)
 			pp, _ := h.HistoryService.ListPlaybackProgress(userID)
 			idx := buildWatchStateIndex(wh, cw, pp)
-			enrichTrendingItems(items, idx)
+			enrichTrendingItems(items, idx, service, strings.EqualFold(r.URL.Query().Get("includeUnwatchedCounts"), "true"))
 		}
 	}
 	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)
@@ -2043,6 +2062,7 @@ func (h *MetadataHandler) TMDBList(w http.ResponseWriter, r *http.Request) {
 	postFilterPagination := limit > 0 && (hideUnreleased || hideWatched)
 	loadOpts := parseShelfLoadOptions(r)
 	opts := metadatapkg.TMDBListOptions{
+		DeferArtwork:  loadOpts.DeferArtwork,
 		SourceType:    strings.TrimSpace(r.URL.Query().Get("sourceType")),
 		SourceID:      strings.TrimSpace(r.URL.Query().Get("sourceId")),
 		MediaType:     strings.TrimSpace(r.URL.Query().Get("mediaType")),
@@ -2496,7 +2516,9 @@ func (h *MetadataHandler) TopTen(w http.ResponseWriter, r *http.Request) {
 		debug []metadatapkg.TopTenDebugEntry
 		err   error
 	)
-	if debugMode {
+	if svc, ok := service.(topTenCandidatesService); ok {
+		items, err = svc.GetTopTenCandidates(r.Context(), mediaType, nil)
+	} else if debugMode {
 		if svc, ok := service.(topTenDebugService); ok {
 			items, debug, err = svc.GetTopTenDebug(r.Context(), mediaType, nil)
 		} else {
@@ -2516,11 +2538,66 @@ func (h *MetadataHandler) TopTen(w http.ResponseWriter, r *http.Request) {
 	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)
 	items = filterTrendingItemsByUnreleasedVisibility(items, policy)
 	items = h.filterTrendingByKids(r.Context(), userID, service, items)
+	items = selectTopTenResponseItems(items, mediaType)
 
 	enrichTrendingRatings(items, service)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(TopTenResponse{Items: items, Total: len(items), Debug: debug})
+}
+
+func selectTopTenResponseItems(items []models.TrendingItem, mediaType string) []models.TrendingItem {
+	// Filter before limiting so incomplete cached candidates do not consume slots.
+	eligible := make([]models.TrendingItem, 0, len(items))
+	for _, item := range items {
+		title := item.Title
+		if title.Poster == nil || strings.TrimSpace(title.Poster.URL) == "" {
+			continue
+		}
+		if title.TMDBID <= 0 && title.TVDBID <= 0 && strings.TrimSpace(title.IMDBID) == "" {
+			continue
+		}
+		eligible = append(eligible, item)
+	}
+	items = eligible
+	normalized := strings.ToLower(strings.TrimSpace(mediaType))
+	if normalized != "" && normalized != "all" {
+		limit := minInt(10, len(items))
+		selected := append([]models.TrendingItem(nil), items[:limit]...)
+		for i := range selected {
+			selected[i].Rank = i + 1
+		}
+		return selected
+	}
+
+	movies := make([]models.TrendingItem, 0, 5)
+	shows := make([]models.TrendingItem, 0, 5)
+	for _, item := range items {
+		switch strings.ToLower(strings.TrimSpace(item.Title.MediaType)) {
+		case "movie", "movies", "film", "films":
+			if len(movies) < 5 {
+				movies = append(movies, item)
+			}
+		case "series", "tv", "show", "shows":
+			if len(shows) < 5 {
+				shows = append(shows, item)
+			}
+		}
+	}
+
+	selected := make([]models.TrendingItem, 0, len(movies)+len(shows))
+	for i := 0; i < 5; i++ {
+		if i < len(movies) {
+			selected = append(selected, movies[i])
+		}
+		if i < len(shows) {
+			selected = append(selected, shows[i])
+		}
+	}
+	for i := range selected {
+		selected[i].Rank = i + 1
+	}
+	return selected
 }
 
 // GetProgress returns a snapshot of active metadata enrichment progress.

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"novastream/config"
+	"novastream/internal/mediaidentity"
 	"novastream/models"
 	calendarpkg "novastream/services/calendar"
 	"novastream/services/kids"
@@ -158,6 +159,7 @@ type HomeManifestResponse struct {
 	ShelvesHash              string              `json:"shelvesHash"`
 	ContinueWatchingRevision string              `json:"continueWatchingRevision,omitempty"`
 	WatchlistHash            string              `json:"watchlistHash"`
+	EpisodeCountsHash        string              `json:"episodeCountsHash,omitempty"`
 	HiddenItemsHash          string              `json:"hiddenItemsHash,omitempty"`
 	WatchlistTotal           int                 `json:"watchlistTotal"`
 	Shelves                  []HomeShelfManifest `json:"shelves"`
@@ -207,6 +209,10 @@ func (h *StartupHandler) GetHomeManifest(w http.ResponseWriter, r *http.Request)
 			items = h.filterHiddenWatchlistItems(userID, items)
 			resp.WatchlistTotal = len(items)
 			resp.WatchlistHash = watchlistManifestHash(items)
+			resp.EpisodeCountsHash = cachedEpisodeCountsManifestHash(
+				items,
+				metadataServiceForUser(h.metadata, h.cfgManager, h.userSettings, userID),
+			)
 		}
 	}
 	resp.HiddenItemsHash = h.hiddenItemsManifestHash(userID)
@@ -216,6 +222,7 @@ func (h *StartupHandler) GetHomeManifest(w http.ResponseWriter, r *http.Request)
 		resp.ShelvesHash,
 		resp.ContinueWatchingRevision,
 		resp.WatchlistHash,
+		resp.EpisodeCountsHash,
 		resp.WatchlistTotal,
 		resp.HiddenItemsHash,
 	)
@@ -506,7 +513,9 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 
 	// Enrich items with pre-computed watch state (after all concurrent fetches complete)
 	idx := buildWatchStateIndex(watchHistory, resp.ContinueWatching, playbackProgress)
-	enrichWatchlistItems(resp.Watchlist, idx)
+	startupMetadataSvc := metadataServiceForUser(h.metadata, h.cfgManager, h.userSettings, userID)
+	warmEpisodeCounts := resp.UserSettings != nil && stringSliceContainsFold(resp.UserSettings.Display.BadgeVisibility, "unwatchedCount")
+	enrichWatchlistItems(resp.Watchlist, idx, startupMetadataSvc, warmEpisodeCounts)
 	// Enrich with MDBList ratings for sort-by-rating support (bounded by startupPayloadLimit)
 	enrichWatchlistRatings(r.Context(), resp.Watchlist, h.metadata)
 	// Match display-list watchlist enrichment so the initial home shelf does not
@@ -514,10 +523,10 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 	enrichDisplayListReleases(r, resp.Watchlist, h.metadata)
 	resp.Watchlist = filterWatchlistItemsByUnreleasedVisibility(resp.Watchlist, listPolicy)
 	if resp.TrendingMovies != nil {
-		enrichTrendingItems(resp.TrendingMovies.Items, idx)
+		enrichTrendingItems(resp.TrendingMovies.Items, idx, startupMetadataSvc, false)
 	}
 	if resp.TrendingSeries != nil {
-		enrichTrendingItems(resp.TrendingSeries.Items, idx)
+		enrichTrendingItems(resp.TrendingSeries.Items, idx, startupMetadataSvc, false)
 	}
 
 	if resp.UserSettings != nil && h.displayList != nil {
@@ -933,12 +942,23 @@ func (h *StartupHandler) Options(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StartupHandler) buildStartupHomeShelves(ctx context.Context, sourceReq *http.Request, userID string, shelves []models.ShelfConfig, homeShelfLimit int, hideWatched bool, clientID string) (map[string]StartupHomeShelfResponse, map[string]string) {
+	if h.displayList == nil {
+		return nil, nil
+	}
+	return buildStartupHomeShelvesWithHandler(ctx, sourceReq, userID, shelves, homeShelfLimit, hideWatched, clientID, h.displayList.Get)
+}
+
+func buildStartupHomeShelvesWithHandler(ctx context.Context, sourceReq *http.Request, userID string, shelves []models.ShelfConfig, homeShelfLimit int, hideWatched bool, clientID string, get http.HandlerFunc) (map[string]StartupHomeShelfResponse, map[string]string) {
 	out := make(map[string]StartupHomeShelfResponse)
 	errs := make(map[string]string)
-	if h.displayList == nil || len(shelves) == 0 {
-		return out, errs
+	type result struct {
+		id       string
+		response StartupHomeShelfResponse
+		err      string
 	}
-
+	results := make(chan result, len(shelves))
+	slots := make(chan struct{}, 4)
+	pending := make(map[string]bool)
 	for _, shelf := range shelves {
 		if !shelf.Enabled || !isStartupFetchableCustomShelf(shelf) {
 			continue
@@ -947,37 +967,60 @@ func (h *StartupHandler) buildStartupHomeShelves(ctx context.Context, sourceReq 
 		if !ok {
 			continue
 		}
-		req := sourceReq.Clone(ctx)
-		req.Method = http.MethodGet
-		req.URL = &url.URL{
-			Path:     "/api/users/" + url.PathEscape(userID) + "/display-list",
-			RawQuery: query.Encode(),
-		}
-		req = mux.SetURLVars(req, map[string]string{"userID": userID})
-		rec := httptest.NewRecorder()
-		h.displayList.Get(rec, req)
-		if rec.Code >= http.StatusBadRequest {
-			message := strings.TrimSpace(rec.Body.String())
-			if message == "" {
-				message = http.StatusText(rec.Code)
+		pending[shelf.ID] = true
+		go func(id string, query url.Values) {
+			select {
+			case slots <- struct{}{}:
+			case <-ctx.Done():
+				return
 			}
-			errs[shelf.ID] = message
-			continue
-		}
-		var response StartupHomeShelfResponse
-		if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
-			errs[shelf.ID] = err.Error()
-			continue
-		}
-		if response.Items == nil {
-			response.Items = []models.TrendingItem{}
-		}
-		if response.Total == 0 && len(response.Items) > 0 {
-			response.Total = len(response.Items)
-		}
-		out[shelf.ID] = response
+			defer func() { <-slots }()
+			if ctx.Err() != nil {
+				return
+			}
+			req := sourceReq.Clone(ctx)
+			req.Method = http.MethodGet
+			req.URL = &url.URL{Path: "/api/users/" + url.PathEscape(userID) + "/display-list", RawQuery: query.Encode()}
+			req = mux.SetURLVars(req, map[string]string{"userID": userID})
+			rec := httptest.NewRecorder()
+			get(rec, req)
+			item := result{id: id}
+			if rec.Code >= http.StatusBadRequest {
+				item.err = strings.TrimSpace(rec.Body.String())
+				if item.err == "" {
+					item.err = http.StatusText(rec.Code)
+				}
+			} else if err := json.NewDecoder(rec.Body).Decode(&item.response); err != nil {
+				item.err = err.Error()
+			} else {
+				if item.response.Items == nil {
+					item.response.Items = []models.TrendingItem{}
+				}
+				if item.response.Total == 0 {
+					item.response.Total = len(item.response.Items)
+				}
+			}
+			results <- item
+		}(shelf.ID, query)
 	}
-
+	// Only this goroutine owns response maps. Buffered results let handlers that
+	// ignore cancellation finish safely without extending the startup deadline.
+	for len(pending) > 0 {
+		select {
+		case item := <-results:
+			delete(pending, item.id)
+			if item.err != "" {
+				errs[item.id] = item.err
+			} else {
+				out[item.id] = item.response
+			}
+		case <-ctx.Done():
+			for id := range pending {
+				errs[id] = ctx.Err().Error()
+			}
+			return out, errs
+		}
+	}
 	return out, errs
 }
 
@@ -1235,6 +1278,27 @@ func watchlistManifestHash(items []models.WatchlistItem) string {
 	}
 	sort.Strings(keys)
 	return hashForManifest(keys)
+}
+
+func cachedEpisodeCountsManifestHash(items []models.WatchlistItem, metadata any) string {
+	provider, ok := metadata.(releasedEpisodeCountProvider)
+	if !ok {
+		return ""
+	}
+	counts := make([]string, 0, len(items))
+	for _, item := range items {
+		if mediaidentity.NormalizeMediaType(item.MediaType) != "series" {
+			continue
+		}
+		count, cached := provider.GetCachedReleasedEpisodeCount(seriesEpisodeCountQuery(item))
+		if !cached {
+			counts = append(counts, item.ID+":missing")
+			continue
+		}
+		counts = append(counts, fmt.Sprintf("%s:%d", item.ID, count))
+	}
+	sort.Strings(counts)
+	return hashForManifest(counts)
 }
 
 func hashForManifest(values ...interface{}) string {
@@ -1515,28 +1579,32 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			RealDebridRestrictedTermsFilterEnabled: models.BoolPtr(globalSettings.Filtering.RealDebridRestrictedTermsFilterEnabled),
 		},
 		Display: models.DisplaySettings{
-			BadgeVisibility:                        globalSettings.Display.BadgeVisibility,
-			NavigationTabVisibility:                globalSettings.Display.NavigationTabVisibility,
-			WatchStateIconStyle:                    globalSettings.Display.WatchStateIconStyle,
-			IncludeUnreleasedMoviesInLists:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInLists),
-			IncludeUnreleasedShowsInLists:          models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInLists),
-			IncludeUnreleasedMoviesInSearch:        models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
-			IncludeUnreleasedShowsInSearch:         models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
-			BypassFilteringForAIOStreamsOnly:       models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
-			ShowStreamSourceInfo:                   models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
-			DisableMobileTopCarousel:               models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
-			HideContinueWatchingHeroMetadata:       models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
-			MoveDetailsRatingsToMetadata:           models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),
-			HideDetailsPoster:                      models.BoolPtr(globalSettings.Display.HideDetailsPoster),
-			HideTVDrawerRail:                       models.BoolPtr(globalSettings.Display.HideTVDrawerRail),
-			SimpleMode:                             models.BoolPtr(globalSettings.Display.SimpleMode),
-			SimpleModeHomeShelves:                  models.StringSlicePtr(globalSettings.Display.SimpleModeHomeShelves),
-			DisableTVHomeCardDimming:               models.BoolPtr(globalSettings.Display.DisableTVHomeCardDimming),
-			EnableAnimations:                       models.BoolPtr(globalSettings.Display.EnableAnimations),
-			EnableHeroArtPanning:                   models.BoolPtr(globalSettings.Display.EnableHeroArtPanning),
-			EnableHeroArtRotation:                  models.BoolPtr(globalSettings.Display.EnableHeroArtRotation),
-			ShowSeriesBackdropForMissingEpisodeArt: models.BoolPtr(globalSettings.Display.ShowSeriesBackdropForMissingEpisodeArt),
-			AppLanguage:                            globalSettings.Display.AppLanguage,
+			BadgeVisibility:                              globalSettings.Display.BadgeVisibility,
+			NavigationTabVisibility:                      globalSettings.Display.NavigationTabVisibility,
+			WatchStateIconStyle:                          globalSettings.Display.WatchStateIconStyle,
+			IncludeUnreleasedMoviesInLists:               models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInLists),
+			IncludeUnreleasedShowsInLists:                models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInLists),
+			IncludeUnreleasedMoviesInSearch:              models.BoolPtr(globalSettings.Display.IncludeUnreleasedMoviesInSearch),
+			IncludeUnreleasedShowsInSearch:               models.BoolPtr(globalSettings.Display.IncludeUnreleasedShowsInSearch),
+			BypassFilteringForAIOStreamsOnly:             models.BoolPtr(globalSettings.Display.BypassFilteringForAIOStreamsOnly),
+			ShowStreamSourceInfo:                         models.BoolPtr(globalSettings.Display.ShowStreamSourceInfo),
+			DisableMobileTopCarousel:                     models.BoolPtr(globalSettings.Display.DisableMobileTopCarousel),
+			HideContinueWatchingHeroMetadata:             models.BoolPtr(globalSettings.Display.HideContinueWatchingHeroMetadata),
+			MoveDetailsRatingsToMetadata:                 models.BoolPtr(globalSettings.Display.MoveDetailsRatingsToMetadata),
+			HideDetailsPoster:                            models.BoolPtr(globalSettings.Display.HideDetailsPoster),
+			HideTVDrawerRail:                             models.BoolPtr(globalSettings.Display.HideTVDrawerRail),
+			SimpleMode:                                   models.BoolPtr(globalSettings.Display.SimpleMode),
+			SimpleModeHomeShelves:                        models.StringSlicePtr(globalSettings.Display.SimpleModeHomeShelves),
+			DisableTVHomeCardDimming:                     models.BoolPtr(globalSettings.Display.DisableTVHomeCardDimming),
+			EnableAnimations:                             models.BoolPtr(globalSettings.Display.EnableAnimations),
+			EnableHeroArtPanning:                         models.BoolPtr(globalSettings.Display.EnableHeroArtPanning),
+			EnableHeroArtRotation:                        models.BoolPtr(globalSettings.Display.EnableHeroArtRotation),
+			ShowSeriesBackdropForMissingEpisodeArt:       models.BoolPtr(globalSettings.Display.ShowSeriesBackdropForMissingEpisodeArt),
+			BlurUnwatchedEpisodeThumbnails:               models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeThumbnails),
+			BlurUnwatchedEpisodeThumbnailsIncludeCurrent: models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeThumbnailsIncludeCurrent),
+			BlurUnwatchedEpisodeOverviews:                models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeOverviews),
+			BlurUnwatchedEpisodeOverviewsIncludeCurrent:  models.BoolPtr(globalSettings.Display.BlurUnwatchedEpisodeOverviewsIncludeCurrent),
+			AppLanguage:                                  globalSettings.Display.AppLanguage,
 			Appearance: models.AppearanceSettings{
 				FontScale:            globalSettings.Display.Appearance.FontScale,
 				AccentColor:          globalSettings.Display.Appearance.AccentColor,

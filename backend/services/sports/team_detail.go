@@ -10,8 +10,17 @@ import (
 	"time"
 )
 
+type teamPlayPoint struct {
+	PossessionText string   `json:"possessionText"`
+	YardsToEndzone *float64 `json:"yardsToEndzone"`
+	Team           struct {
+		ID string `json:"id"`
+	} `json:"team"`
+}
 type teamDetailPlay struct {
-	Team struct {
+	Start teamPlayPoint `json:"start"`
+	End   teamPlayPoint `json:"end"`
+	Team  struct {
 		ID string `json:"id"`
 	} `json:"team"`
 	Participants []struct {
@@ -344,6 +353,25 @@ func footballFieldPoint(label string, game models.SportsGame) (float64, bool) {
 	}
 	return 0, false
 }
+
+// ESPN yardsToEndzone is relative to the point's owning team, including turnovers.
+func footballPlayPoint(point teamPlayPoint, game models.SportsGame) *float64 {
+	if point.PossessionText != "" {
+		if value, ok := footballFieldPoint(point.PossessionText, game); ok {
+			return &value
+		}
+	}
+	if point.YardsToEndzone == nil || math.IsNaN(*point.YardsToEndzone) || math.IsInf(*point.YardsToEndzone, 0) || *point.YardsToEndzone < 0 || *point.YardsToEndzone > 100 {
+		return nil
+	}
+	value := 100 - *point.YardsToEndzone
+	if point.Team.ID == game.HomeTeam.ID && point.Team.ID != "" {
+		value = 100 - value
+	} else if point.Team.ID != game.AwayTeam.ID || point.Team.ID == "" {
+		return nil
+	}
+	return &value
+}
 func normalizeFootballDrives(game models.SportsGame, p teamSportSummary) []models.SportsFootballDrive {
 	if game.Status == models.SportsGameScheduled || (game.League != "nfl" && game.League != "college-football") {
 		return nil
@@ -353,11 +381,20 @@ func normalizeFootballDrives(game models.SportsGame, p teamSportSummary) []model
 	add := func(drive teamDetailDrive, current bool) {
 		start, okStart := footballFieldPoint(drive.Start.Text, game)
 		end, okEnd := footballFieldPoint(drive.End.Text, game)
-		if !okStart || !okEnd || drive.ID == "" || seen[drive.ID] || len(rows) >= 80 || (drive.Team.ID != game.AwayTeam.ID && drive.Team.ID != game.HomeTeam.ID) {
+		if drive.ID == "" || seen[drive.ID] || len(rows) >= 80 || (drive.Team.ID != game.AwayTeam.ID && drive.Team.ID != game.HomeTeam.ID) {
 			return
 		}
 		seen[drive.ID] = true
-		rows = append(rows, models.SportsFootballDrive{ID: drive.ID, TeamID: drive.Team.ID, Start: start, End: end, StartLabel: drive.Start.Text, EndLabel: drive.End.Text, Period: teamPeriodLabel(game.League, drive.Start.Period.Number), Result: drive.Result, Description: drive.Description, Current: current})
+		row := models.SportsFootballDrive{ID: drive.ID, TeamID: drive.Team.ID, Start: start, End: end, StartKnown: &okStart, EndKnown: &okEnd, StartLabel: drive.Start.Text, EndLabel: drive.End.Text, Period: teamPeriodLabel(game.League, drive.Start.Period.Number), Result: drive.Result, Description: drive.Description, Current: current}
+		seenPlays := map[string]bool{}
+		for _, play := range drive.Plays {
+			if play.ID == "" || seenPlays[play.ID] {
+				continue
+			}
+			seenPlays[play.ID] = true
+			row.Plays = append(row.Plays, models.SportsFootballPlay{ID: play.ID, Type: play.Type.Text, Description: play.Text, Clock: play.Clock.DisplayValue, Period: teamPeriodLabel(game.League, play.Period.Number), Start: footballPlayPoint(play.Start, game), End: footballPlayPoint(play.End, game), Scoring: play.Scoring})
+		}
+		rows = append(rows, row)
 	}
 	for _, drive := range p.Drives.Previous {
 		add(drive, false)

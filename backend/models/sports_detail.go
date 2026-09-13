@@ -120,17 +120,30 @@ type SportsStandingRow struct {
 }
 
 // Coordinates orient the away end at 0 and the home end at 100 for consistent comparison.
+type SportsFootballPlay struct {
+	ID          string   `json:"id"`
+	Type        string   `json:"type"`
+	Description string   `json:"description"`
+	Clock       string   `json:"clock"`
+	Period      string   `json:"period"`
+	Start       *float64 `json:"start,omitempty"`
+	End         *float64 `json:"end,omitempty"`
+	Scoring     bool     `json:"scoring"`
+}
 type SportsFootballDrive struct {
-	ID          string  `json:"id"`
-	TeamID      string  `json:"teamId"`
-	Start       float64 `json:"start"`
-	End         float64 `json:"end"`
-	StartLabel  string  `json:"startLabel"`
-	EndLabel    string  `json:"endLabel"`
-	Period      string  `json:"period"`
-	Result      string  `json:"result"`
-	Description string  `json:"description"`
-	Current     bool    `json:"current"`
+	StartKnown  *bool                `json:"startKnown,omitempty"`
+	EndKnown    *bool                `json:"endKnown,omitempty"`
+	Plays       []SportsFootballPlay `json:"plays,omitempty"`
+	ID          string               `json:"id"`
+	TeamID      string               `json:"teamId"`
+	Start       float64              `json:"start"`
+	End         float64              `json:"end"`
+	StartLabel  string               `json:"startLabel"`
+	EndLabel    string               `json:"endLabel"`
+	Period      string               `json:"period"`
+	Result      string               `json:"result"`
+	Description string               `json:"description"`
+	Current     bool                 `json:"current"`
 }
 
 // SportsScoreHistory is a validated complete final snapshot, replaced on refresh.

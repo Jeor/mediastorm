@@ -30,23 +30,24 @@ const (
 
 // SportsGame represents a single scheduled, live, or completed game.
 type SportsGame struct {
-	LiveSituation *SportsMLBSituation `json:"liveSituation,omitempty"`
-	Detail        *SportsGameDetail   `json:"detail,omitempty"`
-	ID            string              `json:"id"`
-	Title         string              `json:"title,omitempty"`
-	EventKind     string              `json:"eventKind,omitempty"`
-	League        string              `json:"league"` // e.g. "mlb", "nfl", "nba", "nhl"
-	Sport         string              `json:"sport"`  // e.g. "baseball"
-	StartTime     time.Time           `json:"startTime"`
-	Status        SportsGameStatus    `json:"status"`
-	StatusDetail  string              `json:"statusDetail,omitempty"` // e.g. "9th - 0:00", "FINAL", "7:05 PM"
-	Period        string              `json:"period,omitempty"`
-	Clock         string              `json:"clock,omitempty"`
-	HomeTeam      SportsTeam          `json:"homeTeam"`
-	AwayTeam      SportsTeam          `json:"awayTeam"`
-	Broadcasts    []string            `json:"broadcasts,omitempty"` // e.g. ["ESPN", "MLB.TV"]
-	VenueName     string              `json:"venue,omitempty"`
-	Participants  []SportsParticipant `json:"participants,omitempty"`
+	FootballSituation *SportsFootballSituation `json:"footballSituation,omitempty"`
+	LiveSituation     *SportsMLBSituation      `json:"liveSituation,omitempty"`
+	Detail            *SportsGameDetail        `json:"detail,omitempty"`
+	ID                string                   `json:"id"`
+	Title             string                   `json:"title,omitempty"`
+	EventKind         string                   `json:"eventKind,omitempty"`
+	League            string                   `json:"league"` // e.g. "mlb", "nfl", "nba", "nhl"
+	Sport             string                   `json:"sport"`  // e.g. "baseball"
+	StartTime         time.Time                `json:"startTime"`
+	Status            SportsGameStatus         `json:"status"`
+	StatusDetail      string                   `json:"statusDetail,omitempty"` // e.g. "9th - 0:00", "FINAL", "7:05 PM"
+	Period            string                   `json:"period,omitempty"`
+	Clock             string                   `json:"clock,omitempty"`
+	HomeTeam          SportsTeam               `json:"homeTeam"`
+	AwayTeam          SportsTeam               `json:"awayTeam"`
+	Broadcasts        []string                 `json:"broadcasts,omitempty"` // e.g. ["ESPN", "MLB.TV"]
+	VenueName         string                   `json:"venue,omitempty"`
+	Participants      []SportsParticipant      `json:"participants,omitempty"`
 }
 
 // SportsLeague identifies a supported league/competition.
@@ -250,4 +251,14 @@ type SportsTeamChannelLink struct {
 type SportsTeamWithLinks struct {
 	SportsTeamRecord
 	Links []SportsTeamChannelLink `json:"links"`
+}
+
+// Optional counts distinguish an unavailable timeout count from zero remaining.
+type SportsFootballSituation struct {
+	Kind          string `json:"kind"`
+	Possession    string `json:"possession"`
+	DownDistance  string `json:"downDistance"`
+	FieldPosition string `json:"fieldPosition"`
+	AwayTimeouts  *int   `json:"awayTimeouts,omitempty"`
+	HomeTimeouts  *int   `json:"homeTimeouts,omitempty"`
 }

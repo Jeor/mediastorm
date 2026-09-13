@@ -105,13 +105,18 @@ func parseESPNDate(raw string) time.Time {
 }
 
 type espnScoreboardSituation struct {
-	Balls    *int  `json:"balls"`
-	Strikes  *int  `json:"strikes"`
-	Outs     *int  `json:"outs"`
-	OnFirst  *bool `json:"onFirst"`
-	OnSecond *bool `json:"onSecond"`
-	OnThird  *bool `json:"onThird"`
-	Batter   *struct {
+	Possession            string `json:"possession"`
+	ShortDownDistanceText string `json:"shortDownDistanceText"`
+	PossessionText        string `json:"possessionText"`
+	AwayTimeouts          *int   `json:"awayTimeouts"`
+	HomeTimeouts          *int   `json:"homeTimeouts"`
+	Balls                 *int   `json:"balls"`
+	Strikes               *int   `json:"strikes"`
+	Outs                  *int   `json:"outs"`
+	OnFirst               *bool  `json:"onFirst"`
+	OnSecond              *bool  `json:"onSecond"`
+	OnThird               *bool  `json:"onThird"`
+	Batter                *struct {
 		Athlete struct {
 			DisplayName string `json:"displayName"`
 		} `json:"athlete"`
@@ -356,6 +361,14 @@ func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {
 
 	if league.ID == "mlb" && game.Status == models.SportsGameLive {
 		game.LiveSituation = scoreboardMLBSituation(comp.Situation, statusDetail)
+	}
+	if (league.ID == "nfl" || league.ID == "college-football") && game.Status == models.SportsGameLive && comp.Situation != nil {
+		raw := comp.Situation
+		possession := raw.Possession
+		if possession != game.AwayTeam.ID && possession != game.HomeTeam.ID {
+			possession = ""
+		}
+		game.FootballSituation = &models.SportsFootballSituation{Kind: "nfl", Possession: possession, DownDistance: raw.ShortDownDistanceText, FieldPosition: raw.PossessionText, AwayTimeouts: validCount(raw.AwayTimeouts, 3), HomeTimeouts: validCount(raw.HomeTimeouts, 3)}
 	}
 	return game, true
 }

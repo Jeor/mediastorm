@@ -193,7 +193,7 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 			line[i] = v.DisplayValue
 		}
 		lines[t.HomeAway] = line
-		if strings.Contains(game.League, "college") {
+		if game.League == "nfl" || strings.Contains(game.League, "college") {
 			if t.HomeAway == "away" {
 				applyTeamRecords(&game.AwayTeam, t.Record)
 			} else {
@@ -397,6 +397,10 @@ func normalizeFootballDrives(game models.SportsGame, p teamSportSummary) []model
 		rows = append(rows, row)
 	}
 	for _, drive := range p.Drives.Previous {
+		// The provider repeats the active drive in previous; its current snapshot wins.
+		if game.Status == models.SportsGameLive && p.Drives.Current != nil && drive.ID == p.Drives.Current.ID {
+			continue
+		}
 		add(drive, false)
 	}
 	if p.Drives.Current != nil && game.Status == models.SportsGameLive {

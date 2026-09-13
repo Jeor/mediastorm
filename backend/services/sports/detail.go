@@ -279,6 +279,10 @@ func (s *Service) EnrichGame(ctx context.Context, game models.SportsGame) models
 	}
 	cached, exists := s.details[cacheID]
 	if exists && time.Now().Before(cached.expires) {
+		if cached.game.League == "nfl" {
+			s.applyFootballStanding(&cached.game.AwayTeam)
+			s.applyFootballStanding(&cached.game.HomeTeam)
+		}
 		return cached.game
 	}
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
@@ -321,6 +325,10 @@ func (s *Service) EnrichGame(ctx context.Context, game models.SportsGame) models
 		// Back off failed fetches; do not turn unknown detail into fabricated data.
 		s.cacheDetail(cacheID, detailCacheEntry{game: game, expires: time.Now().Add(15 * time.Second)})
 		return game
+	}
+	if result.League == "nfl" {
+		s.applyFootballStanding(&result.AwayTeam)
+		s.applyFootballStanding(&result.HomeTeam)
 	}
 	ttl := 30 * time.Second
 	if result.Status == models.SportsGameFinal {

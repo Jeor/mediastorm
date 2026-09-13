@@ -298,7 +298,7 @@ func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {
 	}
 	homeTeam := competitorTeam(home)
 	awayTeam := competitorTeam(away)
-	if strings.Contains(league.ID, "college") {
+	if league.ID == "nfl" || strings.Contains(league.ID, "college") {
 		applyTeamRecords(&homeTeam, home.Records)
 		applyTeamRecords(&awayTeam, away.Records)
 		if home.CuratedRank.Current > 0 && home.CuratedRank.Current <= 25 {

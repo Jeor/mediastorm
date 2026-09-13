@@ -112,16 +112,18 @@ func selectLeagues(ids []string) []League {
 
 // Service fetches and caches ESPN scoreboard data.
 type Service struct {
-	f1Archive    f1ArchiveCache
-	standings    standingsCache
-	motoGPExtra  motoGPEnrichmentCache
-	cycling      cyclingCache
-	raceDetailMu sync.Mutex
-	raceMu       sync.Mutex
-	raceBoards   map[string]raceBoardEntry
-	raceDetails  map[string]raceSessionEntry
-	dateMu       sync.Mutex
-	dated        map[string]datedEntry
+	footballStandingMu sync.Mutex
+	footballStandings  map[string]footballStandingEntry
+	f1Archive          f1ArchiveCache
+	standings          standingsCache
+	motoGPExtra        motoGPEnrichmentCache
+	cycling            cyclingCache
+	raceDetailMu       sync.Mutex
+	raceMu             sync.Mutex
+	raceBoards         map[string]raceBoardEntry
+	raceDetails        map[string]raceSessionEntry
+	dateMu             sync.Mutex
+	dated              map[string]datedEntry
 
 	detailMu   sync.Mutex
 	details    map[string]detailCacheEntry

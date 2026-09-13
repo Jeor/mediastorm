@@ -4,6 +4,7 @@ import "time"
 
 // SportsTeam represents one side in a scheduled or in-progress game.
 type SportsTeam struct {
+	StandingSummary  string `json:"standingSummary,omitempty"`
 	Color            string `json:"color,omitempty"`
 	Rank             int    `json:"rank,omitempty"`
 	Record           string `json:"record,omitempty"`

@@ -2449,6 +2449,7 @@ func (s *Service) scoreSourceCandidates(opts SearchOptions, settings config.Sett
 					passed[i].ScoreBreakdown = []models.ScoreBreakdownItem{{
 						Criterion: "Newest Release",
 						Points:    points,
+						RankValue: int64(points),
 						Reason:    "source-reported release time",
 					}}
 				}
@@ -2496,6 +2497,7 @@ func bypassScoredResults(raw []models.NZBResult, newestFirst, includeScoreBreakd
 				scored[i].ScoreBreakdown = []models.ScoreBreakdownItem{{
 					Criterion: "Newest Release",
 					Points:    points,
+					RankValue: int64(points),
 					Reason:    "source-reported release time",
 				}}
 			}

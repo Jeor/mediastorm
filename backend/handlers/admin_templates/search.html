@@ -23,9 +23,22 @@
 .diag-status-pass { color: var(--success, #4caf50); }
 .diag-status-warn { color: var(--warning, #ff9800); }
 .diag-status-fail { max-width: 360px; overflow: hidden; color: var(--error, #f44336); text-overflow: ellipsis; }
+.ranking-guide { margin-bottom: 0.85rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 0.8rem; line-height: 1.45; }
+.ranking-guide strong { color: var(--text-primary); }
+.ranking-details-toggle { display: inline-flex; align-items: center; gap: 0.35rem; border: 0; background: transparent; color: var(--accent-hover); padding: 0; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ranking-explanation { display: grid; gap: 0.7rem; }
+.ranking-explanation-summary { color: var(--text-primary); font-weight: 600; }
+.ranking-explanation-note { color: var(--text-muted); line-height: 1.45; }
+.ranking-rule { display: grid; grid-template-columns: 74px minmax(140px, 190px) 1fr; gap: 0.75rem; align-items: start; padding: 0.35rem 0; border-top: 1px solid var(--border); }
+.ranking-rule:first-child { border-top: 0; }
+.ranking-rule-order { color: var(--accent-hover); font-weight: 700; }
+.ranking-rule-name { color: var(--text-secondary); font-weight: 600; }
+.ranking-rule-reason { color: var(--text-muted); line-height: 1.4; }
 @media (max-width: 760px) {
     .search-diagnostics-controls { grid-template-columns: 1fr 1fr; }
     .search-diagnostics-controls label:first-child { grid-column: 1 / -1; }
+    .ranking-rule { grid-template-columns: 64px 1fr; }
+    .ranking-rule-reason { grid-column: 2; }
 }
 </style>
 {{end}}
@@ -689,6 +702,130 @@
         }
     }
 
+    function rankingBreakdownParts(result) {
+        const breakdown = Array.isArray(result?.scoreBreakdown) ? result.scoreBreakdown : [];
+        const country = breakdown.find(item => item.criterion === 'Country Match');
+        const year = breakdown.find(item => item.criterion === 'Year Match');
+        const download = breakdown.find(item => item.criterion === 'Download Preferred Terms');
+        const criteria = breakdown.filter(item =>
+            item.criterion !== 'Country Match' &&
+            item.criterion !== 'Year Match' &&
+            item.criterion !== 'Download Preferred Terms'
+        );
+        const gates = [];
+        if (country) gates.push({ ...country, kind: 'gate' });
+        if (result?.attributes?.episodeYearPriority === 'true' && year) gates.push({ ...year, kind: 'gate' });
+        const rules = download ? [{ ...download, kind: 'rule' }, ...criteria.map(item => ({ ...item, kind: 'rule' }))] : criteria.map(item => ({ ...item, kind: 'rule' }));
+        const context = year && result?.attributes?.episodeYearPriority !== 'true'
+            ? [{ ...year, kind: 'context' }]
+            : [];
+        return { gates, rules, context };
+    }
+
+    function includedRank(result) {
+        let rank = 0;
+        for (const candidate of allScrapeResults) {
+            if (candidate.filterStatus === 'passed') rank += 1;
+            if (candidate === result) return candidate.filterStatus === 'passed' ? rank : null;
+        }
+        return null;
+    }
+
+    function previousIncludedResult(result) {
+        let previous = null;
+        for (const candidate of allScrapeResults) {
+            if (candidate === result) return previous;
+            if (candidate.filterStatus === 'passed') previous = candidate;
+        }
+        return null;
+    }
+
+    function rankingComparisonEntries(result) {
+        const parts = rankingBreakdownParts(result);
+        return [
+            {
+                criterion: 'Country Match',
+                points: result?.attributes?.countryMatch === 'true' ? 1 : 0,
+                reason: result?.attributes?.countryMatch === 'true'
+                    ? 'explicit release country matches the selected title'
+                    : 'no explicit matching release country',
+            },
+            {
+                criterion: 'Episode Year Priority',
+                points: result?.attributes?.episodeYearPriority === 'true' ? 1 : 0,
+                reason: result?.attributes?.episodeYearPriority === 'true'
+                    ? 'explicit series year receives targeted episode priority'
+                    : 'no targeted episode-year priority',
+            },
+            ...parts.rules,
+        ];
+    }
+
+    function sameRankingRuleOrder(left, right) {
+        return left.length === right.length && left.every((item, index) => item.criterion === right[index].criterion);
+    }
+
+    function rankingValue(item) {
+        return Number.isFinite(item?.rankValue) ? item.rankValue : item?.points || 0;
+    }
+
+    function explainIncludedRank(result, rank) {
+        if (rank === 1) return 'Highest-ranked included result after applying the active gates and ranking rules.';
+        const previous = previousIncludedResult(result);
+        if (!previous) return 'Included result; no preceding included result was available for comparison.';
+
+        const previousRules = rankingComparisonEntries(previous);
+        const currentRules = rankingComparisonEntries(result);
+        if (!sameRankingRuleOrder(previousRules, currentRules)) {
+            return `Placed after #${rank - 1} while preserving separate ${escAttr(previous.serviceType || 'source')} and ${escAttr(result.serviceType || 'source')} ranking rules during the overall merge.`;
+        }
+
+        for (let index = 0; index < currentRules.length; index += 1) {
+            const prior = previousRules[index];
+            const current = currentRules[index];
+            const priorValue = rankingValue(prior);
+            const currentValue = rankingValue(current);
+            if (priorValue === currentValue) continue;
+            if (priorValue > currentValue) {
+                return `Ranked below #${rank - 1} because <strong>${escAttr(current.criterion)}</strong> was the first rule that differed. #${rank - 1}: ${escAttr(prior.reason)}; this result: ${escAttr(current.reason)}. Lower-priority rules did not affect this comparison.`;
+            }
+            return `Its position after #${rank - 1} is preserved by service-specific ordering or an earlier merge decision. The visible <strong>${escAttr(current.criterion)}</strong> value alone would favor this result.`;
+        }
+        return `All visible gates and ranking rules tie with #${rank - 1}; the deterministic title, service, scraper, and source-ID tiebreaker decides their order.`;
+    }
+
+    function renderRankingDetails(result, rank) {
+        if (result.filterStatus === 'filtered') {
+            return `<div class="ranking-explanation">
+                <div class="ranking-explanation-summary">Excluded before ranking</div>
+                <div class="ranking-explanation-note">${escAttr(result.filterReason || 'This result did not pass the active filters.')}</div>
+            </div>`;
+        }
+		if (result?.attributes?.ranking_bypassed === 'true') {
+			return `<div class="ranking-explanation">
+				<div class="ranking-explanation-summary">MediaStorm ranking was bypassed</div>
+				<div class="ranking-explanation-note">The enabled external scraper supplied this order. No MediaStorm ranking rules or overall score were applied.</div>
+			</div>`;
+		}
+
+        const parts = rankingBreakdownParts(result);
+        const rows = [];
+        parts.gates.forEach(item => rows.push({ label: 'Gate', item }));
+        parts.rules.forEach((item, index) => rows.push({ label: `Priority ${index + 1}`, item }));
+        parts.context.forEach(item => rows.push({ label: 'Context', item }));
+        return `<div class="ranking-explanation">
+            <div class="ranking-explanation-summary">${explainIncludedRank(result, rank)}</div>
+            <div class="ranking-explanation-note"><strong>How ranking works:</strong> gates apply first, then priority rules are evaluated from top to bottom. The first rule that differs decides the order; lower-priority values are only tiebreakers. These values are not added into an overall score.</div>
+            <div>
+                ${rows.map(({ label, item }) => `<div class="ranking-rule">
+                    <span class="ranking-rule-order">${label}</span>
+                    <span class="ranking-rule-name">${escAttr(item.criterion)}</span>
+                    <span class="ranking-rule-reason">${escAttr(item.reason || 'No effect')}</span>
+                </div>`).join('')}
+            </div>
+        </div>`;
+    }
+
     function renderScrapeResults(results) {
         const resultsList = document.getElementById('scrapeResultsList');
 
@@ -698,6 +835,7 @@
         }
 
         resultsList.innerHTML = `
+            <div class="ranking-guide"><strong>Result order uses strict priorities, not a summed score.</strong> Open “Why #?” on an included result to see the first gate or rule that determined its position. Lower-priority rules only break ties.</div>
             <table>
                 <thead>
                     <tr>
@@ -708,7 +846,7 @@
                         <th>Size</th>
                         <th>Resolution</th>
                         <th>HDR</th>
-                        <th>Score / Gates</th>
+                        <th>Ranking</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -737,44 +875,24 @@
                             ? 'border-left: 3px solid var(--danger); color: var(--text-muted); opacity: 0.7;'
                             : 'border-left: 3px solid var(--success);';
 
-                        const scoreDisplay = r.totalScore != null ? r.totalScore : '-';
-                        const yearMatch = r.attributes?.yearMatch;
-                        const yearPriority = r.attributes?.yearPriority;
-                        const yearBadge = yearPriority === 'true'
-                            ? ' <span class="status-badge online" style="font-size: 0.68rem; margin-left: 0.35rem;">Year priority</span>'
-                            : yearMatch === 'true'
-                            ? ' <span class="status-badge" style="font-size: 0.68rem; margin-left: 0.35rem;">Year match</span>'
-                            : yearMatch === 'false'
-                            ? ' <span class="status-badge warning" style="font-size: 0.68rem; margin-left: 0.35rem;">No year</span>'
-                            : '';
-                        const hasBreakdown = r.scoreBreakdown && r.scoreBreakdown.length > 0;
-                        const scoreCell = hasBreakdown
-                            ? `<td style="font-weight: 500; cursor: pointer; user-select: none;" onclick="toggleBreakdown(${displayIdx})" title="Click for details">${scoreDisplay}${yearBadge} <span style="font-size: 0.7rem; color: var(--text-muted);">▶</span></td>`
-                            : `<td style="font-weight: 500;">${scoreDisplay}${yearBadge}</td>`;
+                        const rank = includedRank(r);
+                        const hasBreakdown = r.filterStatus === 'filtered' || r.attributes?.ranking_bypassed === 'true' || (r.scoreBreakdown && r.scoreBreakdown.length > 0);
+                        const rankingLabel = rank == null ? 'Why excluded?' : `Why #${rank}?`;
+                        const rankingCell = hasBreakdown
+                            ? `<td><button type="button" class="ranking-details-toggle" onclick="toggleBreakdown(${displayIdx})" aria-expanded="false">${rankingLabel} <span class="ranking-arrow" aria-hidden="true">▶</span></button></td>`
+                            : '<td style="color: var(--text-muted);">No ranking details</td>';
 
                         const breakdownHtml = hasBreakdown
                             ? `<tr id="breakdown-${displayIdx}" style="display: none;">
                                 <td colspan="9" style="padding: 0.5rem 1rem; background: var(--bg-tertiary);">
-                                    <div style="font-size: 0.8rem;">
-                                        ${r.scoreBreakdown.map(b => {
-                                            const isYearGate = b.criterion === 'Year Match' && b.reason && b.reason.includes('priority gate');
-                                            const color = b.points > 0 ? 'var(--success)' : b.points < 0 ? 'var(--danger)' : 'var(--text-muted)';
-                                            const sign = b.points > 0 ? '+' : '';
-                                            const pointsLabel = isYearGate ? 'PRIORITY' : `${sign}${b.points}`;
-                                            return `<div style="display: flex; gap: 0.75rem; padding: 2px 0;">
-                                                <span style="min-width: 60px; text-align: right; font-weight: 500; color: ${isYearGate ? 'var(--success)' : color};">${pointsLabel}</span>
-                                                <span style="min-width: 140px; color: var(--text-secondary);">${b.criterion}</span>
-                                                <span style="color: var(--text-muted);">${b.reason}</span>
-                                            </div>`;
-                                        }).join('')}
-                                    </div>
+                                    ${renderRankingDetails(r, rank)}
                                 </td>
                             </tr>`
                             : '';
 
                         return `
                             <tr style="${rowStyle}">
-                                <td style="color: var(--text-muted);">${displayIdx + 1}</td>
+                                <td style="color: var(--text-muted);">${rank == null ? '—' : rank}</td>
                                 <td>
                                     <div style="max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escAttr(r.title || '-')}">
                                         ${r.title || '-'}
@@ -786,7 +904,7 @@
                                 <td style="font-size: 0.875rem;">${sizeGB}</td>
                                 <td style="font-size: 0.875rem;">${resolution}</td>
                                 <td style="font-size: 0.875rem;">${hdr !== '-' ? '<span style="color: var(--warning);">' + hdr + '</span>' : '-'}</td>
-                                ${scoreCell}
+                                ${rankingCell}
                                 <td>${statusBadge}${filterReasonHtml}</td>
                             </tr>
                             ${breakdownHtml}
@@ -805,7 +923,9 @@
             // Update arrow
             const parent = row.previousElementSibling;
             if (parent) {
-                const arrow = parent.querySelector('td:nth-child(8) span');
+                const toggle = parent.querySelector('.ranking-details-toggle');
+                const arrow = parent.querySelector('.ranking-arrow');
+                if (toggle) toggle.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
                 if (arrow) arrow.textContent = isHidden ? '▼' : '▶';
             }
         }

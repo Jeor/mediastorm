@@ -40,10 +40,13 @@ func (r NZBResult) EffectiveItemSizeBytes() int64 {
 	return r.SizeBytes
 }
 
-// ScoreBreakdownItem represents a single scoring criterion's contribution to a result's total score.
+// ScoreBreakdownItem describes one ranking criterion. Points is the legacy
+// human-readable score contribution; RankValue is the exact higher-is-better
+// value used when comparing this criterion.
 type ScoreBreakdownItem struct {
 	Criterion string `json:"criterion"` // Display name of the criterion
 	Points    int    `json:"points"`    // Points awarded (positive or negative)
+	RankValue int64  `json:"rankValue"` // Exact comparison value; higher ranks first
 	Reason    string `json:"reason"`    // Human-readable explanation
 }
 

@@ -178,6 +178,20 @@ func TestAdminPlaybackTemplateDoesNotForceEndedProgressToDuration(t *testing.T) 
 	}
 }
 
+func TestAdminPlaybackTemplateDoesNotDisplayRankingScore(t *testing.T) {
+	body, err := adminTemplates.ReadFile("admin_templates/playback.html")
+	if err != nil {
+		t.Fatalf("read admin playback template: %v", err)
+	}
+
+	rendered := string(body)
+	for _, unwanted := range []string{"manual-result-score", "result.totalScore", "Score ${escapeHtml"} {
+		if strings.Contains(rendered, unwanted) {
+			t.Fatalf("admin playback template still displays ranking score marker %q", unwanted)
+		}
+	}
+}
+
 func TestAdminPlaybackTemplatePreservesAIOStreamsPassthroughFormatting(t *testing.T) {
 	body, err := adminTemplates.ReadFile("admin_templates/playback.html")
 	if err != nil {

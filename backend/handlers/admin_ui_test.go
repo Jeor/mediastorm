@@ -2821,6 +2821,9 @@ func TestNavigationVisibilitySchemaIncludesWatchlist(t *testing.T) {
 	if !ok {
 		t.Fatal("navigationTabVisibility field is missing")
 	}
+	if field["type"] != "checkboxes" {
+		t.Fatalf("navigationTabVisibility type = %#v, want checkboxes", field["type"])
+	}
 	options, ok := field["options"].([]map[string]interface{})
 	if !ok {
 		t.Fatalf("unexpected navigation options type: %T", field["options"])

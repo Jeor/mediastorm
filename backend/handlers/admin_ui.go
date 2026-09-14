@@ -920,9 +920,9 @@ var SettingsSchema = map[string]interface{}{
 				},
 			},
 			"navigationTabVisibility": map[string]interface{}{
-				"type":        "ordered-multiselect",
+				"type":        "checkboxes",
 				"label":       "Navigation Items",
-				"description": "Choose and reorder drawer and tab-bar items for this scope. Unselected items are hidden. Selecting none restores the default items. Admin is web only.",
+				"description": "Choose which drawer and tab-bar items are visible for this scope. Items retain their platform-defined order. Selecting none restores the default items. Admin is web only.",
 				"order":       1,
 				"optionsFrom": "navigationTabs",
 				"options": []map[string]interface{}{

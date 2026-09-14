@@ -57,6 +57,7 @@ func markNavigationVisibilityMigrated(settings *models.ClientFilterSettings) {
 	migrated := true
 	settings.NavigationTabVisibilityIncludesSystemTabs = &migrated
 	settings.NavigationTabVisibilityIncludesWatchlist = &migrated
+	settings.NavigationTabVisibilityIncludesSports = &migrated
 }
 
 func (s *Service) useDB() bool { return s.store != nil }
@@ -365,6 +366,16 @@ func normalizeNavigationTabVisibility(settings map[string]models.ClientFilterSet
 			}
 			migrated := true
 			cs.NavigationTabVisibilityIncludesWatchlist = &migrated
+			changed = true
+		}
+		if cs.NavigationTabVisibilityIncludesSports == nil || !*cs.NavigationTabVisibilityIncludesSports {
+			if cs.NavigationTabVisibility != nil {
+				if tabs, tabsChanged := models.AddMissingSportsNavigationTab(*cs.NavigationTabVisibility); tabsChanged {
+					cs.NavigationTabVisibility = &tabs
+				}
+			}
+			migrated := true
+			cs.NavigationTabVisibilityIncludesSports = &migrated
 			changed = true
 		}
 		if changed {

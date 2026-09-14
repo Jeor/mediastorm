@@ -1,0 +1,1016 @@
+{
+  "game": {
+    "id": "401766126",
+    "league": "nba",
+    "startTime": "2025-06-17T00:30:00Z",
+    "venue": "Paycom Center",
+    "homeTeam": {
+      "id": "25",
+      "name": "Oklahoma City Thunder",
+      "abbreviation": "OKC",
+      "score": "120",
+      "logoUrl": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png"
+    },
+    "awayTeam": {
+      "id": "11",
+      "name": "Indiana Pacers",
+      "abbreviation": "IND",
+      "score": "109",
+      "logoUrl": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png"
+    }
+  },
+  "summary": {
+    "header": {
+      "id": "401766126",
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            }
+          },
+          "competitors": [
+            {
+              "id": "25",
+              "homeAway": "home",
+              "score": "120",
+              "winner": true,
+              "linescores": [
+                {
+                  "displayValue": "32"
+                },
+                {
+                  "displayValue": "27"
+                },
+                {
+                  "displayValue": "28"
+                },
+                {
+                  "displayValue": "33"
+                }
+              ]
+            },
+            {
+              "id": "11",
+              "homeAway": "away",
+              "score": "109",
+              "winner": false,
+              "linescores": [
+                {
+                  "displayValue": "22"
+                },
+                {
+                  "displayValue": "23"
+                },
+                {
+                  "displayValue": "34"
+                },
+                {
+                  "displayValue": "30"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "boxscore": {
+      "teams": [
+        {
+          "team": {
+            "id": "11"
+          },
+          "statistics": [
+            {
+              "name": "fieldGoalsMade-fieldGoalsAttempted",
+              "displayValue": "37-82"
+            },
+            {
+              "name": "fieldGoalPct",
+              "displayValue": "45"
+            },
+            {
+              "name": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+              "displayValue": "11-30"
+            },
+            {
+              "name": "threePointFieldGoalPct",
+              "displayValue": "37"
+            },
+            {
+              "name": "freeThrowsMade-freeThrowsAttempted",
+              "displayValue": "24-30"
+            },
+            {
+              "name": "freeThrowPct",
+              "displayValue": "80"
+            },
+            {
+              "name": "totalRebounds",
+              "displayValue": "50"
+            },
+            {
+              "name": "offensiveRebounds",
+              "displayValue": "18"
+            },
+            {
+              "name": "defensiveRebounds",
+              "displayValue": "32"
+            },
+            {
+              "name": "assists",
+              "displayValue": "23"
+            },
+            {
+              "name": "steals",
+              "displayValue": "9"
+            },
+            {
+              "name": "blocks",
+              "displayValue": "4"
+            },
+            {
+              "name": "turnovers",
+              "displayValue": "22"
+            },
+            {
+              "name": "teamTurnovers",
+              "displayValue": "1"
+            },
+            {
+              "name": "totalTurnovers",
+              "displayValue": "23"
+            },
+            {
+              "name": "technicalFouls",
+              "displayValue": "1"
+            },
+            {
+              "name": "totalTechnicalFouls",
+              "displayValue": "1"
+            },
+            {
+              "name": "flagrantFouls",
+              "displayValue": "0"
+            },
+            {
+              "name": "turnoverPoints",
+              "displayValue": "32"
+            },
+            {
+              "name": "fastBreakPoints",
+              "displayValue": "13"
+            },
+            {
+              "name": "pointsInPaint",
+              "displayValue": "48"
+            },
+            {
+              "name": "fouls",
+              "displayValue": "25"
+            },
+            {
+              "name": "largestLead",
+              "displayValue": "3"
+            }
+          ]
+        },
+        {
+          "team": {
+            "id": "25"
+          },
+          "statistics": [
+            {
+              "name": "fieldGoalsMade-fieldGoalsAttempted",
+              "displayValue": "40-94"
+            },
+            {
+              "name": "fieldGoalPct",
+              "displayValue": "43"
+            },
+            {
+              "name": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+              "displayValue": "14-32"
+            },
+            {
+              "name": "threePointFieldGoalPct",
+              "displayValue": "44"
+            },
+            {
+              "name": "freeThrowsMade-freeThrowsAttempted",
+              "displayValue": "26-32"
+            },
+            {
+              "name": "freeThrowPct",
+              "displayValue": "81"
+            },
+            {
+              "name": "totalRebounds",
+              "displayValue": "45"
+            },
+            {
+              "name": "offensiveRebounds",
+              "displayValue": "19"
+            },
+            {
+              "name": "defensiveRebounds",
+              "displayValue": "26"
+            },
+            {
+              "name": "assists",
+              "displayValue": "24"
+            },
+            {
+              "name": "steals",
+              "displayValue": "15"
+            },
+            {
+              "name": "blocks",
+              "displayValue": "12"
+            },
+            {
+              "name": "turnovers",
+              "displayValue": "11"
+            },
+            {
+              "name": "teamTurnovers",
+              "displayValue": "0"
+            },
+            {
+              "name": "totalTurnovers",
+              "displayValue": "11"
+            },
+            {
+              "name": "technicalFouls",
+              "displayValue": "0"
+            },
+            {
+              "name": "totalTechnicalFouls",
+              "displayValue": "0"
+            },
+            {
+              "name": "flagrantFouls",
+              "displayValue": "0"
+            },
+            {
+              "name": "turnoverPoints",
+              "displayValue": "9"
+            },
+            {
+              "name": "fastBreakPoints",
+              "displayValue": "17"
+            },
+            {
+              "name": "pointsInPaint",
+              "displayValue": "42"
+            },
+            {
+              "name": "fouls",
+              "displayValue": "24"
+            },
+            {
+              "name": "largestLead",
+              "displayValue": "18"
+            }
+          ]
+        }
+      ]
+    },
+    "leaders": [
+      {
+        "team": {
+          "id": "25"
+        },
+        "leaders": [
+          {
+            "name": "points",
+            "displayName": "Points",
+            "leaders": [
+              {
+                "displayValue": "40",
+                "athlete": {
+                  "displayName": "Jalen Williams"
+                }
+              }
+            ]
+          },
+          {
+            "name": "assists",
+            "displayName": "Assists",
+            "leaders": [
+              {
+                "displayValue": "10",
+                "athlete": {
+                  "displayName": "Shai Gilgeous-Alexander"
+                }
+              }
+            ]
+          },
+          {
+            "name": "rebounds",
+            "displayName": "Rebounds",
+            "leaders": [
+              {
+                "displayValue": "11",
+                "athlete": {
+                  "displayName": "Chet Holmgren"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "11"
+        },
+        "leaders": [
+          {
+            "name": "points",
+            "displayName": "Points",
+            "leaders": [
+              {
+                "displayValue": "28",
+                "athlete": {
+                  "displayName": "Pascal Siakam"
+                }
+              }
+            ]
+          },
+          {
+            "name": "assists",
+            "displayName": "Assists",
+            "leaders": [
+              {
+                "displayValue": "6",
+                "athlete": {
+                  "displayName": "Tyrese Haliburton"
+                }
+              }
+            ]
+          },
+          {
+            "name": "rebounds",
+            "displayName": "Rebounds",
+            "leaders": [
+              {
+                "displayValue": "8",
+                "athlete": {
+                  "displayName": "Bennedict Mathurin"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "plays": [
+      {
+        "id": "401766126747",
+        "type": {
+          "id": "109",
+          "text": "Running Layup Shot"
+        },
+        "text": "Jalen Williams misses two point shot",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:30"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126748",
+        "type": {
+          "id": "156",
+          "text": "Offensive Rebound"
+        },
+        "text": "Luguentz Dort offensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:29"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126749",
+        "type": {
+          "id": "150",
+          "text": "Tip Dunk Shot"
+        },
+        "text": "Luguentz Dort misses dunk",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:29"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126750",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Tyrese Haliburton defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:28"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126751",
+        "type": {
+          "id": "44",
+          "text": "Shooting Foul"
+        },
+        "text": "Chet Holmgren shooting foul",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:23"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126753",
+        "type": {
+          "id": "98",
+          "text": "Free Throw - 1 of 2"
+        },
+        "text": "Obi Toppin misses free throw 1 of 2",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:23"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126754",
+        "type": {
+          "id": "156",
+          "text": "Offensive Rebound"
+        },
+        "text": "Pacers offensive team rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:23"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126755",
+        "type": {
+          "id": "16",
+          "text": "Full Timeout"
+        },
+        "text": "Thunder Full timeout",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:23"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126756",
+        "type": {
+          "id": "584",
+          "text": "Substitution"
+        },
+        "text": "T.J. McConnell enters the game for Andrew Nembhard",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:23"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126758",
+        "type": {
+          "id": "99",
+          "text": "Free Throw - 2 of 2"
+        },
+        "text": "Obi Toppin makes free throw 2 of 2",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:23"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401766126759",
+        "type": {
+          "id": "132",
+          "text": "Step Back Jump Shot"
+        },
+        "text": "Shai Gilgeous-Alexander misses 25-foot three point step back jumpshot",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:07"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126760",
+        "type": {
+          "id": "156",
+          "text": "Offensive Rebound"
+        },
+        "text": "Alex Caruso offensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "3:04"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126761",
+        "type": {
+          "id": "110",
+          "text": "Driving Layup Shot"
+        },
+        "text": "Shai Gilgeous-Alexander makes driving layup",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "2:54"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401766126762",
+        "type": {
+          "id": "131",
+          "text": "Pullup Jump Shot"
+        },
+        "text": "Obi Toppin misses 26-foot three point pullup jump shot",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "2:29"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126763",
+        "type": {
+          "id": "156",
+          "text": "Offensive Rebound"
+        },
+        "text": "Aaron Nesmith offensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "2:21"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126764",
+        "type": {
+          "id": "150",
+          "text": "Tip Dunk Shot"
+        },
+        "text": "Aaron Nesmith makes dunk",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "2:21"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401766126765",
+        "type": {
+          "id": "92",
+          "text": "Jump Shot"
+        },
+        "text": "Jalen Williams misses 25-foot three point jumper",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "2:00"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126766",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Obi Toppin defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:56"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126767",
+        "type": {
+          "id": "86",
+          "text": "Out of Bounds - Step Turnover"
+        },
+        "text": "Pascal Siakam steps out of bounds turnover",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126768",
+        "type": {
+          "id": "584",
+          "text": "Substitution"
+        },
+        "text": "Bennedict Mathurin enters the game for Obi Toppin",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126770",
+        "type": {
+          "id": "16",
+          "text": "Full Timeout"
+        },
+        "text": "Pacers Full timeout",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126771",
+        "type": {
+          "id": "216",
+          "text": "Coach's Challenge (Stands)"
+        },
+        "text": "(01:50) [Pacers] COACH'S CHALLENGE (CALL STANDS) [Pacers] charged with a timeout",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126772",
+        "type": {
+          "id": "584",
+          "text": "Substitution"
+        },
+        "text": "Johnny Furphy enters the game for Tyrese Haliburton",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126773",
+        "type": {
+          "id": "584",
+          "text": "Substitution"
+        },
+        "text": "Ben Sheppard enters the game for Aaron Nesmith",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126774",
+        "type": {
+          "id": "584",
+          "text": "Substitution"
+        },
+        "text": "Thomas Bryant enters the game for Pascal Siakam",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:51"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126778",
+        "type": {
+          "id": "121",
+          "text": "Fade Away Jump Shot"
+        },
+        "text": "Shai Gilgeous-Alexander misses 14-foot two point shot",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:29"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126779",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Bennedict Mathurin defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:27"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126780",
+        "type": {
+          "id": "121",
+          "text": "Fade Away Jump Shot"
+        },
+        "text": "T.J. McConnell misses 3-foot two point shot",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:15"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126781",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Chet Holmgren defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "1:13"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126782",
+        "type": {
+          "id": "110",
+          "text": "Driving Layup Shot"
+        },
+        "text": "Jalen Williams misses driving layup",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "57.1"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126783",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Thomas Bryant defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "55.1"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126784",
+        "type": {
+          "id": "109",
+          "text": "Running Layup Shot"
+        },
+        "text": "Johnny Furphy makes two point shot (Thomas Bryant assists)",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "54.0"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401766126786",
+        "type": {
+          "id": "44",
+          "text": "Shooting Foul"
+        },
+        "text": "Shai Gilgeous-Alexander shooting foul",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "54.0"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126788",
+        "type": {
+          "id": "97",
+          "text": "Free Throw - 1 of 1"
+        },
+        "text": "Johnny Furphy misses free throw 1 of 1",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "54.0"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126789",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Chet Holmgren defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "52.0"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126790",
+        "type": {
+          "id": "132",
+          "text": "Step Back Jump Shot"
+        },
+        "text": "Shai Gilgeous-Alexander misses 20-foot step back jumpshot",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "31.1"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126791",
+        "type": {
+          "id": "155",
+          "text": "Defensive Rebound"
+        },
+        "text": "Ben Sheppard defensive rebound",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "28.1"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126792",
+        "type": {
+          "id": "63",
+          "text": "Lost Ball Turnover"
+        },
+        "text": "Bennedict Mathurin lost ball turnover (Alex Caruso steals)",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "23.2"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126794",
+        "type": {
+          "id": "412",
+          "text": "End Period"
+        },
+        "text": "End of the 4th Quarter",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "0.0"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401766126795",
+        "type": {
+          "id": "402",
+          "text": "End Game"
+        },
+        "text": "End of Game",
+        "period": {
+          "number": 4,
+          "displayValue": "4th Quarter"
+        },
+        "clock": {
+          "displayValue": "0.0"
+        },
+        "scoringPlay": false
+      }
+    ]
+  }
+}

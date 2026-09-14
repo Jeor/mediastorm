@@ -43,6 +43,18 @@ type Service struct {
 	refreshing  bool
 	lastError   string
 	restoreDone chan struct{}
+
+	// normalizedIDIndex/normalizedNameIndex let findProgramsByChannelMatch resolve most
+	// misses with an O(1) lookup instead of the linear scan it used to always fall back to
+	// (normalizeChannelID(candidate) == normalizeChannelID(every program key), for every
+	// program key, for every miss) - that scan, multiplied by a caller passing many channel
+	// IDs at once (sports auto-link, live search), was slow enough to make those endpoints
+	// hang outright on a large (tens of thousands of channels) playlist. Built once whenever
+	// schedule is (re)assigned, not per lookup. The "contains" partial-match pass in
+	// findProgramsByChannelMatch is unindexed and stays a fallback for the rarer misses that
+	// don't hit either index.
+	normalizedIDIndex   map[string]string
+	normalizedNameIndex map[string]string
 }
 
 type epgXMLTVSource struct {
@@ -110,7 +122,27 @@ func (s *Service) installRestoredSchedule(initial, restored *models.EPGSchedule)
 		return false
 	}
 	s.schedule = restored
+	s.rebuildScheduleIndexLocked()
 	return true
+}
+
+// rebuildScheduleIndexLocked recomputes normalizedIDIndex/normalizedNameIndex from the
+// current s.schedule. Caller must hold s.mu (write lock) - called immediately after every
+// s.schedule reassignment so the indexes never go stale relative to the data they cover.
+func (s *Service) rebuildScheduleIndexLocked() {
+	idIndex := make(map[string]string, len(s.schedule.Programs))
+	for channelID := range s.schedule.Programs {
+		idIndex[normalizeChannelID(channelID)] = channelID
+	}
+	nameIndex := make(map[string]string, len(s.schedule.Channels))
+	for channelID, ch := range s.schedule.Channels {
+		if _, hasPrograms := s.schedule.Programs[channelID]; !hasPrograms {
+			continue
+		}
+		nameIndex[normalizeChannelID(ch.Name)] = channelID
+	}
+	s.normalizedIDIndex = idIndex
+	s.normalizedNameIndex = nameIndex
 }
 
 // countPrograms returns total number of programs across all channels.
@@ -468,6 +500,7 @@ func (s *Service) Refresh(ctx context.Context) error {
 	// Only replace the schedule after the refresh produced usable guide data.
 	s.mu.Lock()
 	s.schedule = newSchedule
+	s.rebuildScheduleIndexLocked()
 	if len(refreshErrors) > 0 {
 		s.lastError = strings.Join(refreshErrors, "; ")
 	} else {
@@ -768,6 +801,16 @@ func getFirstLangValue(values []xmltvLang) string {
 // parseXMLTVTime parses XMLTV time format (YYYYMMDDHHmmss +/-HHMM).
 var xmltvTimeRegex = regexp.MustCompile(`^(\d{14})(?:\s*([+-]\d{4}))?$`)
 
+// Precompiled for normalizeChannelID, which is called (indirectly, via
+// findProgramsByChannelMatch's linear scan) once per EPG channel on every unmatched
+// lookup - recompiling these from scratch per call (as this used to do) made a single
+// miss against a large EPG dataset cost tens of thousands of regexp.MustCompile calls.
+var (
+	countryPrefixRegex = regexp.MustCompile(`^[a-z]{2}\s*[\|\-]\s*`)
+	countrySuffixRegex = regexp.MustCompile(`\.[a-z]{2}$`)
+	nonAlphaNumRegex   = regexp.MustCompile(`[^a-z0-9]`)
+)
+
 func parseXMLTVTime(s string) (time.Time, error) {
 	s = strings.TrimSpace(s)
 	matches := xmltvTimeRegex.FindStringSubmatch(s)
@@ -845,6 +888,37 @@ func (s *Service) GetNowPlaying(channelIDs []string, timeOffset ...time.Duration
 	}
 	result := make([]models.EPGNowPlaying, 0, len(channelIDs))
 
+	// Build normalized lookup indexes once for the entire batch. The previous fallback
+	// linearly scanned the full EPG for every unmatched playlist channel, turning large
+	// sports lookups into O(playlist × EPG). Ambiguous normalized keys are deliberately
+	// omitted rather than silently binding a channel to the wrong guide entry.
+	byNormalizedID := make(map[string][]models.EPGProgram, len(s.schedule.Programs))
+	ambiguousIDs := make(map[string]struct{})
+	for epgChannelID, programs := range s.schedule.Programs {
+		key := normalizeChannelID(epgChannelID)
+		if _, exists := byNormalizedID[key]; exists {
+			delete(byNormalizedID, key)
+			ambiguousIDs[key] = struct{}{}
+		} else if _, ambiguous := ambiguousIDs[key]; !ambiguous {
+			byNormalizedID[key] = programs
+		}
+	}
+	byNormalizedName := make(map[string][]models.EPGProgram, len(s.schedule.Channels))
+	ambiguousNames := make(map[string]struct{})
+	for epgChannelID, channel := range s.schedule.Channels {
+		programs := s.schedule.Programs[epgChannelID]
+		if len(programs) == 0 {
+			continue
+		}
+		key := normalizeChannelID(channel.Name)
+		if _, exists := byNormalizedName[key]; exists {
+			delete(byNormalizedName, key)
+			ambiguousNames[key] = struct{}{}
+		} else if _, ambiguous := ambiguousNames[key]; !ambiguous {
+			byNormalizedName[key] = programs
+		}
+	}
+
 	for _, channelID := range channelIDs {
 		np := models.EPGNowPlaying{ChannelID: channelID}
 
@@ -854,9 +928,13 @@ func (s *Service) GetNowPlaying(channelIDs []string, timeOffset ...time.Duration
 		// Try to find programs with normalized channel ID
 		programs := s.schedule.Programs[lookupID]
 
-		// If no match, try to find by other matching strategies
+		// If no direct match, use the per-batch normalized ID/name indexes.
 		if len(programs) == 0 {
-			programs = s.findProgramsByChannelMatch(channelID)
+			key := normalizeChannelID(channelID)
+			programs = byNormalizedID[key]
+			if len(programs) == 0 {
+				programs = byNormalizedName[key]
+			}
 		}
 
 		for i, prog := range programs {
@@ -955,26 +1033,20 @@ func (s *Service) GetChannelSchedule(channelID string, date time.Time) []models.
 
 // findProgramsByChannelMatch tries to match a channel ID using various strategies.
 func (s *Service) findProgramsByChannelMatch(channelID string) []models.EPGProgram {
-	// Normalize the input channel ID
 	normalizedInput := normalizeChannelID(channelID)
 
-	// Try to find a matching channel by normalized ID
-	for epgChannelID, programs := range s.schedule.Programs {
-		if normalizeChannelID(epgChannelID) == normalizedInput {
-			return programs
-		}
+	// O(1): normalized-ID and normalized-name indexes, built once whenever the schedule is
+	// (re)assigned (rebuildScheduleIndexLocked) instead of scanned per call.
+	if epgChannelID, ok := s.normalizedIDIndex[normalizedInput]; ok {
+		return s.schedule.Programs[epgChannelID]
+	}
+	if epgChannelID, ok := s.normalizedNameIndex[normalizedInput]; ok {
+		return s.schedule.Programs[epgChannelID]
 	}
 
-	// Try matching by channel name
-	for epgChannelID, ch := range s.schedule.Channels {
-		if normalizeChannelID(ch.Name) == normalizedInput {
-			if programs := s.schedule.Programs[epgChannelID]; len(programs) > 0 {
-				return programs
-			}
-		}
-	}
-
-	// Try partial matching - check if input contains or is contained by EPG channel ID
+	// Fallback: partial/substring matching has no cheap index (an input could be a
+	// substring of any EPG ID or vice versa) - only reached for the minority of lookups
+	// that miss both exact indexes above, not for every call.
 	for epgChannelID, programs := range s.schedule.Programs {
 		epgNorm := normalizeChannelID(epgChannelID)
 		if strings.Contains(epgNorm, normalizedInput) || strings.Contains(normalizedInput, epgNorm) {
@@ -997,13 +1069,11 @@ func normalizeChannelID(s string) string {
 		s = strings.TrimSuffix(s, suffix)
 	}
 	// Remove country prefixes like "us |", "uk |", "ca -" etc
-	prefixPattern := regexp.MustCompile(`^[a-z]{2}\s*[\|\-]\s*`)
-	s = prefixPattern.ReplaceAllString(s, "")
+	s = countryPrefixRegex.ReplaceAllString(s, "")
 	// Remove trailing country codes like .us, .uk, .ca
-	s = regexp.MustCompile(`\.[a-z]{2}$`).ReplaceAllString(s, "")
+	s = countrySuffixRegex.ReplaceAllString(s, "")
 	// Remove special characters and spaces
-	reg := regexp.MustCompile(`[^a-z0-9]`)
-	return reg.ReplaceAllString(s, "")
+	return nonAlphaNumRegex.ReplaceAllString(s, "")
 }
 
 // GetEPGChannelID attempts to find the EPG channel ID for a live channel.

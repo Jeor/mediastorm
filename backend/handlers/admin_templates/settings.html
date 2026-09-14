@@ -6809,6 +6809,9 @@
     };
 
     function resolveMultiselectValueLabel(fieldDef, value) {
+        if (fieldDef?.optionsFrom === 'navigationTabs') {
+            return (fieldDef.options || []).find(option => option.value === value)?.label || value;
+        }
         if (fieldDef?.optionsFrom === 'profiles') {
             const profile = profilesData.find(p => p.id === value);
             return profile?.name || value;
@@ -6873,6 +6876,9 @@
                 value: profile.id,
                 label: profile.name || profile.id
             }));
+            renderMultiselectOptions();
+        } else if (optionsFrom === 'navigationTabs') {
+            multiselectState.options = schema.display.fields.navigationTabVisibility.options;
             renderMultiselectOptions();
         } else if (optionsFrom === 'homeShelves') {
             const shelves = ensureBuiltInHomeShelfConfig(getValue('homeShelves.shelves') || []);

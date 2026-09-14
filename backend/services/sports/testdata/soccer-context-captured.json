@@ -1,0 +1,149 @@
+[
+  {
+    "league": "soccer-usa.nwsl",
+    "sourceUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/summary?event=401854081",
+    "summary": {
+      "header": {
+        "id": "401854081",
+        "season": {
+          "year": 2026,
+          "current": true,
+          "type": 14024,
+          "name": "2026 NWSL, Regular Season"
+        },
+        "competitions": [
+          {
+            "status": {
+              "type": {
+                "id": "28",
+                "name": "STATUS_FULL_TIME",
+                "state": "post",
+                "completed": true,
+                "description": "Full Time",
+                "detail": "FT",
+                "shortDetail": "FT"
+              }
+            },
+            "competitors": [
+              {
+                "id": "131563",
+                "homeAway": "home",
+                "score": "3"
+              },
+              {
+                "id": "15364",
+                "homeAway": "away",
+                "score": "0"
+              }
+            ],
+            "groups": {
+              "id": "1",
+              "name": "NWSL - Regular Season",
+              "abbreviation": "Regular Season"
+            },
+            "altGameNote": "NWSL",
+            "isFinal": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "league": "soccer-fifa.wwc",
+    "sourceUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.wwc/summary?event=622586",
+    "summary": {
+      "header": {
+        "id": "622586",
+        "season": {
+          "year": 2023,
+          "current": true,
+          "type": 10632,
+          "name": "2023 FIFA Women's World Cup, Final"
+        },
+        "competitions": [
+          {
+            "status": {
+              "type": {
+                "id": "28",
+                "name": "STATUS_FULL_TIME",
+                "state": "post",
+                "completed": true,
+                "description": "Full Time",
+                "detail": "FT",
+                "shortDetail": "FT"
+              }
+            },
+            "competitors": [
+              {
+                "id": "17640",
+                "homeAway": "home",
+                "score": "1"
+              },
+              {
+                "id": "5159",
+                "homeAway": "away",
+                "score": "0"
+              }
+            ],
+            "groups": {
+              "id": "1",
+              "name": "Group A",
+              "abbreviation": "Group A"
+            },
+            "altGameNote": "FIFA Women's World Cup, Final",
+            "isFinal": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "league": "soccer-fifa.world",
+    "sourceUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=633850",
+    "summary": {
+      "header": {
+        "id": "633850",
+        "season": {
+          "year": 2022,
+          "current": false,
+          "type": 10948,
+          "name": "2022 FIFA World Cup, Final"
+        },
+        "competitions": [
+          {
+            "status": {
+              "type": {
+                "id": "47",
+                "name": "STATUS_FINAL_PEN",
+                "state": "post",
+                "completed": true,
+                "description": "Final Score - After Penalties",
+                "detail": "FT-Pens",
+                "shortDetail": "FT-Pens"
+              }
+            },
+            "competitors": [
+              {
+                "id": "202",
+                "homeAway": "home",
+                "score": "3"
+              },
+              {
+                "id": "478",
+                "homeAway": "away",
+                "score": "3"
+              }
+            ],
+            "groups": {
+              "id": "1",
+              "name": "Group 1",
+              "abbreviation": "Group 1"
+            },
+            "altGameNote": "FIFA World Cup, Final",
+            "isFinal": true
+          }
+        ]
+      }
+    }
+  }
+]

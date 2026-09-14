@@ -1,0 +1,2042 @@
+{
+  "game": {
+    "id": "401777460",
+    "league": "nhl",
+    "startTime": "2025-06-18T00:00:00Z",
+    "venue": "Amerant Bank Arena",
+    "homeTeam": {
+      "id": "26",
+      "name": "Florida Panthers",
+      "abbreviation": "FLA",
+      "score": "5",
+      "logoUrl": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png"
+    },
+    "awayTeam": {
+      "id": "6",
+      "name": "Edmonton Oilers",
+      "abbreviation": "EDM",
+      "score": "1",
+      "logoUrl": "https://a.espncdn.com/i/teamlogos/nhl/500/edm.png"
+    }
+  },
+  "summary": {
+    "header": {
+      "id": "401777460",
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            },
+            "featuredAthletes": [
+              {
+                "name": "winningGoalie",
+                "displayName": "Winning Goalie",
+                "playerId": 5571,
+                "athlete": {
+                  "id": "5571",
+                  "uid": "s:70~l:90~a:5571",
+                  "guid": "64c24e22-3e0a-e97a-0a79-3ba239e98ad8",
+                  "fullName": "Sergei Bobrovsky",
+                  "displayName": "Sergei Bobrovsky",
+                  "shortName": "S. Bobrovsky",
+                  "links": [
+                    {
+                      "language": "en-US",
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/nhl/player/_/id/5571",
+                      "text": "Player Card",
+                      "shortText": "Player Card"
+                    }
+                  ],
+                  "headshot": {
+                    "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5571.png",
+                    "alt": "Sergei Bobrovsky"
+                  }
+                },
+                "team": {
+                  "id": "26",
+                  "name": "Panthers",
+                  "nickname": "Panthers",
+                  "logos": [
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "default"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "losingGoalie",
+                "displayName": "Losing Goalie",
+                "playerId": 4268767,
+                "athlete": {
+                  "id": "4268767",
+                  "uid": "s:70~l:90~a:4268767",
+                  "guid": "8cbb2141-3895-67e0-318a-1a012cd17466",
+                  "fullName": "Stuart Skinner",
+                  "displayName": "Stuart Skinner",
+                  "shortName": "S. Skinner",
+                  "links": [
+                    {
+                      "language": "en-US",
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/nhl/player/_/id/4268767",
+                      "text": "Player Card",
+                      "shortText": "Player Card"
+                    }
+                  ],
+                  "headshot": {
+                    "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4268767.png",
+                    "alt": "Stuart Skinner"
+                  }
+                },
+                "team": {
+                  "id": "6",
+                  "name": "Oilers",
+                  "nickname": "Oilers",
+                  "logos": [
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/edm.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "default"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/edm.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "dark"
+                      ],
+                      "lastUpdated": "2024-07-02T15:46Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/edm.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/scoreboard/edm.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard",
+                        "dark"
+                      ],
+                      "lastUpdated": "2024-07-02T15:46Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/primary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/primary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/primary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/primary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/primary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/primary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/secondary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/secondary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/secondary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/secondary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/secondary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/c78600f3-cea1-f6e0-11cf-dfeefe1897ff/logos/secondary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "firstStar",
+                "displayName": "First Star",
+                "playerId": 3114722,
+                "athlete": {
+                  "id": "3114722",
+                  "uid": "s:70~l:90~a:3114722",
+                  "guid": "1ebf6e18-9262-fd26-fa16-ff534d8b7a63",
+                  "fullName": "Sam Reinhart",
+                  "displayName": "Sam Reinhart",
+                  "shortName": "S. Reinhart",
+                  "links": [
+                    {
+                      "language": "en-US",
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/nhl/player/_/id/3114722",
+                      "text": "Player Card",
+                      "shortText": "Player Card"
+                    }
+                  ],
+                  "headshot": {
+                    "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3114722.png",
+                    "alt": "Sam Reinhart"
+                  }
+                },
+                "team": {
+                  "id": "26",
+                  "name": "Panthers",
+                  "nickname": "Panthers",
+                  "logos": [
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "default"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "secondStar",
+                "displayName": "Second Star",
+                "playerId": 5571,
+                "athlete": {
+                  "id": "5571",
+                  "uid": "s:70~l:90~a:5571",
+                  "guid": "64c24e22-3e0a-e97a-0a79-3ba239e98ad8",
+                  "fullName": "Sergei Bobrovsky",
+                  "displayName": "Sergei Bobrovsky",
+                  "shortName": "S. Bobrovsky",
+                  "links": [
+                    {
+                      "language": "en-US",
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/nhl/player/_/id/5571",
+                      "text": "Player Card",
+                      "shortText": "Player Card"
+                    }
+                  ],
+                  "headshot": {
+                    "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5571.png",
+                    "alt": "Sergei Bobrovsky"
+                  }
+                },
+                "team": {
+                  "id": "26",
+                  "name": "Panthers",
+                  "nickname": "Panthers",
+                  "logos": [
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "default"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "thirdStar",
+                "displayName": "Third Star",
+                "playerId": 4024854,
+                "athlete": {
+                  "id": "4024854",
+                  "uid": "s:70~l:90~a:4024854",
+                  "guid": "2253f50a-7d0f-f0c4-7345-d3da9d3fdf65",
+                  "fullName": "Matthew Tkachuk",
+                  "displayName": "Matthew Tkachuk",
+                  "shortName": "M. Tkachuk",
+                  "links": [
+                    {
+                      "language": "en-US",
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/nhl/player/_/id/4024854",
+                      "text": "Player Card",
+                      "shortText": "Player Card"
+                    }
+                  ],
+                  "headshot": {
+                    "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4024854.png",
+                    "alt": "Matthew Tkachuk"
+                  }
+                },
+                "team": {
+                  "id": "26",
+                  "name": "Panthers",
+                  "nickname": "Panthers",
+                  "logos": [
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "default"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard"
+                      ],
+                      "lastUpdated": "2024-07-02T15:51Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/i/teamlogos/nhl/500-dark/scoreboard/fla.png",
+                      "width": 500,
+                      "height": 500,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "scoreboard",
+                        "dark"
+                      ],
+                      "lastUpdated": "2018-06-05T12:12Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/primary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "primary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_white_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_white_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_black_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_black_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_primary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_primary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_on_secondary_color.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_on_secondary_color"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_black.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_black"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    },
+                    {
+                      "href": "https://a.espncdn.com/guid/195561c3-b7d9-935e-0623-8f0a00357080/logos/secondary_logo_white.png",
+                      "width": 4096,
+                      "height": 4096,
+                      "alt": "",
+                      "rel": [
+                        "full",
+                        "secondary_logo_white"
+                      ],
+                      "lastUpdated": "2026-07-22T20:31Z"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "competitors": [
+            {
+              "id": "26",
+              "homeAway": "home",
+              "score": "5",
+              "winner": true,
+              "linescores": [
+                {
+                  "displayValue": "2"
+                },
+                {
+                  "displayValue": "1"
+                },
+                {
+                  "displayValue": "2"
+                }
+              ]
+            },
+            {
+              "id": "6",
+              "homeAway": "away",
+              "score": "1",
+              "winner": false,
+              "linescores": [
+                {
+                  "displayValue": "0"
+                },
+                {
+                  "displayValue": "0"
+                },
+                {
+                  "displayValue": "1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "boxscore": {
+      "teams": [
+        {
+          "team": {
+            "id": "6"
+          },
+          "statistics": [
+            {
+              "name": "blockedShots",
+              "displayValue": "15"
+            },
+            {
+              "name": "hits",
+              "displayValue": "29"
+            },
+            {
+              "name": "takeaways",
+              "displayValue": "1"
+            },
+            {
+              "name": "shotsTotal",
+              "displayValue": "29"
+            },
+            {
+              "name": "powerPlayGoals",
+              "displayValue": "0"
+            },
+            {
+              "name": "powerPlayOpportunities",
+              "displayValue": "0"
+            },
+            {
+              "name": "powerPlayPct",
+              "displayValue": "0.0"
+            },
+            {
+              "name": "shortHandedGoals",
+              "displayValue": "0"
+            },
+            {
+              "name": "shootoutGoals",
+              "displayValue": "0"
+            },
+            {
+              "name": "faceoffsWon",
+              "displayValue": "25"
+            },
+            {
+              "name": "faceoffPercent",
+              "displayValue": "47.2"
+            },
+            {
+              "name": "giveaways",
+              "displayValue": "10"
+            },
+            {
+              "name": "penalties",
+              "displayValue": "2"
+            },
+            {
+              "name": "penaltyMinutes",
+              "displayValue": "12"
+            }
+          ]
+        },
+        {
+          "team": {
+            "id": "26"
+          },
+          "statistics": [
+            {
+              "name": "blockedShots",
+              "displayValue": "17"
+            },
+            {
+              "name": "hits",
+              "displayValue": "28"
+            },
+            {
+              "name": "takeaways",
+              "displayValue": "5"
+            },
+            {
+              "name": "shotsTotal",
+              "displayValue": "25"
+            },
+            {
+              "name": "powerPlayGoals",
+              "displayValue": "0"
+            },
+            {
+              "name": "powerPlayOpportunities",
+              "displayValue": "0"
+            },
+            {
+              "name": "powerPlayPct",
+              "displayValue": "0.0"
+            },
+            {
+              "name": "shortHandedGoals",
+              "displayValue": "0"
+            },
+            {
+              "name": "shootoutGoals",
+              "displayValue": "0"
+            },
+            {
+              "name": "faceoffsWon",
+              "displayValue": "28"
+            },
+            {
+              "name": "faceoffPercent",
+              "displayValue": "52.8"
+            },
+            {
+              "name": "giveaways",
+              "displayValue": "18"
+            },
+            {
+              "name": "penalties",
+              "displayValue": "1"
+            },
+            {
+              "name": "penaltyMinutes",
+              "displayValue": "2"
+            }
+          ]
+        }
+      ]
+    },
+    "leaders": [
+      {
+        "team": {
+          "id": "26"
+        },
+        "leaders": [
+          {
+            "name": "goals",
+            "displayName": "Goals",
+            "leaders": []
+          },
+          {
+            "name": "assists",
+            "displayName": "Assists",
+            "leaders": [
+              {
+                "displayValue": "3",
+                "athlete": {
+                  "displayName": "Carter Verhaeghe"
+                }
+              }
+            ]
+          },
+          {
+            "name": "points",
+            "displayName": "Points",
+            "leaders": [
+              {
+                "displayValue": "3",
+                "athlete": {
+                  "displayName": "Carter Verhaeghe"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "6"
+        },
+        "leaders": [
+          {
+            "name": "goals",
+            "displayName": "Goals",
+            "leaders": [
+              {
+                "displayValue": "1",
+                "athlete": {
+                  "displayName": "Vasily Podkolzin"
+                }
+              }
+            ]
+          },
+          {
+            "name": "assists",
+            "displayName": "Assists",
+            "leaders": [
+              {
+                "displayValue": "1",
+                "athlete": {
+                  "displayName": "Connor Brown"
+                }
+              }
+            ]
+          },
+          {
+            "name": "points",
+            "displayName": "Points",
+            "leaders": [
+              {
+                "displayValue": "1",
+                "athlete": {
+                  "displayName": "Vasily Podkolzin"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "plays": [
+      {
+        "id": "401777460000010070",
+        "type": {
+          "id": "508",
+          "text": "Blocked",
+          "abbreviation": "shot-blocked"
+        },
+        "text": "Adam Henrique shot blocked by A.J. Greer",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "10:32"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000002840",
+        "type": {
+          "id": "516",
+          "text": "Stoppage",
+          "abbreviation": "stoppage"
+        },
+        "text": "Puck in Netting",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "10:34"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010080",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Aleksander Barkov faceoff won against Leon Draisaitl",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "10:34"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011770",
+        "type": {
+          "id": "503",
+          "text": "Hit",
+          "abbreviation": "hit"
+        },
+        "text": "Mattias Ekholm hit Sam Reinhart",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "11:07"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010210",
+        "type": {
+          "id": "507",
+          "text": "Missed",
+          "abbreviation": "shot-missed"
+        },
+        "text": "Evander Kane Wrist Shot Wide Right",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "11:47"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000003570",
+        "type": {
+          "id": "506",
+          "text": "Shot",
+          "abbreviation": "shot-on-goal"
+        },
+        "text": "Brad Marchand Backhand saved by Stuart Skinner",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "11:50"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010470",
+        "type": {
+          "id": "1401",
+          "text": "Takeaway",
+          "abbreviation": "takeaway"
+        },
+        "text": "Takeaway by Matthew Tkachuk",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "12:02"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010280",
+        "type": {
+          "id": "506",
+          "text": "Shot",
+          "abbreviation": "shot-on-goal"
+        },
+        "text": "Sam Bennett Snap Shot saved by Stuart Skinner",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "12:06"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000003580",
+        "type": {
+          "id": "508",
+          "text": "Blocked",
+          "abbreviation": "shot-blocked"
+        },
+        "text": "Sam Bennett shot blocked by Jake Walman",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "12:07"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010300",
+        "type": {
+          "id": "508",
+          "text": "Blocked",
+          "abbreviation": "shot-blocked"
+        },
+        "text": "Evan Rodrigues shot blocked by John Klingberg",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "12:21"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010490",
+        "type": {
+          "id": "503",
+          "text": "Hit",
+          "abbreviation": "hit"
+        },
+        "text": "Trent Frederic hit Matthew Tkachuk",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "12:26"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000002860",
+        "type": {
+          "id": "516",
+          "text": "Stoppage",
+          "abbreviation": "stoppage"
+        },
+        "text": "Icing",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:00"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010390",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Aleksander Barkov faceoff won against Leon Draisaitl",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:00"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010430",
+        "type": {
+          "id": "505",
+          "text": "Goal",
+          "abbreviation": "goal"
+        },
+        "text": "Sam Reinhart Goal (10) Snap Shot, assists: Aleksander Barkov (16), Carter Verhaeghe (15)",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:26"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401777460000011010",
+        "type": {
+          "id": "516",
+          "text": "Stoppage",
+          "abbreviation": "stoppage"
+        },
+        "text": "Objects on Ice",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:26"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010440",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Sam Bennett faceoff won against Adam Henrique",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:26"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000002890",
+        "type": {
+          "id": "516",
+          "text": "Stoppage",
+          "abbreviation": "stoppage"
+        },
+        "text": "Icing",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:46"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010500",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Adam Henrique faceoff won against Sam Bennett",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "13:46"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000002910",
+        "type": {
+          "id": "516",
+          "text": "Stoppage",
+          "abbreviation": "stoppage"
+        },
+        "text": "Puck in Benches",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "14:04"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010530",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Leon Draisaitl faceoff won against Aleksander Barkov",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "14:04"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010570",
+        "type": {
+          "id": "508",
+          "text": "Blocked",
+          "abbreviation": "shot-blocked"
+        },
+        "text": "Mattias Ekholm shot blocked by Aaron Ekblad",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "14:34"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010580",
+        "type": {
+          "id": "508",
+          "text": "Blocked",
+          "abbreviation": "shot-blocked"
+        },
+        "text": "Connor McDavid shot blocked by Aaron Ekblad",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "14:44"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010590",
+        "type": {
+          "id": "505",
+          "text": "Goal",
+          "abbreviation": "goal"
+        },
+        "text": "Sam Reinhart Goal (11) Wrist Shot, assists: Carter Verhaeghe (16), Aaron Ekblad (9)",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "14:55"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401777460000010600",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Anton Lundell faceoff won against Mattias Janmark",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "14:55"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010640",
+        "type": {
+          "id": "506",
+          "text": "Shot",
+          "abbreviation": "shot-on-goal"
+        },
+        "text": "Jake Walman Slap Shot saved by Sergei Bobrovsky",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "15:15"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010650",
+        "type": {
+          "id": "505",
+          "text": "Goal",
+          "abbreviation": "goal"
+        },
+        "text": "Vasily Podkolzin Goal (3) Backhand, assists: Jake Walman (8), Connor Brown (4)",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "15:18"
+        },
+        "scoringPlay": true
+      },
+      {
+        "id": "401777460000010660",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Mattias Janmark faceoff won against Sam Bennett",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "15:18"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010880",
+        "type": {
+          "id": "1402",
+          "text": "Giveaway",
+          "abbreviation": "giveaway"
+        },
+        "text": "Giveaway by Sam Reinhart",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "16:12"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011580",
+        "type": {
+          "id": "1402",
+          "text": "Giveaway",
+          "abbreviation": "giveaway"
+        },
+        "text": "Giveaway by Brett Kulak",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "16:38"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010780",
+        "type": {
+          "id": "506",
+          "text": "Shot",
+          "abbreviation": "shot-on-goal"
+        },
+        "text": "Anton Lundell Snap Shot saved by Stuart Skinner",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "16:39"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010980",
+        "type": {
+          "id": "503",
+          "text": "Hit",
+          "abbreviation": "hit"
+        },
+        "text": "Anton Lundell hit Adam Henrique",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "17:00"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011690",
+        "type": {
+          "id": "1402",
+          "text": "Giveaway",
+          "abbreviation": "giveaway"
+        },
+        "text": "Giveaway by Evan Bouchard",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "17:27"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000002940",
+        "type": {
+          "id": "509",
+          "text": "Penalty",
+          "abbreviation": "penalty"
+        },
+        "text": "Evander Kane Misconduct",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "17:47"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000010910",
+        "type": {
+          "id": "502",
+          "text": "Face Off",
+          "abbreviation": "faceoff"
+        },
+        "text": "Mattias Janmark faceoff won against Tomas Nosek",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "17:47"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011600",
+        "type": {
+          "id": "503",
+          "text": "Hit",
+          "abbreviation": "hit"
+        },
+        "text": "A.J. Greer hit Darnell Nurse",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "18:01"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011540",
+        "type": {
+          "id": "506",
+          "text": "Shot",
+          "abbreviation": "shot-on-goal"
+        },
+        "text": "Anton Lundell Snap Shot saved by Stuart Skinner",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "18:24"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011760",
+        "type": {
+          "id": "1402",
+          "text": "Giveaway",
+          "abbreviation": "giveaway"
+        },
+        "text": "Giveaway by Seth Jones",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "18:37"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000011670",
+        "type": {
+          "id": "506",
+          "text": "Shot",
+          "abbreviation": "shot-on-goal"
+        },
+        "text": "Jake Walman Wrist Shot saved by Sergei Bobrovsky",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "19:01"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000002970",
+        "type": {
+          "id": "519",
+          "text": "Period End",
+          "abbreviation": "period-end"
+        },
+        "text": "End of 3rd Period",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "20:00"
+        },
+        "scoringPlay": false
+      },
+      {
+        "id": "401777460000008510",
+        "type": {
+          "id": "522",
+          "text": "End of Game"
+        },
+        "text": "Game End",
+        "period": {
+          "number": 3,
+          "displayValue": "3rd"
+        },
+        "clock": {
+          "displayValue": "20:00"
+        },
+        "scoringPlay": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,4300 @@
+[
+  {
+    "status": "0",
+    "rankings": [
+      {
+        "position": 1,
+        "bonus": 22000,
+        "bib": 21,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 201749000,
+        "$rider": "allCompetitors-2026:88cc41e125077b71861edcf0c11100b6acca1c09629f0f297253664348dce97f"
+      },
+      {
+        "bib": 41,
+        "relative": 126000,
+        "penality": 0,
+        "absolute": 201875000,
+        "bonus": 8000,
+        "position": 2,
+        "$rider": "allCompetitors-2026:be2f036b118ea1eee13e7a8907cf8123b289616279c102b01bc62e87540e018a"
+      },
+      {
+        "position": 3,
+        "bib": 1,
+        "relative": 130000,
+        "penality": 0,
+        "bonus": 4000,
+        "absolute": 201879000,
+        "$rider": "allCompetitors-2026:16419e2b7fff95fa34d5f540730cb9291622d9df51bf0fa1b72eae94ae82f0a3"
+      },
+      {
+        "absolute": 202013000,
+        "penality": 0,
+        "relative": 264000,
+        "bonus": 0,
+        "bib": 161,
+        "position": 4,
+        "$rider": "allCompetitors-2026:ebb3b0654c6984fe98b418e15e3d1e952649f6a61e842f6fe81fe0448c1a7156"
+      },
+      {
+        "position": 5,
+        "bonus": 10000,
+        "absolute": 202093000,
+        "penality": 0,
+        "relative": 344000,
+        "bib": 61,
+        "$rider": "allCompetitors-2026:51701851e83ecde3385cd0eebe14395d4ed2d1e0c50254a2a5dd51c4c5b1fea0"
+      },
+      {
+        "bonus": 10000,
+        "relative": 374000,
+        "penality": 0,
+        "absolute": 202123000,
+        "position": 6,
+        "bib": 76,
+        "$rider": "allCompetitors-2026:620c723c3f3e7efbdba888f6af682355f3190b59f08fee45c7d4540df41e5f8d"
+      },
+      {
+        "absolute": 202158000,
+        "penality": 0,
+        "relative": 409000,
+        "bonus": 2000,
+        "bib": 81,
+        "position": 7,
+        "$rider": "allCompetitors-2026:af06a58c56298db2eec807ec60532bc7513f058e7f655bf342809b3ba29975e4"
+      },
+      {
+        "penality": 0,
+        "absolute": 202170000,
+        "relative": 421000,
+        "bib": 186,
+        "bonus": 12000,
+        "position": 8,
+        "$rider": "allCompetitors-2026:c8a746efb0731de26a06a93b67767236424522f660db956ffb487f7f03db692b"
+      },
+      {
+        "absolute": 202188000,
+        "bonus": 2000,
+        "penality": 0,
+        "relative": 439000,
+        "position": 9,
+        "bib": 91,
+        "$rider": "allCompetitors-2026:7a17d847bd8c33e5acaf0109e28275faa593bfc42c8e36f8b97468694bf7ceb7"
+      },
+      {
+        "absolute": 202284000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 535000,
+        "bib": 35,
+        "position": 10,
+        "$rider": "allCompetitors-2026:1cd3875aeab1b7c99e2c8fe1e0ff9d8c597b091854c097b98ea8001e6bd38963"
+      },
+      {
+        "penality": 0,
+        "absolute": 202337000,
+        "relative": 588000,
+        "bib": 181,
+        "bonus": 0,
+        "position": 11,
+        "$rider": "allCompetitors-2026:9fd557e1c61503bd79088ab932fb78bde2a3a81f12cda3255d34e71955f94eb2"
+      },
+      {
+        "absolute": 202734000,
+        "penality": 0,
+        "relative": 985000,
+        "bonus": 0,
+        "bib": 42,
+        "position": 12,
+        "$rider": "allCompetitors-2026:0e95917af3a38cd0235fe15b95b0ccc60481696b85a51deffdab4b512ca40253"
+      },
+      {
+        "absolute": 202928000,
+        "penality": 0,
+        "relative": 1179000,
+        "bib": 94,
+        "position": 13,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:1e6d64d0b228aacbbeda174caaf0017819a4644c3ae1e9ce752ee4f9c0e6f90b"
+      },
+      {
+        "bonus": 0,
+        "relative": 1548000,
+        "penality": 0,
+        "absolute": 203297000,
+        "position": 14,
+        "bib": 47,
+        "$rider": "allCompetitors-2026:8439c92d34f3eb154552c5c941543527344156606d23d9e04854b4cab0d28848"
+      },
+      {
+        "bib": 166,
+        "position": 15,
+        "bonus": 0,
+        "absolute": 203535000,
+        "penality": 0,
+        "relative": 1786000,
+        "$rider": "allCompetitors-2026:21b4a307ef1820566018ffdcad49176831dff1d8e30fa37e7e45d0ce427dab0a"
+      },
+      {
+        "position": 16,
+        "bib": 193,
+        "absolute": 204059000,
+        "penality": 0,
+        "bonus": 0,
+        "relative": 2310000,
+        "$rider": "allCompetitors-2026:40073fff7d0a209794956393f48662eb096e492e88a6a97da8ad2bb57ba23594"
+      },
+      {
+        "position": 17,
+        "bib": 156,
+        "bonus": 0,
+        "relative": 2359000,
+        "absolute": 204108000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:69e69df9cb1ed455193fe89e25d35df63fe2ae3b91fb27d1e40676a47030345d"
+      },
+      {
+        "position": 18,
+        "bib": 128,
+        "absolute": 204224000,
+        "penality": 0,
+        "bonus": 0,
+        "relative": 2475000,
+        "$rider": "allCompetitors-2026:9f9e00d9ae574a622ce87f5155aad7efb7b4f6e86981681bbf0057e00c5b246b"
+      },
+      {
+        "absolute": 204361000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 2612000,
+        "bib": 113,
+        "position": 19,
+        "$rider": "allCompetitors-2026:9d7394947a3cbb310c92fd7e1a642450ebf9c0109cd0f905167d33877760513e"
+      },
+      {
+        "relative": 2618000,
+        "absolute": 204367000,
+        "bonus": 16000,
+        "penality": 0,
+        "position": 20,
+        "bib": 72,
+        "$rider": "allCompetitors-2026:e38826dbcba6ae9c26aa93874f6c634e0fb890b31e6ae8b62991e220628424c0"
+      },
+      {
+        "bonus": 0,
+        "relative": 2681000,
+        "penality": 0,
+        "absolute": 204430000,
+        "position": 21,
+        "bib": 26,
+        "$rider": "allCompetitors-2026:98685fcc9f0cfff8c7df304668cc3ffd289c9dbb3bb524ec1543af239312a2a8"
+      },
+      {
+        "absolute": 204715000,
+        "penality": 0,
+        "relative": 2966000,
+        "bonus": 6000,
+        "position": 22,
+        "bib": 201,
+        "$rider": "allCompetitors-2026:ee4de13292c0fa4206245a043d4c021770fb1f6ff3fc1b66a4073de072109ea2"
+      },
+      {
+        "position": 23,
+        "penality": 0,
+        "absolute": 204719000,
+        "relative": 2970000,
+        "bib": 66,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:79065d6bd91779d46fe6df44b7cd2e8f4d2c7833b0a219683a6ebb5cbc54ee60"
+      },
+      {
+        "bonus": 0,
+        "absolute": 205099000,
+        "penality": 0,
+        "relative": 3350000,
+        "bib": 152,
+        "position": 24,
+        "$rider": "allCompetitors-2026:498fa5b993ade79dac9520cb061dbd0d6eb151e673ce865ea20817012e7e009e"
+      },
+      {
+        "relative": 3648000,
+        "bonus": 0,
+        "absolute": 205397000,
+        "penality": 0,
+        "position": 25,
+        "bib": 214,
+        "$rider": "allCompetitors-2026:6f27e5b6ff50b66501a789ea068d5eb4f17def4b61f91abecd5c2b500e38b05e"
+      },
+      {
+        "position": 26,
+        "bib": 62,
+        "relative": 3700000,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 205449000,
+        "$rider": "allCompetitors-2026:cd7264571b3632329d8519d783cb564b5a1ce48b5aae594f2812e0e7bb2557a0"
+      },
+      {
+        "position": 27,
+        "bonus": 6000,
+        "absolute": 205710000,
+        "bib": 221,
+        "penality": 0,
+        "relative": 3961000,
+        "$rider": "allCompetitors-2026:13ae97e6581934526944254ab5ff89368940991562eed345025ad88cf539d8aa"
+      },
+      {
+        "relative": 4009000,
+        "absolute": 205758000,
+        "penality": 0,
+        "position": 28,
+        "bonus": 0,
+        "bib": 141,
+        "$rider": "allCompetitors-2026:441704b9beaeddf5590c4353bc62644cf72914b84925a5f6ca8eed3a348550c8"
+      },
+      {
+        "absolute": 206201000,
+        "bib": 134,
+        "penality": 0,
+        "relative": 4452000,
+        "bonus": 6000,
+        "position": 29,
+        "$rider": "allCompetitors-2026:aaef7f2cdc1a4fae51a7c43a3e0073f8a9956e2027a1219a87876ace25ef606e"
+      },
+      {
+        "bonus": 0,
+        "position": 30,
+        "absolute": 206296000,
+        "penality": 0,
+        "relative": 4547000,
+        "bib": 71,
+        "$rider": "allCompetitors-2026:96c6bb1f4808fdb3924f9a41e173efcbf778a58af501f45d1f8f870767028e87"
+      },
+      {
+        "bonus": 0,
+        "position": 31,
+        "bib": 48,
+        "relative": 4701000,
+        "penality": 0,
+        "absolute": 206450000,
+        "$rider": "allCompetitors-2026:cf6ceb89c7d086d0c30de989f2232dcde22da6eb9e2beb6b5c77a9ddf435a8a3"
+      },
+      {
+        "position": 32,
+        "bib": 125,
+        "bonus": 6000,
+        "relative": 4739000,
+        "absolute": 206488000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:620206d10053242ca84073757ea81a215df8b2d6f5be5ac01fe239889835cf7c"
+      },
+      {
+        "bib": 84,
+        "bonus": 0,
+        "position": 33,
+        "absolute": 206606000,
+        "penality": 0,
+        "relative": 4857000,
+        "$rider": "allCompetitors-2026:3d39ae9007cd5f9fc81f8be40cb51762d243be5fb601fd7c76b33e90a3e653f4"
+      },
+      {
+        "bib": 195,
+        "relative": 4973000,
+        "penality": 0,
+        "absolute": 206722000,
+        "bonus": 0,
+        "position": 34,
+        "$rider": "allCompetitors-2026:c72ff25e7b0c2ced7b4d48b099e83a22569348935223fdb23b2eaf15b250438c"
+      },
+      {
+        "position": 35,
+        "penality": 0,
+        "absolute": 207013000,
+        "bib": 55,
+        "relative": 5264000,
+        "bonus": 2000,
+        "$rider": "allCompetitors-2026:ec8228cc5a2f05e86e1899f3952817110533481f8e9b94e84009eb6b2f226ca4"
+      },
+      {
+        "relative": 5328000,
+        "absolute": 207077000,
+        "bonus": 10000,
+        "penality": 0,
+        "position": 36,
+        "bib": 103,
+        "$rider": "allCompetitors-2026:cd14566c6b90dfae620b41d0006f4fd6b5e0efde61278a823de12053735b6e8d"
+      },
+      {
+        "bib": 171,
+        "relative": 5341000,
+        "penality": 0,
+        "absolute": 207090000,
+        "bonus": 10000,
+        "position": 37,
+        "$rider": "allCompetitors-2026:a7c2873c2a08f6bddf74b6efe28c898e459a9c69c76aa5452cc2917dddf64485"
+      },
+      {
+        "bonus": 0,
+        "position": 38,
+        "relative": 5347000,
+        "penality": 0,
+        "absolute": 207096000,
+        "bib": 185,
+        "$rider": "allCompetitors-2026:69485687847ee6a679e40bf2cb9b56017a10577e7d4e0c95d4cf2012751e5a7e"
+      },
+      {
+        "position": 39,
+        "bonus": 0,
+        "relative": 5404000,
+        "bib": 121,
+        "absolute": 207153000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:362e512b4d0ed3d6c6ae54dd533b0c600c39633b4d3b9530adc5f512b3671e81"
+      },
+      {
+        "bonus": 0,
+        "penality": 0,
+        "bib": 65,
+        "absolute": 207312000,
+        "relative": 5563000,
+        "position": 40,
+        "$rider": "allCompetitors-2026:b4af0de72d7799deeaf168f4b0c77f7abfef862a802f6474729b39cae42da0db"
+      },
+      {
+        "penality": 0,
+        "bib": 176,
+        "absolute": 207330000,
+        "bonus": 4000,
+        "relative": 5581000,
+        "position": 41,
+        "$rider": "allCompetitors-2026:44e205ccdc0367fbd5ddc7b4c708536ddab7da188c537a2dfacbdf7d75827fbb"
+      },
+      {
+        "bonus": 0,
+        "bib": 93,
+        "position": 42,
+        "absolute": 207332000,
+        "penality": 0,
+        "relative": 5583000,
+        "$rider": "allCompetitors-2026:ba3d7b5774cba30a6869139b2a6ee7116fe8e339590f28b300eaf9b5629d67e2"
+      },
+      {
+        "absolute": 207480000,
+        "bonus": 12000,
+        "penality": 0,
+        "bib": 17,
+        "relative": 5731000,
+        "position": 43,
+        "$rider": "allCompetitors-2026:52897608fb934c7249d86ba150791bbc2177ba49b54616b9d905979cf46d5d91"
+      },
+      {
+        "position": 44,
+        "relative": 5764000,
+        "bib": 58,
+        "bonus": 0,
+        "absolute": 207513000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:b0b5dd466e1e8fa2eb77f1bbc91e3bff6919448562ac5c3889febbee5cedb9a5"
+      },
+      {
+        "bib": 37,
+        "position": 45,
+        "bonus": 0,
+        "absolute": 207622000,
+        "penality": 0,
+        "relative": 5873000,
+        "$rider": "allCompetitors-2026:bc2817d60b27f350a06e482102adce428274a1e0573e17e352e2be1c0c28bedc"
+      },
+      {
+        "absolute": 207974000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 6225000,
+        "bib": 206,
+        "position": 46,
+        "$rider": "allCompetitors-2026:1701376d0992569eb2e2936950d382bb5efdb409afe5140a3329a9e4ee308faa"
+      },
+      {
+        "position": 47,
+        "absolute": 208022000,
+        "bonus": 46000,
+        "bib": 31,
+        "penality": 0,
+        "relative": 6273000,
+        "$rider": "allCompetitors-2026:76f4e73eb96986635a51832e29d3fdb66c25942393535533e7ae3588d5482971"
+      },
+      {
+        "absolute": 208094000,
+        "bib": 6,
+        "penality": 0,
+        "relative": 6345000,
+        "position": 48,
+        "bonus": 2000,
+        "$rider": "allCompetitors-2026:193ac8d527faefd474700555a83c2b22e81fb5887117385e82bacefe36c6e97d"
+      },
+      {
+        "penality": 0,
+        "absolute": 208345000,
+        "bonus": 0,
+        "relative": 6596000,
+        "bib": 183,
+        "position": 49,
+        "$rider": "allCompetitors-2026:2fc234c93c1b1cac7db35c3bc8c4fd0cfad5f022bbba3d78ca426311b1efd898"
+      },
+      {
+        "bib": 96,
+        "position": 50,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 208382000,
+        "relative": 6633000,
+        "$rider": "allCompetitors-2026:fdbb65f619e96c40445ab86c0f1fbf12c7351a5a77d15667b78d3827ead497f9"
+      },
+      {
+        "relative": 6640000,
+        "bonus": 0,
+        "absolute": 208389000,
+        "penality": 0,
+        "position": 51,
+        "bib": 127,
+        "$rider": "allCompetitors-2026:f599d4fd0ab52e321842ac45ed2e3c5f39857a61ebc6a1b47e593a8468a2fb82"
+      },
+      {
+        "bib": 167,
+        "position": 52,
+        "bonus": 0,
+        "absolute": 208434000,
+        "penality": 0,
+        "relative": 6685000,
+        "$rider": "allCompetitors-2026:6510bc5c5e55deefd55c1c7e3a1d5a1de3936b3d6598048f753e81e521447492"
+      },
+      {
+        "bonus": 0,
+        "position": 53,
+        "penality": 0,
+        "bib": 145,
+        "absolute": 208481000,
+        "relative": 6732000,
+        "$rider": "allCompetitors-2026:c4355df0d5806562c559aa5ae810d258925781b384a99cb67ab78db47c300c08"
+      },
+      {
+        "position": 54,
+        "relative": 6757000,
+        "bonus": 0,
+        "absolute": 208506000,
+        "bib": 95,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:3d98d69821113f3472231cf045ad808bdf0a1e1d92f37549e982f57faa8cfd42"
+      },
+      {
+        "position": 55,
+        "bib": 78,
+        "bonus": 0,
+        "relative": 6788000,
+        "absolute": 208537000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:1860175302f145c07fcf4d6adb7514c12791bb31247de1c325d70ea41e8843f9"
+      },
+      {
+        "bonus": 0,
+        "bib": 178,
+        "relative": 6811000,
+        "penality": 0,
+        "absolute": 208560000,
+        "position": 56,
+        "$rider": "allCompetitors-2026:4e788ef700725808fe7642a370da3b1c5ccf1e5923ad34e6b1cf22645e4fbc28"
+      },
+      {
+        "position": 57,
+        "absolute": 208563000,
+        "bib": 114,
+        "penality": 0,
+        "relative": 6814000,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:1edb87b9fe21500c226f650b39a6ef6e3d25babe4ca92087899a17e5ff86951c"
+      },
+      {
+        "position": 58,
+        "bib": 82,
+        "absolute": 208711000,
+        "penality": 0,
+        "bonus": 0,
+        "relative": 6962000,
+        "$rider": "allCompetitors-2026:ff8cb899a314c4bfd3681eba1a2928c1ed32a0de75042efa65ade12f013bd379"
+      },
+      {
+        "relative": 7017000,
+        "absolute": 208766000,
+        "penality": 0,
+        "position": 59,
+        "bib": 174,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:7e1ade81f7c4ea458c91661c1b4b85bb45ceffa5ec0786852f266476fe6c9c2f"
+      },
+      {
+        "relative": 7066000,
+        "penality": 0,
+        "absolute": 208815000,
+        "bonus": 0,
+        "position": 60,
+        "bib": 83,
+        "$rider": "allCompetitors-2026:19f38caa0f2a2f68b93140338a30c7386b8fc5390afad8dd21ec9801b7b97706"
+      },
+      {
+        "relative": 7119000,
+        "absolute": 208868000,
+        "bonus": 2000,
+        "penality": 0,
+        "position": 61,
+        "bib": 32,
+        "$rider": "allCompetitors-2026:bcf77ce2d0e7adb5675007e626b19bbcc9f46e98dada1b4386f17bd34eb2de74"
+      },
+      {
+        "position": 62,
+        "bib": 135,
+        "bonus": 0,
+        "absolute": 208937000,
+        "penality": 0,
+        "relative": 7188000,
+        "$rider": "allCompetitors-2026:3cc1f769678fe8d2f5d1504cacabafbef44956d85f8ad41057dc34a61dda9249"
+      },
+      {
+        "position": 63,
+        "relative": 7223000,
+        "bib": 172,
+        "bonus": 0,
+        "absolute": 208972000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:2db8e2b35aa788db9c7021505ed0c8eb16cc891e59b6fbca6b93d89e336ad4b7"
+      },
+      {
+        "relative": 7273000,
+        "absolute": 209022000,
+        "penality": 0,
+        "position": 64,
+        "bib": 64,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:6baa07c3aed8d4c023c34a738f2ec8f959b6e21c97ea401e38c3b1e895f6fe38"
+      },
+      {
+        "relative": 7341000,
+        "absolute": 209090000,
+        "penality": 0,
+        "position": 65,
+        "bib": 116,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:021e8e5305c6d5144db1c8d77d4b48a863905cfd9978bf5ea985dc94b97b44f4"
+      },
+      {
+        "bonus": 0,
+        "position": 66,
+        "penality": 0,
+        "absolute": 209238000,
+        "bib": 123,
+        "relative": 7489000,
+        "$rider": "allCompetitors-2026:3e35a7869656548db3ae071c4433bc0573d561f33a1e746fe7e7192bd58ab40e"
+      },
+      {
+        "bib": 162,
+        "bonus": 4000,
+        "position": 67,
+        "penality": 0,
+        "absolute": 209294000,
+        "relative": 7545000,
+        "$rider": "allCompetitors-2026:77c205bcd4374d790529c901d06d560bbd1db7bbed204f3f364350d2d02a4a02"
+      },
+      {
+        "absolute": 209376000,
+        "bib": 225,
+        "penality": 0,
+        "bonus": 0,
+        "relative": 7627000,
+        "position": 68,
+        "$rider": "allCompetitors-2026:f44496d4713097af8bfa00fd5fa31abad3d114171a08cb78c47c4c2ad6bad27b"
+      },
+      {
+        "absolute": 209551000,
+        "penality": 0,
+        "relative": 7802000,
+        "bonus": 6000,
+        "bib": 177,
+        "position": 69,
+        "$rider": "allCompetitors-2026:f0aaab26170ddd39f5a424abc7c3275434c1019f3b07ad744060e81cd82ee8ca"
+      },
+      {
+        "absolute": 209652000,
+        "bonus": 6000,
+        "penality": 0,
+        "bib": 75,
+        "relative": 7903000,
+        "position": 70,
+        "$rider": "allCompetitors-2026:bbf1d7b2fa847fd06d537080bef50138538c84b6f19402bf273e091a70a9b169"
+      },
+      {
+        "absolute": 209722000,
+        "penality": 0,
+        "relative": 7973000,
+        "bonus": 10000,
+        "position": 71,
+        "bib": 98,
+        "$rider": "allCompetitors-2026:a376583d61d45d4123549e2d72808178870d14dd358fe067b741f594821de756"
+      },
+      {
+        "bib": 2,
+        "absolute": 209742000,
+        "penality": 0,
+        "relative": 7993000,
+        "bonus": 0,
+        "position": 72,
+        "$rider": "allCompetitors-2026:07ad9556add8634d77c3fbd0e1ebdda413e9f283a61cea0b4921f43b555c6664"
+      },
+      {
+        "position": 73,
+        "bib": 136,
+        "absolute": 209807000,
+        "penality": 0,
+        "relative": 8058000,
+        "bonus": 16000,
+        "$rider": "allCompetitors-2026:c28d89410415bf689fdfb1012058ba6aa6190131a8f1af39362bb7c43fcabd4d"
+      },
+      {
+        "penality": 0,
+        "bib": 192,
+        "absolute": 209871000,
+        "relative": 8122000,
+        "bonus": 0,
+        "position": 74,
+        "$rider": "allCompetitors-2026:37e3946327d9b7d1dcb1b61a9376ce5229374419b39694397a89aa741b06120f"
+      },
+      {
+        "bonus": 2000,
+        "position": 75,
+        "absolute": 209895000,
+        "penality": 0,
+        "relative": 8146000,
+        "bib": 54,
+        "$rider": "allCompetitors-2026:d74021011913ee87e7522d7d0b932bcb7a6da56cb9688140fc9ec73e8aeef1ab"
+      },
+      {
+        "position": 76,
+        "bonus": 0,
+        "bib": 132,
+        "relative": 8263000,
+        "penality": 0,
+        "absolute": 210012000,
+        "$rider": "allCompetitors-2026:f415663f38c0a2089858be77817629f633f39a16dba6f42f7970355a5b97cbdb"
+      },
+      {
+        "position": 77,
+        "bonus": 0,
+        "bib": 196,
+        "penality": 0,
+        "absolute": 210013000,
+        "relative": 8264000,
+        "$rider": "allCompetitors-2026:1c9eb5fae643664411837851ad278eab8e3b6c02a794c4262d0c5aed268de508"
+      },
+      {
+        "penality": 0,
+        "bib": 157,
+        "absolute": 210021000,
+        "relative": 8272000,
+        "bonus": 0,
+        "position": 78,
+        "$rider": "allCompetitors-2026:507d6415ed419fd4fda52432f8454afcdd66441ab6089632fc1b4a1c582a0df0"
+      },
+      {
+        "bib": 56,
+        "position": 79,
+        "bonus": 0,
+        "relative": 8303000,
+        "penality": 0,
+        "absolute": 210052000,
+        "$rider": "allCompetitors-2026:7e08c0caf9f5f668977c8670b075f8fa8115cd4c5b260b9b3bce0c77aef0be38"
+      },
+      {
+        "absolute": 210110000,
+        "penality": 0,
+        "relative": 8361000,
+        "bonus": 0,
+        "bib": 97,
+        "position": 80,
+        "$rider": "allCompetitors-2026:b1f2dfca724eaacd8dfa8ec2eef4aad15bedec9ea2a9171bd069f4adf4e09b93"
+      },
+      {
+        "bib": 27,
+        "bonus": 0,
+        "absolute": 210134000,
+        "penality": 0,
+        "relative": 8385000,
+        "position": 81,
+        "$rider": "allCompetitors-2026:08e061bc6006a1d55512e5ec680e70d372e450dbb615ea42f6320ddf427cca31"
+      },
+      {
+        "bonus": 0,
+        "bib": 44,
+        "relative": 8470000,
+        "penality": 0,
+        "absolute": 210219000,
+        "position": 82,
+        "$rider": "allCompetitors-2026:76dc992d7c8e5f13312412a53cc4b5cd75193855c60b2a5bdc62d1b6af966677"
+      },
+      {
+        "bonus": 0,
+        "position": 83,
+        "bib": 34,
+        "relative": 8491000,
+        "absolute": 210240000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:8271c7a9b52132433f951365a2b19f69a50bc3fdd0e212511c64fb39ff13650c"
+      },
+      {
+        "bib": 53,
+        "position": 84,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 210561000,
+        "relative": 8812000,
+        "$rider": "allCompetitors-2026:5c19389b96e9101a3cf24d9b380ec7a700fde8397f092bdc4e2c358fb1351e03"
+      },
+      {
+        "relative": 8887000,
+        "bib": 24,
+        "bonus": 0,
+        "absolute": 210636000,
+        "penality": 0,
+        "position": 85,
+        "$rider": "allCompetitors-2026:89949cf84424747987004e27d081cb9736f3f7f0e0688b6cc327ae40dd7f0416"
+      },
+      {
+        "position": 86,
+        "absolute": 210678000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 8929000,
+        "bib": 85,
+        "$rider": "allCompetitors-2026:5753e8d005a9fdd1b87b2d0c825d189a22186b182c076a61eeb40f739c801161"
+      },
+      {
+        "position": 87,
+        "bib": 187,
+        "relative": 9044000,
+        "bonus": 14000,
+        "absolute": 210793000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:6f7f1bd38058b409316454c7620c46bb5f2325ebcab5c611abead2986a39d3cb"
+      },
+      {
+        "position": 88,
+        "bonus": 0,
+        "bib": 203,
+        "relative": 9079000,
+        "penality": 0,
+        "absolute": 210828000,
+        "$rider": "allCompetitors-2026:a1cfe27c43c4907bda4911b80778c8a0f6b23493937f40d07e089975a59581db"
+      },
+      {
+        "absolute": 210893000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 9144000,
+        "bib": 63,
+        "position": 89,
+        "$rider": "allCompetitors-2026:378508e31f54a954a7103975f13eca39f5efe9f7a00b696e1af2686d9aecf2b8"
+      },
+      {
+        "position": 90,
+        "bonus": 0,
+        "relative": 9181000,
+        "penality": 0,
+        "bib": 148,
+        "absolute": 210930000,
+        "$rider": "allCompetitors-2026:6abe5f78b79e06cd2bbc1bb9634bc53a527cdc8649630c9d3abfe86357f47af8"
+      },
+      {
+        "position": 91,
+        "bib": 175,
+        "bonus": 2000,
+        "relative": 9184000,
+        "absolute": 210933000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:e61f9b472a951f173aa813d933e203e1bba53a199ca385182c9f75e9fba55c0d"
+      },
+      {
+        "position": 92,
+        "bib": 12,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 210954000,
+        "relative": 9205000,
+        "$rider": "allCompetitors-2026:8f597352e5db160421af99f1a8489fd7b8f9a068850fdb0d877f9b3bd2fd3ff6"
+      },
+      {
+        "position": 93,
+        "relative": 9281000,
+        "bib": 7,
+        "absolute": 211030000,
+        "penality": 0,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:e392f791d50602a6b036e559249e4e49c1fa1b3645e24a4c9841236ea6fefdba"
+      },
+      {
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 211343000,
+        "relative": 9594000,
+        "bib": 8,
+        "position": 94,
+        "$rider": "allCompetitors-2026:1caa15f7f5561e6c9c0104140cd69b5bc56f4beb6ac26606afb353118d7e988d"
+      },
+      {
+        "bonus": 0,
+        "position": 95,
+        "absolute": 211483000,
+        "bib": 191,
+        "penality": 0,
+        "relative": 9734000,
+        "$rider": "allCompetitors-2026:c18d6d35a0e2c4474ecd793f1026dc9490d4b345e8b754e977ca91549d2800ac"
+      },
+      {
+        "position": 96,
+        "bib": 205,
+        "bonus": 0,
+        "relative": 9794000,
+        "absolute": 211543000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:987e5cc9a9356d72f7e3f0baf7ff13f006aec6f57e3d6af175e8230a99e3d24f"
+      },
+      {
+        "absolute": 211624000,
+        "penality": 0,
+        "bonus": 0,
+        "relative": 9875000,
+        "bib": 226,
+        "position": 97,
+        "$rider": "allCompetitors-2026:b43d762a1e7a6cd952a76002417db8b57ff73268b22822e8c58609200e373f7e"
+      },
+      {
+        "position": 98,
+        "bonus": 0,
+        "bib": 133,
+        "penality": 0,
+        "absolute": 211748000,
+        "relative": 9999000,
+        "$rider": "allCompetitors-2026:71eb244281d1ef8b60365db173903504e48727f312ab4eef5f270c374a90ad66"
+      },
+      {
+        "position": 99,
+        "bonus": 50000,
+        "penality": 0,
+        "absolute": 211791000,
+        "relative": 10042000,
+        "bib": 33,
+        "$rider": "allCompetitors-2026:a3b2eedbd63dfddea4b144f4a4fe22682ef4abe1fb2b14efd3752bba48d7f38c"
+      },
+      {
+        "position": 100,
+        "bonus": 0,
+        "relative": 10160000,
+        "bib": 52,
+        "absolute": 211909000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:606b7416be0337e21ec2b433461ba925aded4a0c6f5a6d9152d869626b11a116"
+      },
+      {
+        "bib": 25,
+        "bonus": 0,
+        "position": 101,
+        "absolute": 211954000,
+        "penality": 0,
+        "relative": 10205000,
+        "$rider": "allCompetitors-2026:9000a38d9ebdd27bb4fb19a375a260f11d23f2af3f0f40a965e0565c13c421ea"
+      },
+      {
+        "relative": 10254000,
+        "bib": 165,
+        "absolute": 212003000,
+        "penality": 0,
+        "position": 102,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:f241ab5024b19fefbdf84e3ee36984bacdc9b3ba0bb4e580f675e8188686fc28"
+      },
+      {
+        "bib": 105,
+        "bonus": 0,
+        "relative": 10439000,
+        "penality": 0,
+        "absolute": 212188000,
+        "position": 103,
+        "$rider": "allCompetitors-2026:31bc0965b6cef077d428ba3a6a917a38450a5ac51a91bce378cd9bdbb47eedc5"
+      },
+      {
+        "relative": 10482000,
+        "absolute": 212231000,
+        "bib": 131,
+        "penality": 0,
+        "bonus": 6000,
+        "position": 104,
+        "$rider": "allCompetitors-2026:ed0106c0d733b48566131d175cf14b6701f2e5d5be4de93f5124e700f335e929"
+      },
+      {
+        "bib": 22,
+        "position": 105,
+        "bonus": 0,
+        "absolute": 212258000,
+        "penality": 0,
+        "relative": 10509000,
+        "$rider": "allCompetitors-2026:95151b1f26c2fd17ad8f545875277cedb34696d0e9dff119128f0034060a1fdb"
+      },
+      {
+        "position": 106,
+        "bonus": 0,
+        "bib": 211,
+        "relative": 10556000,
+        "absolute": 212305000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:9b8d62df652f2bc6469d2037d0d2b6a1ee692c4547681993449899c912802b8e"
+      },
+      {
+        "penality": 0,
+        "bib": 117,
+        "absolute": 212328000,
+        "relative": 10579000,
+        "bonus": 0,
+        "position": 107,
+        "$rider": "allCompetitors-2026:5ce40e2a127899e5fece02c93702f45dec2370c58f9dc3ccd335e5728c96ddea"
+      },
+      {
+        "position": 108,
+        "bonus": 0,
+        "absolute": 212348000,
+        "bib": 144,
+        "penality": 0,
+        "relative": 10599000,
+        "$rider": "allCompetitors-2026:4473d699aa113d48094c994dd84075dcacdd2dc833055f19e5570532cbbdb32e"
+      },
+      {
+        "position": 109,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 212478000,
+        "bib": 77,
+        "relative": 10729000,
+        "$rider": "allCompetitors-2026:6fb9cd665f41e9f58544dcbc401232a60fc835b2e2b074af5c6befbfbd42c6fd"
+      },
+      {
+        "penality": 0,
+        "bib": 182,
+        "absolute": 212584000,
+        "relative": 10835000,
+        "bonus": 0,
+        "position": 110,
+        "$rider": "allCompetitors-2026:0332bb81c297844d2ddac74a088b1ec1598aae76124a6aebf377f9da7ac73187"
+      },
+      {
+        "relative": 10840000,
+        "bonus": 8000,
+        "bib": 87,
+        "absolute": 212589000,
+        "penality": 0,
+        "position": 111,
+        "$rider": "allCompetitors-2026:345d832cfb1b1d97f890ec9f3aa36b0b19933ed5272e76a9d6e2260439a10895"
+      },
+      {
+        "bonus": 0,
+        "position": 112,
+        "bib": 138,
+        "absolute": 212727000,
+        "penality": 0,
+        "relative": 10978000,
+        "$rider": "allCompetitors-2026:e8bae57194ffe2386b0f7fcc22067fc8f7427942f14e1c9b22ed8e05adbe622f"
+      },
+      {
+        "relative": 11012000,
+        "bonus": 0,
+        "absolute": 212761000,
+        "penality": 0,
+        "position": 113,
+        "bib": 168,
+        "$rider": "allCompetitors-2026:75d47d690ed14ee213a003a3990be967620e05432b1ce107ea6f2175d618af93"
+      },
+      {
+        "relative": 11060000,
+        "penality": 0,
+        "absolute": 212809000,
+        "bib": 228,
+        "position": 114,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:ef8f1c14b2f5df5cce33027268d8f2f09274caa129c12ef64e77e6fb2e80659b"
+      },
+      {
+        "bonus": 24000,
+        "bib": 142,
+        "position": 115,
+        "penality": 0,
+        "absolute": 212956000,
+        "relative": 11207000,
+        "$rider": "allCompetitors-2026:d3c9de5426d65a190c379b7fb35b85e972c3685e21aa241e9fafc1d187806638"
+      },
+      {
+        "bonus": 0,
+        "bib": 73,
+        "position": 116,
+        "penality": 0,
+        "absolute": 213040000,
+        "relative": 11291000,
+        "$rider": "allCompetitors-2026:bf49ffa316b08b757836779c754af7cde570233ad982634d4d2b38cc71ced792"
+      },
+      {
+        "relative": 11313000,
+        "absolute": 213062000,
+        "bib": 223,
+        "penality": 0,
+        "position": 117,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:13d047522c5ee71d977e916b0206529a63144626aeb78a6e20a9663bb17d95ec"
+      },
+      {
+        "penality": 0,
+        "absolute": 213074000,
+        "bib": 106,
+        "relative": 11325000,
+        "bonus": 2000,
+        "position": 118,
+        "$rider": "allCompetitors-2026:b57ed09ccddead76790497367335630e12f79cf14df53f9386288422ce57576b"
+      },
+      {
+        "bib": 51,
+        "position": 119,
+        "penality": 0,
+        "absolute": 213078000,
+        "bonus": 0,
+        "relative": 11329000,
+        "$rider": "allCompetitors-2026:0476ce94dbc6b43b3d4c24c7a2c6b01fb5d84538ff778807b63367fe0a066bf1"
+      },
+      {
+        "absolute": 213128000,
+        "penality": 0,
+        "relative": 11379000,
+        "bonus": 0,
+        "bib": 197,
+        "position": 120,
+        "$rider": "allCompetitors-2026:85748af120aed4b6bd2638af745694d0b09273617bcd4915f87b7d513efc031f"
+      },
+      {
+        "bonus": 0,
+        "position": 121,
+        "absolute": 213168000,
+        "penality": 0,
+        "relative": 11419000,
+        "bib": 14,
+        "$rider": "allCompetitors-2026:47cee91d80a38f0e9ba0149355a499fb82dcd3bdf39119c76930dd4ab3cb3214"
+      },
+      {
+        "position": 122,
+        "bonus": 0,
+        "relative": 11570000,
+        "penality": 0,
+        "bib": 224,
+        "absolute": 213319000,
+        "$rider": "allCompetitors-2026:aad275313036d2b0d12c9645bb0e999417d52f9a4ed8c79bc8bb70b0049a4692"
+      },
+      {
+        "bib": 212,
+        "bonus": 0,
+        "position": 123,
+        "absolute": 213442000,
+        "penality": 0,
+        "relative": 11693000,
+        "$rider": "allCompetitors-2026:e4e806cc5189e7845350ad4968e72cd81f27440148156813ec377ecd1856a32f"
+      },
+      {
+        "position": 124,
+        "bonus": 0,
+        "relative": 11788000,
+        "bib": 188,
+        "penality": 0,
+        "absolute": 213537000,
+        "$rider": "allCompetitors-2026:dbed42a7e0e4e31198e0ef64ffc90e630b398a3ec3d40d52ca7435ce46df8fc5"
+      },
+      {
+        "absolute": 213597000,
+        "penality": 0,
+        "bib": 164,
+        "relative": 11848000,
+        "bonus": 0,
+        "position": 125,
+        "$rider": "allCompetitors-2026:4ccbdd7e5458f50b38a71fbccb6682b810a514fe71d3ef45b6cb629a01f99ce3"
+      },
+      {
+        "penality": 0,
+        "absolute": 213635000,
+        "relative": 11886000,
+        "bonus": 0,
+        "bib": 126,
+        "position": 126,
+        "$rider": "allCompetitors-2026:5b5f486ff8cca732df6e6b2d7aa4f03dfe52b2f7c22c5954441d5979524078a5"
+      },
+      {
+        "bib": 23,
+        "position": 127,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 213741000,
+        "relative": 11992000,
+        "$rider": "allCompetitors-2026:75cf33427c14717331a4de41a874502f3719f8c03df1995214bd326be58a44cc"
+      },
+      {
+        "position": 128,
+        "bonus": 8000,
+        "relative": 12088000,
+        "bib": 158,
+        "absolute": 213837000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:2334285ac491631c0c2b3f274f22ed61f044bab9bff542bb39388defc32c92c3"
+      },
+      {
+        "position": 129,
+        "bib": 151,
+        "relative": 12194000,
+        "bonus": 0,
+        "absolute": 213943000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:5b1bbbfcfa67cd745d512218f82a14a1148e0a89fa1bfb4714e2d5be58ae1d1f"
+      },
+      {
+        "absolute": 214079000,
+        "penality": 0,
+        "relative": 12330000,
+        "bib": 92,
+        "position": 130,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:d8ee69788ed77925e79f68a2c238f133f584ebb89d5a3d1458a6f1b44c81b517"
+      },
+      {
+        "position": 131,
+        "relative": 12346000,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 214095000,
+        "bib": 122,
+        "$rider": "allCompetitors-2026:b34544b909461ceb3d8334400fcb6f9df2a4c1588e9d26c8ad357219e20fe430"
+      },
+      {
+        "position": 132,
+        "relative": 12358000,
+        "bonus": 0,
+        "bib": 4,
+        "absolute": 214107000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:4c3b7e5f395758bbcec83e536dbf5453571cd380f08cbcc632338db94b408d2a"
+      },
+      {
+        "position": 133,
+        "bonus": 0,
+        "bib": 43,
+        "relative": 12422000,
+        "absolute": 214171000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:80ee7aa2ac24bd31f22209f1ee9af9b5ccde78a405ff8e25a85ca1525327608a"
+      },
+      {
+        "position": 134,
+        "bib": 137,
+        "absolute": 214330000,
+        "penality": 0,
+        "bonus": 0,
+        "relative": 12581000,
+        "$rider": "allCompetitors-2026:fdbdb61362c6e9b587f6022da8c9a94cd0b50aefd50ffafacbf63b3819d4cb7e"
+      },
+      {
+        "bonus": 4000,
+        "position": 135,
+        "penality": 0,
+        "absolute": 214544000,
+        "bib": 202,
+        "relative": 12795000,
+        "$rider": "allCompetitors-2026:d3a82a52a0a88b8d06962c4f4c2ad652f51449224189ab3cf7d3264ec4b5fbfe"
+      },
+      {
+        "bonus": 0,
+        "bib": 198,
+        "position": 136,
+        "penality": 0,
+        "absolute": 214695000,
+        "relative": 12946000,
+        "$rider": "allCompetitors-2026:bbef42a4215e855fc981ca611ec88297d62c38909196193b458602ebcbe1c9db"
+      },
+      {
+        "position": 137,
+        "bib": 5,
+        "relative": 12993000,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 214742000,
+        "$rider": "allCompetitors-2026:db21914f61592f731d29887610a2342fdbc59ee1228506904b031f4ed2a40113"
+      },
+      {
+        "position": 138,
+        "bib": 215,
+        "relative": 13266000,
+        "absolute": 215015000,
+        "bonus": 0,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:81d76de26ea5de38937bb33722d792fec23b8f3d096284978bec8d0452716778"
+      },
+      {
+        "absolute": 215077000,
+        "penality": 0,
+        "relative": 13328000,
+        "bib": 204,
+        "position": 139,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:5b68642edb5c108ed5373bbb9fad03ce1a79c9cb300d0e6c3ab8d61523f12fad"
+      },
+      {
+        "bonus": 0,
+        "relative": 13373000,
+        "penality": 0,
+        "bib": 146,
+        "absolute": 215122000,
+        "position": 140,
+        "$rider": "allCompetitors-2026:42a23f5d3526c6ec545de90d1074b4d32438eda8b2b1060d97b6a89e3455d619"
+      },
+      {
+        "relative": 13488000,
+        "penality": 0,
+        "absolute": 215237000,
+        "bib": 74,
+        "position": 141,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:18f3461fc9b43144412e5e96085d5e24de6ac2d275dd954d2477daad576c16f9"
+      },
+      {
+        "bib": 222,
+        "bonus": 0,
+        "position": 142,
+        "relative": 13628000,
+        "absolute": 215377000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:c9b21ec1422a6854af239d225f875fc6445527c0dd4b4bc28cdd8a6d605ae257"
+      },
+      {
+        "penality": 0,
+        "absolute": 216152000,
+        "relative": 14403000,
+        "bib": 3,
+        "bonus": 14000,
+        "position": 143,
+        "$rider": "allCompetitors-2026:5911ee74227c5cb00e0bc88bfa640135cc7d971bc4e3664a402e26e82715c3d6"
+      },
+      {
+        "relative": 14451000,
+        "bonus": 0,
+        "bib": 154,
+        "penality": 0,
+        "absolute": 216200000,
+        "position": 144,
+        "$rider": "allCompetitors-2026:1445ad0128fd2a2aa3f341a9b3885ccad1c59d120e498d8daa926008576eabac"
+      },
+      {
+        "position": 145,
+        "bonus": 18000,
+        "bib": 124,
+        "relative": 14621000,
+        "absolute": 216370000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:315c7304f48cd6d332d92e474e9887e3c7adb4ffecba05fe4512a311c2b69901"
+      },
+      {
+        "bonus": 0,
+        "relative": 14652000,
+        "penality": 0,
+        "absolute": 216401000,
+        "bib": 147,
+        "position": 146,
+        "$rider": "allCompetitors-2026:d555b2fdef41f578bdaea36228347b8221f807b659c535995929df82bef20578"
+      },
+      {
+        "bib": 13,
+        "position": 147,
+        "absolute": 216653000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 14904000,
+        "$rider": "allCompetitors-2026:f9e2313b70d8744d27a86df3f56c6b3dce0ae578afa87fb47d890dc4926d3f5b"
+      },
+      {
+        "bib": 153,
+        "relative": 15489000,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 217238000,
+        "position": 148,
+        "$rider": "allCompetitors-2026:31540f28bbf4867ea6ff095369daeec11d4c77c2d05f6ce973cd98a6e0505f84"
+      },
+      {
+        "absolute": 219619000,
+        "penality": 0,
+        "relative": 17870000,
+        "position": 149,
+        "bib": 86,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:6bfbc2ebba4a66b09479cda13280aaf554a0a232a2254955425557a9428f74bf"
+      }
+    ],
+    "checkpoint": 38,
+    "type": "itg",
+    "_id": "6f1a9b2cf6fa45fbeda093607de49a160a02263c96da54704011ad217ea08183",
+    "_bind": "rankingType-2026-16",
+    "_updatedAt": 1788882554175,
+    "types": [
+      "N",
+      "A"
+    ],
+    "$cp": "checkpointList-2026-16:dbf7fd7af4eb7895c4d2f9ee4f006d4206974d252b631987bd80a72a5df3fdd6-38"
+  },
+  {
+    "status": "0",
+    "rankings": [
+      {
+        "bib": 218,
+        "position": -1,
+        "penality": 0,
+        "absolute": 0,
+        "bonus": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:e1b54374d0c978e95eb60fcf4b6fdffc3496a36ad1bc6edf8acf459e3a5d0c3d"
+      },
+      {
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 1,
+        "bib": 33,
+        "bonus": 10000,
+        "$rider": "allCompetitors-2026:a3b2eedbd63dfddea4b144f4a4fe22682ef4abe1fb2b14efd3752bba48d7f38c"
+      },
+      {
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 2,
+        "bib": 142,
+        "bonus": 6000,
+        "$rider": "allCompetitors-2026:d3c9de5426d65a190c379b7fb35b85e972c3685e21aa241e9fafc1d187806638"
+      },
+      {
+        "bib": 202,
+        "bonus": 4000,
+        "position": 3,
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:d3a82a52a0a88b8d06962c4f4c2ad652f51449224189ab3cf7d3264ec4b5fbfe"
+      },
+      {
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 3,
+        "bonus": 0,
+        "position": 4,
+        "$rider": "allCompetitors-2026:5911ee74227c5cb00e0bc88bfa640135cc7d971bc4e3664a402e26e82715c3d6"
+      },
+      {
+        "bib": 131,
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 5,
+        "$rider": "allCompetitors-2026:ed0106c0d733b48566131d175cf14b6701f2e5d5be4de93f5124e700f335e929"
+      },
+      {
+        "position": 6,
+        "bib": 31,
+        "relative": 0,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:76f4e73eb96986635a51832e29d3fdb66c25942393535533e7ae3588d5482971"
+      },
+      {
+        "bib": 114,
+        "bonus": 0,
+        "position": 7,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:1edb87b9fe21500c226f650b39a6ef6e3d25babe4ca92087899a17e5ff86951c"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bonus": 0,
+        "bib": 162,
+        "position": 8,
+        "$rider": "allCompetitors-2026:77c205bcd4374d790529c901d06d560bbd1db7bbed204f3f364350d2d02a4a02"
+      },
+      {
+        "relative": 0,
+        "penality": 0,
+        "bib": 122,
+        "absolute": 14193000,
+        "bonus": 0,
+        "position": 9,
+        "$rider": "allCompetitors-2026:b34544b909461ceb3d8334400fcb6f9df2a4c1588e9d26c8ad357219e20fe430"
+      },
+      {
+        "bonus": 0,
+        "position": 10,
+        "absolute": 14193000,
+        "penality": 0,
+        "bib": 198,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:bbef42a4215e855fc981ca611ec88297d62c38909196193b458602ebcbe1c9db"
+      },
+      {
+        "position": 11,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "bib": 54,
+        "$rider": "allCompetitors-2026:d74021011913ee87e7522d7d0b932bcb7a6da56cb9688140fc9ec73e8aeef1ab"
+      },
+      {
+        "bonus": 0,
+        "bib": 222,
+        "position": 12,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:c9b21ec1422a6854af239d225f875fc6445527c0dd4b4bc28cdd8a6d605ae257"
+      },
+      {
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bonus": 0,
+        "position": 13,
+        "bib": 75,
+        "$rider": "allCompetitors-2026:bbf1d7b2fa847fd06d537080bef50138538c84b6f19402bf273e091a70a9b169"
+      },
+      {
+        "position": 14,
+        "relative": 0,
+        "absolute": 14193000,
+        "bib": 212,
+        "penality": 0,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:e4e806cc5189e7845350ad4968e72cd81f27440148156813ec377ecd1856a32f"
+      },
+      {
+        "bib": 146,
+        "position": 15,
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:42a23f5d3526c6ec545de90d1074b4d32438eda8b2b1060d97b6a89e3455d619"
+      },
+      {
+        "bonus": 0,
+        "position": 16,
+        "penality": 0,
+        "bib": 58,
+        "absolute": 14193000,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:b0b5dd466e1e8fa2eb77f1bbc91e3bff6919448562ac5c3889febbee5cedb9a5"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 17,
+        "bib": 182,
+        "$rider": "allCompetitors-2026:0332bb81c297844d2ddac74a088b1ec1598aae76124a6aebf377f9da7ac73187"
+      },
+      {
+        "bib": 74,
+        "bonus": 0,
+        "position": 18,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:18f3461fc9b43144412e5e96085d5e24de6ac2d275dd954d2477daad576c16f9"
+      },
+      {
+        "position": 19,
+        "absolute": 14193000,
+        "bib": 187,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:6f7f1bd38058b409316454c7620c46bb5f2325ebcab5c611abead2986a39d3cb"
+      },
+      {
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 133,
+        "position": 20,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:71eb244281d1ef8b60365db173903504e48727f312ab4eef5f270c374a90ad66"
+      },
+      {
+        "bib": 204,
+        "position": 21,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:5b68642edb5c108ed5373bbb9fad03ce1a79c9cb300d0e6c3ab8d61523f12fad"
+      },
+      {
+        "position": 22,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bib": 224,
+        "$rider": "allCompetitors-2026:aad275313036d2b0d12c9645bb0e999417d52f9a4ed8c79bc8bb70b0049a4692"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 23,
+        "bib": 152,
+        "$rider": "allCompetitors-2026:498fa5b993ade79dac9520cb061dbd0d6eb151e673ce865ea20817012e7e009e"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 92,
+        "position": 24,
+        "$rider": "allCompetitors-2026:d8ee69788ed77925e79f68a2c238f133f584ebb89d5a3d1458a6f1b44c81b517"
+      },
+      {
+        "position": 25,
+        "bonus": 4000,
+        "absolute": 14193000,
+        "bib": 158,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:2334285ac491631c0c2b3f274f22ed61f044bab9bff542bb39388defc32c92c3"
+      },
+      {
+        "position": 26,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 185,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:69485687847ee6a679e40bf2cb9b56017a10577e7d4e0c95d4cf2012751e5a7e"
+      },
+      {
+        "position": 27,
+        "relative": 0,
+        "bib": 14,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:47cee91d80a38f0e9ba0149355a499fb82dcd3bdf39119c76930dd4ab3cb3214"
+      },
+      {
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bib": 105,
+        "position": 28,
+        "$rider": "allCompetitors-2026:31bc0965b6cef077d428ba3a6a917a38450a5ac51a91bce378cd9bdbb47eedc5"
+      },
+      {
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bonus": 0,
+        "position": 29,
+        "bib": 98,
+        "$rider": "allCompetitors-2026:a376583d61d45d4123549e2d72808178870d14dd358fe067b741f594821de756"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bonus": 0,
+        "bib": 96,
+        "position": 30,
+        "$rider": "allCompetitors-2026:fdbb65f619e96c40445ab86c0f1fbf12c7351a5a77d15667b78d3827ead497f9"
+      },
+      {
+        "relative": 0,
+        "bib": 23,
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "position": 31,
+        "$rider": "allCompetitors-2026:75cf33427c14717331a4de41a874502f3719f8c03df1995214bd326be58a44cc"
+      },
+      {
+        "position": 32,
+        "bonus": 0,
+        "bib": 192,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:37e3946327d9b7d1dcb1b61a9376ce5229374419b39694397a89aa741b06120f"
+      },
+      {
+        "position": 33,
+        "bib": 205,
+        "bonus": 0,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:987e5cc9a9356d72f7e3f0baf7ff13f006aec6f57e3d6af175e8230a99e3d24f"
+      },
+      {
+        "position": 34,
+        "bib": 106,
+        "relative": 0,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:b57ed09ccddead76790497367335630e12f79cf14df53f9386288422ce57576b"
+      },
+      {
+        "bib": 21,
+        "position": 35,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:88cc41e125077b71861edcf0c11100b6acca1c09629f0f297253664348dce97f"
+      },
+      {
+        "bib": 71,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 36,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:96c6bb1f4808fdb3924f9a41e173efcbf778a58af501f45d1f8f870767028e87"
+      },
+      {
+        "position": 37,
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "bib": 161,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:ebb3b0654c6984fe98b418e15e3d1e952649f6a61e842f6fe81fe0448c1a7156"
+      },
+      {
+        "bib": 181,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 38,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:9fd557e1c61503bd79088ab932fb78bde2a3a81f12cda3255d34e71955f94eb2"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 203,
+        "position": 39,
+        "$rider": "allCompetitors-2026:a1cfe27c43c4907bda4911b80778c8a0f6b23493937f40d07e089975a59581db"
+      },
+      {
+        "position": 40,
+        "bonus": 0,
+        "bib": 166,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:21b4a307ef1820566018ffdcad49176831dff1d8e30fa37e7e45d0ce427dab0a"
+      },
+      {
+        "bonus": 0,
+        "bib": 167,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 41,
+        "$rider": "allCompetitors-2026:6510bc5c5e55deefd55c1c7e3a1d5a1de3936b3d6598048f753e81e521447492"
+      },
+      {
+        "bib": 78,
+        "position": 42,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:1860175302f145c07fcf4d6adb7514c12791bb31247de1c325d70ea41e8843f9"
+      },
+      {
+        "position": 43,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 61,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:51701851e83ecde3385cd0eebe14395d4ed2d1e0c50254a2a5dd51c4c5b1fea0"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "bib": 176,
+        "relative": 0,
+        "position": 44,
+        "$rider": "allCompetitors-2026:44e205ccdc0367fbd5ddc7b4c708536ddab7da188c537a2dfacbdf7d75827fbb"
+      },
+      {
+        "position": 45,
+        "bonus": 0,
+        "bib": 156,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:69e69df9cb1ed455193fe89e25d35df63fe2ae3b91fb27d1e40676a47030345d"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 221,
+        "position": 46,
+        "$rider": "allCompetitors-2026:13ae97e6581934526944254ab5ff89368940991562eed345025ad88cf539d8aa"
+      },
+      {
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "position": 47,
+        "bib": 63,
+        "$rider": "allCompetitors-2026:378508e31f54a954a7103975f13eca39f5efe9f7a00b696e1af2686d9aecf2b8"
+      },
+      {
+        "bib": 211,
+        "relative": 0,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "position": 48,
+        "$rider": "allCompetitors-2026:9b8d62df652f2bc6469d2037d0d2b6a1ee692c4547681993449899c912802b8e"
+      },
+      {
+        "bib": 66,
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bonus": 0,
+        "position": 49,
+        "$rider": "allCompetitors-2026:79065d6bd91779d46fe6df44b7cd2e8f4d2c7833b0a219683a6ebb5cbc54ee60"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 50,
+        "bib": 91,
+        "$rider": "allCompetitors-2026:7a17d847bd8c33e5acaf0109e28275faa593bfc42c8e36f8b97468694bf7ceb7"
+      },
+      {
+        "position": 51,
+        "bonus": 0,
+        "bib": 116,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:021e8e5305c6d5144db1c8d77d4b48a863905cfd9978bf5ea985dc94b97b44f4"
+      },
+      {
+        "position": 52,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 228,
+        "$rider": "allCompetitors-2026:ef8f1c14b2f5df5cce33027268d8f2f09274caa129c12ef64e77e6fb2e80659b"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bonus": 0,
+        "bib": 157,
+        "position": 53,
+        "$rider": "allCompetitors-2026:507d6415ed419fd4fda52432f8454afcdd66441ab6089632fc1b4a1c582a0df0"
+      },
+      {
+        "position": 54,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 174,
+        "$rider": "allCompetitors-2026:7e1ade81f7c4ea458c91661c1b4b85bb45ceffa5ec0786852f266476fe6c9c2f"
+      },
+      {
+        "relative": 0,
+        "penality": 0,
+        "bib": 77,
+        "absolute": 14193000,
+        "position": 55,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:6fb9cd665f41e9f58544dcbc401232a60fc835b2e2b074af5c6befbfbd42c6fd"
+      },
+      {
+        "position": 56,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 82,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:ff8cb899a314c4bfd3681eba1a2928c1ed32a0de75042efa65ade12f013bd379"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 57,
+        "bib": 73,
+        "$rider": "allCompetitors-2026:bf49ffa316b08b757836779c754af7cde570233ad982634d4d2b38cc71ced792"
+      },
+      {
+        "bib": 83,
+        "bonus": 0,
+        "position": 58,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:19f38caa0f2a2f68b93140338a30c7386b8fc5390afad8dd21ec9801b7b97706"
+      },
+      {
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 59,
+        "bib": 94,
+        "$rider": "allCompetitors-2026:1e6d64d0b228aacbbeda174caaf0017819a4644c3ae1e9ce752ee4f9c0e6f90b"
+      },
+      {
+        "bonus": 0,
+        "absolute": 14193000,
+        "bib": 2,
+        "penality": 0,
+        "relative": 0,
+        "position": 60,
+        "$rider": "allCompetitors-2026:07ad9556add8634d77c3fbd0e1ebdda413e9f283a61cea0b4921f43b555c6664"
+      },
+      {
+        "position": 61,
+        "bib": 123,
+        "relative": 0,
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:3e35a7869656548db3ae071c4433bc0573d561f33a1e746fe7e7192bd58ab40e"
+      },
+      {
+        "position": 62,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 214,
+        "$rider": "allCompetitors-2026:6f27e5b6ff50b66501a789ea068d5eb4f17def4b61f91abecd5c2b500e38b05e"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bib": 4,
+        "position": 63,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:4c3b7e5f395758bbcec83e536dbf5453571cd380f08cbcc632338db94b408d2a"
+      },
+      {
+        "absolute": 14193000,
+        "penality": 0,
+        "bib": 6,
+        "bonus": 0,
+        "relative": 0,
+        "position": 64,
+        "$rider": "allCompetitors-2026:193ac8d527faefd474700555a83c2b22e81fb5887117385e82bacefe36c6e97d"
+      },
+      {
+        "position": 65,
+        "bonus": 0,
+        "bib": 1,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:16419e2b7fff95fa34d5f540730cb9291622d9df51bf0fa1b72eae94ae82f0a3"
+      },
+      {
+        "position": 66,
+        "bonus": 0,
+        "relative": 0,
+        "absolute": 14193000,
+        "bib": 43,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:80ee7aa2ac24bd31f22209f1ee9af9b5ccde78a405ff8e25a85ca1525327608a"
+      },
+      {
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 76,
+        "position": 67,
+        "$rider": "allCompetitors-2026:620c723c3f3e7efbdba888f6af682355f3190b59f08fee45c7d4540df41e5f8d"
+      },
+      {
+        "bonus": 0,
+        "position": 68,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bib": 44,
+        "$rider": "allCompetitors-2026:76dc992d7c8e5f13312412a53cc4b5cd75193855c60b2a5bdc62d1b6af966677"
+      },
+      {
+        "position": 69,
+        "bib": 62,
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:cd7264571b3632329d8519d783cb564b5a1ce48b5aae594f2812e0e7bb2557a0"
+      },
+      {
+        "position": 70,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "bib": 41,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:be2f036b118ea1eee13e7a8907cf8123b289616279c102b01bc62e87540e018a"
+      },
+      {
+        "bib": 81,
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 71,
+        "$rider": "allCompetitors-2026:af06a58c56298db2eec807ec60532bc7513f058e7f655bf342809b3ba29975e4"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 72,
+        "bib": 85,
+        "$rider": "allCompetitors-2026:5753e8d005a9fdd1b87b2d0c825d189a22186b182c076a61eeb40f739c801161"
+      },
+      {
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 73,
+        "bib": 186,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:c8a746efb0731de26a06a93b67767236424522f660db956ffb487f7f03db692b"
+      },
+      {
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "position": 74,
+        "bib": 196,
+        "$rider": "allCompetitors-2026:1c9eb5fae643664411837851ad278eab8e3b6c02a794c4262d0c5aed268de508"
+      },
+      {
+        "position": 75,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 42,
+        "$rider": "allCompetitors-2026:0e95917af3a38cd0235fe15b95b0ccc60481696b85a51deffdab4b512ca40253"
+      },
+      {
+        "position": 76,
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "bib": 145,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:c4355df0d5806562c559aa5ae810d258925781b384a99cb67ab78db47c300c08"
+      },
+      {
+        "bib": 128,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "position": 77,
+        "$rider": "allCompetitors-2026:9f9e00d9ae574a622ce87f5155aad7efb7b4f6e86981681bbf0057e00c5b246b"
+      },
+      {
+        "position": 78,
+        "bib": 47,
+        "bonus": 0,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:8439c92d34f3eb154552c5c941543527344156606d23d9e04854b4cab0d28848"
+      },
+      {
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "bonus": 0,
+        "position": 79,
+        "bib": 95,
+        "$rider": "allCompetitors-2026:3d98d69821113f3472231cf045ad808bdf0a1e1d92f37549e982f57faa8cfd42"
+      },
+      {
+        "position": 80,
+        "bonus": 0,
+        "relative": 0,
+        "absolute": 14193000,
+        "bib": 48,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:cf6ceb89c7d086d0c30de989f2232dcde22da6eb9e2beb6b5c77a9ddf435a8a3"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bib": 84,
+        "bonus": 0,
+        "position": 81,
+        "$rider": "allCompetitors-2026:3d39ae9007cd5f9fc81f8be40cb51762d243be5fb601fd7c76b33e90a3e653f4"
+      },
+      {
+        "bib": 86,
+        "bonus": 0,
+        "position": 82,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:6bfbc2ebba4a66b09479cda13280aaf554a0a232a2254955425557a9428f74bf"
+      },
+      {
+        "bib": 113,
+        "position": 83,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:9d7394947a3cbb310c92fd7e1a642450ebf9c0109cd0f905167d33877760513e"
+      },
+      {
+        "position": 84,
+        "bib": 193,
+        "relative": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:40073fff7d0a209794956393f48662eb096e492e88a6a97da8ad2bb57ba23594"
+      },
+      {
+        "position": 85,
+        "penality": 0,
+        "bib": 126,
+        "bonus": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:5b5f486ff8cca732df6e6b2d7aa4f03dfe52b2f7c22c5954441d5979524078a5"
+      },
+      {
+        "position": 86,
+        "absolute": 14193000,
+        "bib": 206,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:1701376d0992569eb2e2936950d382bb5efdb409afe5140a3329a9e4ee308faa"
+      },
+      {
+        "relative": 0,
+        "bib": 177,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 87,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:f0aaab26170ddd39f5a424abc7c3275434c1019f3b07ad744060e81cd82ee8ca"
+      },
+      {
+        "position": 88,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 183,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:2fc234c93c1b1cac7db35c3bc8c4fd0cfad5f022bbba3d78ca426311b1efd898"
+      },
+      {
+        "bib": 65,
+        "position": 89,
+        "bonus": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:b4af0de72d7799deeaf168f4b0c77f7abfef862a802f6474729b39cae42da0db"
+      },
+      {
+        "relative": 0,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 97,
+        "position": 90,
+        "$rider": "allCompetitors-2026:b1f2dfca724eaacd8dfa8ec2eef4aad15bedec9ea2a9171bd069f4adf4e09b93"
+      },
+      {
+        "position": 91,
+        "bonus": 0,
+        "bib": 32,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:bcf77ce2d0e7adb5675007e626b19bbcc9f46e98dada1b4386f17bd34eb2de74"
+      },
+      {
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 92,
+        "bonus": 0,
+        "bib": 195,
+        "$rider": "allCompetitors-2026:c72ff25e7b0c2ced7b4d48b099e83a22569348935223fdb23b2eaf15b250438c"
+      },
+      {
+        "position": 93,
+        "bib": 175,
+        "relative": 0,
+        "bonus": 2000,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:e61f9b472a951f173aa813d933e203e1bba53a199ca385182c9f75e9fba55c0d"
+      },
+      {
+        "penality": 0,
+        "absolute": 14193000,
+        "bonus": 0,
+        "relative": 0,
+        "bib": 24,
+        "position": 94,
+        "$rider": "allCompetitors-2026:89949cf84424747987004e27d081cb9736f3f7f0e0688b6cc327ae40dd7f0416"
+      },
+      {
+        "bonus": 0,
+        "position": 95,
+        "bib": 225,
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:f44496d4713097af8bfa00fd5fa31abad3d114171a08cb78c47c4c2ad6bad27b"
+      },
+      {
+        "bonus": 0,
+        "position": 96,
+        "bib": 141,
+        "absolute": 14193000,
+        "penality": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:441704b9beaeddf5590c4353bc62644cf72914b84925a5f6ca8eed3a348550c8"
+      },
+      {
+        "position": 97,
+        "penality": 0,
+        "bib": 64,
+        "absolute": 14193000,
+        "bonus": 0,
+        "relative": 0,
+        "$rider": "allCompetitors-2026:6baa07c3aed8d4c023c34a738f2ec8f959b6e21c97ea401e38c3b1e895f6fe38"
+      },
+      {
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14193000,
+        "relative": 0,
+        "bib": 35,
+        "position": 98,
+        "$rider": "allCompetitors-2026:1cd3875aeab1b7c99e2c8fe1e0ff9d8c597b091854c097b98ea8001e6bd38963"
+      },
+      {
+        "position": 99,
+        "absolute": 14193000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 0,
+        "bib": 121,
+        "$rider": "allCompetitors-2026:362e512b4d0ed3d6c6ae54dd533b0c600c39633b4d3b9530adc5f512b3671e81"
+      },
+      {
+        "position": 100,
+        "bib": 55,
+        "bonus": 0,
+        "relative": 0,
+        "penality": 0,
+        "absolute": 14193000,
+        "$rider": "allCompetitors-2026:ec8228cc5a2f05e86e1899f3952817110533481f8e9b94e84009eb6b2f226ca4"
+      },
+      {
+        "relative": 0,
+        "absolute": 14193000,
+        "penality": 0,
+        "position": 101,
+        "bib": 72,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:e38826dbcba6ae9c26aa93874f6c634e0fb890b31e6ae8b62991e220628424c0"
+      },
+      {
+        "position": 102,
+        "penality": 0,
+        "absolute": 14193000,
+        "bib": 125,
+        "relative": 0,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:620206d10053242ca84073757ea81a215df8b2d6f5be5ac01fe239889835cf7c"
+      },
+      {
+        "position": 103,
+        "bib": 137,
+        "absolute": 14225000,
+        "bonus": 0,
+        "penality": 0,
+        "relative": 32000,
+        "$rider": "allCompetitors-2026:fdbdb61362c6e9b587f6022da8c9a94cd0b50aefd50ffafacbf63b3819d4cb7e"
+      },
+      {
+        "position": 104,
+        "bib": 52,
+        "bonus": 0,
+        "relative": 32000,
+        "penality": 0,
+        "absolute": 14225000,
+        "$rider": "allCompetitors-2026:606b7416be0337e21ec2b433461ba925aded4a0c6f5a6d9152d869626b11a116"
+      },
+      {
+        "position": 105,
+        "relative": 32000,
+        "bonus": 0,
+        "bib": 93,
+        "absolute": 14225000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:ba3d7b5774cba30a6869139b2a6ee7116fe8e339590f28b300eaf9b5629d67e2"
+      },
+      {
+        "penality": 0,
+        "absolute": 14225000,
+        "bib": 178,
+        "relative": 32000,
+        "bonus": 0,
+        "position": 106,
+        "$rider": "allCompetitors-2026:4e788ef700725808fe7642a370da3b1c5ccf1e5923ad34e6b1cf22645e4fbc28"
+      },
+      {
+        "relative": 32000,
+        "bib": 17,
+        "absolute": 14225000,
+        "penality": 0,
+        "position": 107,
+        "bonus": 6000,
+        "$rider": "allCompetitors-2026:52897608fb934c7249d86ba150791bbc2177ba49b54616b9d905979cf46d5d91"
+      },
+      {
+        "bonus": 0,
+        "position": 108,
+        "penality": 0,
+        "absolute": 14225000,
+        "bib": 34,
+        "relative": 32000,
+        "$rider": "allCompetitors-2026:8271c7a9b52132433f951365a2b19f69a50bc3fdd0e212511c64fb39ff13650c"
+      },
+      {
+        "absolute": 14225000,
+        "penality": 0,
+        "bib": 223,
+        "relative": 32000,
+        "bonus": 0,
+        "position": 109,
+        "$rider": "allCompetitors-2026:13d047522c5ee71d977e916b0206529a63144626aeb78a6e20a9663bb17d95ec"
+      },
+      {
+        "relative": 32000,
+        "bonus": 0,
+        "absolute": 14225000,
+        "penality": 0,
+        "position": 110,
+        "bib": 172,
+        "$rider": "allCompetitors-2026:2db8e2b35aa788db9c7021505ed0c8eb16cc891e59b6fbca6b93d89e336ad4b7"
+      },
+      {
+        "position": 111,
+        "bonus": 0,
+        "bib": 134,
+        "relative": 32000,
+        "penality": 0,
+        "absolute": 14225000,
+        "$rider": "allCompetitors-2026:aaef7f2cdc1a4fae51a7c43a3e0073f8a9956e2027a1219a87876ace25ef606e"
+      },
+      {
+        "position": 112,
+        "bonus": 0,
+        "relative": 32000,
+        "bib": 226,
+        "absolute": 14225000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:b43d762a1e7a6cd952a76002417db8b57ff73268b22822e8c58609200e373f7e"
+      },
+      {
+        "bonus": 0,
+        "relative": 32000,
+        "bib": 191,
+        "penality": 0,
+        "absolute": 14225000,
+        "position": 113,
+        "$rider": "allCompetitors-2026:c18d6d35a0e2c4474ecd793f1026dc9490d4b345e8b754e977ca91549d2800ac"
+      },
+      {
+        "position": 114,
+        "bonus": 0,
+        "relative": 32000,
+        "penality": 0,
+        "bib": 197,
+        "absolute": 14225000,
+        "$rider": "allCompetitors-2026:85748af120aed4b6bd2638af745694d0b09273617bcd4915f87b7d513efc031f"
+      },
+      {
+        "penality": 0,
+        "absolute": 14225000,
+        "bib": 132,
+        "relative": 32000,
+        "bonus": 0,
+        "position": 115,
+        "$rider": "allCompetitors-2026:f415663f38c0a2089858be77817629f633f39a16dba6f42f7970355a5b97cbdb"
+      },
+      {
+        "absolute": 14225000,
+        "penality": 0,
+        "relative": 32000,
+        "bib": 117,
+        "position": 116,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:5ce40e2a127899e5fece02c93702f45dec2370c58f9dc3ccd335e5728c96ddea"
+      },
+      {
+        "bib": 26,
+        "relative": 32000,
+        "penality": 0,
+        "absolute": 14225000,
+        "position": 117,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:98685fcc9f0cfff8c7df304668cc3ffd289c9dbb3bb524ec1543af239312a2a8"
+      },
+      {
+        "bonus": 0,
+        "position": 118,
+        "bib": 53,
+        "absolute": 14225000,
+        "penality": 0,
+        "relative": 32000,
+        "$rider": "allCompetitors-2026:5c19389b96e9101a3cf24d9b380ec7a700fde8397f092bdc4e2c358fb1351e03"
+      },
+      {
+        "position": 119,
+        "penality": 0,
+        "absolute": 14225000,
+        "bib": 138,
+        "relative": 32000,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:e8bae57194ffe2386b0f7fcc22067fc8f7427942f14e1c9b22ed8e05adbe622f"
+      },
+      {
+        "relative": 32000,
+        "absolute": 14225000,
+        "penality": 0,
+        "position": 120,
+        "bib": 127,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:f599d4fd0ab52e321842ac45ed2e3c5f39857a61ebc6a1b47e593a8468a2fb82"
+      },
+      {
+        "bonus": 0,
+        "relative": 32000,
+        "bib": 124,
+        "absolute": 14225000,
+        "penality": 0,
+        "position": 121,
+        "$rider": "allCompetitors-2026:315c7304f48cd6d332d92e474e9887e3c7adb4ffecba05fe4512a311c2b69901"
+      },
+      {
+        "absolute": 14254000,
+        "penality": 0,
+        "relative": 61000,
+        "bib": 168,
+        "bonus": 0,
+        "position": 122,
+        "$rider": "allCompetitors-2026:75d47d690ed14ee213a003a3990be967620e05432b1ce107ea6f2175d618af93"
+      },
+      {
+        "position": 123,
+        "bonus": 0,
+        "relative": 61000,
+        "bib": 165,
+        "absolute": 14254000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:f241ab5024b19fefbdf84e3ee36984bacdc9b3ba0bb4e580f675e8188686fc28"
+      },
+      {
+        "relative": 65000,
+        "penality": 0,
+        "absolute": 14258000,
+        "bib": 135,
+        "position": 124,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:3cc1f769678fe8d2f5d1504cacabafbef44956d85f8ad41057dc34a61dda9249"
+      },
+      {
+        "relative": 65000,
+        "bonus": 0,
+        "penality": 0,
+        "absolute": 14258000,
+        "position": 125,
+        "bib": 103,
+        "$rider": "allCompetitors-2026:cd14566c6b90dfae620b41d0006f4fd6b5e0efde61278a823de12053735b6e8d"
+      },
+      {
+        "bonus": 0,
+        "position": 126,
+        "bib": 147,
+        "relative": 65000,
+        "absolute": 14258000,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:d555b2fdef41f578bdaea36228347b8221f807b659c535995929df82bef20578"
+      },
+      {
+        "position": 127,
+        "bonus": 0,
+        "relative": 65000,
+        "absolute": 14258000,
+        "bib": 7,
+        "penality": 0,
+        "$rider": "allCompetitors-2026:e392f791d50602a6b036e559249e4e49c1fa1b3645e24a4c9841236ea6fefdba"
+      },
+      {
+        "position": 128,
+        "bonus": 0,
+        "relative": 85000,
+        "bib": 148,
+        "penality": 0,
+        "absolute": 14278000,
+        "$rider": "allCompetitors-2026:6abe5f78b79e06cd2bbc1bb9634bc53a527cdc8649630c9d3abfe86357f47af8"
+      },
+      {
+        "penality": 0,
+        "absolute": 14281000,
+        "bonus": 0,
+        "relative": 88000,
+        "bib": 164,
+        "position": 129,
+        "$rider": "allCompetitors-2026:4ccbdd7e5458f50b38a71fbccb6682b810a514fe71d3ef45b6cb629a01f99ce3"
+      },
+      {
+        "relative": 94000,
+        "bib": 8,
+        "absolute": 14287000,
+        "penality": 0,
+        "position": 130,
+        "bonus": 0,
+        "$rider": "allCompetitors-2026:1caa15f7f5561e6c9c0104140cd69b5bc56f4beb6ac26606afb353118d7e988d"
+      },
+      {
+        "absolute": 14343000,
+        "penality": 0,
+        "bonus": 0,
+        "bib": 5,
+        "relative": 150000,
+        "position": 131,
+        "$rider": "allCompetitors-2026:db21914f61592f731d29887610a2342fdbc59ee1228506904b031f4ed2a40113"
+      },
+      {
+        "penality": 0,
+        "bib": 22,
+        "absolute": 14343000,
+        "bonus": 0,
+        "relative": 150000,
+        "position": 132,
+        "$rider": "allCompetitors-2026:95151b1f26c2fd17ad8f545875277cedb34696d0e9dff119128f0034060a1fdb"
+      },
+      {
+        "position": 133,
+        "bonus": 0,
+        "penality": 0,
+        "bib": 188,
+        "absolute": 14489000,
+        "relative": 296000,
+        "$rider": "allCompetitors-2026:dbed42a7e0e4e31198e0ef64ffc90e630b398a3ec3d40d52ca7435ce46df8fc5"
+      },
+      {
+        "bib": 215,
+        "bonus": 0,
+        "position": 134,
+        "penality": 0,
+        "absolute": 14534000,
+        "relative": 341000,
+        "$rider": "allCompetitors-2026:81d76de26ea5de38937bb33722d792fec23b8f3d096284978bec8d0452716778"
+      },
+      {
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14534000,
+        "bib": 56,
+        "relative": 341000,
+        "position": 135,
+        "$rider": "allCompetitors-2026:7e08c0caf9f5f668977c8670b075f8fa8115cd4c5b260b9b3bce0c77aef0be38"
+      },
+      {
+        "position": 136,
+        "bonus": 0,
+        "relative": 341000,
+        "penality": 0,
+        "bib": 37,
+        "absolute": 14534000,
+        "$rider": "allCompetitors-2026:bc2817d60b27f350a06e482102adce428274a1e0573e17e352e2be1c0c28bedc"
+      },
+      {
+        "relative": 341000,
+        "bonus": 0,
+        "absolute": 14534000,
+        "penality": 0,
+        "position": 137,
+        "bib": 201,
+        "$rider": "allCompetitors-2026:ee4de13292c0fa4206245a043d4c021770fb1f6ff3fc1b66a4073de072109ea2"
+      },
+      {
+        "relative": 341000,
+        "bonus": 0,
+        "absolute": 14534000,
+        "penality": 0,
+        "bib": 171,
+        "position": 138,
+        "$rider": "allCompetitors-2026:a7c2873c2a08f6bddf74b6efe28c898e459a9c69c76aa5452cc2917dddf64485"
+      },
+      {
+        "position": 139,
+        "penality": 0,
+        "absolute": 14534000,
+        "bib": 136,
+        "bonus": 0,
+        "relative": 341000,
+        "$rider": "allCompetitors-2026:c28d89410415bf689fdfb1012058ba6aa6190131a8f1af39362bb7c43fcabd4d"
+      },
+      {
+        "relative": 372000,
+        "bib": 151,
+        "absolute": 14565000,
+        "bonus": 0,
+        "penality": 0,
+        "position": 140,
+        "$rider": "allCompetitors-2026:5b1bbbfcfa67cd745d512218f82a14a1148e0a89fa1bfb4714e2d5be58ae1d1f"
+      },
+      {
+        "bonus": 0,
+        "position": 141,
+        "bib": 154,
+        "relative": 372000,
+        "penality": 0,
+        "absolute": 14565000,
+        "$rider": "allCompetitors-2026:1445ad0128fd2a2aa3f341a9b3885ccad1c59d120e498d8daa926008576eabac"
+      },
+      {
+        "relative": 385000,
+        "penality": 0,
+        "bib": 144,
+        "absolute": 14578000,
+        "bonus": 0,
+        "position": 142,
+        "$rider": "allCompetitors-2026:4473d699aa113d48094c994dd84075dcacdd2dc833055f19e5570532cbbdb32e"
+      },
+      {
+        "penality": 0,
+        "absolute": 14585000,
+        "relative": 392000,
+        "bib": 12,
+        "bonus": 0,
+        "position": 143,
+        "$rider": "allCompetitors-2026:8f597352e5db160421af99f1a8489fd7b8f9a068850fdb0d877f9b3bd2fd3ff6"
+      },
+      {
+        "relative": 392000,
+        "absolute": 14585000,
+        "bib": 13,
+        "penality": 0,
+        "bonus": 0,
+        "position": 144,
+        "$rider": "allCompetitors-2026:f9e2313b70d8744d27a86df3f56c6b3dce0ae578afa87fb47d890dc4926d3f5b"
+      },
+      {
+        "bonus": 0,
+        "position": 145,
+        "absolute": 14585000,
+        "penality": 0,
+        "relative": 392000,
+        "bib": 51,
+        "$rider": "allCompetitors-2026:0476ce94dbc6b43b3d4c24c7a2c6b01fb5d84538ff778807b63367fe0a066bf1"
+      },
+      {
+        "penality": 0,
+        "bonus": 0,
+        "absolute": 14864000,
+        "relative": 671000,
+        "bib": 27,
+        "position": 146,
+        "$rider": "allCompetitors-2026:08e061bc6006a1d55512e5ec680e70d372e450dbb615ea42f6320ddf427cca31"
+      },
+      {
+        "position": 147,
+        "penality": 0,
+        "absolute": 14864000,
+        "bonus": 0,
+        "relative": 671000,
+        "bib": 25,
+        "$rider": "allCompetitors-2026:9000a38d9ebdd27bb4fb19a375a260f11d23f2af3f0f40a965e0565c13c421ea"
+      },
+      {
+        "relative": 1896000,
+        "penality": 0,
+        "absolute": 16089000,
+        "position": 148,
+        "bonus": 0,
+        "bib": 87,
+        "$rider": "allCompetitors-2026:345d832cfb1b1d97f890ec9f3aa36b0b19933ed5272e76a9d6e2260439a10895"
+      },
+      {
+        "penality": 0,
+        "absolute": 16089000,
+        "bonus": 0,
+        "relative": 1896000,
+        "bib": 153,
+        "position": 149,
+        "$rider": "allCompetitors-2026:31540f28bbf4867ea6ff095369daeec11d4c77c2d05f6ce973cd98a6e0505f84"
+      }
+    ],
+    "type": "ite",
+    "checkpoint": 38,
+    "_id": "3365ca7326e981ffe5435b7ace867ef7af46d0c8e5e04a21e83bd6369a2d35bb",
+    "_bind": "rankingType-2026-16",
+    "_updatedAt": 1788882553392,
+    "types": [
+      "N",
+      "A"
+    ],
+    "$cp": "checkpointList-2026-16:dbf7fd7af4eb7895c4d2f9ee4f006d4206974d252b631987bd80a72a5df3fdd6-38"
+  },
+  {
+    "checkpointTypes": [
+      {
+        "type": "sprint",
+        "number": "2",
+        "id": "142693",
+        "code": "N"
+      },
+      {
+        "type": "arrival",
+        "id": "142694",
+        "code": "A",
+        "number": "0"
+      }
+    ],
+    "checkpoint": 38,
+    "_id": "dbf7fd7af4eb7895c4d2f9ee4f006d4206974d252b631987bd80a72a5df3fdd6-38",
+    "_bind": "checkpointList-2026-16"
+  },
+  {
+    "checkpointTypes": [
+      {
+        "code": "N",
+        "number": "1",
+        "id": "142692",
+        "type": "sprint"
+      },
+      {
+        "number": "1",
+        "id": "142734",
+        "type": "bonus",
+        "code": "B",
+        "subType": "bonussprint"
+      }
+    ],
+    "checkpoint": 23,
+    "_id": "dbf7fd7af4eb7895c4d2f9ee4f006d4206974d252b631987bd80a72a5df3fdd6-23",
+    "_bind": "checkpointList-2026-16"
+  },
+  {
+    "lastname": "VAN AERT",
+    "bib": 31,
+    "nationality": "bel",
+    "firstname": "Wout",
+    "_id": "76f4e73eb96986635a51832e29d3fdb66c25942393535533e7ae3588d5482971",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1"
+  },
+  {
+    "bib": 178,
+    "firstname": "Hannes",
+    "lastname": "WILKSCH",
+    "nationality": "ger",
+    "_id": "4e788ef700725808fe7642a370da3b1c5ccf1e5923ad34e6b1cf22645e4fbc28",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "lastname": "LANDA MEANA",
+    "bib": 121,
+    "firstname": "Mikel",
+    "nationality": "esp",
+    "_id": "362e512b4d0ed3d6c6ae54dd533b0c600c39633b4d3b9530adc5f512b3671e81",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "bib": 192,
+    "firstname": "Clement",
+    "lastname": "ALLENO",
+    "nationality": "fra",
+    "_id": "37e3946327d9b7d1dcb1b61a9376ce5229374419b39694397a89aa741b06120f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "bib": 33,
+    "nationality": "gbr",
+    "lastname": "BRENNAN",
+    "firstname": "James Matthew",
+    "_id": "a3b2eedbd63dfddea4b144f4a4fe22682ef4abe1fb2b14efd3752bba48d7f38c",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "CANAL BLANCO",
+    "firstname": "Carlos",
+    "bib": 24,
+    "_id": "89949cf84424747987004e27d081cb9736f3f7f0e0688b6cc327ae40dd7f0416",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "lastname": "GOGL",
+    "nationality": "aut",
+    "firstname": "Michael",
+    "bib": 106,
+    "_id": "b57ed09ccddead76790497367335630e12f79cf14df53f9386288422ce57576b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:cf36f019db0537919c8efd32f19b96be46aaf2c625fa8dc89882dee398076e8d"
+  },
+  {
+    "firstname": "Marcel",
+    "lastname": "CAMPRUBI PIJUAN",
+    "bib": 54,
+    "nationality": "esp",
+    "_id": "d74021011913ee87e7522d7d0b932bcb7a6da56cb9688140fc9ec73e8aeef1ab",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "firstname": "Reuben",
+    "nationality": "nzl",
+    "lastname": "THOMPSON",
+    "bib": 206,
+    "_id": "1701376d0992569eb2e2936950d382bb5efdb409afe5140a3329a9e4ee308faa",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9"
+  },
+  {
+    "firstname": "Sander",
+    "bib": 44,
+    "lastname": "DE PESTEL",
+    "nationality": "bel",
+    "_id": "76dc992d7c8e5f13312412a53cc4b5cd75193855c60b2a5bdc62d1b6af966677",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c"
+  },
+  {
+    "lastname": "FAURA ASENSIO",
+    "nationality": "esp",
+    "firstname": "Jose Luis",
+    "bib": 196,
+    "_id": "1c9eb5fae643664411837851ad278eab8e3b6c02a794c4262d0c5aed268de508",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "bib": 164,
+    "firstname": "Alastair",
+    "lastname": "MACKELLAR",
+    "nationality": "aus",
+    "_id": "4ccbdd7e5458f50b38a71fbccb6682b810a514fe71d3ef45b6cb629a01f99ce3",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "nationality": "gbr",
+    "bib": 153,
+    "lastname": "DOUBLE",
+    "firstname": "Paul",
+    "_id": "31540f28bbf4867ea6ff095369daeec11d4c77c2d05f6ce973cd98a6e0505f84",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "bib": 22,
+    "firstname": "Jorge",
+    "lastname": "ARCAS",
+    "nationality": "esp",
+    "_id": "95151b1f26c2fd17ad8f545875277cedb34696d0e9dff119128f0034060a1fdb",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "firstname": "Magnus",
+    "nationality": "den",
+    "bib": 131,
+    "lastname": "CORT NIELSEN",
+    "_id": "ed0106c0d733b48566131d175cf14b6701f2e5d5be4de93f5124e700f335e929",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "bib": 92,
+    "nationality": "fra",
+    "firstname": "Olivier",
+    "lastname": "LE GAC",
+    "_id": "d8ee69788ed77925e79f68a2c238f133f584ebb89d5a3d1458a6f1b44c81b517",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "firstname": "Alessandro",
+    "lastname": "COVI",
+    "bib": 151,
+    "nationality": "ita",
+    "_id": "5b1bbbfcfa67cd745d512218f82a14a1148e0a89fa1bfb4714e2d5be58ae1d1f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "firstname": "Timo",
+    "nationality": "ned",
+    "lastname": "ROOSEN",
+    "bib": 218,
+    "_id": "e1b54374d0c978e95eb60fcf4b6fdffc3496a36ad1bc6edf8acf459e3a5d0c3d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:bd92a9d7c34c8970ba8a42a2ee4bc2e4a14d59a7a2b033ed0cb3f3e8d1e771a6"
+  },
+  {
+    "bib": 103,
+    "nationality": "bel",
+    "firstname": "Ramses",
+    "lastname": "DEBRUYNE",
+    "_id": "cd14566c6b90dfae620b41d0006f4fd6b5e0efde61278a823de12053735b6e8d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:cf36f019db0537919c8efd32f19b96be46aaf2c625fa8dc89882dee398076e8d"
+  },
+  {
+    "nationality": "ned",
+    "lastname": "LEEMREIZE",
+    "bib": 214,
+    "firstname": "Gijs",
+    "_id": "6f27e5b6ff50b66501a789ea068d5eb4f17def4b61f91abecd5c2b500e38b05e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:bd92a9d7c34c8970ba8a42a2ee4bc2e4a14d59a7a2b033ed0cb3f3e8d1e771a6"
+  },
+  {
+    "bib": 177,
+    "lastname": "WEISS",
+    "firstname": "Fabian",
+    "nationality": "sui",
+    "_id": "f0aaab26170ddd39f5a424abc7c3275434c1019f3b07ad744060e81cd82ee8ca",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "nationality": "fra",
+    "lastname": "LAURANCE",
+    "bib": 64,
+    "firstname": "Axel",
+    "_id": "6baa07c3aed8d4c023c34a738f2ec8f959b6e21c97ea401e38c3b1e895f6fe38",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96"
+  },
+  {
+    "firstname": "Andreas",
+    "lastname": "LEKNESSUND",
+    "nationality": "nor",
+    "bib": 136,
+    "_id": "c28d89410415bf689fdfb1012058ba6aa6190131a8f1af39362bb7c43fcabd4d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "nationality": "ita",
+    "firstname": "Vincenzo",
+    "lastname": "ALBANESE",
+    "bib": 162,
+    "_id": "77c205bcd4374d790529c901d06d560bbd1db7bbed204f3f364350d2d02a4a02",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "bib": 12,
+    "nationality": "por",
+    "lastname": "ALMEIDA",
+    "firstname": "Joao",
+    "_id": "8f597352e5db160421af99f1a8489fd7b8f9a068850fdb0d877f9b3bd2fd3ff6",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:2bce52b89c62d2f477a2855b701840bbec683e653d3fdea151782d7cf3760632"
+  },
+  {
+    "nationality": "ned",
+    "bib": 34,
+    "lastname": "KRUIJSWIJK",
+    "firstname": "Steven",
+    "_id": "8271c7a9b52132433f951365a2b19f69a50bc3fdd0e212511c64fb39ff13650c",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1"
+  },
+  {
+    "lastname": "KÄMNA",
+    "bib": 83,
+    "firstname": "Lennard",
+    "nationality": "ger",
+    "_id": "19f38caa0f2a2f68b93140338a30c7386b8fc5390afad8dd21ec9801b7b97706",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "nationality": "ger",
+    "bib": 141,
+    "firstname": "Emanuel",
+    "lastname": "BUCHMANN",
+    "_id": "441704b9beaeddf5590c4353bc62644cf72914b84925a5f6ca8eed3a348550c8",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "bib": 182,
+    "nationality": "kaz",
+    "lastname": "FEDOROV",
+    "firstname": "Yevgeniy",
+    "_id": "0332bb81c297844d2ddac74a088b1ec1598aae76124a6aebf377f9da7ac73187",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "firstname": "Jack",
+    "nationality": "aus",
+    "bib": 62,
+    "lastname": "HAIG",
+    "_id": "cd7264571b3632329d8519d783cb564b5a1ce48b5aae594f2812e0e7bb2557a0",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96"
+  },
+  {
+    "lastname": "APARICIO MUÑOZ",
+    "nationality": "esp",
+    "firstname": "Mario",
+    "bib": 193,
+    "_id": "40073fff7d0a209794956393f48662eb096e492e88a6a97da8ad2bb57ba23594",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "lastname": "NORSGAARD",
+    "firstname": "Sunekær Mathias",
+    "nationality": "den",
+    "bib": 86,
+    "_id": "6bfbc2ebba4a66b09479cda13280aaf554a0a232a2254955425557a9428f74bf",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "firstname": "Enric",
+    "bib": 21,
+    "lastname": "MAS NICOLAU",
+    "nationality": "esp",
+    "_id": "88cc41e125077b71861edcf0c11100b6acca1c09629f0f297253664348dce97f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "lastname": "GROVES",
+    "firstname": "Kaden",
+    "nationality": "aus",
+    "bib": 101,
+    "_id": "fd8b65421f7816544222a90710e1c3898cd8e27e1a00586b4553c9574f420dcb",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:cf36f019db0537919c8efd32f19b96be46aaf2c625fa8dc89882dee398076e8d"
+  },
+  {
+    "firstname": "Jesus",
+    "bib": 191,
+    "lastname": "HERRADA",
+    "nationality": "esp",
+    "_id": "c18d6d35a0e2c4474ecd793f1026dc9490d4b345e8b754e977ca91549d2800ac",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "nationality": "ger",
+    "bib": 168,
+    "lastname": "STEINHAUSER",
+    "firstname": "Georg",
+    "_id": "75d47d690ed14ee213a003a3990be967620e05432b1ce107ea6f2175d618af93",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "lastname": "COBO CAYON",
+    "bib": 223,
+    "nationality": "esp",
+    "firstname": "Ivan",
+    "_id": "13d047522c5ee71d977e916b0206529a63144626aeb78a6e20a9663bb17d95ec",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "lastname": "ERMAKOV",
+    "firstname": "Roman",
+    "bib": 73,
+    "nationality": "slo",
+    "_id": "bf49ffa316b08b757836779c754af7cde570233ad982634d4d2b38cc71ced792",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "lastname": "NYS",
+    "firstname": "Thibau",
+    "bib": 87,
+    "nationality": "bel",
+    "_id": "345d832cfb1b1d97f890ec9f3aa36b0b19933ed5272e76a9d6e2260439a10895",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "firstname": "Pablo",
+    "bib": 25,
+    "lastname": "CASTRILLO ZAPATER",
+    "nationality": "esp",
+    "_id": "9000a38d9ebdd27bb4fb19a375a260f11d23f2af3f0f40a965e0565c13c421ea",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "firstname": "Jørgen",
+    "lastname": "NORDHAGEN",
+    "nationality": "nor",
+    "bib": 37,
+    "_id": "bc2817d60b27f350a06e482102adce428274a1e0573e17e352e2be1c0c28bedc",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1"
+  },
+  {
+    "bib": 63,
+    "nationality": "aus",
+    "firstname": "Lucas",
+    "lastname": "HAMILTON",
+    "_id": "378508e31f54a954a7103975f13eca39f5efe9f7a00b696e1af2686d9aecf2b8",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96"
+  },
+  {
+    "nationality": "ita",
+    "bib": 122,
+    "lastname": "DAINESE",
+    "firstname": "Alberto",
+    "_id": "b34544b909461ceb3d8334400fcb6f9df2a4c1588e9d26c8ad357219e20fe430",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "firstname": "Iñigo",
+    "bib": 224,
+    "nationality": "esp",
+    "lastname": "ELOSEGUI MOMEÑE",
+    "_id": "aad275313036d2b0d12c9645bb0e999417d52f9a4ed8c79bc8bb70b0049a4692",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "DIAZ GALLEGO",
+    "firstname": "Jose Manuel",
+    "bib": 195,
+    "_id": "c72ff25e7b0c2ced7b4d48b099e83a22569348935223fdb23b2eaf15b250438c",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "lastname": "GAROFOLI",
+    "bib": 123,
+    "firstname": "Gianmarco",
+    "nationality": "ita",
+    "_id": "3e35a7869656548db3ae071c4433bc0573d561f33a1e746fe7e7192bd58ab40e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "firstname": "Alexey",
+    "nationality": "kaz",
+    "bib": 111,
+    "lastname": "LUTSENKO",
+    "_id": "926bd3725bd199ae149221a73555917e3c6c5542229d3e7ea03e73e0db04b03d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ff825ebf33de122aa5c5b06f8daffb4900c7182eab920ed309c11333863ae3d9"
+  },
+  {
+    "bib": 91,
+    "firstname": "Clément",
+    "nationality": "fra",
+    "lastname": "BERTHET",
+    "_id": "7a17d847bd8c33e5acaf0109e28275faa593bfc42c8e36f8b97468694bf7ceb7",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "firstname": "Xavier Finlay Xavier",
+    "lastname": "PICKERING",
+    "nationality": "gbr",
+    "bib": 156,
+    "_id": "69e69df9cb1ed455193fe89e25d35df63fe2ae3b91fb27d1e40676a47030345d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "firstname": "Oscar",
+    "bib": 61,
+    "lastname": "ONLEY",
+    "nationality": "gbr",
+    "_id": "51701851e83ecde3385cd0eebe14395d4ed2d1e0c50254a2a5dd51c4c5b1fea0",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96"
+  },
+  {
+    "bib": 142,
+    "firstname": "Bryan",
+    "lastname": "COQUARD",
+    "nationality": "fra",
+    "_id": "d3c9de5426d65a190c379b7fb35b85e972c3685e21aa241e9fafc1d187806638",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "lastname": "SOSA CUERVO",
+    "bib": 226,
+    "firstname": "Ivan",
+    "nationality": "col",
+    "_id": "b43d762a1e7a6cd952a76002417db8b57ff73268b22822e8c58609200e373f7e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "bib": 161,
+    "firstname": "Richard",
+    "nationality": "ecu",
+    "lastname": "CARAPAZ",
+    "_id": "ebb3b0654c6984fe98b418e15e3d1e952649f6a61e842f6fe81fe0448c1a7156",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "nationality": "ned",
+    "lastname": "BOUWMAN",
+    "firstname": "Koen",
+    "bib": 152,
+    "_id": "498fa5b993ade79dac9520cb061dbd0d6eb151e673ce865ea20817012e7e009e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "firstname": "Jacopo",
+    "nationality": "ita",
+    "lastname": "MOSCA",
+    "bib": 85,
+    "_id": "5753e8d005a9fdd1b87b2d0c825d189a22186b182c076a61eeb40f739c801161",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "firstname": "Kevin",
+    "lastname": "VERMAERKE",
+    "bib": 17,
+    "nationality": "usa",
+    "_id": "52897608fb934c7249d86ba150791bbc2177ba49b54616b9d905979cf46d5d91",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:2bce52b89c62d2f477a2855b701840bbec683e653d3fdea151782d7cf3760632"
+  },
+  {
+    "firstname": "Bastien",
+    "nationality": "fra",
+    "lastname": "TRONCHON",
+    "bib": 98,
+    "_id": "a376583d61d45d4123549e2d72808178870d14dd358fe067b741f594821de756",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "bib": 114,
+    "nationality": "fra",
+    "firstname": "Hugo",
+    "lastname": "HOFSTETTER",
+    "_id": "1edb87b9fe21500c226f650b39a6ef6e3d25babe4ca92087899a17e5ff86951c",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ff825ebf33de122aa5c5b06f8daffb4900c7182eab920ed309c11333863ae3d9"
+  },
+  {
+    "nationality": "fra",
+    "lastname": "OURSELIN",
+    "firstname": "Paul",
+    "bib": 145,
+    "_id": "c4355df0d5806562c559aa5ae810d258925781b384a99cb67ab78db47c300c08",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "firstname": "Steffen",
+    "nationality": "bel",
+    "bib": 204,
+    "lastname": "DE SCHUYTENEER",
+    "_id": "5b68642edb5c108ed5373bbb9fad03ce1a79c9cb300d0e6c3ab8d61523f12fad",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9"
+  },
+  {
+    "firstname": "Urko",
+    "bib": 221,
+    "lastname": "BERRADE FERNANDEZ",
+    "nationality": "esp",
+    "_id": "13ae97e6581934526944254ab5ff89368940991562eed345025ad88cf539d8aa",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "lastname": "VANSEVENANT",
+    "bib": 127,
+    "firstname": "Mauri",
+    "nationality": "bel",
+    "_id": "f599d4fd0ab52e321842ac45ed2e3c5f39857a61ebc6a1b47e593a8468a2fb82",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "nationality": "fra",
+    "lastname": "BERNARD",
+    "bib": 82,
+    "firstname": "Julien",
+    "_id": "ff8cb899a314c4bfd3681eba1a2928c1ed32a0de75042efa65ade12f013bd379",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "nationality": "irl",
+    "bib": 165,
+    "lastname": "RAFFERTY",
+    "firstname": "Darren",
+    "_id": "f241ab5024b19fefbdf84e3ee36984bacdc9b3ba0bb4e580f675e8188686fc28",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "MIQUEL DELGADO",
+    "bib": 75,
+    "firstname": "Pau",
+    "_id": "bbf1d7b2fa847fd06d537080bef50138538c84b6f19402bf273e091a70a9b169",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "bib": 93,
+    "nationality": "fra",
+    "lastname": "MADOUAS",
+    "firstname": "Valentin",
+    "_id": "ba3d7b5774cba30a6869139b2a6ee7116fe8e339590f28b300eaf9b5629d67e2",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "firstname": "Pau",
+    "bib": 116,
+    "nationality": "esp",
+    "lastname": "MARTI SORIANO",
+    "_id": "021e8e5305c6d5144db1c8d77d4b48a863905cfd9978bf5ea985dc94b97b44f4",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ff825ebf33de122aa5c5b06f8daffb4900c7182eab920ed309c11333863ae3d9"
+  },
+  {
+    "lastname": "SÜTTERLIN",
+    "nationality": "ger",
+    "firstname": "Jasha",
+    "bib": 158,
+    "_id": "2334285ac491631c0c2b3f274f22ed61f044bab9bff542bb39388defc32c92c3",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "firstname": "Milan",
+    "bib": 58,
+    "lastname": "VADER",
+    "nationality": "ned",
+    "_id": "b0b5dd466e1e8fa2eb77f1bbc91e3bff6919448562ac5c3889febbee5cedb9a5",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "nationality": "sui",
+    "lastname": "KÜNG",
+    "bib": 174,
+    "firstname": "Stefan",
+    "_id": "7e1ade81f7c4ea458c91661c1b4b85bb45ceffa5ec0786852f266476fe6c9c2f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "nationality": "den",
+    "bib": 154,
+    "firstname": "Asbjørn",
+    "lastname": "HELLEMOSE",
+    "_id": "1445ad0128fd2a2aa3f341a9b3885ccad1c59d120e498d8daa926008576eabac",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "lastname": "BRAET",
+    "bib": 202,
+    "firstname": "Vito",
+    "nationality": "bel",
+    "_id": "d3a82a52a0a88b8d06962c4f4c2ad652f51449224189ab3cf7d3264ec4b5fbfe",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9"
+  },
+  {
+    "nationality": "den",
+    "firstname": "Mattias",
+    "lastname": "SKJELMOSE",
+    "bib": 81,
+    "_id": "af06a58c56298db2eec807ec60532bc7513f058e7f655bf342809b3ba29975e4",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "nationality": "nor",
+    "lastname": "TJØTTA",
+    "firstname": "Martin",
+    "bib": 138,
+    "_id": "e8bae57194ffe2386b0f7fcc22067fc8f7427942f14e1c9b22ed8e05adbe622f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "firstname": "Sylvain",
+    "lastname": "MONIQUET",
+    "bib": 144,
+    "nationality": "bel",
+    "_id": "4473d699aa113d48094c994dd84075dcacdd2dc833055f19e5570532cbbdb32e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "bib": 97,
+    "nationality": "fra",
+    "lastname": "ROCHAS",
+    "firstname": "Rémy",
+    "_id": "b1f2dfca724eaacd8dfa8ec2eef4aad15bedec9ea2a9171bd069f4adf4e09b93",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "lastname": "TEJADA CANACUE",
+    "nationality": "col",
+    "bib": 181,
+    "firstname": "Harold",
+    "_id": "9fd557e1c61503bd79088ab932fb78bde2a3a81f12cda3255d34e71955f94eb2",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "firstname": "Mats",
+    "lastname": "WENZEL",
+    "bib": 228,
+    "nationality": "lux",
+    "_id": "ef8f1c14b2f5df5cce33027268d8f2f09274caa129c12ef64e77e6fb2e80659b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "RODRIGUEZ MARTIN",
+    "firstname": "Cristian",
+    "bib": 186,
+    "_id": "c8a746efb0731de26a06a93b67767236424522f660db956ffb487f7f03db692b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "bib": 52,
+    "lastname": "AZPARREN IRURZUN",
+    "firstname": "Xabier",
+    "nationality": "esp",
+    "_id": "606b7416be0337e21ec2b433461ba925aded4a0c6f5a6d9152d869626b11a116",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "lastname": "GLOAG",
+    "nationality": "gbr",
+    "bib": 56,
+    "firstname": "Thomas",
+    "_id": "7e08c0caf9f5f668977c8670b075f8fa8115cd4c5b260b9b3bce0c77aef0be38",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "firstname": "Callum",
+    "bib": 5,
+    "lastname": "THORNLEY",
+    "nationality": "gbr",
+    "_id": "db21914f61592f731d29887610a2342fdbc59ee1228506904b031f4ed2a40113",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "bib": 32,
+    "firstname": "Bruno",
+    "lastname": "ARMIRAIL",
+    "nationality": "fra",
+    "_id": "bcf77ce2d0e7adb5675007e626b19bbcc9f46e98dada1b4386f17bd34eb2de74",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1"
+  },
+  {
+    "nationality": "por",
+    "bib": 14,
+    "firstname": "Ivo",
+    "lastname": "ALVES OLIVEIRA",
+    "_id": "47cee91d80a38f0e9ba0149355a499fb82dcd3bdf39119c76930dd4ab3cb3214",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:2bce52b89c62d2f477a2855b701840bbec683e653d3fdea151782d7cf3760632"
+  },
+  {
+    "nationality": "esp",
+    "firstname": "Ibon",
+    "bib": 225,
+    "lastname": "RUIZ SEDANO",
+    "_id": "f44496d4713097af8bfa00fd5fa31abad3d114171a08cb78c47c4c2ad6bad27b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "nationality": "hun",
+    "firstname": "Attila",
+    "bib": 78,
+    "lastname": "VALTER",
+    "_id": "1860175302f145c07fcf4d6adb7514c12791bb31247de1c325d70ea41e8843f9",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "bib": 126,
+    "lastname": "VAN DEN BOSSCHE",
+    "nationality": "bel",
+    "firstname": "Fabio",
+    "_id": "5b5f486ff8cca732df6e6b2d7aa4f03dfe52b2f7c22c5954441d5979524078a5",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "nationality": "ned",
+    "bib": 77,
+    "firstname": "Mathijs",
+    "lastname": "PAASSCHENS",
+    "_id": "6fb9cd665f41e9f58544dcbc401232a60fc835b2e2b074af5c6befbfbd42c6fd",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "bib": 105,
+    "firstname": "Gal",
+    "lastname": "GLIVAR",
+    "nationality": "slo",
+    "_id": "31bc0965b6cef077d428ba3a6a917a38450a5ac51a91bce378cd9bdbb47eedc5",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:cf36f019db0537919c8efd32f19b96be46aaf2c625fa8dc89882dee398076e8d"
+  },
+  {
+    "firstname": "Walter",
+    "bib": 53,
+    "nationality": "ita",
+    "lastname": "CALZONI",
+    "_id": "5c19389b96e9101a3cf24d9b380ec7a700fde8397f092bdc4e2c358fb1351e03",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "nationality": "usa",
+    "bib": 172,
+    "firstname": "William",
+    "lastname": "BARTA",
+    "_id": "2db8e2b35aa788db9c7021505ed0c8eb16cc891e59b6fbca6b93d89e336ad4b7",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "nationality": "bel",
+    "lastname": "VERMEERSCH",
+    "bib": 7,
+    "firstname": "Gianni",
+    "_id": "e392f791d50602a6b036e559249e4e49c1fa1b3645e24a4c9841236ea6fefdba",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "bib": 197,
+    "firstname": "Sinuhe",
+    "nationality": "esp",
+    "lastname": "FERNANDEZ RODRIGUEZ",
+    "_id": "85748af120aed4b6bd2638af745694d0b09273617bcd4915f87b7d513efc031f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "lastname": "SAMITIER SAMITIER",
+    "nationality": "esp",
+    "firstname": "Sergio",
+    "bib": 148,
+    "_id": "6abe5f78b79e06cd2bbc1bb9634bc53a527cdc8649630c9d3abfe86357f47af8",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "firstname": "Jakob",
+    "nationality": "slo",
+    "bib": 76,
+    "lastname": "OMRZEL",
+    "_id": "620c723c3f3e7efbdba888f6af682355f3190b59f08fee45c7d4540df41e5f8d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "firstname": "Domen",
+    "bib": 13,
+    "lastname": "NOVAK",
+    "nationality": "slo",
+    "_id": "f9e2313b70d8744d27a86df3f56c6b3dce0ae578afa87fb47d890dc4926d3f5b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:2bce52b89c62d2f477a2855b701840bbec683e653d3fdea151782d7cf3760632"
+  },
+  {
+    "nationality": "ita",
+    "bib": 4,
+    "firstname": "Gianni",
+    "lastname": "MOSCON",
+    "_id": "4c3b7e5f395758bbcec83e536dbf5453571cd380f08cbcc632338db94b408d2a",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "bib": 137,
+    "firstname": "Rasmus",
+    "nationality": "nor",
+    "lastname": "TILLER",
+    "_id": "fdbdb61362c6e9b587f6022da8c9a94cd0b50aefd50ffafacbf63b3819d4cb7e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "bib": 198,
+    "nationality": "mex",
+    "lastname": "MACIAS ESTRADA",
+    "firstname": "Cesar",
+    "_id": "bbef42a4215e855fc981ca611ec88297d62c38909196193b458602ebcbe1c9db",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2"
+  },
+  {
+    "nationality": "fra",
+    "bib": 95,
+    "lastname": "MOLARD",
+    "firstname": "Rudy",
+    "_id": "3d98d69821113f3472231cf045ad808bdf0a1e1d92f37549e982f57faa8cfd42",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "bib": 167,
+    "firstname": "James",
+    "nationality": "gbr",
+    "lastname": "SHAW",
+    "_id": "6510bc5c5e55deefd55c1c7e3a1d5a1de3936b3d6598048f753e81e521447492",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "nationality": "usa",
+    "lastname": "KUSS",
+    "firstname": "Sepp",
+    "bib": 35,
+    "_id": "1cd3875aeab1b7c99e2c8fe1e0ff9d8c597b091854c097b98ea8001e6bd38963",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1"
+  },
+  {
+    "lastname": "SVESTAD-BÅRDSENG",
+    "firstname": "Embret",
+    "bib": 66,
+    "nationality": "nor",
+    "_id": "79065d6bd91779d46fe6df44b7cd2e8f4d2c7833b0a219683a6ebb5cbc54ee60",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96"
+  },
+  {
+    "nationality": "aus",
+    "firstname": "Luke",
+    "lastname": "TUCKWELL",
+    "bib": 6,
+    "_id": "193ac8d527faefd474700555a83c2b22e81fb5887117385e82bacefe36c6e97d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "nationality": "den",
+    "firstname": "Frederik",
+    "bib": 8,
+    "lastname": "WANDAHL",
+    "_id": "1caa15f7f5561e6c9c0104140cd69b5bc56f4beb6ac26606afb353118d7e988d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "bib": 124,
+    "nationality": "gbr",
+    "lastname": "HAYTER",
+    "firstname": "Ethan Edward",
+    "_id": "315c7304f48cd6d332d92e474e9887e3c7adb4ffecba05fe4512a311c2b69901",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "firstname": "Léo",
+    "bib": 42,
+    "nationality": "fra",
+    "lastname": "BISIAUX",
+    "_id": "0e95917af3a38cd0235fe15b95b0ccc60481696b85a51deffdab4b512ca40253",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c"
+  },
+  {
+    "nationality": "nzl",
+    "lastname": "FISHER - BLACK",
+    "bib": 2,
+    "firstname": "Finn",
+    "_id": "07ad9556add8634d77c3fbd0e1ebdda413e9f283a61cea0b4921f43b555c6664",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "bib": 132,
+    "lastname": "DALBY",
+    "nationality": "den",
+    "firstname": "Simon",
+    "_id": "f415663f38c0a2089858be77817629f633f39a16dba6f42f7970355a5b97cbdb",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "firstname": "Jordi",
+    "nationality": "bel",
+    "lastname": "MEEUS",
+    "bib": 3,
+    "_id": "5911ee74227c5cb00e0bc88bfa640135cc7d971bc4e3664a402e26e82715c3d6",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "nationality": "ita",
+    "firstname": "Lorenzo",
+    "lastname": "FORTUNATO",
+    "bib": 183,
+    "_id": "2fc234c93c1b1cac7db35c3bc8c4fd0cfad5f022bbba3d78ca426311b1efd898",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "nationality": "ita",
+    "bib": 205,
+    "firstname": "Lorenzo",
+    "lastname": "ROTA",
+    "_id": "987e5cc9a9356d72f7e3f0baf7ff13f006aec6f57e3d6af175e8230a99e3d24f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9"
+  },
+  {
+    "bib": 11,
+    "nationality": "slo",
+    "firstname": "Tadej",
+    "lastname": "POGACAR",
+    "_id": "109159b3db6998429880611d635b45f5474ca7389a0996eb980d3af25106b236",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:2bce52b89c62d2f477a2855b701840bbec683e653d3fdea151782d7cf3760632"
+  },
+  {
+    "firstname": "Filippo",
+    "nationality": "ita",
+    "bib": 128,
+    "lastname": "ZANA",
+    "_id": "9f9e00d9ae574a622ce87f5155aad7efb7b4f6e86981681bbf0057e00c5b246b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "bib": 134,
+    "lastname": "JOHANNESSEN",
+    "firstname": "Tobias",
+    "nationality": "nor",
+    "_id": "aaef7f2cdc1a4fae51a7c43a3e0073f8a9956e2027a1219a87876ace25ef606e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "firstname": "Nicholas",
+    "lastname": "SCHULTZ",
+    "bib": 117,
+    "nationality": "aus",
+    "_id": "5ce40e2a127899e5fece02c93702f45dec2370c58f9dc3ccd335e5728c96ddea",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ff825ebf33de122aa5c5b06f8daffb4900c7182eab920ed309c11333863ae3d9"
+  },
+  {
+    "lastname": "GALL",
+    "nationality": "aut",
+    "firstname": "Félix",
+    "bib": 41,
+    "_id": "be2f036b118ea1eee13e7a8907cf8123b289616279c102b01bc62e87540e018a",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c"
+  },
+  {
+    "firstname": "Jan",
+    "bib": 113,
+    "nationality": "cze",
+    "lastname": "HIRT",
+    "_id": "9d7394947a3cbb310c92fd7e1a642450ebf9c0109cd0f905167d33877760513e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ff825ebf33de122aa5c5b06f8daffb4900c7182eab920ed309c11333863ae3d9"
+  },
+  {
+    "firstname": "Jarno",
+    "nationality": "bel",
+    "bib": 201,
+    "lastname": "WIDAR",
+    "_id": "ee4de13292c0fa4206245a043d4c021770fb1f6ff3fc1b66a4073de072109ea2",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9"
+  },
+  {
+    "firstname": "Alexis",
+    "bib": 146,
+    "nationality": "fra",
+    "lastname": "RENARD",
+    "_id": "42a23f5d3526c6ec545de90d1074b4d32438eda8b2b1060d97b6a89e3455d619",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "bib": 27,
+    "nationality": "esp",
+    "firstname": "Ivan",
+    "lastname": "ROMEO ABAD",
+    "_id": "08e061bc6006a1d55512e5ec680e70d372e450dbb615ea42f6320ddf427cca31",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "bib": 55,
+    "lastname": "DUNBAR",
+    "firstname": "Edward",
+    "nationality": "irl",
+    "_id": "ec8228cc5a2f05e86e1899f3952817110533481f8e9b94e84009eb6b2f226ca4",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "lastname": "HAMILTON",
+    "firstname": "Christopher",
+    "nationality": "aus",
+    "bib": 211,
+    "_id": "9b8d62df652f2bc6469d2037d0d2b6a1ee692c4547681993449899c912802b8e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:bd92a9d7c34c8970ba8a42a2ee4bc2e4a14d59a7a2b033ed0cb3f3e8d1e771a6"
+  },
+  {
+    "lastname": "BUITRAGO SANCHEZ",
+    "bib": 72,
+    "nationality": "col",
+    "firstname": "Santiago",
+    "_id": "e38826dbcba6ae9c26aa93874f6c634e0fb890b31e6ae8b62991e220628424c0",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "bib": 23,
+    "firstname": "Orluis Alberto",
+    "lastname": "AULAR SANABRIA",
+    "nationality": "ven",
+    "_id": "75cf33427c14717331a4de41a874502f3719f8c03df1995214bd326be58a44cc",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "bib": 84,
+    "firstname": "Patrick",
+    "lastname": "KONRAD",
+    "nationality": "aut",
+    "_id": "3d39ae9007cd5f9fc81f8be40cb51762d243be5fb601fd7c76b33e90a3e653f4",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b"
+  },
+  {
+    "nationality": "slo",
+    "lastname": "ROGLIC",
+    "firstname": "Primoz",
+    "bib": 1,
+    "_id": "16419e2b7fff95fa34d5f540730cb9291622d9df51bf0fa1b72eae94ae82f0a3",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59"
+  },
+  {
+    "bib": 175,
+    "lastname": "THALMANN",
+    "firstname": "Roland",
+    "nationality": "sui",
+    "_id": "e61f9b472a951f173aa813d933e203e1bba53a199ca385182c9f75e9fba55c0d",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "bib": 43,
+    "firstname": "Andrew Oscar",
+    "lastname": "CHAMBERLAIN",
+    "nationality": "aus",
+    "_id": "80ee7aa2ac24bd31f22209f1ee9af9b5ccde78a405ff8e25a85ca1525327608a",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c"
+  },
+  {
+    "lastname": "BILBAO LOPEZ DE ARMENTIA",
+    "firstname": "Pello",
+    "bib": 71,
+    "nationality": "esp",
+    "_id": "96c6bb1f4808fdb3924f9a41e173efcbf778a58af501f45d1f8f870767028e87",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "nationality": "fra",
+    "firstname": "Valentin",
+    "bib": 125,
+    "lastname": "PARET PEINTRE",
+    "_id": "620206d10053242ca84073757ea81a215df8b2d6f5be5ac01fe239889835cf7c",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4"
+  },
+  {
+    "firstname": "Lawrence",
+    "bib": 176,
+    "nationality": "usa",
+    "lastname": "WARBASSE",
+    "_id": "44e205ccdc0367fbd5ddc7b4c708536ddab7da188c537a2dfacbdf7d75827fbb",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "lastname": "RICCITELLO",
+    "nationality": "usa",
+    "firstname": "Matthew",
+    "bib": 47,
+    "_id": "8439c92d34f3eb154552c5c941543527344156606d23d9e04854b4cab0d28848",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c"
+  },
+  {
+    "firstname": "Callum",
+    "lastname": "SCOTSON",
+    "nationality": "aus",
+    "bib": 48,
+    "_id": "cf6ceb89c7d086d0c30de989f2232dcde22da6eb9e2beb6b5c77a9ddf435a8a3",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c"
+  },
+  {
+    "bib": 94,
+    "firstname": "Guillaume",
+    "nationality": "fra",
+    "lastname": "MARTIN GUYONNET",
+    "_id": "1e6d64d0b228aacbbeda174caaf0017819a4644c3ae1e9ce752ee4f9c0e6f90b",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "lastname": "KRON",
+    "firstname": "Andreas",
+    "nationality": "den",
+    "bib": 135,
+    "_id": "3cc1f769678fe8d2f5d1504cacabafbef44956d85f8ad41057dc34a61dda9249",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "lastname": "VAN BEKKUM",
+    "firstname": "Darren",
+    "bib": 188,
+    "nationality": "ned",
+    "_id": "dbed42a7e0e4e31198e0ef64ffc90e630b398a3ec3d40d52ca7435ce46df8fc5",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "nationality": "bel",
+    "bib": 203,
+    "firstname": "Lars",
+    "lastname": "CRAPS",
+    "_id": "a1cfe27c43c4907bda4911b80778c8a0f6b23493937f40d07e089975a59581db",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "GARCIA PIERNA",
+    "bib": 26,
+    "firstname": "Raul",
+    "_id": "98685fcc9f0cfff8c7df304668cc3ffd289c9dbb3bb524ec1543af239312a2a8",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f"
+  },
+  {
+    "lastname": "PORTER",
+    "firstname": "Rudy",
+    "nationality": "aus",
+    "bib": 157,
+    "_id": "507d6415ed419fd4fda52432f8454afcdd66441ab6089632fc1b4a1c582a0df0",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "DE LA CRUZ MELGAREJO",
+    "firstname": "David",
+    "bib": 51,
+    "_id": "0476ce94dbc6b43b3d4c24c7a2c6b01fb5d84538ff778807b63367fe0a066bf1",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669"
+  },
+  {
+    "nationality": "slo",
+    "bib": 74,
+    "firstname": "Matevž",
+    "lastname": "GOVEKAR",
+    "_id": "18f3461fc9b43144412e5e96085d5e24de6ac2d275dd954d2477daad576c16f9",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4"
+  },
+  {
+    "lastname": "DVERSNES",
+    "firstname": "Fredrik",
+    "bib": 133,
+    "nationality": "nor",
+    "_id": "71eb244281d1ef8b60365db173903504e48727f312ab4eef5f270c374a90ad66",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3"
+  },
+  {
+    "firstname": "Juan Felipe",
+    "bib": 166,
+    "nationality": "col",
+    "lastname": "RODRIGUEZ CONTRERAS",
+    "_id": "21b4a307ef1820566018ffdcad49176831dff1d8e30fa37e7e45d0ce427dab0a",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615"
+  },
+  {
+    "bib": 215,
+    "firstname": "Guillermo Juan",
+    "lastname": "MARTINEZ HUERTAS",
+    "nationality": "col",
+    "_id": "81d76de26ea5de38937bb33722d792fec23b8f3d096284978bec8d0452716778",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:bd92a9d7c34c8970ba8a42a2ee4bc2e4a14d59a7a2b033ed0cb3f3e8d1e771a6"
+  },
+  {
+    "bib": 212,
+    "firstname": "Timo",
+    "lastname": "DE JONG",
+    "nationality": "ned",
+    "_id": "e4e806cc5189e7845350ad4968e72cd81f27440148156813ec377ecd1856a32f",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:bd92a9d7c34c8970ba8a42a2ee4bc2e4a14d59a7a2b033ed0cb3f3e8d1e771a6"
+  },
+  {
+    "nationality": "fra",
+    "firstname": "Enzo",
+    "bib": 96,
+    "lastname": "PALENI",
+    "_id": "fdbb65f619e96c40445ab86c0f1fbf12c7351a5a77d15667b78d3827ead497f9",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c"
+  },
+  {
+    "lastname": "ROMELE",
+    "bib": 187,
+    "firstname": "Alessandro",
+    "nationality": "ita",
+    "_id": "6f7f1bd38058b409316454c7620c46bb5f2325ebcab5c611abead2986a39d3cb",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "bib": 222,
+    "firstname": "Marc",
+    "nationality": "esp",
+    "lastname": "BRUSTENGA MASAGUE",
+    "_id": "c9b21ec1422a6854af239d225f875fc6445527c0dd4b4bc28cdd8a6d605ae257",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19"
+  },
+  {
+    "nationality": "fra",
+    "firstname": "Louis",
+    "bib": 147,
+    "lastname": "ROULAND",
+    "_id": "d555b2fdef41f578bdaea36228347b8221f807b659c535995929df82bef20578",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3"
+  },
+  {
+    "nationality": "ger",
+    "bib": 171,
+    "lastname": "BRENNER",
+    "firstname": "Marco",
+    "_id": "a7c2873c2a08f6bddf74b6efe28c898e459a9c69c76aa5452cc2917dddf64485",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f"
+  },
+  {
+    "nationality": "esp",
+    "lastname": "RODRIGUEZ",
+    "firstname": "Carlos",
+    "bib": 65,
+    "_id": "b4af0de72d7799deeaf168f4b0c77f7abfef862a802f6474729b39cae42da0db",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96"
+  },
+  {
+    "lastname": "MULUEBERHAN",
+    "bib": 185,
+    "firstname": "Henok",
+    "nationality": "eri",
+    "_id": "69485687847ee6a679e40bf2cb9b56017a10577e7d4e0c95d4cf2012751e5a7e",
+    "_bind": "allCompetitors-2026",
+    "$team": "team-2026:da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042"
+  },
+  {
+    "name": "UNO-X MOBILITY",
+    "code": "UXM",
+    "nameShort": "UNO-X MOBILITY",
+    "_id": "0ccbb9bdbd5ba45c63b06372c3a4c98fc63ca0dfdef8261ad718a46057cf12a3",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "TBV",
+    "name": "BAHRAIN VICTORIOUS",
+    "nameShort": "BAHRAIN VICTORIOUS",
+    "_id": "11381216966abf2589faf12f844c963077fd5fe7b04829ca07dc0cb005f48cc4",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "BURGOS-BURPELLET-BH",
+    "name": "BURGOS-BURPELLET-BH",
+    "code": "BBH",
+    "_id": "127ced39b77ad8bbc6ca005c10e1cd46bb6b8b57b18fdc72461fefa8b90fc3e2",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "PQT",
+    "nameShort": "PINARELLO-Q36.5 PRO CYCLING TEAM",
+    "name": "PINARELLO-Q36.5 PRO CYCLING TEAM",
+    "_id": "1d31fa640d16a97b67d51c0ffbbbda47233882b7717f5e9bd2ed7020e0a7a669",
+    "_bind": "team-2026"
+  },
+  {
+    "name": "RED BULL - BORA - HANSGROHE",
+    "code": "RBH",
+    "nameShort": "RED BULL - BORA - HANSGROHE",
+    "_id": "23fb1bdb2f545bfcdb3e95855f2446cfdbd79f8b55640c88510986f616642e59",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "UAE TEAM EMIRATES XRG",
+    "code": "UEX",
+    "name": "UAE TEAM EMIRATES XRG",
+    "_id": "2bce52b89c62d2f477a2855b701840bbec683e653d3fdea151782d7cf3760632",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "DCT",
+    "nameShort": "DECATHLON CMA CGM TEAM",
+    "name": "DECATHLON CMA CGM TEAM",
+    "_id": "32f125a1a596f3230c4395c9d1cfcde1584687dc661b07b744492a898a35047c",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "LOTTO INTERMARCHE",
+    "code": "LOI",
+    "name": "LOTTO INTERMARCHE",
+    "_id": "4c200ea3378451eaa66287fb5ee6d51b45db2ee34127c8f894741da997d65cd9",
+    "_bind": "team-2026"
+  },
+  {
+    "name": "COFIDIS",
+    "code": "COF",
+    "nameShort": "COFIDIS",
+    "_id": "5d32207e1b3c20089d2a5f59ee62c787d280d9cb3971a0107ea3791fa5ae39c3",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "JAY",
+    "nameShort": "TEAM JAYCO ALULA",
+    "name": "TEAM JAYCO ALULA",
+    "_id": "70878c5f63a82dd494647d075b815209764a20452535caf1f0f116738b079188",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "TVL",
+    "name": "TEAM VISMA | LEASE A BIKE",
+    "nameShort": "TEAM VISMA | LEASE A BIKE",
+    "_id": "70b191db911d22ac5c3e6f28b02addb7dc8102a799ff21e409ac2c5646a635c1",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "LIDL-TREK",
+    "name": "LIDL-TREK",
+    "code": "LTK",
+    "_id": "77e32cfebb8512ac80b594d7578142cb6fd14021a998feaceca41c0dea08121b",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "TUDOR PRO CYCLING TEAM",
+    "name": "TUDOR PRO CYCLING TEAM",
+    "code": "TUD",
+    "_id": "85943205089337a4acc63c5140428ac47b69ad704ed2e609a681d7bc122b953f",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "EF EDUCATION - EASYPOST",
+    "code": "EFE",
+    "name": "EF EDUCATION - EASYPOST",
+    "_id": "aed772539996a954fead9dc38cd26e34c194655a3b67150af79dbad3dc59c615",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "EKP",
+    "name": "EQUIPO KERN PHARMA",
+    "nameShort": "EQUIPO KERN PHARMA",
+    "_id": "b4ed3f34c9ddcaad34fdfbe02e57685d85b713f969c8574dba64ddd83fc36a19",
+    "_bind": "team-2026"
+  },
+  {
+    "name": "TEAM PICNIC POSTNL",
+    "code": "TPP",
+    "nameShort": "TEAM PICNIC POSTNL",
+    "_id": "bd92a9d7c34c8970ba8a42a2ee4bc2e4a14d59a7a2b033ed0cb3f3e8d1e771a6",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "NETCOMPANY INEOS CYCLING TEAM",
+    "name": "NETCOMPANY INEOS CYCLING TEAM",
+    "code": "NCI",
+    "_id": "c4ac8146aa5681e88e9bfd663965e8551ed1aff42fb93e1a81ca5da6982d5e96",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "MOVISTAR TEAM",
+    "name": "MOVISTAR TEAM",
+    "code": "MOV",
+    "_id": "c801b5da34b7e03b8b92a4aee7b7da9f8a44994645c3a95ab6c45d90d8cfd34f",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "APT",
+    "name": "ALPECIN-PREMIER TECH",
+    "nameShort": "ALPECIN-PREMIER TECH",
+    "_id": "cf36f019db0537919c8efd32f19b96be46aaf2c625fa8dc89882dee398076e8d",
+    "_bind": "team-2026"
+  },
+  {
+    "name": "XDS ASTANA TEAM",
+    "code": "XAT",
+    "nameShort": "XDS ASTANA TEAM",
+    "_id": "da463ebcbc467ea8a7c3457fcb5bf4a3015e14699e6ba37e5a56f04d4ddfd042",
+    "_bind": "team-2026"
+  },
+  {
+    "code": "GFC",
+    "name": "GROUPAMA-FDJ UNITED",
+    "nameShort": "GROUPAMA-FDJ UNITED",
+    "_id": "ec3ca6bceb40120450fe9c0da2b8570f29e34127c79264a2cffc00bec9a13e8c",
+    "_bind": "team-2026"
+  },
+  {
+    "name": "SOUDAL QUICK-STEP",
+    "nameShort": "SOUDAL QUICK-STEP",
+    "code": "SOQ",
+    "_id": "f0bad40b5bbc6930d26d54f0d1792637610055cdc79ebd325e6375d0c5750ee4",
+    "_bind": "team-2026"
+  },
+  {
+    "nameShort": "NSN CYCLING TEAM",
+    "code": "NSN",
+    "name": "NSN CYCLING TEAM",
+    "_id": "ff825ebf33de122aa5c5b06f8daffb4900c7182eab920ed309c11333863ae3d9",
+    "_bind": "team-2026"
+  }
+]

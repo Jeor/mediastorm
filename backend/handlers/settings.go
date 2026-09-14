@@ -923,6 +923,11 @@ func (h *SettingsHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// An explicit navigation choice is not a legacy list requiring migration.
+	if len(s.Display.NavigationTabVisibility) > 0 {
+		s.UI.NavigationTabVisibilityIncludesSports = true
+	}
+
 	// Restore real credentials when the incoming value is the redaction placeholder.
 	// This prevents non-master users from accidentally overwriting secrets when they
 	// save settings that were returned with redacted values.

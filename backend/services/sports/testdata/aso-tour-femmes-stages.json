@@ -1,0 +1,227 @@
+[
+  {
+    "isCancelled": false,
+    "startTime": "14:00:00",
+    "date": "2026-08-05T00:00:00+02:00",
+    "lengthDisplay": 140,
+    "id": 38,
+    "length": 140,
+    "stage": 5,
+    "endTime": "17:53:00",
+    "timezone": "Europe/Paris",
+    "type": "VAL",
+    "_bind": "stage-2026",
+    "_id": "9cb0e14b2fcb3c956d6a1a5b91d533dd453de598d3ee5d32b02b5c23bdbdc319",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "code": "macon",
+      "id": 62,
+      "label": "Mâcon"
+    },
+    "arrivalCity": {
+      "code": "belleville-en-beaujolais",
+      "id": 63,
+      "label": "Belleville-en-Beaujolais"
+    }
+  },
+  {
+    "timezone": "Europe/Paris",
+    "isCancelled": false,
+    "date": "2026-08-02T00:00:00+02:00",
+    "stage": 2,
+    "lengthDisplay": 148,
+    "startTime": "14:30:00",
+    "type": "PLN",
+    "endTime": "17:56:00",
+    "id": 35,
+    "length": 147.9,
+    "_bind": "stage-2026",
+    "_id": "a8010599fa8571bc96f1012f8187e6f87799d790428c9ae48012e4f32be395d1",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "id": 57,
+      "label": "Aigle",
+      "code": "aigle"
+    },
+    "arrivalCity": {
+      "label": "Genève",
+      "code": "geneve",
+      "id": 58
+    }
+  },
+  {
+    "id": 37,
+    "startTime": "14:34:00",
+    "isCancelled": false,
+    "date": "2026-08-04T00:00:00+02:00",
+    "endTime": "17:55:00",
+    "timezone": "Europe/Paris",
+    "type": "PAS",
+    "length": 21,
+    "lengthDisplay": 21,
+    "stage": 4,
+    "_bind": "stage-2026",
+    "_id": "4d7829bfc602d3a2ac6ea0c79a2c56bb10c2d908faf2c58846841bf1a7e8d6ac",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "label": "Gevrey-Chambertin",
+      "id": 60,
+      "code": "gevrey-chambertin"
+    },
+    "arrivalCity": {
+      "code": "dijon",
+      "id": 61,
+      "label": "Dijon"
+    }
+  },
+  {
+    "endTime": "17:33:00",
+    "date": "2026-08-07T00:00:00+02:00",
+    "isCancelled": false,
+    "type": "HMG",
+    "startTime": "13:15:00",
+    "length": 146.8,
+    "lengthDisplay": 147,
+    "timezone": "Europe/Paris",
+    "id": 40,
+    "stage": 7,
+    "_bind": "stage-2026",
+    "_id": "446a15d9aafa48913de92db75168a4a3725298c251d5b54ad4c483f0b82ba815",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "id": 66,
+      "label": "La Voulte-sur-Rhône",
+      "code": "la-voulte-sur-rhone"
+    },
+    "arrivalCity": {
+      "label": "Mont Ventoux",
+      "code": "mont-ventoux",
+      "id": 67
+    }
+  },
+  {
+    "endTime": "19:00:00",
+    "timezone": "Europe/Paris",
+    "length": 99.2,
+    "date": "2026-08-09T00:00:00+02:00",
+    "stage": 9,
+    "isCancelled": false,
+    "id": 42,
+    "lengthDisplay": 99.5,
+    "startTime": "16:10:00",
+    "type": "HMG",
+    "_bind": "stage-2026",
+    "_id": "536bdf6a54b58583f481b9e0ddc914aab2b9ca5b322f414dc588b1a42d3c2fce",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "code": "nice",
+      "id": 69,
+      "label": "Nice"
+    },
+    "arrivalCity": {
+      "label": "Nice",
+      "id": 69,
+      "code": "nice"
+    }
+  },
+  {
+    "lengthDisplay": 138,
+    "stage": 1,
+    "type": "PLN",
+    "length": 138,
+    "startTime": "14:40:00",
+    "timezone": "Europe/Paris",
+    "date": "2026-08-01T00:00:00+02:00",
+    "isCancelled": false,
+    "endTime": "17:53:00",
+    "id": 34,
+    "_bind": "stage-2026",
+    "_id": "6699a16e5fd45f356aa8a7d4a8aaaebc6812d6765cb35d2cfc563a31fb5ad9d8",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "id": 56,
+      "label": "Lausanne",
+      "code": "lausanne"
+    },
+    "arrivalCity": {
+      "id": 56,
+      "label": "Lausanne",
+      "code": "lausanne"
+    }
+  },
+  {
+    "endTime": "17:54:00",
+    "length": 171.9,
+    "isCancelled": false,
+    "date": "2026-08-08T00:00:00+02:00",
+    "lengthDisplay": 171.9,
+    "stage": 8,
+    "id": 41,
+    "timezone": "Europe/Paris",
+    "startTime": "13:55:00",
+    "type": "PLN",
+    "_bind": "stage-2026",
+    "_id": "f0252f9554ee6370148873c4e0d537b664e38ef1a447f25ddc6ac2f8311a611e",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "label": "Sisteron",
+      "code": "sisteron",
+      "id": 68
+    },
+    "arrivalCity": {
+      "code": "nice",
+      "label": "Nice",
+      "id": 69
+    }
+  },
+  {
+    "stage": 6,
+    "lengthDisplay": 153.5,
+    "type": "VAL",
+    "id": 39,
+    "startTime": "13:45:00",
+    "endTime": "17:54:00",
+    "date": "2026-08-06T00:00:00+02:00",
+    "length": 153.4,
+    "timezone": "Europe/Paris",
+    "isCancelled": false,
+    "_bind": "stage-2026",
+    "_id": "6399f8e1f97188c12cd6849fe8f1076bcdec95eaaa31c53cc8b8f345ffcb6f93",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "label": "Montbrison",
+      "id": 64,
+      "code": "montbrison"
+    },
+    "arrivalCity": {
+      "label": "Tournon-sur-Rhône",
+      "code": "tournon-sur-rhone",
+      "id": 65
+    }
+  },
+  {
+    "stage": 3,
+    "lengthDisplay": 156.5,
+    "type": "VAL",
+    "isCancelled": false,
+    "length": 156.5,
+    "id": 36,
+    "date": "2026-08-03T00:00:00+02:00",
+    "startTime": "13:45:00",
+    "timezone": "Europe/Paris",
+    "endTime": "17:52:00",
+    "_bind": "stage-2026",
+    "_id": "ba03b76d976e24e42e26ff115e09c2fa170618bf0ec846b0b0102fbee2d86a07",
+    "_updatedAt": 1786959922907,
+    "departureCity": {
+      "id": 58,
+      "code": "geneve",
+      "label": "Genève"
+    },
+    "arrivalCity": {
+      "code": "poligny",
+      "id": 59,
+      "label": "Poligny"
+    }
+  }
+]

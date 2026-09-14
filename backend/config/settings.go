@@ -50,6 +50,56 @@ type Settings struct {
 	Network         NetworkSettings         `json:"network,omitempty"`
 	Ranking         RankingSettings         `json:"ranking,omitempty"`
 	BackupRetention BackupRetentionSettings `json:"backupRetention,omitempty"`
+	Sports          SportsSettings          `json:"sports,omitempty"`
+}
+
+// SportsSettings controls which leagues the ESPN-backed sports scoreboard service polls.
+// Server-wide (not per-user) since the poller fetches once for the whole server on a
+// shared interval - see services/sports.LeagueCatalog for the supported league IDs.
+type SportsSettings struct {
+	// No omitempty on these: Normalize() guarantees they're always non-nil ([]/{} at
+	// minimum), but Go's encoding/json omits a zero-length slice/map as "empty" regardless
+	// of nil-ness when omitempty is set - the common case (no favorites/overrides added
+	// yet) would silently drop the field, leaving frontend code like
+	// sportsSettings.favoriteTeamIds.includes(...) crashing on undefined instead of
+	// working against an empty array.
+	EnabledLeagues        []string                     `json:"enabledLeagues"`
+	FavoriteTeamIDs       []string                     `json:"favoriteTeamIds"`
+	DefaultSourceIDs      []string                     `json:"defaultSourceIds"`
+	DefaultCategoryIDs    []string                     `json:"defaultCategoryIds"`
+	LeagueSearchOverrides map[string]SportsSearchScope `json:"leagueSearchOverrides"`
+}
+
+// SportsSearchScope limits automatic sports stream discovery for one league. Empty lists
+// mean every enabled Live TV source/category, matching the global defaults.
+type SportsSearchScope struct {
+	SourceIDs   []string `json:"sourceIds,omitempty"`
+	CategoryIDs []string `json:"categoryIds,omitempty"`
+}
+
+// defaultEnabledLeagueIDs is duplicated (not imported) from services/sports.defaultLeagueIDs
+// to avoid a config -> services/sports import cycle; keep the two lists in sync.
+var defaultEnabledLeagueIDs = []string{"nfl", "nba", "mlb", "nhl", "ufc"}
+
+// Normalize backfills nil fields so every caller of Settings.Sports (not just the sports
+// HTTP handlers, which previously did this ad hoc inline) sees a consistent, non-nil shape -
+// matching the pattern every other settings struct in this file follows.
+func (s *SportsSettings) Normalize() {
+	if len(s.EnabledLeagues) == 0 {
+		s.EnabledLeagues = append([]string(nil), defaultEnabledLeagueIDs...)
+	}
+	if s.FavoriteTeamIDs == nil {
+		s.FavoriteTeamIDs = []string{}
+	}
+	if s.DefaultSourceIDs == nil {
+		s.DefaultSourceIDs = []string{}
+	}
+	if s.DefaultCategoryIDs == nil {
+		s.DefaultCategoryIDs = []string{}
+	}
+	if s.LeagueSearchOverrides == nil {
+		s.LeagueSearchOverrides = map[string]SportsSearchScope{}
+	}
 }
 
 type ServerSettings struct {
@@ -1343,6 +1393,7 @@ type UISettings struct {
 	LoadingAnimationEnabled                   bool `json:"loadingAnimationEnabled"`
 	NavigationTabVisibilityIncludesSystemTabs bool `json:"navigationTabVisibilityIncludesSystemTabs,omitempty"`
 	NavigationTabVisibilityIncludesWatchlist  bool `json:"navigationTabVisibilityIncludesWatchlist,omitempty"`
+	NavigationTabVisibilityIncludesSports     bool `json:"navigationTabVisibilityIncludesSports,omitempty"`
 	// UserEditableSettings is the server-owner allowlist of global setting paths
 	// that may be presented in authenticated client settings screens.
 	UserEditableSettings        []string `json:"userEditableSettings,omitempty"`
@@ -1360,7 +1411,7 @@ type DisplaySettings struct {
 	// Valid values: "watchProgress", "releaseStatus", "watchState", "unwatchedCount"
 	BadgeVisibility []string `json:"badgeVisibility"`
 	// NavigationTabVisibility controls which app navigation tabs are shown.
-	// Valid values: "home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"
+	// Valid values: "home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"
 	NavigationTabVisibility []string `json:"navigationTabVisibility,omitempty"`
 	// WatchStateIconStyle controls the color of watch state icons.
 	// "colored" (default) = green/yellow circles, "white" = all white circles
@@ -1918,6 +1969,7 @@ func DefaultSettings() Settings {
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
 		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: false, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "artwork", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
 		Live:      LiveSettings{Mode: "m3u", PlaylistURL: "", MaxStreams: 0, PlaylistCacheTTLHours: 24, EPG: EPGSettings{RefreshIntervalHours: 12, RetentionDays: 7}},
+		Sports:    SportsSettings{EnabledLeagues: []string{"nfl", "nba", "mlb", "nhl", "ufc"}},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
 			ExploreCardPosition:          ExploreCardPositionFront,
@@ -1942,10 +1994,11 @@ func DefaultSettings() Settings {
 			LoadingAnimationEnabled:                   true,
 			NavigationTabVisibilityIncludesSystemTabs: true,
 			NavigationTabVisibilityIncludesWatchlist:  true,
+			NavigationTabVisibilityIncludesSports:     true,
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                        []string{"watchProgress"},
-			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"},
+			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"},
 			WatchStateIconStyle:                    "colored",
 			IncludeUnreleasedMoviesInLists:         true,
 			IncludeUnreleasedShowsInLists:          true,
@@ -2182,6 +2235,7 @@ func (m *Manager) Load() (Settings, error) {
 	migrateLiveSourcesRaw(raw)
 	migrateNavigationTabVisibilitySystemTabs(raw)
 	migrateNavigationTabVisibilityWatchlist(raw)
+	migrateNavigationTabVisibilitySports(raw)
 
 	if metadataRaw, ok := raw["metadata"].(map[string]interface{}); ok {
 		var migratedPrimary string
@@ -2478,6 +2532,7 @@ func (m *Manager) Load() (Settings, error) {
 	s.Metadata.NormalizeLanguages()
 	s.Playback.NormalizeAllowedTrackLanguages()
 	s.Playback.NormalizePreroll()
+	s.Sports.Normalize()
 
 	if !s.Transmux.Enabled && strings.TrimSpace(s.Transmux.FFmpegPath) == "" && strings.TrimSpace(s.Transmux.FFprobePath) == "" {
 		s.Transmux = TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls"}
@@ -2721,7 +2776,7 @@ func (m *Manager) Load() (Settings, error) {
 		s.Display.BadgeVisibility = []string{"watchProgress"}
 	}
 	if len(s.Display.NavigationTabVisibility) == 0 {
-		s.Display.NavigationTabVisibility = []string{"home", "watchlist", "search", "lists", "live", "profiles", "downloads", "settings", "admin"}
+		s.Display.NavigationTabVisibility = []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"}
 	}
 	if s.Display.WatchStateIconStyle == "" {
 		s.Display.WatchStateIconStyle = "colored"
@@ -2935,6 +2990,35 @@ func migrateNavigationTabVisibilityWatchlist(raw map[string]interface{}) {
 	uiMap["navigationTabVisibilityIncludesWatchlist"] = true
 }
 
+func migrateNavigationTabVisibilitySports(raw map[string]interface{}) {
+	uiMap, ok := raw["ui"].(map[string]interface{})
+	if !ok {
+		uiMap = map[string]interface{}{"loadingAnimationEnabled": true}
+		raw["ui"] = uiMap
+	}
+	if migrated, _ := uiMap["navigationTabVisibilityIncludesSports"].(bool); migrated {
+		return
+	}
+
+	if displayMap, ok := raw["display"].(map[string]interface{}); ok {
+		if tabs, ok := displayMap["navigationTabVisibility"].([]interface{}); ok && len(tabs) > 0 {
+			hasSports := false
+			for _, tab := range tabs {
+				if key, ok := tab.(string); ok && key == "sports" {
+					hasSports = true
+					break
+				}
+			}
+			if !hasSports {
+				tabs = append(tabs, "sports")
+				displayMap["navigationTabVisibility"] = tabs
+			}
+		}
+	}
+
+	uiMap["navigationTabVisibilityIncludesSports"] = true
+}
+
 func liveHasLegacySourceConfig(liveRaw map[string]interface{}) bool {
 	for _, key := range []string{
 		"playlistUrl",
@@ -2986,6 +3070,7 @@ func (m *Manager) Save(s Settings) error {
 	s.Metadata.NormalizeLanguages()
 	s.Playback.NormalizeAllowedTrackLanguages()
 	s.Playback.NormalizePreroll()
+	s.Sports.Normalize()
 	if err := s.Server.NormalizeAllowedPrivateMediaOrigins(); err != nil {
 		return err
 	}

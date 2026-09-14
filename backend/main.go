@@ -65,6 +65,7 @@ import (
 	"novastream/services/scrob"
 	"novastream/services/sessions"
 	"novastream/services/simkl"
+	"novastream/services/sports"
 	"novastream/services/streaming"
 	"novastream/services/trakt"
 	"novastream/services/usenet"
@@ -912,6 +913,49 @@ func main() {
 		}
 	}
 
+	// Create Sports service and handlers (ESPN-backed live scores + game-to-stream
+	// matching, plus the "Manage Team Channels" links CRUD).
+	sportsService := sports.NewService(settings.Cache.Directory)
+	sportsHandler := handlers.NewSportsHandler(sportsService, liveHandler, epgService)
+	sportsHandler.SetConfigManager(cfgManager)
+	sportsLinksHandler := handlers.NewSportsLinksHandler(store.SportsLinks(), liveHandler)
+	sportsLinksHandler.SetConfigManager(cfgManager)
+	go func() {
+		refresh := func() {
+			// Re-read enabled leagues from live config each tick (not just at startup) so an
+			// admin change to Settings.Sports.EnabledLeagues takes effect on the next poll
+			// without a server restart.
+			if liveSettings, err := cfgManager.Load(); err == nil {
+				sportsService.SetEnabledLeagueIDs(liveSettings.Sports.EnabledLeagues)
+			}
+			refreshCtx, cancelRefresh := context.WithTimeout(context.Background(), 15*time.Second)
+			if err := sportsService.Refresh(refreshCtx); err != nil {
+				log.Printf("[sports] refresh error: %v", err)
+			}
+			cancelRefresh()
+
+			syncGamesCtx, cancelSyncGames := context.WithTimeout(context.Background(), 10*time.Second)
+			sportsLinksHandler.SyncTeamsFromGames(syncGamesCtx, sportsService.GetScoreboard(""))
+			cancelSyncGames()
+
+			catalogCtx, cancelCatalog := context.WithTimeout(context.Background(), 30*time.Second)
+			catalog, err := sportsService.EnsureTeamCatalog(catalogCtx)
+			cancelCatalog()
+			if err != nil {
+				log.Printf("[sports] team catalog refresh error: %v", err)
+			}
+			syncCatalogCtx, cancelSyncCatalog := context.WithTimeout(context.Background(), 10*time.Second)
+			sportsLinksHandler.SyncTeams(syncCatalogCtx, catalog)
+			cancelSyncCatalog()
+		}
+		refresh()
+		ticker := time.NewTicker(90 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			refresh()
+		}
+	}()
+
 	// Create subtitles handler for external subtitle search
 	subtitlesHandler := handlers.NewSubtitlesHandlerWithConfig(cfgManager)
 
@@ -993,6 +1037,8 @@ func main() {
 		recordingsHandler,
 		localMediaHandler,
 		epgHandler,
+		sportsHandler,
+		sportsLinksHandler,
 		userSettingsHandler,
 		subtitlesHandler,
 		clientsHandler,
@@ -1668,6 +1714,9 @@ func main() {
 	r.HandleFunc("/account/api/profiles/mdblist", accountUIHandler.RequireAuth(accountUIHandler.SetProfileMdblist)).Methods(http.MethodPut)
 	r.HandleFunc("/account/api/profiles/mdblist", accountUIHandler.RequireAuth(accountUIHandler.ClearProfileMdblist)).Methods(http.MethodDelete)
 	r.HandleFunc("/account/api/password", accountUIHandler.RequireAuth(accountUIHandler.ChangePassword)).Methods(http.MethodPut)
+
+	// Account settings expose the same authenticated Live TV source test as admin settings.
+	r.HandleFunc("/account/api/test/live", adminUIHandler.RequireAuth(apiusage.Track("connections.test.live", "Live TV test", "Provider Tests", adminUIHandler.TestLiveTV))).Methods(http.MethodPost)
 
 	// Protected account routes - User Settings API
 	r.HandleFunc("/account/api/user-settings", adminUIHandler.RequireAuth(adminUIHandler.GetUserSettings)).Methods(http.MethodGet)

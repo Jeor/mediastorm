@@ -124,6 +124,7 @@ func (ds *DataStore) Recordings() RecordingRepository { return &pgRecordingRepo{
 func (ds *DataStore) Notifications() NotificationRepository {
 	return &pgNotificationRepo{pool: ds.pool}
 }
+func (ds *DataStore) SportsLinks() SportsLinksRepository { return &pgSportsLinksRepo{pool: ds.pool} }
 
 // --- Transaction support ---
 

@@ -1,14 +1,45 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"novastream/internal/auth"
 	"novastream/models"
 	"novastream/services/sessions"
 )
+
+func TestMasterOnlySportsMutation(t *testing.T) {
+	called := false
+	handler := masterOnlySportsMutation(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	for _, test := range []struct {
+		name       string
+		isMaster   bool
+		wantStatus int
+		wantCalled bool
+	}{
+		{name: "subaccount denied", wantStatus: http.StatusForbidden},
+		{name: "master allowed", isMaster: true, wantStatus: http.StatusNoContent, wantCalled: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			called = false
+			req := httptest.NewRequest(http.MethodPut, "/api/sports/settings", nil)
+			req = req.WithContext(context.WithValue(req.Context(), auth.ContextKeyIsMaster, test.isMaster))
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, req)
+			if recorder.Code != test.wantStatus || called != test.wantCalled {
+				t.Fatalf("status=%d called=%v, want status=%d called=%v", recorder.Code, called, test.wantStatus, test.wantCalled)
+			}
+		})
+	}
+}
 
 func TestIsStreamScopedRequestAllowed(t *testing.T) {
 	session := models.Session{Scope: models.SessionScopeStream, ScopeResource: "/movie.mkv"}

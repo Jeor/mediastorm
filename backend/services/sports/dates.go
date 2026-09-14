@@ -146,10 +146,10 @@ func (s *Service) GetDatedScoreboard(ctx context.Context, date, leagueID string)
 }
 
 func supportsHubLeague(id string) bool {
-	switch id {
-	case "nfl", "nba", "mlb", "nhl", "college-football", "mens-college-basketball", "womens-college-basketball":
-		return true
-	default:
-		return strings.HasPrefix(id, "soccer-")
+	for _, league := range LeagueCatalog {
+		if league.ID == id {
+			return league.EventKind == "matchup" || league.EventKind == "fight-card"
+		}
 	}
+	return false
 }

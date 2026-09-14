@@ -838,14 +838,14 @@ type CalendarSourceSettings struct {
 type ExploreCardPosition string
 
 const (
-	ExploreCardPositionFront ExploreCardPosition = "front" // Explore card at the beginning of the shelf (default)
+	ExploreCardPositionFront ExploreCardPosition = "front" // Explore card at the beginning of the shelf
 	ExploreCardPositionEnd   ExploreCardPosition = "end"   // Explore card at the end of the shelf
 )
 
 // HomeShelvesSettings controls which shelves appear on the home screen and their order.
 type HomeShelvesSettings struct {
 	Shelves                     []ShelfConfig       `json:"shelves"`
-	ExploreCardPosition         ExploreCardPosition `json:"exploreCardPosition,omitempty"`         // "front" (default) or "end"
+	ExploreCardPosition         ExploreCardPosition `json:"exploreCardPosition,omitempty"`         // "front" or "end" (default)
 	ItemCap                     int                 `json:"itemCap,omitempty"`                     // Max items shown per home shelf before Explore card (default 20)
 	ExcludeUpcomingFromContinue bool                `json:"excludeUpcomingFromContinue,omitempty"` // Move unreleased next-up episodes out of Continue Watching
 	// PopularOnServerWindowDays is the lookback window in days for the
@@ -1972,7 +1972,7 @@ func DefaultSettings() Settings {
 		Sports:    SportsSettings{EnabledLeagues: []string{"nfl", "nba", "mlb", "nhl", "ufc"}},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
-			ExploreCardPosition:          ExploreCardPositionFront,
+			ExploreCardPosition:          ExploreCardPositionEnd,
 			ItemCap:                      20,
 			PopularOnServerWindowDays:    90,
 			RecentlyWatchedCapPerProfile: 3,
@@ -2717,7 +2717,7 @@ func (m *Manager) Load() (Settings, error) {
 		}
 	}
 
-	// Backfill ExploreCardPosition if empty (default to front)
+	// Preserve the legacy default for existing settings files that predate this field.
 	if s.HomeShelves.ExploreCardPosition == "" {
 		s.HomeShelves.ExploreCardPosition = ExploreCardPositionFront
 	}

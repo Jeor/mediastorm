@@ -66,6 +66,13 @@ func TestDefaultUserSettingsEnablesApplicationAnimations(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsPlacesExploreCardAtEnd(t *testing.T) {
+	settings := DefaultUserSettings()
+	if settings.HomeShelves.ExploreCardPosition != "end" {
+		t.Fatalf("ExploreCardPosition = %q, want end", settings.HomeShelves.ExploreCardPosition)
+	}
+}
+
 func TestDefaultUserSettingsShowsStreamSourceInfo(t *testing.T) {
 	settings := DefaultUserSettings()
 	if settings.Display.ShowStreamSourceInfo == nil || !*settings.Display.ShowStreamSourceInfo {

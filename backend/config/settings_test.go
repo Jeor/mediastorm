@@ -221,11 +221,30 @@ func TestDefaultSettingsUsesReviewedPlaybackAndDisplayPolicy(t *testing.T) {
 	}
 }
 
-func TestDefaultSettingsMatchesLoaderBackfills(t *testing.T) {
+func TestDefaultSettingsPlacesExploreCardAtEnd(t *testing.T) {
 	settings := DefaultSettings()
-	if settings.HomeShelves.ExploreCardPosition != ExploreCardPositionFront {
-		t.Fatalf("ExploreCardPosition = %q, want %q", settings.HomeShelves.ExploreCardPosition, ExploreCardPositionFront)
+	if settings.HomeShelves.ExploreCardPosition != ExploreCardPositionEnd {
+		t.Fatalf("ExploreCardPosition = %q, want %q", settings.HomeShelves.ExploreCardPosition, ExploreCardPositionEnd)
 	}
+	if settings.Live.EPG.RefreshIntervalHours != 12 || settings.Live.EPG.RetentionDays != 7 {
+		t.Fatalf("EPG defaults = refresh:%d retention:%d, want 12/7", settings.Live.EPG.RefreshIntervalHours, settings.Live.EPG.RetentionDays)
+	}
+}
+
+func TestLoadPreservesLegacyExploreCardPositionDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"homeShelves":{"shelves":[]}}`), 0o600); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatalf("load settings: %v", err)
+	}
+	if settings.HomeShelves.ExploreCardPosition != ExploreCardPositionFront {
+		t.Fatalf("ExploreCardPosition = %q, want legacy default %q", settings.HomeShelves.ExploreCardPosition, ExploreCardPositionFront)
+	}
+
 	if settings.Live.EPG.RefreshIntervalHours != 12 || settings.Live.EPG.RetentionDays != 7 {
 		t.Fatalf("EPG defaults = refresh:%d retention:%d, want 12/7", settings.Live.EPG.RefreshIntervalHours, settings.Live.EPG.RetentionDays)
 	}

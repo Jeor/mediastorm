@@ -581,7 +581,7 @@ type StreamingServiceListLink struct {
 // HomeShelvesSettings controls which shelves appear on the home screen and their order.
 type HomeShelvesSettings struct {
 	Shelves                         []ShelfConfig `json:"shelves"`
-	ExploreCardPosition             string        `json:"exploreCardPosition,omitempty"`             // "front" (default) or "end"
+	ExploreCardPosition             string        `json:"exploreCardPosition,omitempty"`             // "front" or "end" (default)
 	ItemCap                         int           `json:"itemCap,omitempty"`                         // Max items shown per home shelf before Explore card (default 20)
 	ExcludeUpcomingFromContinue     *bool         `json:"excludeUpcomingFromContinue,omitempty"`     // Move unreleased next-up episodes out of Continue Watching
 	MobileTopShelfMode              string        `json:"mobileTopShelfMode,omitempty"`              // "default", "disabled", or "shelf"
@@ -1122,7 +1122,7 @@ func DefaultUserSettings() UserSettings {
 		},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                         DefaultHomeShelfConfigs(),
-			ExploreCardPosition:             "front",
+			ExploreCardPosition:             "end",
 			ItemCap:                         20,
 			ExcludeUpcomingFromContinue:     BoolPtr(false),
 			DisableTvLandscapeCardExpansion: BoolPtr(false),

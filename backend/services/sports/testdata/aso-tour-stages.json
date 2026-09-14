@@ -1,0 +1,527 @@
+[
+  {
+    "type": "VAL",
+    "isCancelled": false,
+    "endTime": "17:34:00",
+    "length": 181.9,
+    "stage": 4,
+    "id": 25321,
+    "timezone": "Europe/Paris",
+    "date": "2026-07-07T00:00:00+02:00",
+    "lengthDisplay": 182,
+    "startTime": "13:25:00",
+    "_bind": "stage-2026",
+    "_id": "0af4f9e2b7d39579b7e04c2d82e37dcd8ead6eaf21ff7295fb2331eb75dbc69d",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29595,
+      "code": "carcassonne",
+      "label": "Carcassonne"
+    },
+    "arrivalCity": {
+      "label": "Foix",
+      "code": "foix",
+      "id": 29934
+    }
+  },
+  {
+    "lengthDisplay": 19.6,
+    "type": "EQU",
+    "endTime": "19:16:00",
+    "id": 25318,
+    "timezone": "Europe/Madrid",
+    "startTime": "17:05:00",
+    "stage": 1,
+    "length": 19.6,
+    "isCancelled": false,
+    "date": "2026-07-04T00:00:00+02:00",
+    "_bind": "stage-2026",
+    "_id": "4b72e42270585a2c0496546e16ec20938ba2f669490dc5a77b69dedd75bddfff",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29639,
+      "code": "barcelone",
+      "label": "Barcelone"
+    },
+    "arrivalCity": {
+      "id": 29639,
+      "code": "barcelone",
+      "label": "Barcelone"
+    }
+  },
+  {
+    "startTime": "11:30:00",
+    "date": "2026-07-25T00:00:00+02:00",
+    "isCancelled": false,
+    "endTime": "16:29:00",
+    "timezone": "Europe/Paris",
+    "length": 170.9,
+    "type": "HMG",
+    "lengthDisplay": 171,
+    "stage": 20,
+    "id": 25340,
+    "_bind": "stage-2026",
+    "_id": "6fd61462168b294550703b0e4f2906d0c7d41a3be64930e8f64b14880f05f80c",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29619,
+      "code": "bourg-d-oisans",
+      "label": "Le Bourg d'Oisans"
+    },
+    "arrivalCity": {
+      "label": "Alpe d'Huez",
+      "id": 30276,
+      "code": "alpe-d-huez"
+    }
+  },
+  {
+    "endTime": "17:31:00",
+    "lengthDisplay": 180.5,
+    "type": "PLN",
+    "timezone": "Europe/Paris",
+    "startTime": "13:25:00",
+    "stage": 8,
+    "date": "2026-07-11T00:00:00+02:00",
+    "isCancelled": false,
+    "length": 180.4,
+    "id": 25326,
+    "_bind": "stage-2026",
+    "_id": "81c52c6ce94085da96d1f11c691ad1ffe6938feacb1024ed762474ab77f83518",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29656,
+      "label": "Périgueux",
+      "code": "perigueux"
+    },
+    "arrivalCity": {
+      "code": "bergerac",
+      "label": "Bergerac",
+      "id": 29655
+    }
+  },
+  {
+    "type": "VAL",
+    "isCancelled": false,
+    "length": 154.6,
+    "stage": 9,
+    "id": 25327,
+    "startTime": "14:00:00",
+    "timezone": "Europe/Paris",
+    "endTime": "17:31:00",
+    "date": "2026-07-12T00:00:00+02:00",
+    "lengthDisplay": 155,
+    "_bind": "stage-2026",
+    "_id": "6b325c30b7dd6bea28c24fbd1ed781d99c3af185217b84200d8a75f187000532",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "malemort",
+      "id": 32675,
+      "label": "Malemort"
+    },
+    "arrivalCity": {
+      "code": "ussel",
+      "id": 31642,
+      "label": "Ussel"
+    }
+  },
+  {
+    "date": "2026-07-09T00:00:00+02:00",
+    "stage": 6,
+    "length": 186.2,
+    "timezone": "Europe/Paris",
+    "startTime": "12:40:00",
+    "id": 25324,
+    "isCancelled": false,
+    "lengthDisplay": 186.5,
+    "type": "HMG",
+    "endTime": "17:46:00",
+    "_bind": "stage-2026",
+    "_id": "687aef2a8ed1cf4caec596072194c192f4bb00eac53f321f9c781591965251a4",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "label": "Pau",
+      "id": 29559,
+      "code": "pau"
+    },
+    "arrivalCity": {
+      "code": "gavarnie-gedre",
+      "label": "Gavarnie-Gèdre",
+      "id": 32673
+    }
+  },
+  {
+    "length": 185.2,
+    "lengthDisplay": 185.5,
+    "type": "HMG",
+    "stage": 18,
+    "endTime": "17:25:00",
+    "startTime": "12:50:00",
+    "isCancelled": false,
+    "timezone": "Europe/Paris",
+    "date": "2026-07-23T00:00:00+02:00",
+    "id": 25338,
+    "_bind": "stage-2026",
+    "_id": "61a088208454d11b5835d7365674eefeb2e52d650542e11100b87883d32391bd",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29344,
+      "label": "Voiron",
+      "code": "voiron"
+    },
+    "arrivalCity": {
+      "label": "Orcières-Merlette",
+      "code": "orcieres-merlette",
+      "id": 29705
+    }
+  },
+  {
+    "type": "HMG",
+    "timezone": "Europe/Paris",
+    "isCancelled": false,
+    "lengthDisplay": 167,
+    "date": "2026-07-14T00:00:00+02:00",
+    "startTime": "13:15:00",
+    "stage": 10,
+    "id": 25329,
+    "length": 166.6,
+    "endTime": "17:14:00",
+    "_bind": "stage-2026",
+    "_id": "480f5ecb8df79be6e23c3743382c1c279354632096f4a1ff7109eb33a9e744dd",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "aurillac",
+      "id": 29648,
+      "label": "Aurillac"
+    },
+    "arrivalCity": {
+      "id": 30485,
+      "label": "Le Lioran",
+      "code": "le-lioran"
+    }
+  },
+  {
+    "id": 25341,
+    "type": "PLN",
+    "length": 88.7,
+    "endTime": "19:46:00",
+    "stage": 21,
+    "startTime": "17:50:00",
+    "date": "2026-07-26T00:00:00+02:00",
+    "isCancelled": false,
+    "lengthDisplay": 89,
+    "timezone": "Europe/Paris",
+    "_bind": "stage-2026",
+    "_id": "ddf08221d1fde5e7101221ab5790d6e644b31d12b138713e507caf596d948ccf",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 32677,
+      "code": "thoiry",
+      "label": "Thoiry"
+    },
+    "arrivalCity": {
+      "label": "Paris Champs-Élysées",
+      "code": "paris-champs-elysees",
+      "id": 30113
+    }
+  },
+  {
+    "timezone": "Europe/Paris",
+    "endTime": "17:39:00",
+    "lengthDisplay": 179.5,
+    "id": 25331,
+    "length": 179.1,
+    "isCancelled": false,
+    "date": "2026-07-16T00:00:00+02:00",
+    "startTime": "13:40:00",
+    "type": "PLN",
+    "stage": 12,
+    "_bind": "stage-2026",
+    "_id": "73b2be3e6077faec9ed7055eef368048f6a4bed18b1dbd0e37f0844c7a21e852",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 32676,
+      "code": "circuit-nevers-magny-cours",
+      "label": "Circuit Nevers Magny-Cours"
+    },
+    "arrivalCity": {
+      "id": 29653,
+      "label": "Chalon-sur-Saône",
+      "code": "chalon-sur-saone"
+    }
+  },
+  {
+    "timezone": "Europe/Paris",
+    "isCancelled": false,
+    "endTime": "17:59:00",
+    "lengthDisplay": 206,
+    "type": "VAL",
+    "startTime": "13:20:00",
+    "stage": 13,
+    "date": "2026-07-17T00:00:00+02:00",
+    "id": 25332,
+    "length": 205.8,
+    "_bind": "stage-2026",
+    "_id": "c23a6e0e20c83dd78490a4c362a76a821f8a15b2640f10a5e8cb4718cc3ebb21",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "label": "Dole",
+      "id": 29591,
+      "code": "dole"
+    },
+    "arrivalCity": {
+      "code": "belfort",
+      "id": 29535,
+      "label": "Belfort"
+    }
+  },
+  {
+    "startTime": "14:15:00",
+    "lengthDisplay": 128,
+    "type": "HMG",
+    "id": 25339,
+    "length": 127.9,
+    "stage": 19,
+    "isCancelled": false,
+    "endTime": "17:34:00",
+    "date": "2026-07-24T00:00:00+02:00",
+    "timezone": "Europe/Paris",
+    "_bind": "stage-2026",
+    "_id": "f645bea74ffb6582aef8d9c884488fa8ccf6fae238107138735516299a39b77d",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29561,
+      "label": "Gap",
+      "code": "gap"
+    },
+    "arrivalCity": {
+      "label": "Alpe d'Huez",
+      "code": "alpe-d-huez",
+      "id": 30276
+    }
+  },
+  {
+    "id": 25336,
+    "lengthDisplay": 26.1,
+    "isCancelled": false,
+    "date": "2026-07-21T00:00:00+02:00",
+    "endTime": "17:50:00",
+    "length": 26.1,
+    "startTime": "13:00:00",
+    "stage": 16,
+    "timezone": "Europe/Paris",
+    "type": "PAS",
+    "_bind": "stage-2026",
+    "_id": "873524f689a83bf204502034a2093e0dc0700615dad69b457b6971f23a478929",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 29335,
+      "code": "evian-les-bains",
+      "label": "Évian-les-Bains"
+    },
+    "arrivalCity": {
+      "label": "Thonon-les-Bains",
+      "id": 32216,
+      "code": "thonon-les-bains"
+    }
+  },
+  {
+    "timezone": "Europe/Paris",
+    "stage": 7,
+    "endTime": "17:24:00",
+    "date": "2026-07-10T00:00:00+02:00",
+    "id": 25325,
+    "lengthDisplay": 175.5,
+    "isCancelled": false,
+    "length": 175.1,
+    "type": "PLN",
+    "startTime": "13:25:00",
+    "_bind": "stage-2026",
+    "_id": "dfa6157c0a3ed5562706a2851792616752762b77b16c8337a822ec1827ba4a0b",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 32674,
+      "code": "hagetmau",
+      "label": "Hagetmau"
+    },
+    "arrivalCity": {
+      "label": "Bordeaux",
+      "id": 29522,
+      "code": "bordeaux"
+    }
+  },
+  {
+    "type": "PLN",
+    "endTime": "17:40:00",
+    "isCancelled": false,
+    "timezone": "Europe/Paris",
+    "id": 25330,
+    "date": "2026-07-15T00:00:00+02:00",
+    "lengthDisplay": 161.5,
+    "startTime": "14:05:00",
+    "length": 161.3,
+    "stage": 11,
+    "_bind": "stage-2026",
+    "_id": "f84e104d97468ba337478a4d0df0cb9a10211d61c5257c46ddafefc03285f672",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "vichy",
+      "id": 29426,
+      "label": "Vichy"
+    },
+    "arrivalCity": {
+      "code": "nevers",
+      "id": 29420,
+      "label": "Nevers"
+    }
+  },
+  {
+    "timezone": "Europe/Paris",
+    "endTime": "17:38:00",
+    "lengthDisplay": 155.5,
+    "type": "HMG",
+    "isCancelled": false,
+    "stage": 14,
+    "date": "2026-07-18T00:00:00+02:00",
+    "length": 155.3,
+    "startTime": "13:30:00",
+    "id": 25333,
+    "_bind": "stage-2026",
+    "_id": "8087e0289dce432fecf8e6710b9f0ee5e33378d4480ca3001b0237c990d4ab31",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "mulhouse",
+      "label": "Mulhouse",
+      "id": 29551
+    },
+    "arrivalCity": {
+      "id": 32645,
+      "code": "le-markstein-fellering",
+      "label": "Le Markstein Fellering"
+    }
+  },
+  {
+    "type": "PLN",
+    "length": 158.3,
+    "isCancelled": false,
+    "stage": 5,
+    "id": 25322,
+    "startTime": "14:15:00",
+    "timezone": "Europe/Paris",
+    "endTime": "17:46:00",
+    "date": "2026-07-08T00:00:00+02:00",
+    "lengthDisplay": 158.5,
+    "_bind": "stage-2026",
+    "_id": "185e4136886ae3f1f9ccdc007703aa9ed152e2f7551fb0252696910879593739",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "lannemezan",
+      "label": "Lannemezan",
+      "id": 29924
+    },
+    "arrivalCity": {
+      "label": "Pau",
+      "id": 29559,
+      "code": "pau"
+    }
+  },
+  {
+    "length": 195.9,
+    "timezone": "Europe/Paris",
+    "date": "2026-07-06T00:00:00+02:00",
+    "id": 25320,
+    "endTime": "17:08:00",
+    "type": "HMG",
+    "lengthDisplay": 196,
+    "isCancelled": false,
+    "startTime": "12:20:00",
+    "stage": 3,
+    "_bind": "stage-2026",
+    "_id": "ce08c2daf6912c65670729a5acf84d170c77d108f135e85694623b4fdb293c03",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "id": 32671,
+      "label": "Granollers",
+      "code": "granollers"
+    },
+    "arrivalCity": {
+      "code": "les-angles",
+      "label": "Les Angles",
+      "id": 32672
+    }
+  },
+  {
+    "type": "PLN",
+    "timezone": "Europe/Paris",
+    "isCancelled": false,
+    "lengthDisplay": 175,
+    "date": "2026-07-22T00:00:00+02:00",
+    "startTime": "13:35:00",
+    "stage": 17,
+    "id": 25337,
+    "length": 174.7,
+    "endTime": "17:28:00",
+    "_bind": "stage-2026",
+    "_id": "0cd1639487e7086115459614e40423e7b928c28644ba27c13a841786d67f6106",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "label": "Chambery",
+      "id": 29334,
+      "code": "chambery"
+    },
+    "arrivalCity": {
+      "code": "voiron",
+      "id": 29344,
+      "label": "Voiron"
+    }
+  },
+  {
+    "id": 25334,
+    "startTime": "13:20:00",
+    "timezone": "Europe/Paris",
+    "length": 183.9,
+    "stage": 15,
+    "date": "2026-07-19T00:00:00+02:00",
+    "isCancelled": false,
+    "endTime": "17:55:00",
+    "type": "HMG",
+    "lengthDisplay": 184,
+    "_bind": "stage-2026",
+    "_id": "7e9e83501c166a930fe23675c3abfad207c89df1acebba7eea1f0e2825d39385",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "champagnole",
+      "id": 29516,
+      "label": "Champagnole"
+    },
+    "arrivalCity": {
+      "label": "Plateau de Solaison",
+      "code": "plateau-de-solaison",
+      "id": 30304
+    }
+  },
+  {
+    "type": "VAL",
+    "stage": 2,
+    "startTime": "13:55:00",
+    "id": 25319,
+    "endTime": "17:35:00",
+    "timezone": "Europe/Madrid",
+    "isCancelled": false,
+    "date": "2026-07-05T00:00:00+02:00",
+    "length": 168.5,
+    "lengthDisplay": 168.5,
+    "_bind": "stage-2026",
+    "_id": "531305f6b8bb4fa80a3255c2c118edc5301f7e1f9ac580adb1596e42d0266d0e",
+    "_updatedAt": 1786959934390,
+    "departureCity": {
+      "code": "tarragone",
+      "label": "Tarragone",
+      "id": 32670
+    },
+    "arrivalCity": {
+      "label": "Barcelone",
+      "id": 29639,
+      "code": "barcelone"
+    }
+  }
+]

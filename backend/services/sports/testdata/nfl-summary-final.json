@@ -1,0 +1,1079 @@
+{
+  "game": {
+    "id": "401772830",
+    "league": "nfl",
+    "startTime": "2025-09-07T17:00:00Z",
+    "venue": "Mercedes-Benz Stadium",
+    "homeTeam": {
+      "id": "1",
+      "name": "Atlanta Falcons",
+      "abbreviation": "ATL",
+      "score": "20",
+      "logoUrl": "https://a.espncdn.com/i/teamlogos/nfl/500/atl.png"
+    },
+    "awayTeam": {
+      "id": "27",
+      "name": "Tampa Bay Buccaneers",
+      "abbreviation": "TB",
+      "score": "23",
+      "logoUrl": "https://a.espncdn.com/i/teamlogos/nfl/500/tb.png"
+    }
+  },
+  "summary": {
+    "header": {
+      "id": "401772830",
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            },
+            "isTBDFlex": false
+          },
+          "competitors": [
+            {
+              "id": "1",
+              "homeAway": "home",
+              "score": "20",
+              "winner": false,
+              "linescores": [
+                {
+                  "displayValue": "7"
+                },
+                {
+                  "displayValue": "3"
+                },
+                {
+                  "displayValue": "3"
+                },
+                {
+                  "displayValue": "7"
+                }
+              ]
+            },
+            {
+              "id": "27",
+              "homeAway": "away",
+              "score": "23",
+              "winner": true,
+              "linescores": [
+                {
+                  "displayValue": "0"
+                },
+                {
+                  "displayValue": "10"
+                },
+                {
+                  "displayValue": "7"
+                },
+                {
+                  "displayValue": "6"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "boxscore": {
+      "teams": [
+        {
+          "team": {
+            "id": "27"
+          },
+          "statistics": [
+            {
+              "name": "firstDowns",
+              "displayValue": "16"
+            },
+            {
+              "name": "firstDownsPassing",
+              "displayValue": "10"
+            },
+            {
+              "name": "firstDownsRushing",
+              "displayValue": "5"
+            },
+            {
+              "name": "firstDownsPenalty",
+              "displayValue": "1"
+            },
+            {
+              "name": "thirdDownEff",
+              "displayValue": "7-14"
+            },
+            {
+              "name": "fourthDownEff",
+              "displayValue": "1-1"
+            },
+            {
+              "name": "totalOffensivePlays",
+              "displayValue": "56"
+            },
+            {
+              "name": "totalYards",
+              "displayValue": "260"
+            },
+            {
+              "name": "yardsPerPlay",
+              "displayValue": "4.6"
+            },
+            {
+              "name": "totalDrives",
+              "displayValue": "10"
+            },
+            {
+              "name": "netPassingYards",
+              "displayValue": "159"
+            },
+            {
+              "name": "completionAttempts",
+              "displayValue": "17/32"
+            },
+            {
+              "name": "yardsPerPass",
+              "displayValue": "4.8"
+            },
+            {
+              "name": "interceptions",
+              "displayValue": "0"
+            },
+            {
+              "name": "sacksYardsLost",
+              "displayValue": "1-8"
+            },
+            {
+              "name": "rushingYards",
+              "displayValue": "101"
+            },
+            {
+              "name": "rushingAttempts",
+              "displayValue": "23"
+            },
+            {
+              "name": "yardsPerRushAttempt",
+              "displayValue": "4.4"
+            },
+            {
+              "name": "redZoneAttempts",
+              "displayValue": "1-1"
+            },
+            {
+              "name": "totalPenaltiesYards",
+              "displayValue": "5-60"
+            },
+            {
+              "name": "turnovers",
+              "displayValue": "0"
+            },
+            {
+              "name": "fumblesLost",
+              "displayValue": "0"
+            },
+            {
+              "name": "interceptions",
+              "displayValue": "0"
+            },
+            {
+              "name": "defensiveTouchdowns",
+              "displayValue": "0"
+            },
+            {
+              "name": "possessionTime",
+              "displayValue": "24:48"
+            }
+          ]
+        },
+        {
+          "team": {
+            "id": "1"
+          },
+          "statistics": [
+            {
+              "name": "firstDowns",
+              "displayValue": "23"
+            },
+            {
+              "name": "firstDownsPassing",
+              "displayValue": "16"
+            },
+            {
+              "name": "firstDownsRushing",
+              "displayValue": "4"
+            },
+            {
+              "name": "firstDownsPenalty",
+              "displayValue": "3"
+            },
+            {
+              "name": "thirdDownEff",
+              "displayValue": "6-15"
+            },
+            {
+              "name": "fourthDownEff",
+              "displayValue": "3-4"
+            },
+            {
+              "name": "totalOffensivePlays",
+              "displayValue": "71"
+            },
+            {
+              "name": "totalYards",
+              "displayValue": "358"
+            },
+            {
+              "name": "yardsPerPlay",
+              "displayValue": "5.0"
+            },
+            {
+              "name": "totalDrives",
+              "displayValue": "10"
+            },
+            {
+              "name": "netPassingYards",
+              "displayValue": "289"
+            },
+            {
+              "name": "completionAttempts",
+              "displayValue": "27/42"
+            },
+            {
+              "name": "yardsPerPass",
+              "displayValue": "6.7"
+            },
+            {
+              "name": "interceptions",
+              "displayValue": "0"
+            },
+            {
+              "name": "sacksYardsLost",
+              "displayValue": "1-9"
+            },
+            {
+              "name": "rushingYards",
+              "displayValue": "69"
+            },
+            {
+              "name": "rushingAttempts",
+              "displayValue": "28"
+            },
+            {
+              "name": "yardsPerRushAttempt",
+              "displayValue": "2.5"
+            },
+            {
+              "name": "redZoneAttempts",
+              "displayValue": "1-2"
+            },
+            {
+              "name": "totalPenaltiesYards",
+              "displayValue": "8-55"
+            },
+            {
+              "name": "turnovers",
+              "displayValue": "0"
+            },
+            {
+              "name": "fumblesLost",
+              "displayValue": "0"
+            },
+            {
+              "name": "interceptions",
+              "displayValue": "0"
+            },
+            {
+              "name": "defensiveTouchdowns",
+              "displayValue": "0"
+            },
+            {
+              "name": "possessionTime",
+              "displayValue": "35:12"
+            }
+          ]
+        }
+      ]
+    },
+    "leaders": [
+      {
+        "team": {
+          "id": "1"
+        },
+        "leaders": [
+          {
+            "name": "passingYards",
+            "displayName": "Passing Yards",
+            "leaders": [
+              {
+                "displayValue": "27/42, 298 YDS, 1 TD",
+                "athlete": {
+                  "displayName": "Michael Penix Jr."
+                }
+              }
+            ]
+          },
+          {
+            "name": "rushingYards",
+            "displayName": "Rushing Yards",
+            "leaders": [
+              {
+                "displayValue": "10 CAR, 24 YDS",
+                "athlete": {
+                  "displayName": "Tyler Allgeier"
+                }
+              }
+            ]
+          },
+          {
+            "name": "receivingYards",
+            "displayName": "Receiving Yards",
+            "leaders": [
+              {
+                "displayValue": "6 REC, 100 YDS, 1 TD",
+                "athlete": {
+                  "displayName": "Bijan Robinson"
+                }
+              }
+            ]
+          },
+          {
+            "name": "sacks",
+            "displayName": "Sacks",
+            "leaders": [
+              {
+                "displayValue": "0.5",
+                "athlete": {
+                  "displayName": "Divine Deablo"
+                }
+              }
+            ]
+          },
+          {
+            "name": "totalTackles",
+            "displayName": "Tackles",
+            "leaders": [
+              {
+                "displayValue": "7",
+                "athlete": {
+                  "displayName": "Jessie Bates III"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "27"
+        },
+        "leaders": [
+          {
+            "name": "passingYards",
+            "displayName": "Passing Yards",
+            "leaders": [
+              {
+                "displayValue": "17/32, 167 YDS, 3 TD",
+                "athlete": {
+                  "displayName": "Baker Mayfield"
+                }
+              }
+            ]
+          },
+          {
+            "name": "rushingYards",
+            "displayName": "Rushing Yards",
+            "leaders": [
+              {
+                "displayValue": "5 CAR, 39 YDS",
+                "athlete": {
+                  "displayName": "Baker Mayfield"
+                }
+              }
+            ]
+          },
+          {
+            "name": "receivingYards",
+            "displayName": "Receiving Yards",
+            "leaders": [
+              {
+                "displayValue": "4 REC, 67 YDS, 2 TD",
+                "athlete": {
+                  "displayName": "Emeka Egbuka"
+                }
+              }
+            ]
+          },
+          {
+            "name": "sacks",
+            "displayName": "Sacks",
+            "leaders": [
+              {
+                "displayValue": "1",
+                "athlete": {
+                  "displayName": "Haason Reddick"
+                }
+              }
+            ]
+          },
+          {
+            "name": "totalTackles",
+            "displayName": "Tackles",
+            "leaders": [
+              {
+                "displayValue": "11",
+                "athlete": {
+                  "displayName": "Tykee Smith"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "drives": {
+      "previous": [
+        {
+          "plays": [
+            {
+              "id": "4017728303451",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short left to Cas.Washington to TB 48 for 7 yards (J.Dean).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "7:30"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303476",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": "(Shotgun) M.Penix pass incomplete short left to R.McCloud (S.Dennis).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "6:40"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303499",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short right to D.London to TB 39 for 9 yards (J.Dean).PENALTY on TB-G.Gaines, Roughing the Passer, 15 yards, enforced at TB 39.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "6:36"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303535",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": "(Shotgun) B.Robinson right tackle to TB 24 for no gain (S.Dennis).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "6:07"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303557",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short right to K.Pitts to TB 11 for 13 yards (L.David).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "5:39"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303582",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": "(Shotgun) B.Robinson left tackle to TB 5 for 6 yards (V.Vea; T.Smith).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "5:01"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303604",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": "(Shotgun) B.Robinson right guard to TB 2 for 3 yards (A.Winfield; T.Smith). TB-Z.McCollum was injured during the play.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "4:17"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303617",
+              "type": {
+                "id": "74",
+                "text": "Official Timeout",
+                "abbreviation": "Off TO"
+              },
+              "text": "Official Timeout at 04:02.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "4:02"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303629",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": "(Shotgun) T.Allgeier left end to TB 3 for -1 yards (S.Dennis, L.David).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "3:42"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303658",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": "(Shotgun) M.Penix scrambles left end to TB 2 for 1 yard (S.Dennis).The Replay Official reviewed the short of the line to gain ruling, and the play was REVERSED.(Shotgun) M.Penix scrambles left end to TB 1 for 2 yards (S.Dennis).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "3:01"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303745",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": "B.Robinson left end to TB 4 for -3 yards (Z.McCollum). ** Injury Update: TB-Z.McCollum has returned to the game.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:43"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303756",
+              "type": {
+                "id": "21",
+                "text": "Timeout",
+                "abbreviation": "TO"
+              },
+              "text": "Timeout #2 by TB at 02:35.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:35"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303767",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": "(Shotgun) M.Penix pass incomplete short left to D.London (J.Dean).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:35"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303800",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": "(Shotgun) M.Penix pass incomplete short left to D.London (J.Dean).Atlanta challenged the incomplete pass ruling, and the play was Upheld. The ruling on the field stands. (Timeout #1.)",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:32"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303812",
+              "type": {
+                "id": "21",
+                "text": "Timeout",
+                "abbreviation": "TO"
+              },
+              "text": "Timeout #2 by ATL at 02:28.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:28"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303823",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": " (Shotgun) M.Penix pass incomplete short left to B.Robinson.\nPenalty on ATL-C.Lindstrom, Offensive Holding, offsetting, enforced at TB 4 - No Play.\nPenalty on TB-J.Dean, Defensive Holding, offsetting.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:28"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303899",
+              "type": {
+                "id": "68",
+                "text": "Rushing Touchdown",
+                "abbreviation": "TD"
+              },
+              "text": "(Shotgun) M.Penix scrambles up the middle for 4 yards, TOUCHDOWN. Y.Koo extra point is GOOD, Center-L.McCullough, Holder-B.Pinion.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:17"
+              },
+              "scoringPlay": true
+            },
+            {
+              "id": "4017728303937",
+              "type": {
+                "id": "53",
+                "text": "Kickoff",
+                "abbreviation": "K"
+              },
+              "text": "Y.Koo kicks 63 yards from ATL 35 to TB 2. S.Tucker to TB 37 for 35 yards (Y.Koo).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:17"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303960",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) B.Mayfield pass short middle to M.Evans to TB 49 for 12 yards (X.Watts).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:10"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303973",
+              "type": {
+                "id": "75",
+                "text": "Two-minute warning",
+                "abbreviation": "2Min Warn"
+              },
+              "text": "Two-Minute Warning",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:00"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728303985",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) B.Mayfield pass short right to B.Irving to 50 for 1 yard (J.Bates).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "2:00"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304017",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": " (No Huddle, Shotgun) B.Mayfield pass incomplete short right to C.Otton [J.Pearce].",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "1:38"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304040",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) B.Mayfield pass short middle to S.Shepard to ATL 40 for 10 yards (K.Elliss).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "1:32"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304065",
+              "type": {
+                "id": "8",
+                "text": "Penalty",
+                "abbreviation": "PEN"
+              },
+              "text": "(No Huddle, Shotgun) B.Mayfield pass incomplete short left.PENALTY on ATL-R.Orhorhoro, Roughing the Passer, 15 yards, enforced at ATL 40 - No Play.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "1:10"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304099",
+              "type": {
+                "id": "67",
+                "text": "Passing Touchdown",
+                "abbreviation": "TD"
+              },
+              "text": "(Shotgun) B.Mayfield pass deep middle to E.Egbuka for 25 yards, TOUCHDOWN. C.McLaughlin extra point is No Good, Hit Left Upright, Center-E.Deckers, Holder-R.Dixon.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:59"
+              },
+              "scoringPlay": true
+            },
+            {
+              "id": "4017728304140",
+              "type": {
+                "id": "53",
+                "text": "Kickoff",
+                "abbreviation": "K"
+              },
+              "text": "C.McLaughlin kicks 63 yards from TB 35 to ATL 2. N.Brooks to ATL 24 for 22 yards (J.Bullock; A.Nelson).PENALTY on ATL-K.Hodge, Illegal Block Above the Waist, 10 yards, enforced at ATL 24.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:59"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304174",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": " (Shotgun) M.Penix scrambles up the middle to ATL 26 for 12 yards (Z.McCollum).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:52"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304185",
+              "type": {
+                "id": "21",
+                "text": "Timeout",
+                "abbreviation": "TO"
+              },
+              "text": "Timeout #2 by ATL at 00:43.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:43"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304196",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short right to R.McCloud pushed ob at 50 for 24 yards (T.Smith).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:43"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304233",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short left to K.Pitts to TB 36 for 14 yards (L.David).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:36"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304246",
+              "type": {
+                "id": "21",
+                "text": "Timeout",
+                "abbreviation": "TO"
+              },
+              "text": "Timeout #3 by ATL at 00:27.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:27"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304258",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short right to B.Robinson pushed ob at TB 30 for 6 yards (S.Dennis).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:27"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304290",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": "(No Huddle) M.Penix spiked the ball to stop the clock.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:10"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304313",
+              "type": {
+                "id": "24",
+                "text": "Pass Reception",
+                "abbreviation": "REC"
+              },
+              "text": "(Shotgun) M.Penix pass short left to K.Pitts ran ob at TB 26 for 4 yards (J.Parrish).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:21"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304348",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": "(Shotgun) M.Penix pass incomplete deep left to Cas.Washington (A.Winfield).",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:16"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304371",
+              "type": {
+                "id": "3",
+                "text": "Pass Incompletion"
+              },
+              "text": "(Shotgun) M.Penix pass incomplete deep left to K.Hodge.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:11"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304383",
+              "type": {
+                "id": "21",
+                "text": "Timeout",
+                "abbreviation": "TO"
+              },
+              "text": "Timeout #3 by TB at 00:06.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:06"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304394",
+              "type": {
+                "id": "60",
+                "text": "Field Goal Missed",
+                "abbreviation": "FGM"
+              },
+              "text": " Y.Koo 44 yard field goal is No Good, Wide Right, Center-L.McCullough, Holder-B.Pinion.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:06"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304422",
+              "type": {
+                "id": "5",
+                "text": "Rush",
+                "abbreviation": "RUSH"
+              },
+              "text": " B.Mayfield kneels to TB 33 for -1 yards.",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:02"
+              },
+              "scoringPlay": false
+            },
+            {
+              "id": "4017728304444",
+              "type": {
+                "id": "66",
+                "text": "End of Game",
+                "abbreviation": "EG"
+              },
+              "text": "END GAME",
+              "period": {
+                "number": 4
+              },
+              "clock": {
+                "displayValue": "0:00"
+              },
+              "scoringPlay": false
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

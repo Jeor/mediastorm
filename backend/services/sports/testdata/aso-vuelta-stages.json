@@ -1,0 +1,527 @@
+[
+  {
+    "timezone": "Europe/Paris",
+    "lengthDisplay": 174,
+    "endTime": "17:30:00",
+    "type": "MMG",
+    "startTime": "13:21:00",
+    "stage": 3,
+    "id": 25099,
+    "isCancelled": true,
+    "date": "2026-08-24T00:00:00+02:00",
+    "length": 174,
+    "_id": "362a3d3d77c8b9f6d2a49f13301476938da7ac66d389c92bb62fc45988f93186",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787594944244,
+    "departureCity": {
+      "id": 32871,
+      "code": "gruissan-aude",
+      "label": "Gruissan - Aude"
+    },
+    "arrivalCity": {
+      "code": "font-romeu",
+      "id": 29688,
+      "label": "Font Romeu"
+    }
+  },
+  {
+    "timezone": "Europe/Madrid",
+    "length": 171,
+    "stage": 8,
+    "lengthDisplay": 171,
+    "type": "PLN",
+    "date": "2026-08-29T00:00:00+02:00",
+    "isCancelled": false,
+    "startTime": "13:42:00",
+    "endTime": "17:30:00",
+    "id": 25104,
+    "_bind": "stage-2026",
+    "_id": "486e05f026f037b939f04d9a209de7ff9b5758a0262e30ffad7471bf4c1e42f3",
+    "_updatedAt": 1786959932230,
+    "departureCity": {
+      "label": "Puçol",
+      "code": "pucol",
+      "id": 32848
+    },
+    "arrivalCity": {
+      "id": 31014,
+      "label": "Xeraco",
+      "code": "xeraco"
+    }
+  },
+  {
+    "isCancelled": false,
+    "length": 192.8,
+    "lengthDisplay": 192.8,
+    "stage": 13,
+    "startTime": "12:41:00",
+    "date": "2026-09-04T00:00:00+02:00",
+    "endTime": "17:30:00",
+    "type": "MMG",
+    "id": 25111,
+    "timezone": "Europe/Madrid",
+    "_id": "b89eb424b960625ae773a2255fb0cd01a8d97920e51427cfb572e761dba63422",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787580433968,
+    "departureCity": {
+      "code": "almunecar",
+      "label": "Almuñécar",
+      "id": 32856
+    },
+    "arrivalCity": {
+      "label": "Loja",
+      "id": 32857,
+      "code": "loja"
+    }
+  },
+  {
+    "length": 185,
+    "endTime": "17:30:00",
+    "startTime": "13:24:00",
+    "date": "2026-09-09T00:00:00+02:00",
+    "type": "PLN",
+    "timezone": "Europe/Madrid",
+    "lengthDisplay": 185,
+    "id": 25116,
+    "isCancelled": false,
+    "stage": 17,
+    "_bind": "stage-2026",
+    "_id": "6656f537dd60fac4d280519087c7c9ce6273a81d92b4d3768af68510b5fe04f3",
+    "_updatedAt": 1786959932230,
+    "departureCity": {
+      "id": 32862,
+      "label": "Dos Hermanas",
+      "code": "dos-hermanas"
+    },
+    "arrivalCity": {
+      "id": 32863,
+      "code": "sevilla-1",
+      "label": "Sevilla"
+    }
+  },
+  {
+    "endTime": "17:30:00",
+    "startTime": "13:18:00",
+    "stage": 16,
+    "id": 25115,
+    "date": "2026-09-08T00:00:00+02:00",
+    "type": "VAL",
+    "lengthDisplay": 181.1,
+    "length": 181.1,
+    "isCancelled": false,
+    "timezone": "Europe/Madrid",
+    "_id": "dbf7fd7af4eb7895c4d2f9ee4f006d4206974d252b631987bd80a72a5df3fdd6",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787648654493,
+    "departureCity": {
+      "label": "Cortegana",
+      "code": "cortegana",
+      "id": 32860
+    },
+    "arrivalCity": {
+      "id": 32861,
+      "code": "la-rabida-palos-de-la-frontera",
+      "label": "La Rábida. Palos de la Frontera"
+    }
+  },
+  {
+    "startTime": "12:59:00",
+    "length": 184.7,
+    "date": "2026-09-01T00:00:00+02:00",
+    "type": "VAL",
+    "isCancelled": false,
+    "endTime": "17:30:00",
+    "timezone": "Europe/Madrid",
+    "stage": 10,
+    "lengthDisplay": 184.7,
+    "id": 25108,
+    "_id": "069b7608533f1f51b91deeff5faf16a7b67a37defe6ed2e790591d3660c6e68f",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787578326178,
+    "departureCity": {
+      "code": "alcaraz",
+      "id": 32852,
+      "label": "Alcaraz"
+    },
+    "arrivalCity": {
+      "id": 32853,
+      "code": "elche-de-la-sierra",
+      "label": "Elche de la Sierra"
+    }
+  },
+  {
+    "endTime": "17:30:00",
+    "startTime": "12:42:00",
+    "isCancelled": false,
+    "length": 214.3,
+    "lengthDisplay": 214.5,
+    "timezone": "Europe/Paris",
+    "id": 25098,
+    "stage": 2,
+    "date": "2026-08-23T00:00:00+02:00",
+    "type": "VAL",
+    "_bind": "stage-2026",
+    "_id": "8dca2abda32e34c6d270333603a7b924ea8e688aba2c612aea611e9145611eed",
+    "_updatedAt": 1786959932230,
+    "departureCity": {
+      "id": 29587,
+      "label": "Monaco",
+      "code": "monaco"
+    },
+    "arrivalCity": {
+      "code": "manosque",
+      "label": "Manosque",
+      "id": 29427
+    }
+  },
+  {
+    "endTime": "17:30:00",
+    "timezone": "Europe/Madrid",
+    "date": "2026-09-05T00:00:00+02:00",
+    "type": "HMG",
+    "stage": 14,
+    "isCancelled": false,
+    "startTime": "13:33:00",
+    "lengthDisplay": 154.5,
+    "id": 25112,
+    "length": 154.5,
+    "_id": "bafc37c6011eaf0cc59253fe81244a4ba3ba92d911a74e796e5d0425ede42888",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787582210159,
+    "departureCity": {
+      "id": 32105,
+      "label": "Jaén",
+      "code": "jaen"
+    },
+    "arrivalCity": {
+      "label": "Sierra de La Pandera",
+      "id": 30611,
+      "code": "sierra-de-la-pandera"
+    }
+  },
+  {
+    "stage": 18,
+    "isCancelled": false,
+    "type": "PAS",
+    "timezone": "Europe/Madrid",
+    "startTime": "14:06:00",
+    "lengthDisplay": 32.1,
+    "endTime": "17:30:00",
+    "length": 32.1,
+    "id": 25117,
+    "date": "2026-09-10T00:00:00+02:00",
+    "_id": "992c0c0a72f90c14bba5cff4c4ac68ce153ab0fa44a07486e27dc5b3b57c47eb",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787562773091,
+    "departureCity": {
+      "label": "El Puerto de Santa María",
+      "id": 32864,
+      "code": "el-puerto-santa-maria"
+    },
+    "arrivalCity": {
+      "code": "jerez-de-la-frontera-1",
+      "id": 32865,
+      "label": "Jerez de la Frontera"
+    }
+  },
+  {
+    "isCancelled": false,
+    "length": 104.8,
+    "type": "HMG",
+    "date": "2026-08-25T00:00:00+02:00",
+    "id": 25100,
+    "stage": 4,
+    "endTime": "17:30:00",
+    "lengthDisplay": 105,
+    "timezone": "Europe/Madrid",
+    "startTime": "14:49:00",
+    "_id": "c5d141302f23e101946d1226a6e12418c865310ed6bdf335ad8b53cc051fef3f",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787486951364,
+    "departureCity": {
+      "id": 30195,
+      "label": "Andorra la Vella",
+      "code": "andorra-la-vella"
+    },
+    "arrivalCity": {
+      "code": "andorra-la-vella",
+      "label": "Andorra la Vella",
+      "id": 30195
+    }
+  },
+  {
+    "timezone": "Europe/Madrid",
+    "startTime": "13:11:00",
+    "lengthDisplay": 177.5,
+    "type": "MMG",
+    "length": 177.5,
+    "endTime": "17:31:00",
+    "stage": 6,
+    "isCancelled": false,
+    "date": "2026-08-27T00:00:00+02:00",
+    "id": 25102,
+    "_id": "6270c995ee12956cead183de008f8c1c700514f74ec36df643515064ee2863d8",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787562725896,
+    "departureCity": {
+      "id": 30602,
+      "label": "Alcossebre",
+      "code": "alcossebre"
+    },
+    "arrivalCity": {
+      "code": "castello",
+      "id": 32870,
+      "label": "Castelló"
+    }
+  },
+  {
+    "length": 110.2,
+    "stage": 15,
+    "date": "2026-09-06T00:00:00+02:00",
+    "startTime": "15:00:00",
+    "timezone": "Europe/Madrid",
+    "lengthDisplay": 110,
+    "endTime": "17:30:00",
+    "isCancelled": false,
+    "id": 25113,
+    "type": "MMG",
+    "_id": "74bb80a3264706965ce17df84305f7587a79121f30aaecec364015e181a73303",
+    "_bind": "stage-2026",
+    "_updatedAt": 1788632402900,
+    "departureCity": {
+      "code": "palma-del-rio",
+      "label": "Palma del Río",
+      "id": 32858
+    },
+    "arrivalCity": {
+      "code": "cordoba",
+      "label": "Córdoba",
+      "id": 30201
+    }
+  },
+  {
+    "endTime": "17:30:00",
+    "type": "HMG",
+    "date": "2026-08-30T00:00:00+02:00",
+    "startTime": "12:26:00",
+    "length": 187.4,
+    "stage": 9,
+    "id": 25105,
+    "lengthDisplay": 187.4,
+    "timezone": "Europe/Madrid",
+    "isCancelled": false,
+    "_id": "5e90fa6e3a7248c4a120e6478eb0c08e3d6feea814e4cd26d48473c951241a90",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787576296047,
+    "departureCity": {
+      "code": "la-vila-joiosa-villajoyosa",
+      "id": 32850,
+      "label": "La Vila Joiosa/ Villajoyosa"
+    },
+    "arrivalCity": {
+      "id": 32851,
+      "code": "alto-de-aitana-costa-blanca",
+      "label": "Alto de Aitana.Costa Blanca"
+    }
+  },
+  {
+    "length": 153.8,
+    "isCancelled": false,
+    "timezone": "Europe/Madrid",
+    "startTime": "14:05:00",
+    "stage": 11,
+    "date": "2026-09-02T00:00:00+02:00",
+    "type": "PLN",
+    "endTime": "17:30:00",
+    "lengthDisplay": 153.8,
+    "id": 25109,
+    "_id": "5ce1301eb449fd522d920af164173ce278c773c186f9c1b536afe7075df6ae40",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787579375468,
+    "departureCity": {
+      "code": "cartagena",
+      "label": "Cartagena",
+      "id": 32758
+    },
+    "arrivalCity": {
+      "label": "Lorca",
+      "id": 30245,
+      "code": "lorca"
+    }
+  },
+  {
+    "length": 210.8,
+    "lengthDisplay": 210.8,
+    "startTime": "12:06:00",
+    "date": "2026-09-11T00:00:00+02:00",
+    "endTime": "17:30:00",
+    "stage": 19,
+    "id": 25118,
+    "timezone": "Europe/Madrid",
+    "type": "VAA",
+    "isCancelled": false,
+    "_id": "047a83daf1879d892051715e205e8ec2fff618c5bf0bc2f912f74af42d1d19c4",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787562785543,
+    "departureCity": {
+      "label": "Vélez-Málaga",
+      "code": "velez-malaga",
+      "id": 32594
+    },
+    "arrivalCity": {
+      "code": "penas-blancas-estepona",
+      "label": "Peñas Blancas. Estepona",
+      "id": 32733
+    }
+  },
+  {
+    "lengthDisplay": 166.6,
+    "startTime": "13:07:00",
+    "timezone": "Europe/Madrid",
+    "endTime": "17:30:00",
+    "id": 25110,
+    "stage": 12,
+    "date": "2026-09-03T00:00:00+02:00",
+    "length": 166.6,
+    "type": "HMG",
+    "isCancelled": false,
+    "_id": "2b04ffe490dd4bf9e3918b4334bc27f01bcc349c9637fb83ce90e60917ed5b5d",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787579938329,
+    "departureCity": {
+      "id": 32854,
+      "code": "vera",
+      "label": "Vera"
+    },
+    "arrivalCity": {
+      "id": 32855,
+      "label": "Calar Alto",
+      "code": "calar-alto"
+    }
+  },
+  {
+    "timezone": "Europe/Madrid",
+    "endTime": "17:30:00",
+    "type": "VAL",
+    "isCancelled": false,
+    "startTime": "13:34:00",
+    "lengthDisplay": 173.3,
+    "date": "2026-08-26T00:00:00+02:00",
+    "stage": 5,
+    "id": 25101,
+    "length": 173.3,
+    "_id": "9416e039f175b31b6562305318c873e04ed8bae96cf7686bc22f5477c49ae170",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787562711961,
+    "departureCity": {
+      "code": "falset-costa-daurada",
+      "label": "Falset . Costa Daurada",
+      "id": 32844
+    },
+    "arrivalCity": {
+      "code": "roquetes-terres-de-lebre",
+      "label": "Roquetes. Terres de l'Ebre",
+      "id": 32845
+    }
+  },
+  {
+    "isCancelled": false,
+    "id": 25120,
+    "endTime": "19:15:00",
+    "startTime": "16:23:00",
+    "date": "2026-09-13T00:00:00+02:00",
+    "type": "PLN",
+    "length": 112,
+    "timezone": "Europe/Madrid",
+    "stage": 21,
+    "lengthDisplay": 112,
+    "_id": "8bb74c198b26df28aad6a71f95413b41e60ab24297655aa1f08b2fa1aba9c744",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787486961149,
+    "departureCity": {
+      "label": "Carrefour Granada",
+      "id": 32868,
+      "code": "carrefour-granada"
+    },
+    "arrivalCity": {
+      "label": "Granada",
+      "code": "granada",
+      "id": 32595
+    }
+  },
+  {
+    "id": 25097,
+    "date": "2026-08-22T00:00:00+02:00",
+    "length": 9.4,
+    "type": "PAS",
+    "startTime": "16:17:00",
+    "lengthDisplay": 9.4,
+    "isCancelled": false,
+    "stage": 1,
+    "endTime": "19:30:00",
+    "timezone": "Europe/Paris",
+    "_id": "93bd5639e913abc271fb13124da9db9a6a602ca76973eeae9a729197feefbbdb",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787144811735,
+    "departureCity": {
+      "label": "Monaco",
+      "code": "monaco",
+      "id": 29587
+    },
+    "arrivalCity": {
+      "id": 29587,
+      "label": "Monaco",
+      "code": "monaco"
+    }
+  },
+  {
+    "isCancelled": false,
+    "timezone": "Europe/Madrid",
+    "type": "HMG",
+    "lengthDisplay": 186.8,
+    "id": 25119,
+    "startTime": "12:36:00",
+    "date": "2026-09-12T00:00:00+02:00",
+    "endTime": "17:30:00",
+    "stage": 20,
+    "length": 186.8,
+    "_id": "60085cf1da502cd2d041ebe70ecdb2b26a400b8f2af186e7693696bfda2e3b32",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787650957213,
+    "departureCity": {
+      "code": "la-calahorra",
+      "label": "La Calahorra",
+      "id": 32866
+    },
+    "arrivalCity": {
+      "id": 32867,
+      "code": "collado-del-alguacil",
+      "label": "Collado del Alguacil"
+    }
+  },
+  {
+    "isCancelled": false,
+    "type": "HMG",
+    "id": 25103,
+    "date": "2026-08-28T00:00:00+02:00",
+    "lengthDisplay": 149.8,
+    "stage": 7,
+    "timezone": "Europe/Madrid",
+    "length": 149.8,
+    "endTime": "17:30:00",
+    "startTime": "13:40:00",
+    "_id": "ed92ad217cd0489ad3398a12c2ded33aec4678aa57fa670d3f53299c14faaa21",
+    "_bind": "stage-2026",
+    "_updatedAt": 1787575056849,
+    "departureCity": {
+      "code": "vall-dalba",
+      "id": 32846,
+      "label": "vall d'Alba"
+    },
+    "arrivalCity": {
+      "label": "Aramón Valdelinares",
+      "code": "aramon-valdelinares",
+      "id": 32847
+    }
+  }
+]

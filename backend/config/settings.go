@@ -1428,7 +1428,7 @@ type DisplaySettings struct {
 	IncludeUnreleasedShowsInSearch bool `json:"includeUnreleasedShowsInSearch"`
 	// AlwaysShowProfileSelector forces the profile picker on every app open / un-background.
 	AlwaysShowProfileSelector bool `json:"alwaysShowProfileSelector"`
-	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only enabled scraper (debrid-only mode).
+	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only active search source.
 	BypassFilteringForAIOStreamsOnly bool `json:"bypassFilteringForAioStreamsOnly"`
 	// ShowParsedBadges shows parsed metadata badges instead of raw titles in manual selection.
 	ShowParsedBadges bool `json:"showParsedBadges,omitempty"`

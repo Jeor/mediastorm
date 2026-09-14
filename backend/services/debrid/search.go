@@ -628,7 +628,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 
 	// Check if filtering should be bypassed for AIOStreams-only mode
 	bypassFiltering := bypassForAIO &&
-		!shouldUseUsenet(settings.Streaming.ServiceMode) &&
+		(!shouldUseUsenet(settings.Streaming.ServiceMode) || !hasEnabledUsenetIndexer(settings.Indexers)) &&
 		isOnlyAIOStreamsEnabled(settings.TorrentScrapers)
 	if bypassFiltering {
 		log.Printf("[debrid] Bypassing mediastorm filtering - AIOStreams is the only enabled scraper and bypass setting is enabled")
@@ -715,6 +715,19 @@ func shouldUseUsenet(mode config.StreamingServiceMode) bool {
 	default:
 		return false
 	}
+}
+
+func hasEnabledUsenetIndexer(indexers []config.IndexerConfig) bool {
+	for _, indexer := range indexers {
+		if !indexer.Enabled {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(indexer.Type)) {
+		case "", "newznab", "torznab":
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeScrapeResult(res ScrapeResult) models.NZBResult {

@@ -13475,7 +13475,7 @@
                 } else if (currentGroup && sectionKey === 'playback') {
                     const groupOpen = currentGroup === 'player' || Boolean(searchTerm);
                     fieldHtmlParts.push(
-                        '<details class="playback-setting-group" data-settings-accordion="playback"' + (groupOpen ? ' open' : '') + '>' +
+                        '<details class="playback-setting-group" data-settings-accordion="playback" data-settings-disclosure="playback.' + currentGroup + '"' + (groupOpen ? ' open' : '') + '>' +
                             '<summary onclick="handleSettingsSubsectionActivation(this)"><span class="playback-setting-group-copy"><span class="playback-setting-group-title">' + currentGroupLabel + '</span>' +
                             (currentGroupDescription ? '<span class="playback-setting-group-description">' + currentGroupDescription + '</span>' : '') + '</span></summary>' +
                             '<div class="field-subgroup-fields">' + groupedFields.join('') + '</div>' +
@@ -13487,7 +13487,7 @@
                         : '';
                     if (sectionKey === 'display') {
                         fieldHtmlParts.push(
-                            '<details class="field-subgroup appearance-setting-group"' + (searchTerm ? ' open' : '') + '>' +
+                            '<details class="field-subgroup appearance-setting-group" data-settings-disclosure="display.' + currentGroup + '"' + (searchTerm ? ' open' : '') + '>' +
                                 '<summary><span class="appearance-setting-group-copy"><span class="field-subgroup-title">' + currentGroupLabel + '</span>' +
                                 (currentGroupDescription ? '<p class="field-subgroup-description">' + currentGroupDescription + '</p>' : '') + '</span></summary>' +
                                 '<div class="field-subgroup-fields">' + appearancePresetHtml + groupedFields.join('') + '</div>' +
@@ -14497,6 +14497,24 @@
         return '<div class="array-items">' + profilesHtml + '</div>' + addButton + renderAddProfileForm();
     }
 
+    function captureSettingsDisclosureState(container) {
+        return new Map(Array.from(container.querySelectorAll('details[data-settings-disclosure]')).map(details => [
+            details.dataset.settingsDisclosure,
+            details.open,
+        ]));
+    }
+
+    function restoreSettingsDisclosureState(container, disclosureState) {
+        container.querySelectorAll('details[data-settings-disclosure]').forEach(details => {
+            const disclosureKey = details.dataset.settingsDisclosure;
+            if (disclosureState.has(disclosureKey)) details.open = disclosureState.get(disclosureKey);
+        });
+    }
+
+    function settingsDisclosureContext() {
+        return [settingsLevel, activeSettingsGroup, searchTerm, selectedUserId, selectedClientId].join('|');
+    }
+
     function renderSettings() {
         const container = document.getElementById('settingsContainer');
         renderSettingsWorkspaceNavigation();
@@ -14509,6 +14527,11 @@
         const sectionHash = window.location.hash.replace(/^#/, '');
         const isEssentials = settingsLevel === 'essentials' && !searchTerm;
         const showHome = !isEssentials && !activeSettingsGroup && !searchTerm && !schema[sectionHash];
+        const disclosureContext = settingsDisclosureContext();
+        const disclosureState = container.dataset.settingsDisclosureContext === disclosureContext
+            ? captureSettingsDisclosureState(container)
+            : new Map();
+        container.dataset.settingsDisclosureContext = disclosureContext;
         if (settingsHome) settingsHome.hidden = !showHome;
         if (settingsWorkspace) {
             settingsWorkspace.hidden = showHome;
@@ -14594,6 +14617,7 @@
         }
 
         container.innerHTML = html;
+        restoreSettingsDisclosureState(container, disclosureState);
 
         // Restore previously open sections (or auto-expand if searching)
         if (isEssentials) {

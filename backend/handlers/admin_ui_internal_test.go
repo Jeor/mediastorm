@@ -413,6 +413,31 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsPreservesNestedDisclosureStateAcrossFieldChanges(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`data-settings-disclosure="playback.`,
+		`data-settings-disclosure="display.`,
+		`function captureSettingsDisclosureState(container)`,
+		`details.dataset.settingsDisclosure,`,
+		`function restoreSettingsDisclosureState(container, disclosureState)`,
+		`if (disclosureState.has(disclosureKey)) details.open = disclosureState.get(disclosureKey);`,
+		`function settingsDisclosureContext()`,
+		`container.dataset.settingsDisclosureContext === disclosureContext`,
+		`? captureSettingsDisclosureState(container)`,
+		`restoreSettingsDisclosureState(container, disclosureState);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing nested-disclosure preservation marker %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsPreservesInheritanceAndScopesPropagation(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

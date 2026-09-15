@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"novastream/internal/requestsecurity"
+	"novastream/models"
 )
 
 // Stremio Live TV source support.
@@ -96,11 +97,12 @@ type stremioStreamResponse struct {
 }
 
 type StremioStreamOption struct {
-	Index       int    `json:"index"`
-	Name        string `json:"name,omitempty"`
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	Label       string `json:"label"`
+	ReportedQuality *models.SportsReportedQuality `json:"reportedQuality,omitempty"`
+	Index           int                           `json:"index"`
+	Name            string                        `json:"name,omitempty"`
+	Title           string                        `json:"title,omitempty"`
+	Description     string                        `json:"description,omitempty"`
+	Label           string                        `json:"label"`
 }
 
 type StremioStreamOptionsResponse struct {
@@ -147,8 +149,8 @@ func isStremioStreamResourceURL(u *url.URL) bool {
 
 func isUnplayableStremioStreamURL(raw string) bool {
 	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || u == nil {
-		return false
+	if err != nil || u == nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return true
 	}
 	host := strings.ToLower(u.Hostname())
 	path := strings.ToLower(strings.TrimSuffix(u.EscapedPath(), "/"))
@@ -332,11 +334,12 @@ func playableStremioStreamOptions(streams []stremioStream) []StremioStreamOption
 		}
 		labelCounts[label]++
 		options = append(options, StremioStreamOption{
-			Index:       i,
-			Name:        name,
-			Title:       title,
-			Description: description,
-			Label:       label,
+			ReportedQuality: reportedSportsQuality(strings.Join([]string{name, title, description}, " ")),
+			Index:           i,
+			Name:            name,
+			Title:           title,
+			Description:     description,
+			Label:           label,
 		})
 	}
 	seenLabels := make(map[string]int)
@@ -348,6 +351,9 @@ func playableStremioStreamOptions(streams []stremioStream) []StremioStreamOption
 		seenLabels[label]++
 		options[i].Label = fmt.Sprintf("%s (Source %d)", label, seenLabels[label])
 	}
+	sort.SliceStable(options, func(i, j int) bool {
+		return compareSportsQuality(options[i].ReportedQuality, options[j].ReportedQuality) < 0
+	})
 	return options
 }
 

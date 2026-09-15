@@ -626,9 +626,15 @@ func rankTeamChannelCandidates(team models.SportsTeamRecord, channels []LiveChan
 }
 
 func sortSportsStreamMatches(matches []models.SportsStreamMatch) {
+	for i := range matches {
+		matches[i].ReportedQuality = reportedSportsQuality(matches[i].ChannelName)
+	}
 	sort.SliceStable(matches, func(i, j int) bool {
 		if matches[i].Confidence != matches[j].Confidence {
 			return matches[i].Confidence > matches[j].Confidence
+		}
+		if order := compareSportsQuality(matches[i].ReportedQuality, matches[j].ReportedQuality); order != 0 {
+			return order < 0
 		}
 		if matches[i].ChannelName != matches[j].ChannelName {
 			return strings.ToLower(matches[i].ChannelName) < strings.ToLower(matches[j].ChannelName)

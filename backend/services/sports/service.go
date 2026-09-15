@@ -452,7 +452,17 @@ func (s *Service) Refresh(ctx context.Context) error {
 	leagues := append([]League(nil), s.leagues...)
 	s.mu.RUnlock()
 
+	// Start with the last known data for every enabled league. A refresh can
+	// exhaust its shared context while workers are still waiting for a semaphore
+	// slot; those workers never reach the fetch error path that normally restores
+	// cached games. Seeding the result keeps transient timeouts from erasing
+	// scoreboards in memory and on disk.
 	nextGames := make(map[string][]models.SportsGame, len(leagues))
+	s.mu.RLock()
+	for _, league := range leagues {
+		nextGames[league.ID] = append([]models.SportsGame(nil), s.games[league.ID]...)
+	}
+	s.mu.RUnlock()
 	var firstErr error
 	var resultMu sync.Mutex
 	var wg sync.WaitGroup
@@ -466,7 +476,9 @@ func (s *Service) Refresh(ctx context.Context) error {
 			case semaphore <- struct{}{}:
 			case <-ctx.Done():
 				resultMu.Lock()
-				firstErr = ctx.Err()
+				if firstErr == nil {
+					firstErr = ctx.Err()
+				}
 				resultMu.Unlock()
 				return
 			}

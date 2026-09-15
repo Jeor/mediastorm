@@ -53,7 +53,9 @@ type stremioCatalogDef struct {
 }
 
 type stremioExtraProp struct {
-	Name string `json:"name"`
+	Name       string   `json:"name"`
+	IsRequired bool     `json:"isRequired"`
+	Options    []string `json:"options"`
 }
 
 type stremioMeta struct {
@@ -532,35 +534,102 @@ func fetchStremioManifest(ctx context.Context, client *http.Client, baseURL stri
 	return &manifest, nil
 }
 
+// stremioCatalogFilters builds browse requests for required enumerated filters.
+// An advertised All option covers the catalog; otherwise visit each option.
+func stremioCatalogFilters(catalog stremioCatalogDef) ([]url.Values, error) {
+	filters := []url.Values{{}}
+	for _, extra := range catalog.Extra {
+		if !extra.IsRequired || extra.Name == "skip" {
+			continue
+		}
+		options := extra.Options
+		if len(options) == 0 {
+			return nil, fmt.Errorf("stremio: catalog %q requires %q without browse options", catalog.ID, extra.Name)
+		}
+		for _, option := range options {
+			if strings.EqualFold(option, "all") {
+				options = []string{option}
+				break
+			}
+		}
+		if len(options) > 32/len(filters) {
+			return nil, fmt.Errorf("stremio: catalog %q has too many required filter combinations", catalog.ID)
+		}
+		var next []url.Values
+		for _, filter := range filters {
+			for _, option := range options {
+				values := url.Values{}
+				for key, value := range filter {
+					values[key] = append([]string(nil), value...)
+				}
+				values.Set(extra.Name, option)
+				next = append(next, values)
+			}
+		}
+		filters = next
+	}
+	return filters, nil
+}
+
 func fetchStremioCatalog(ctx context.Context, client *http.Client, baseURL string, catalog stremioCatalogDef) ([]stremioMeta, error) {
+	filters, err := stremioCatalogFilters(catalog)
+	if err != nil {
+		return nil, err
+	}
 	supportsSkip := false
 	for _, extra := range catalog.Extra {
 		if strings.EqualFold(strings.TrimSpace(extra.Name), "skip") {
 			supportsSkip = true
-			break
 		}
 	}
-
 	var all []stremioMeta
-	for page := 0; page < stremioMaxCatalogPages; page++ {
-		endpoint := fmt.Sprintf("%s/catalog/%s/%s.json", baseURL, catalog.Type, url.PathEscape(catalog.ID))
-		if page > 0 {
-			endpoint = fmt.Sprintf("%s/catalog/%s/%s/skip=%d.json", baseURL, catalog.Type, url.PathEscape(catalog.ID), page*stremioCatalogPageSize)
-		}
-		var resp stremioCatalogResponse
-		if err := getStremioJSON(ctx, client, endpoint, &resp); err != nil {
-			if page == 0 {
-				return nil, err
+	seen := make(map[string]bool)
+	var firstErr error
+	succeeded := false
+	for _, filter := range filters {
+		offset := 0
+		pageSeen := make(map[string]bool)
+		for page := 0; page < stremioMaxCatalogPages; page++ {
+			endpoint := fmt.Sprintf("%s/catalog/%s/%s", baseURL, url.PathEscape(catalog.Type), url.PathEscape(catalog.ID))
+			if page > 0 {
+				filter.Set("skip", strconv.Itoa(offset))
 			}
-			break // later pages 404 once the catalog is exhausted
+			if len(filter) > 0 {
+				endpoint += "/" + strings.ReplaceAll(filter.Encode(), "+", "%20")
+			}
+			var resp stremioCatalogResponse
+			if err := getStremioJSON(ctx, client, endpoint+".json", &resp); err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				break // Preserve other filters and already loaded pages.
+			}
+			succeeded = true
+			newItems := 0
+			for _, meta := range resp.Metas {
+				key := meta.Type + "\x00" + meta.ID
+				if strings.TrimSpace(meta.ID) == "" {
+					continue
+				}
+				if !pageSeen[key] {
+					pageSeen[key] = true
+					newItems++
+				}
+				if !seen[key] {
+					seen[key] = true
+					all = append(all, meta)
+				}
+			}
+			// Page sizes vary between addons. Advance by the actual number returned,
+			// and stop on empty/repeated pages if an addon ignores skip.
+			offset += len(resp.Metas)
+			if !supportsSkip || newItems == 0 {
+				break
+			}
 		}
-		if len(resp.Metas) == 0 {
-			break
-		}
-		all = append(all, resp.Metas...)
-		if !supportsSkip || len(resp.Metas) < stremioCatalogPageSize {
-			break
-		}
+	}
+	if !succeeded {
+		return nil, firstErr
 	}
 	return all, nil
 }

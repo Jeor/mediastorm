@@ -220,6 +220,30 @@ func TestAdminSettingsGlobalSaveClearsDirtyStateBeforeImpactRefresh(t *testing.T
 	}
 }
 
+func TestAdminSettingsSaveRemovesUndefinedValuesBeforeDirtyComparison(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"const removeUndefinedProperties = (value) => {",
+		"if (value[key] === undefined) delete value[key];",
+		"removeUndefinedProperties(settings);",
+		"...(Number.isFinite(logoScale) ? { logoScale } : {}),",
+		`onclick="saveStreamingServicesShelf('${shelfId}')">Apply Changes</button>`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing undefined-value normalization marker %q", marker)
+		}
+	}
+
+	if strings.Contains(source, "logoScale: parseFloat(value('logoScale')) || undefined") {
+		t.Fatal("streaming-service editor must not retain an undefined logoScale property")
+	}
+}
+
 func TestAdminSettingsProfileOverrideRefreshPublishesAtomicSnapshot(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

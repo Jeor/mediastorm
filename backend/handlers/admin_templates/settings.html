@@ -10684,7 +10684,7 @@
             enabled: true,
             order: index,
             logoUrl: service.logoUrl,
-            logoScale: service.logoScale || undefined,
+            ...(Number.isFinite(service.logoScale) ? { logoScale: service.logoScale } : {}),
             tintColor: service.tintColor || 'rgba(148,163,184,0.18)',
             lists: [
                 { key: id + '-movies', title: 'Movies', url: service.movies },
@@ -11407,6 +11407,7 @@
         return rows.map((row, index) => {
             const id = row.dataset.serviceId || ('custom-' + Date.now() + '-' + index);
             const value = (field) => row.querySelector('[data-field="' + field + '"]')?.value?.trim() || '';
+            const logoScale = Number.parseFloat(value('logoScale'));
             const lists = [];
             const moviesUrl = value('moviesUrl');
             const showsUrl = value('showsUrl');
@@ -11418,7 +11419,7 @@
                 enabled: !!row.querySelector('[data-field="enabled"]')?.checked,
                 order: index,
                 logoUrl: value('logoUrl'),
-                logoScale: parseFloat(value('logoScale')) || undefined,
+                ...(Number.isFinite(logoScale) ? { logoScale } : {}),
                 tintColor: value('tintColor') || 'rgba(148,163,184,0.18)',
                 lists,
             };
@@ -11521,7 +11522,7 @@
                     </div>
                     <div class="test-modal-footer streaming-services-modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="closeStreamingServicesModal()">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="saveStreamingServicesShelf('${shelfId}')">Save</button>
+                        <button type="button" class="btn btn-primary" onclick="saveStreamingServicesShelf('${shelfId}')">Apply Changes</button>
                     </div>
                 </div>
             </div>`;
@@ -11710,6 +11711,7 @@
         return rows.map((row, index) => {
             const id = row.dataset.itemId || ('collection-' + Date.now() + '-' + index);
             const value = (field) => row.querySelector('[data-field="' + field + '"]')?.value?.trim() || '';
+            const logoScale = Number.parseFloat(value('logoScale'));
             return {
                 id,
                 name: value('name') || 'Collection',
@@ -11718,7 +11720,7 @@
                 sourceShelfId: value('sourceShelfId'),
                 logoUrl: value('logoUrl'),
                 heroArtUrl: value('heroArtUrl'),
-                logoScale: parseFloat(value('logoScale')) || undefined,
+                ...(Number.isFinite(logoScale) ? { logoScale } : {}),
                 tintColor: value('tintColor') || 'rgba(148,163,184,0.18)',
             };
         });
@@ -14711,7 +14713,25 @@
     }
 
     function normalizeSettingsForSave(settings) {
-        if (!settings || !Array.isArray(settings.torrentScrapers)) return settings;
+        if (!settings || typeof settings !== 'object') return settings;
+
+        // Keep the editable state structurally identical to the JSON payload. JSON.stringify
+        // drops undefined object properties, which otherwise leaves currentSettings different
+        // from the saved baseline and makes the unsaved-changes warning stick around.
+        const removeUndefinedProperties = (value) => {
+            if (!value || typeof value !== 'object') return;
+            if (Array.isArray(value)) {
+                value.forEach(removeUndefinedProperties);
+                return;
+            }
+            Object.keys(value).forEach(key => {
+                if (value[key] === undefined) delete value[key];
+                else removeUndefinedProperties(value[key]);
+            });
+        };
+        removeUndefinedProperties(settings);
+
+        if (!Array.isArray(settings.torrentScrapers)) return settings;
         settings.torrentScrapers.forEach(scraper => {
             if (!scraper || !scraper.config || typeof scraper.config !== 'object' || Array.isArray(scraper.config)) return;
             Object.keys(scraper.config).forEach(key => {

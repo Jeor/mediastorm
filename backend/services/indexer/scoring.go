@@ -85,6 +85,7 @@ func ScoreResult(result models.NZBResult, ctx ScoringContext) (int, []models.Sco
 		breakdown = append(breakdown, models.ScoreBreakdownItem{
 			Criterion: criterion.Name,
 			Points:    points,
+			RankValue: rankingValueForCriterion(result, criterion.ID, ctx),
 			Reason:    reason,
 		})
 		totalScore += points
@@ -102,14 +103,22 @@ func ScoreResult(result models.NZBResult, ctx ScoringContext) (int, []models.Sco
 		breakdown = append(breakdown, models.ScoreBreakdownItem{
 			Criterion: "Year Match",
 			Points:    0,
+			RankValue: boolRankingValue(result.Attributes["episodeYearPriority"] == "true"),
 			Reason:    reason,
 		})
 	}
-	if result.Attributes["countryMatch"] == "true" {
+	expectedCountry := result.Attributes["expectedCountry"]
+	matchesCountry := result.Attributes["countryMatch"] == "true"
+	if expectedCountry != "" || matchesCountry {
+		reason := "no explicit release country; does not receive country priority"
+		if matchesCountry {
+			reason = fmt.Sprintf("explicit release country %s matches expected country", result.Attributes["releaseCountry"])
+		}
 		breakdown = append(breakdown, models.ScoreBreakdownItem{
 			Criterion: "Country Match",
 			Points:    0,
-			Reason:    fmt.Sprintf("explicit release country %s matches expected country", result.Attributes["releaseCountry"]),
+			RankValue: boolRankingValue(matchesCountry),
+			Reason:    reason,
 		})
 	}
 
@@ -118,6 +127,7 @@ func ScoreResult(result models.NZBResult, ctx ScoringContext) (int, []models.Sco
 		breakdown = append(breakdown, models.ScoreBreakdownItem{
 			Criterion: "Download Preferred Terms",
 			Points:    points,
+			RankValue: rankingValueForDownloadTerms(result, ctx.DownloadPreferredTerms),
 			Reason:    reason,
 		})
 		totalScore += points
@@ -135,6 +145,46 @@ func clampLevel(v int) int {
 		return -levelMax
 	}
 	return v
+}
+
+func boolRankingValue(value bool) int64 {
+	if value {
+		return 1
+	}
+	return 0
+}
+
+// rankingValueForCriterion mirrors the comparator's exact value. Unlike the
+// legacy display points, it is not clamped, rounded, or combined with values
+// from lower-priority criteria.
+func rankingValueForCriterion(result models.NZBResult, criterion config.RankingCriterionID, ctx ScoringContext) int64 {
+	switch criterion {
+	case config.RankingServicePriority:
+		preferred := (ctx.ServicePriority == config.StreamingServicePriorityUsenet && result.ServiceType == models.ServiceTypeUsenet) ||
+			(ctx.ServicePriority == config.StreamingServicePriorityDebrid && result.ServiceType == models.ServiceTypeDebrid)
+		return boolRankingValue(ctx.ServicePriority != config.StreamingServicePriorityNone && preferred)
+	case config.RankingPreferredTerms:
+		weight, _ := filter.SumMatchedWeights(result.Title, ctx.PreferredTerms)
+		return int64(weight)
+	case config.RankingNonPreferredTerms:
+		weight, _ := filter.SumMatchedWeights(result.Title, ctx.NonPreferredTerms)
+		return -int64(weight)
+	case config.RankingResolution:
+		return int64(extractResolutionFromResult(result))
+	case config.RankingLanguage:
+		return boolRankingValue(ctx.PreferredLang != "" && language.HasPreferredLanguage(result.Attributes["languages"], ctx.PreferredLang))
+	case config.RankingSize:
+		return result.EffectiveItemSizeBytes()
+	case config.RankingPreferredScraper:
+		return boolRankingValue(ctx.PreferredScraper != "" && strings.EqualFold(result.Indexer, ctx.PreferredScraper))
+	default:
+		return 0
+	}
+}
+
+func rankingValueForDownloadTerms(result models.NZBResult, terms []filter.CompiledTerm) int64 {
+	weight, _ := filter.SumMatchedWeights(result.Title, terms)
+	return int64(weight)
 }
 
 // Each scorer returns a normalized "level" in [-levelMax, levelMax]. The caller

@@ -89,6 +89,12 @@ func handleOptions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// masterOnlySportsMutation keeps server-wide Sports configuration and channel
+// mappings behind the same ownership boundary as the rest of the admin settings.
+func masterOnlySportsMutation(handler http.HandlerFunc) http.Handler {
+	return MasterOnlyMiddleware()(handler)
+}
+
 // Register mounts API endpoints onto the provided router.
 func Register(
 	r *mux.Router,
@@ -502,9 +508,9 @@ func Register(
 		protected.HandleFunc("/sports/hub", sportsHandler.GetHub).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/hub", sportsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/settings", sportsHandler.GetSettings).Methods(http.MethodGet)
-		protected.Handle("/sports/settings", MasterOnlyMiddleware()(http.HandlerFunc(sportsHandler.PutSettings))).Methods(http.MethodPut)
+		protected.Handle("/sports/settings", masterOnlySportsMutation(sportsHandler.PutSettings)).Methods(http.MethodPut)
 		protected.HandleFunc("/sports/settings", sportsHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/logo-cache/clear", sportsHandler.ClearLogoCache).Methods(http.MethodPost)
+		protected.Handle("/sports/logo-cache/clear", masterOnlySportsMutation(sportsHandler.ClearLogoCache)).Methods(http.MethodPost)
 		protected.HandleFunc("/sports/logo-cache/clear", sportsHandler.Options).Methods(http.MethodOptions)
 		// Public like /images/proxy above - browser <img> tags can't attach an Authorization
 		// header, and this only ever proxies a host-allowlisted (*.espncdn.com) URL, so
@@ -516,7 +522,7 @@ func Register(
 		protected.HandleFunc("/live/search", sportsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/status", sportsHandler.GetStatus).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/status", sportsHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/refresh", sportsHandler.Refresh).Methods(http.MethodPost)
+		protected.Handle("/sports/refresh", masterOnlySportsMutation(sportsHandler.Refresh)).Methods(http.MethodPost)
 		protected.HandleFunc("/sports/refresh", sportsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/game/{id}", sportsHandler.GetGame).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/game/{id}", sportsHandler.Options).Methods(http.MethodOptions)
@@ -530,7 +536,7 @@ func Register(
 	if sportsLinksHandler != nil {
 		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/preview", sportsLinksHandler.PreviewAutoLinks).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/preview", sportsLinksHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/apply", sportsLinksHandler.ApplyAutoLinks).Methods(http.MethodPost)
+		protected.Handle("/sports/leagues/{leagueId}/auto-link/apply", masterOnlySportsMutation(sportsLinksHandler.ApplyAutoLinks)).Methods(http.MethodPost)
 		protected.HandleFunc("/sports/leagues/{leagueId}/auto-link/apply", sportsLinksHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/teams", sportsLinksHandler.GetTeams).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/teams", sportsLinksHandler.Options).Methods(http.MethodOptions)
@@ -540,13 +546,13 @@ func Register(
 		protected.HandleFunc("/sports/teams/{teamId}/links", sportsLinksHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/teams/{teamId}/channel-suggestions", sportsLinksHandler.GetChannelSuggestions).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/teams/{teamId}/channel-suggestions", sportsLinksHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/teams/{teamId}/links/primary", sportsLinksHandler.SetPrimaryLink).Methods(http.MethodPut)
+		protected.Handle("/sports/teams/{teamId}/links/primary", masterOnlySportsMutation(sportsLinksHandler.SetPrimaryLink)).Methods(http.MethodPut)
 		protected.HandleFunc("/sports/teams/{teamId}/links/primary", sportsLinksHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/teams/{teamId}/links/backup", sportsLinksHandler.AddBackupLink).Methods(http.MethodPost)
+		protected.Handle("/sports/teams/{teamId}/links/backup", masterOnlySportsMutation(sportsLinksHandler.AddBackupLink)).Methods(http.MethodPost)
 		protected.HandleFunc("/sports/teams/{teamId}/links/backup", sportsLinksHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/teams/{teamId}/links/reorder", sportsLinksHandler.ReorderBackups).Methods(http.MethodPut)
+		protected.Handle("/sports/teams/{teamId}/links/reorder", masterOnlySportsMutation(sportsLinksHandler.ReorderBackups)).Methods(http.MethodPut)
 		protected.HandleFunc("/sports/teams/{teamId}/links/reorder", sportsLinksHandler.Options).Methods(http.MethodOptions)
-		protected.HandleFunc("/sports/teams/{teamId}/links/{linkId}", sportsLinksHandler.DeleteLink).Methods(http.MethodDelete)
+		protected.Handle("/sports/teams/{teamId}/links/{linkId}", masterOnlySportsMutation(sportsLinksHandler.DeleteLink)).Methods(http.MethodDelete)
 		protected.HandleFunc("/sports/teams/{teamId}/links/{linkId}", sportsLinksHandler.Options).Methods(http.MethodOptions)
 	}
 

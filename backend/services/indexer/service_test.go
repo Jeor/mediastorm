@@ -1587,6 +1587,73 @@ func TestSearchWithScoringBypassesFilteringAndRankingForAIOStreamsOnlyDebridMode
 	}
 }
 
+func TestSearchWithScoringSplitBypassesAIOStreamsFilteringInHybridWithoutUsenetIndexers(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "settings.json")
+	mgr := config.NewManager(cfgPath)
+
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeHybrid
+	settings.Indexers = nil
+	settings.Display.BypassFilteringForAIOStreamsOnly = true
+	settings.Filtering.RequiredTerms = []string{"MULTI"}
+	settings.TorrentScrapers = []config.TorrentScraperConfig{
+		{Name: "AIOStreams", Type: "aiostreams", URL: "https://example.test/manifest.json", Enabled: true},
+	}
+	if err := mgr.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	svc := NewService(mgr, nil, stubDebridSearchService{
+		results: []models.NZBResult{
+			{Title: "Movie.720p.WEB-DL", Indexer: "AIOStreams", ServiceType: models.ServiceTypeDebrid},
+			{Title: "Movie.2160p.MULTI.WEB-DL", Indexer: "AIOStreams", ServiceType: models.ServiceTypeDebrid},
+		},
+	})
+
+	usenetCh, debridCh := svc.SearchWithScoringSplit(t.Context(), SearchOptions{
+		Query:           "Movie 2024",
+		MediaType:       "movie",
+		Year:            2024,
+		IncludeFiltered: true,
+	})
+	for range usenetCh {
+	}
+	result, ok := <-debridCh
+	if !ok {
+		t.Fatal("expected debrid source result")
+	}
+	if result.Err != nil {
+		t.Fatalf("debrid source returned error: %v", result.Err)
+	}
+	if len(result.Scored) != 2 {
+		t.Fatalf("expected both AIOStreams results to bypass filtering, got %d", len(result.Scored))
+	}
+	if got := result.Scored[0].Title; got != "Movie.720p.WEB-DL" {
+		t.Fatalf("expected AIOStreams order to be preserved, got first title %q", got)
+	}
+	for _, scored := range result.Scored {
+		if scored.FilterStatus != "passed" || scored.Attributes["ranking_bypassed"] != "true" {
+			t.Fatalf("expected bypassed result, got status=%q attrs=%v", scored.FilterStatus, scored.Attributes)
+		}
+	}
+}
+
+func TestAIOStreamsBypassRemainsDisabledWhenHybridHasEnabledUsenetIndexer(t *testing.T) {
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeHybrid
+	settings.TorrentScrapers = []config.TorrentScraperConfig{
+		{Name: "AIOStreams", Type: "aiostreams", Enabled: true},
+	}
+	settings.Indexers = []config.IndexerConfig{
+		{Name: "Usenet", Type: "newznab", Enabled: true},
+	}
+	overrides := effectiveOverrides{BypassFilteringForAIOStreamsOnly: models.BoolPtr(true)}
+
+	if shouldBypassAIOStreamsRanking(settings, overrides, shouldUseUsenet(settings.Streaming.ServiceMode)) {
+		t.Fatal("expected enabled Usenet indexer to keep MediaStorm filtering/ranking active")
+	}
+}
+
 func TestBuildSearchQueries_AnimeAbsoluteEpisode(t *testing.T) {
 	opts := SearchOptions{
 		Query:                 "One Piece S23E06",

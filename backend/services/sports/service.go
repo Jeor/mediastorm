@@ -44,8 +44,9 @@ type League struct {
 // LeagueCatalog is every league this service knows how to fetch from ESPN. Not every
 // catalog entry is necessarily enabled/polled - see config.Settings.Sports.EnabledLeagues
 // and SetEnabledLeagueIDs. Limited to leagues that fit the home-team-vs-away-team scoreboard
-// shape this package models (models.SportsGame) - e.g. motorsports (grid of drivers, not two
-// teams) would need a different data model and isn't included here.
+// shape this package models (models.SportsGame), plus leagues served by a dedicated event
+// contract (currently motorsports). Do not advertise a league here until one of those API
+// contracts can actually surface it in the Sports Hub.
 var LeagueCatalog = []League{
 	{ID: "nfl", Name: "NFL", Sport: "football", Slug: "nfl", Category: "football", EventKind: "matchup", SupportsTeams: true},
 	{ID: "college-football", Name: "NCAAF", Sport: "football", Slug: "college-football", Category: "football", EventKind: "matchup", SupportsTeams: true},
@@ -73,8 +74,6 @@ var LeagueCatalog = []League{
 	{ID: "soccer-ned.1", Name: "Eredivisie", Sport: "soccer", Slug: "ned.1", Category: "soccer", EventKind: "matchup", SupportsTeams: true},
 	{ID: "soccer-por.1", Name: "Primeira Liga", Sport: "soccer", Slug: "por.1", Category: "soccer", EventKind: "matchup", SupportsTeams: true},
 	{ID: "ufc", Name: "UFC", Sport: "mma", Slug: "ufc", Category: "mma", EventKind: "fight-card"},
-	{ID: "pga", Name: "PGA Tour", Sport: "golf", Slug: "pga", Category: "golf", EventKind: "tournament"},
-	{ID: "lpga", Name: "LPGA", Sport: "golf", Slug: "lpga", Category: "golf", EventKind: "tournament"},
 	{ID: "atp", Name: "ATP Tour", Sport: "tennis", Slug: "atp", Category: "tennis", EventKind: "matchup"},
 	{ID: "wta", Name: "WTA Tour", Sport: "tennis", Slug: "wta", Category: "tennis", EventKind: "matchup"},
 	{ID: "f1", Name: "Formula 1", Sport: "racing", Slug: "f1", Category: "racing", EventKind: "race"},

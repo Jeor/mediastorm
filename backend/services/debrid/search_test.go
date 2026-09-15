@@ -233,6 +233,39 @@ func TestSearchBypassesFilteringForAIOStreamsOnlyDebridMode(t *testing.T) {
 	}
 }
 
+func TestSearchBypassesFilteringForAIOStreamsInHybridWithoutUsenetIndexers(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "settings.json")
+	cfgManager := config.NewManager(cfgPath)
+
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeHybrid
+	settings.Indexers = nil
+	settings.TorrentScrapers = []config.TorrentScraperConfig{
+		{Name: "AIOStreams", Type: "aiostreams", URL: "https://example.test/manifest.json", Enabled: true},
+	}
+	settings.Display.BypassFilteringForAIOStreamsOnly = true
+	settings.Filtering.RequiredTerms = []string{"MULTI"}
+	if err := cfgManager.Save(settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	svc := NewSearchService(cfgManager, stubScraper{
+		name: "AIOStreams",
+		results: []ScrapeResult{
+			{Title: "Moana.2016.1080p.WEB-DL", Indexer: "AIOStreams", TorrentURL: "https://example.test/playback/moana-en"},
+			{Title: "Moana.2016.MULTI.1080p.WEB-DL", Indexer: "AIOStreams", TorrentURL: "https://example.test/playback/moana-multi"},
+		},
+	})
+
+	results, err := svc.Search(t.Context(), SearchOptions{Query: "Moana 2016", MediaType: "movie", Year: 2016})
+	if err != nil {
+		t.Fatalf("search returned error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected filtering bypass to keep both AIOStreams results, got %d", len(results))
+	}
+}
+
 func TestSearchFiltersUFCEventSideContent(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "settings.json")
 	cfgManager := config.NewManager(cfgPath)

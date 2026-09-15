@@ -2449,6 +2449,7 @@ func (s *Service) scoreSourceCandidates(opts SearchOptions, settings config.Sett
 					passed[i].ScoreBreakdown = []models.ScoreBreakdownItem{{
 						Criterion: "Newest Release",
 						Points:    points,
+						RankValue: int64(points),
 						Reason:    "source-reported release time",
 					}}
 				}
@@ -2496,6 +2497,7 @@ func bypassScoredResults(raw []models.NZBResult, newestFirst, includeScoreBreakd
 				scored[i].ScoreBreakdown = []models.ScoreBreakdownItem{{
 					Criterion: "Newest Release",
 					Points:    points,
+					RankValue: int64(points),
 					Reason:    "source-reported release time",
 				}}
 			}
@@ -4701,7 +4703,24 @@ func isOnlyAIOStreamsEnabled(scrapers []config.TorrentScraperConfig) bool {
 func shouldBypassAIOStreamsRanking(settings config.Settings, overrides effectiveOverrides, includeUsenet bool) bool {
 	return models.BoolVal(overrides.BypassFilteringForAIOStreamsOnly, false) &&
 		isOnlyAIOStreamsEnabled(settings.TorrentScrapers) &&
-		!includeUsenet
+		(!includeUsenet || !hasEnabledUsenetIndexer(settings.Indexers))
+}
+
+// hasEnabledUsenetIndexer reports whether the effective, profile-scoped settings
+// contain a Usenet search source that can participate in result ordering. Hybrid
+// mode by itself is not a source: users may keep it selected after disabling all
+// indexers, in which case AIOStreams is still the only active search source.
+func hasEnabledUsenetIndexer(indexers []config.IndexerConfig) bool {
+	for _, indexer := range indexers {
+		if !indexer.Enabled {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(indexer.Type)) {
+		case "", "newznab", "torznab":
+			return true
+		}
+	}
+	return false
 }
 
 // markRankingBypassed flags a result so consumers know mediastorm did not score/rank it

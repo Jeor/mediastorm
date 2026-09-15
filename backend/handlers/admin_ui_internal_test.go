@@ -413,6 +413,31 @@ func TestAdminSettingsUsesCategoryAndDetailProgressiveDisclosure(t *testing.T) {
 	}
 }
 
+func TestAdminSettingsPreservesNestedDisclosureStateAcrossFieldChanges(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`data-settings-disclosure="playback.`,
+		`data-settings-disclosure="display.`,
+		`function captureSettingsDisclosureState(container)`,
+		`details.dataset.settingsDisclosure,`,
+		`function restoreSettingsDisclosureState(container, disclosureState)`,
+		`if (disclosureState.has(disclosureKey)) details.open = disclosureState.get(disclosureKey);`,
+		`function settingsDisclosureContext()`,
+		`container.dataset.settingsDisclosureContext === disclosureContext`,
+		`? captureSettingsDisclosureState(container)`,
+		`restoreSettingsDisclosureState(container, disclosureState);`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing nested-disclosure preservation marker %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsPreservesInheritanceAndScopesPropagation(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {
@@ -1042,6 +1067,33 @@ func TestAdminSearchSwitchesBetweenExclusiveWorkspaces(t *testing.T) {
 	} {
 		if !strings.Contains(source, marker) {
 			t.Fatalf("search template missing exclusive-workspace marker %q", marker)
+		}
+	}
+}
+
+func TestAdminSearchExplainsPriorityRankingWithoutSummedScore(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/search.html")
+	if err != nil {
+		t.Fatalf("read search template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		"Result order uses strict priorities, not a summed score.",
+		"function explainIncludedRank(result, rank)",
+		"The first rule that differs decides the order",
+		"These values are not added into an overall score.",
+		"MediaStorm ranking was bypassed",
+		"Why #${rank}?",
+		"Why excluded?",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("search template missing ranking explanation marker %q", marker)
+		}
+	}
+	for _, unwanted := range []string{"<th>Score / Gates</th>", "const scoreDisplay = r.totalScore"} {
+		if strings.Contains(source, unwanted) {
+			t.Fatalf("search template still exposes misleading summed score marker %q", unwanted)
 		}
 	}
 }

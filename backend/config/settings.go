@@ -79,7 +79,7 @@ type SportsSearchScope struct {
 
 // defaultEnabledLeagueIDs is duplicated (not imported) from services/sports.defaultLeagueIDs
 // to avoid a config -> services/sports import cycle; keep the two lists in sync.
-var defaultEnabledLeagueIDs = []string{"nfl", "college-football", "nba", "mens-college-basketball", "womens-college-basketball", "wnba", "mlb", "nhl", "soccer-fifa.world", "soccer-fifa.wwc", "soccer-eng.1", "soccer-eng.2", "soccer-esp.1", "soccer-ger.1", "soccer-ita.1", "soccer-fra.1", "soccer-usa.1", "soccer-usa.nwsl", "soccer-usa.nwsl.cup", "soccer-uefa.champions", "soccer-uefa.europa", "soccer-uefa.europa.conf", "soccer-mex.1", "soccer-ned.1", "soccer-por.1", "ufc", "pga", "lpga", "atp", "wta", "f1", "nascar", "motogp", "indycar", "rugby-180659", "rugby-164205", "rugby-267979", "rugby-242041", "rugby-270559", "rugby-league-3", "aso:tour", "aso:vuelta", "aso:tour-femmes", "aso:paris-nice", "aso:vuelta-femenina", "aso:paris-roubaix", "aso:paris-roubaix-femmes", "aso:liege-bastogne-liege", "aso:liege-bastogne-liege-femmes", "aso:fleche-wallonne", "aso:fleche-wallonne-femmes", "rcs:giro"}
+var defaultEnabledLeagueIDs = []string{"nfl", "college-football", "nba", "mens-college-basketball", "womens-college-basketball", "wnba", "mlb", "nhl", "soccer-fifa.world", "soccer-fifa.wwc", "soccer-eng.1", "soccer-eng.2", "soccer-esp.1", "soccer-ger.1", "soccer-ita.1", "soccer-fra.1", "soccer-usa.1", "soccer-usa.nwsl", "soccer-usa.nwsl.cup", "soccer-uefa.champions", "soccer-uefa.europa", "soccer-uefa.europa.conf", "soccer-mex.1", "soccer-ned.1", "soccer-por.1", "ufc", "atp", "wta", "f1", "nascar", "motogp", "indycar", "rugby-180659", "rugby-164205", "rugby-267979", "rugby-242041", "rugby-270559", "rugby-league-3", "aso:tour", "aso:vuelta", "aso:tour-femmes", "aso:paris-nice", "aso:vuelta-femenina", "aso:paris-roubaix", "aso:paris-roubaix-femmes", "aso:liege-bastogne-liege", "aso:liege-bastogne-liege-femmes", "aso:fleche-wallonne", "aso:fleche-wallonne-femmes", "rcs:giro"}
 
 // Normalize backfills nil fields so every caller of Settings.Sports (not just the sports
 // HTTP handlers, which previously did this ad hoc inline) sees a consistent, non-nil shape -
@@ -838,14 +838,14 @@ type CalendarSourceSettings struct {
 type ExploreCardPosition string
 
 const (
-	ExploreCardPositionFront ExploreCardPosition = "front" // Explore card at the beginning of the shelf (default)
+	ExploreCardPositionFront ExploreCardPosition = "front" // Explore card at the beginning of the shelf
 	ExploreCardPositionEnd   ExploreCardPosition = "end"   // Explore card at the end of the shelf
 )
 
 // HomeShelvesSettings controls which shelves appear on the home screen and their order.
 type HomeShelvesSettings struct {
 	Shelves                     []ShelfConfig       `json:"shelves"`
-	ExploreCardPosition         ExploreCardPosition `json:"exploreCardPosition,omitempty"`         // "front" (default) or "end"
+	ExploreCardPosition         ExploreCardPosition `json:"exploreCardPosition,omitempty"`         // "front" or "end" (default)
 	ItemCap                     int                 `json:"itemCap,omitempty"`                     // Max items shown per home shelf before Explore card (default 20)
 	ExcludeUpcomingFromContinue bool                `json:"excludeUpcomingFromContinue,omitempty"` // Move unreleased next-up episodes out of Continue Watching
 	// PopularOnServerWindowDays is the lookback window in days for the
@@ -1428,7 +1428,7 @@ type DisplaySettings struct {
 	IncludeUnreleasedShowsInSearch bool `json:"includeUnreleasedShowsInSearch"`
 	// AlwaysShowProfileSelector forces the profile picker on every app open / un-background.
 	AlwaysShowProfileSelector bool `json:"alwaysShowProfileSelector"`
-	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only enabled scraper (debrid-only mode).
+	// BypassFilteringForAIOStreamsOnly skips mediastorm filtering/ranking when AIOStreams is the only active search source.
 	BypassFilteringForAIOStreamsOnly bool `json:"bypassFilteringForAioStreamsOnly"`
 	// ShowParsedBadges shows parsed metadata badges instead of raw titles in manual selection.
 	ShowParsedBadges bool `json:"showParsedBadges,omitempty"`
@@ -1972,7 +1972,7 @@ func DefaultSettings() Settings {
 		Sports:    SportsSettings{EnabledLeagues: append([]string(nil), defaultEnabledLeagueIDs...)},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
-			ExploreCardPosition:          ExploreCardPositionFront,
+			ExploreCardPosition:          ExploreCardPositionEnd,
 			ItemCap:                      20,
 			PopularOnServerWindowDays:    90,
 			RecentlyWatchedCapPerProfile: 3,
@@ -2717,7 +2717,7 @@ func (m *Manager) Load() (Settings, error) {
 		}
 	}
 
-	// Backfill ExploreCardPosition if empty (default to front)
+	// Preserve the legacy default for existing settings files that predate this field.
 	if s.HomeShelves.ExploreCardPosition == "" {
 		s.HomeShelves.ExploreCardPosition = ExploreCardPositionFront
 	}

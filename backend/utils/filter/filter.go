@@ -405,9 +405,11 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 
 		expectedCountry := NormalizeCountryCode(opts.ExpectedCountry)
 		releaseCountry := NormalizeCountryCode(parsed.Country)
+		if expectedCountry != "" {
+			result.Attributes["expectedCountry"] = expectedCountry
+		}
 		if expectedCountry != "" && releaseCountry != "" {
 			result.Attributes["releaseCountry"] = releaseCountry
-			result.Attributes["expectedCountry"] = expectedCountry
 			if releaseCountry != expectedCountry {
 				reason := fmt.Sprintf("explicit country %s does not match expected %s", strings.ToUpper(parsed.Country), expectedCountry)
 				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)

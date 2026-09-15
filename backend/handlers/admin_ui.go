@@ -920,9 +920,9 @@ var SettingsSchema = map[string]interface{}{
 				},
 			},
 			"navigationTabVisibility": map[string]interface{}{
-				"type":        "ordered-multiselect",
+				"type":        "checkboxes",
 				"label":       "Navigation Items",
-				"description": "Choose and reorder drawer and tab-bar items for this scope. Unselected items are hidden. Selecting none restores the default items. Admin is web only.",
+				"description": "Choose which drawer and tab-bar items are visible for this scope. Items retain their platform-defined order. Selecting none restores the default items. Admin is web only.",
 				"order":       1,
 				"optionsFrom": "navigationTabs",
 				"options": []map[string]interface{}{
@@ -964,7 +964,7 @@ var SettingsSchema = map[string]interface{}{
 			"includeUnreleasedShowsInLists":    map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Lists", "description": "Show shows with no aired episodes in shelves, watchlist/list responses, and discovery list results.", "order": 6},
 			"includeUnreleasedMoviesInSearch":  map[string]interface{}{"type": "boolean", "label": "Include Unreleased Movies in Search", "description": "Show upcoming and unreleased movies in metadata search results.", "order": 7},
 			"includeUnreleasedShowsInSearch":   map[string]interface{}{"type": "boolean", "label": "Include Unreleased Shows in Search", "description": "Show shows with no aired episodes in metadata search results.", "order": 8},
-			"bypassFilteringForAioStreamsOnly": map[string]interface{}{"type": "boolean", "label": "Bypass Filtering for AIOStreams Only", "description": "Skip mediastorm filtering/ranking when AIOStreams is the only enabled scraper in debrid-only mode (use AIOStreams' own ranking). Does not apply in hybrid mode with usenet.", "order": 9},
+			"bypassFilteringForAioStreamsOnly": map[string]interface{}{"type": "boolean", "label": "Bypass Filtering for AIOStreams Only", "description": "Skip mediastorm filtering/ranking when AIOStreams is the only active search source (use AIOStreams' own ranking). In hybrid mode, the bypass applies only when no Usenet indexers are enabled.", "order": 9},
 			"showParsedBadges":                 map[string]interface{}{"type": "boolean", "label": "Show Parsed Metadata Badges", "description": "Show parsed quality badges (resolution, codec, HDR, audio) instead of raw release titles in manual source selection", "order": 10},
 			"showStreamSourceInfo":             map[string]interface{}{"type": "boolean", "label": "Show Stream Source Information", "description": "Show source service and debrid provider information on details, manual selection, and player information surfaces.", "order": 10.1},
 			"enableAnimations":                 map[string]interface{}{"type": "boolean", "label": "Enable Application Animations", "description": "Animate application scrolling, transitions, and interface motion. Hero art panning remains controlled separately.", "order": 17},

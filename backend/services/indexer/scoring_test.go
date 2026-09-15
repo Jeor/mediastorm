@@ -243,6 +243,28 @@ func TestScoreResult_MissingYearHasNoBreakdown(t *testing.T) {
 	}
 }
 
+func TestScoreResult_CountryGateExplainsMatchAndMissingCountry(t *testing.T) {
+	ctx := ScoringContext{}
+	matching := models.NZBResult{Attributes: map[string]string{
+		"expectedCountry": "gb",
+		"releaseCountry":  "gb",
+		"countryMatch":    "true",
+	}}
+	missing := models.NZBResult{Attributes: map[string]string{"expectedCountry": "gb"}}
+
+	_, matchingBreakdown := ScoreResult(matching, ctx)
+	_, missingBreakdown := ScoreResult(missing, ctx)
+	if len(matchingBreakdown) != 1 || matchingBreakdown[0].RankValue != 1 {
+		t.Fatalf("matching country breakdown = %+v, want rank value 1", matchingBreakdown)
+	}
+	if len(missingBreakdown) != 1 || missingBreakdown[0].RankValue != 0 {
+		t.Fatalf("missing country breakdown = %+v, want rank value 0", missingBreakdown)
+	}
+	if !strings.Contains(missingBreakdown[0].Reason, "does not receive country priority") {
+		t.Fatalf("missing country reason = %q", missingBreakdown[0].Reason)
+	}
+}
+
 func TestSortResultsByScore_MissingYearIsNeutral(t *testing.T) {
 	ctx := ScoringContext{
 		RankingCriteria: []config.RankingCriterion{
@@ -540,6 +562,31 @@ func TestScoreResult_WeightedNonPreferredTerms(t *testing.T) {
 	}
 	if sHdts >= sClean {
 		t.Fatalf("expected HDTS (%d) < clean (%d)", sHdts, sClean)
+	}
+}
+
+func TestScoreResult_BreakdownUsesExactUnclampedRankingValues(t *testing.T) {
+	ctx := ScoringContext{
+		RankingCriteria: []config.RankingCriterion{
+			{ID: config.RankingPreferredTerms, Name: "Preferred Terms", Enabled: true, Order: 0},
+			{ID: config.RankingNonPreferredTerms, Name: "Non-Preferred Terms", Enabled: true, Order: 1},
+		},
+		PreferredTerms:    filter.CompileTerms([]string{"DV=120"}),
+		NonPreferredTerms: filter.CompileTerms([]string{"CAM=140"}),
+	}
+
+	_, breakdown := ScoreResult(models.NZBResult{Title: "Movie.DV.CAM"}, ctx)
+	if len(breakdown) != 2 {
+		t.Fatalf("breakdown length = %d, want 2", len(breakdown))
+	}
+	if breakdown[0].RankValue != 120 {
+		t.Fatalf("preferred rank value = %d, want exact weight 120", breakdown[0].RankValue)
+	}
+	if breakdown[1].RankValue != -140 {
+		t.Fatalf("non-preferred rank value = %d, want exact inverse weight -140", breakdown[1].RankValue)
+	}
+	if breakdown[0].Points != levelMax*scoreBand*2 {
+		t.Fatalf("legacy preferred points = %d, want clamped display value %d", breakdown[0].Points, levelMax*scoreBand*2)
 	}
 }
 

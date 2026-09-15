@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"novastream/models"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -36,7 +37,16 @@ func TestTeamDetailCapturedGames(t *testing.T) {
 			if got.Detail.Plays[0].Clock == "" {
 				t.Fatal("lost play clock")
 			}
-
+			// Optional design export uses exactly the same production normalizer.
+			if dir := os.Getenv("SPORTS_DESIGN_EXPORT"); dir != "" {
+				if err = os.MkdirAll(dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+				data, _ := json.MarshalIndent(got, "", "  ")
+				if err = os.WriteFile(filepath.Join(dir, league+".json"), data, 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
 			fixture.Summary.Header.Competitions[0].Status.Type.State = "pre"
 			pre, err := normalizeTeamDetail(fixture.Game, fixture.Summary, time.Now())
 			if err != nil {
@@ -104,7 +114,12 @@ func TestExpansionCapturedDetails(t *testing.T) {
 			if slug == "fifa.world" && (got.HomeTeam.ShootoutScore == nil || *got.HomeTeam.ShootoutScore != 4 || got.HomeTeam.Score != "3" || len(got.Detail.Periods) != 5 || got.Detail.Periods[4].Label != "PEN") {
 				t.Fatal("penalties merged with match goals")
 			}
-
+			if dir := os.Getenv("SPORTS_DESIGN_EXPORT"); dir != "" {
+				output, _ := json.MarshalIndent(got, "", "  ")
+				if err = os.WriteFile(filepath.Join(dir, id+".json"), output, 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
 		})
 	}
 }

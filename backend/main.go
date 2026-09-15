@@ -1140,6 +1140,7 @@ func main() {
 	r.HandleFunc("/admin", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/onboarding", adminUIHandler.RequireAuth(adminUIHandler.OnboardingPage)).Methods(http.MethodGet)
+	adminUIHandler.RegisterSportsUI(r, sportsHandler)
 	r.HandleFunc("/admin/settings", adminUIHandler.RequireAuth(adminUIHandler.SettingsPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/status", adminUIHandler.RequireAuth(adminUIHandler.StatusPage)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/history", adminUIHandler.RequireAuth(adminUIHandler.HistoryPage)).Methods(http.MethodGet)

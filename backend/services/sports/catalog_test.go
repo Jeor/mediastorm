@@ -1,6 +1,9 @@
 package sports
 
-import "testing"
+import (
+	"novastream/config"
+	"testing"
+)
 
 func TestLeagueCatalogIncludesConfiguredSports(t *testing.T) {
 	required := []string{"nfl", "college-football", "nba", "wnba", "mlb", "nhl", "soccer-uefa.europa.conf", "ufc", "pga", "atp", "f1", "nascar", "indycar", "rugby-180659", "rugby-league-3"}
@@ -21,8 +24,11 @@ func TestLeagueCatalogIncludesConfiguredSports(t *testing.T) {
 	}
 }
 
-func TestDefaultLeaguesAreCoreFive(t *testing.T) {
-	want := []string{"nfl", "nba", "mlb", "nhl", "ufc"}
+func TestDefaultLeaguesIncludeEntireCatalog(t *testing.T) {
+	want := config.DefaultSettings().Sports.EnabledLeagues
+	if len(want) != len(LeagueCatalog) {
+		t.Fatal("config defaults do not match full catalog")
+	}
 	got := defaultLeagues()
 	if len(got) != len(want) {
 		t.Fatalf("default leagues = %d, want %d", len(got), len(want))
@@ -32,4 +38,27 @@ func TestDefaultLeaguesAreCoreFive(t *testing.T) {
 			t.Fatalf("default[%d] = %q, want %q", i, got[i].ID, id)
 		}
 	}
+}
+
+func TestSavedLeagueSubsetIsPreserved(t *testing.T) {
+	settings := config.SportsSettings{EnabledLeagues: []string{"nba"}}
+	settings.Normalize()
+	if len(settings.EnabledLeagues) != 1 || settings.EnabledLeagues[0] != "nba" {
+		t.Fatal("overwrote saved selection")
+	}
+	var fresh config.SportsSettings
+	fresh.Normalize()
+	if len(fresh.EnabledLeagues) != len(LeagueCatalog) {
+		t.Fatal("missing defaults")
+	}
+}
+
+func TestCyclingAvailabilityControlsSeparateFeed(t *testing.T) {
+ s:=NewService(t.TempDir())
+ if len(s.enabledCyclingCompetitions())!=len(cyclingCompetitions) { t.Fatal("cycling missing from defaults") }
+ s.SetEnabledLeagueIDs([]string{"aso:tour", "rcs:giro"})
+ selected:=s.enabledCyclingCompetitions()
+ if len(selected)!=2 || selected[0].id!="tour" || selected[1].id!="giro" {t.Fatalf("wrong cycling selection: %v",selected)}
+ s.SetEnabledLeagueIDs([]string{"nba"})
+ if len(s.enabledCyclingCompetitions())!=0 {t.Fatal("disabled cycling still selected")}
 }

@@ -87,10 +87,28 @@ var LeagueCatalog = []League{
 	{ID: "rugby-242041", Name: "Super Rugby", Sport: "rugby", Slug: "242041", Category: "rugby", EventKind: "matchup", SupportsTeams: true},
 	{ID: "rugby-270559", Name: "Top 14", Sport: "rugby", Slug: "270559", Category: "rugby", EventKind: "matchup", SupportsTeams: true},
 	{ID: "rugby-league-3", Name: "NRL", Sport: "rugby-league", Slug: "3", Category: "rugby-league", EventKind: "matchup", SupportsTeams: true},
+	{ID: "aso:tour", Name: "Tour de France", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:vuelta", Name: "La Vuelta", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:tour-femmes", Name: "Tour de France Femmes", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:paris-nice", Name: "Paris-Nice", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:vuelta-femenina", Name: "La Vuelta Femenina", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:paris-roubaix", Name: "Paris-Roubaix", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:paris-roubaix-femmes", Name: "Paris-Roubaix Femmes", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:liege-bastogne-liege", Name: "Liège-Bastogne-Liège", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:liege-bastogne-liege-femmes", Name: "Liège-Bastogne-Liège Femmes", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:fleche-wallonne", Name: "La Flèche Wallonne", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "aso:fleche-wallonne-femmes", Name: "La Flèche Wallonne Femmes", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "rcs:giro", Name: "Giro d’Italia", Sport: "cycling", Category: "cycling", EventKind: "race"},
 }
 
-// DefaultLeagues is the enabled-by-default subset of LeagueCatalog (the original MVP set).
-var defaultLeagueIDs = []string{"nfl", "nba", "mlb", "nhl", "ufc"}
+// Every supported league is enabled by default. Saved configuration can select a subset.
+var defaultLeagueIDs = func() []string {
+	ids := make([]string, 0, len(LeagueCatalog))
+	for _, league := range LeagueCatalog {
+		ids = append(ids, league.ID)
+	}
+	return ids
+}()
 
 func defaultLeagues() []League {
 	return selectLeagues(defaultLeagueIDs)
@@ -175,6 +193,19 @@ func (s *Service) EnsureTeamCatalog(ctx context.Context) ([]models.SportsTeamRec
 	leagues := append([]League(nil), s.leagues...)
 	s.mu.RUnlock()
 
+	return s.ensureTeamCatalog(ctx, leagues)
+}
+
+// EnsureLeagueTeamCatalog includes disabled leagues without enabling scoreboard polling.
+func (s *Service) EnsureLeagueTeamCatalog(ctx context.Context, id string) ([]models.SportsTeamRecord, error) {
+	league, ok := s.League(id)
+	if !ok {
+		return nil, fmt.Errorf("unknown league %q", id)
+	}
+	return s.ensureTeamCatalog(ctx, []League{league})
+}
+
+func (s *Service) ensureTeamCatalog(ctx context.Context, leagues []League) ([]models.SportsTeamRecord, error) {
 	var firstErr error
 	var resultMu sync.Mutex
 	var wg sync.WaitGroup
@@ -193,7 +224,14 @@ func (s *Service) EnsureTeamCatalog(ctx context.Context) ([]models.SportsTeamRec
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			semaphore <- struct{}{}
+			select {
+			case semaphore <- struct{}{}:
+			case <-ctx.Done():
+				resultMu.Lock()
+				firstErr = ctx.Err()
+				resultMu.Unlock()
+				return
+			}
 			defer func() { <-semaphore }()
 			teams, err := s.fetchLeagueTeams(ctx, league)
 			if err != nil {
@@ -425,7 +463,14 @@ func (s *Service) Refresh(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			semaphore <- struct{}{}
+			select {
+			case semaphore <- struct{}{}:
+			case <-ctx.Done():
+				resultMu.Lock()
+				firstErr = ctx.Err()
+				resultMu.Unlock()
+				return
+			}
 			defer func() { <-semaphore }()
 			games, err := s.fetchLeagueScoreboard(ctx, league)
 			if err != nil {
@@ -468,6 +513,9 @@ func (s *Service) fetchLeagueScoreboard(ctx context.Context, league League) ([]m
 }
 
 func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, date string) ([]models.SportsGame, error) {
+	if league.Sport == "cycling" {
+		return []models.SportsGame{}, nil
+	}
 	// Racing has multiple sessions and drivers; never synthesize a two-team matchup.
 	if league.EventKind == "race" {
 		return []models.SportsGame{}, nil

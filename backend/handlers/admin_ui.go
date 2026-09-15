@@ -1544,6 +1544,8 @@ var SettingsSchema = map[string]interface{}{
 // AdminUIHandler serves the admin dashboard UI
 type AdminUIHandler struct {
 	settingsTemplate      *template.Template
+	sportsTemplate        *template.Template
+	sportsHandler         *SportsHandler
 	statusTemplate        *template.Template
 	historyTemplate       *template.Template
 	toolsTemplate         *template.Template
@@ -1896,6 +1898,7 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 
 	return &AdminUIHandler{
 		settingsTemplate:      createPageTemplate("settings.html"),
+		sportsTemplate:        createPageTemplate("sports.html"),
 		statusTemplate:        createPageTemplate("status.html"),
 		historyTemplate:       createPageTemplate("history.html"),
 		toolsTemplate:         createPageTemplate("tools.html"),

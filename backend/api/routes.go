@@ -502,7 +502,7 @@ func Register(
 		protected.HandleFunc("/sports/hub", sportsHandler.GetHub).Methods(http.MethodGet)
 		protected.HandleFunc("/sports/hub", sportsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/settings", sportsHandler.GetSettings).Methods(http.MethodGet)
-		protected.HandleFunc("/sports/settings", sportsHandler.PutSettings).Methods(http.MethodPut)
+		protected.Handle("/sports/settings", MasterOnlyMiddleware()(http.HandlerFunc(sportsHandler.PutSettings))).Methods(http.MethodPut)
 		protected.HandleFunc("/sports/settings", sportsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/sports/logo-cache/clear", sportsHandler.ClearLogoCache).Methods(http.MethodPost)
 		protected.HandleFunc("/sports/logo-cache/clear", sportsHandler.Options).Methods(http.MethodOptions)

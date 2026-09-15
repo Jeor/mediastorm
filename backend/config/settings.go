@@ -79,7 +79,7 @@ type SportsSearchScope struct {
 
 // defaultEnabledLeagueIDs is duplicated (not imported) from services/sports.defaultLeagueIDs
 // to avoid a config -> services/sports import cycle; keep the two lists in sync.
-var defaultEnabledLeagueIDs = []string{"nfl", "nba", "mlb", "nhl", "ufc"}
+var defaultEnabledLeagueIDs = []string{"nfl", "college-football", "nba", "mens-college-basketball", "womens-college-basketball", "wnba", "mlb", "nhl", "soccer-fifa.world", "soccer-fifa.wwc", "soccer-eng.1", "soccer-eng.2", "soccer-esp.1", "soccer-ger.1", "soccer-ita.1", "soccer-fra.1", "soccer-usa.1", "soccer-usa.nwsl", "soccer-usa.nwsl.cup", "soccer-uefa.champions", "soccer-uefa.europa", "soccer-uefa.europa.conf", "soccer-mex.1", "soccer-ned.1", "soccer-por.1", "ufc", "pga", "lpga", "atp", "wta", "f1", "nascar", "motogp", "indycar", "rugby-180659", "rugby-164205", "rugby-267979", "rugby-242041", "rugby-270559", "rugby-league-3", "aso:tour", "aso:vuelta", "aso:tour-femmes", "aso:paris-nice", "aso:vuelta-femenina", "aso:paris-roubaix", "aso:paris-roubaix-femmes", "aso:liege-bastogne-liege", "aso:liege-bastogne-liege-femmes", "aso:fleche-wallonne", "aso:fleche-wallonne-femmes", "rcs:giro"}
 
 // Normalize backfills nil fields so every caller of Settings.Sports (not just the sports
 // HTTP handlers, which previously did this ad hoc inline) sees a consistent, non-nil shape -
@@ -1969,7 +1969,7 @@ func DefaultSettings() Settings {
 		Transmux:  TransmuxSettings{Enabled: true, FFmpegPath: "ffmpeg", FFprobePath: "ffprobe", HLSTempDirectory: "/tmp/novastream-hls", HardwareAcceleration: "auto"},
 		Playback:  PlaybackSettings{PreferredPlayer: "native", PreferredAudioLanguage: "eng", PauseWhenAppInactive: false, UseLoadingScreen: false, SubtitleSize: 1.0, SubtitleUseCropDetectPosition: false, SubtitleColor: "#FFFFFF", SubtitleOpacity: 1.0, SubtitleBold: false, SubtitleOutlineEnabled: false, SubtitleOutlineColor: "#000000", SubtitleOutlineWeight: 0.35, SubtitleBackgroundEnabled: true, SubtitleBackgroundColor: "#000000", SubtitleBackgroundOpacity: 0.6, SeekForwardSeconds: 30, SeekBackwardSeconds: 10, PrerollMode: "artwork", PrerollMediaScope: "all", StreamMigrationEnabled: true, CreditsDetectionEnabled: false, MatchFrameRate: false, LiveClosedCaptionExtraction: true, Thumbnails: PlaybackThumbnailSettings{Enabled: false, Workers: 1}},
 		Live:      LiveSettings{Mode: "m3u", PlaylistURL: "", MaxStreams: 0, PlaylistCacheTTLHours: 24, EPG: EPGSettings{RefreshIntervalHours: 12, RetentionDays: 7}},
-		Sports:    SportsSettings{EnabledLeagues: []string{"nfl", "nba", "mlb", "nhl", "ufc"}},
+		Sports:    SportsSettings{EnabledLeagues: append([]string(nil), defaultEnabledLeagueIDs...)},
 		HomeShelves: HomeShelvesSettings{
 			Shelves:                      DefaultHomeShelfConfigs(),
 			ExploreCardPosition:          ExploreCardPositionFront,

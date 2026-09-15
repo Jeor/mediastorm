@@ -221,7 +221,35 @@ func normalizeCyclingSchedule(raw []asoStage, c cyclingCompetition, year int, no
 	race.Source = cyclingSource(now, latest)
 	return race
 }
+func cyclingLeagueID(id string) string {
+	if id == "giro" {
+		return "rcs:" + id
+	}
+	return "aso:" + id
+}
+
+func (s *Service) enabledCyclingCompetitions() []cyclingCompetition {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	// A zero-value service is used by provider tests; production initializes its league list.
+	if s.leagues == nil {
+		return cyclingCompetitions
+	}
+	enabled := map[string]bool{}
+	for _, league := range s.leagues {
+		enabled[league.ID] = true
+	}
+	out := []cyclingCompetition{}
+	for _, competition := range cyclingCompetitions {
+		if enabled[cyclingLeagueID(competition.id)] {
+			out = append(out, competition)
+		}
+	}
+	return out
+}
+
 func (s *Service) GetCycling(ctx context.Context) CyclingFeed {
+	competitions := s.enabledCyclingCompetitions()
 	now := time.Now()
 	year := now.UTC().Year()
 	cache := &s.cycling
@@ -236,10 +264,10 @@ func (s *Service) GetCycling(ctx context.Context) CyclingFeed {
 	// result slots; the cache is committed only after they finish.
 	requestCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
-	boards := make([]cyclingBoardCache, len(cyclingCompetitions))
+	boards := make([]cyclingBoardCache, len(competitions))
 	var workers sync.WaitGroup
 	slots := make(chan struct{}, 4)
-	for i, c := range cyclingCompetitions {
+	for i, c := range competitions {
 		key := fmt.Sprintf("%s:%d", c.id, year)
 		old, exists := cache.boards[key]
 		boards[i] = old
@@ -291,7 +319,7 @@ func (s *Service) GetCycling(ctx context.Context) CyclingFeed {
 		}(i, c, old)
 	}
 	workers.Wait()
-	for i, c := range cyclingCompetitions {
+	for i, c := range competitions {
 		old := boards[i]
 		cache.boards[fmt.Sprintf("%s:%d", c.id, year)] = old
 		state := "available"
@@ -309,6 +337,9 @@ func (s *Service) GetCycling(ctx context.Context) CyclingFeed {
 	if len(feed.Data) == 0 {
 		feed.State = "unavailable"
 		feed.Reason = "Cycling race schedules could not be reached."
+		if len(competitions) == 0 {
+			feed.Reason = "Cycling is disabled in server league availability."
+		}
 	}
 	// Retain current-season cache entries only.
 	for key := range cache.boards {

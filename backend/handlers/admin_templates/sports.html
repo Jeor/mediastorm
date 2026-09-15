@@ -1,0 +1,576 @@
+{{template "base" .}}
+{{define "title"}}Sports Hub - mediastorm{{end}}
+{{define "styles"}}
+<style>
+.sports-settings { max-width: 1100px; margin: 0 auto; }
+.sports-settings h1 { margin-bottom: .5rem; }
+.sports-intro, .sports-panel p, .sports-status { color: var(--text-secondary); }
+.sports-intro { margin-bottom: 1.5rem; }
+.sports-panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1.5rem; padding: 1.5rem; }
+.sports-panel h2 { font-size: 1.2rem; margin: 0 0 .5rem; }
+.sports-panel h3 { font-size: 1rem; margin: 1.25rem 0 .75rem; }
+.sports-profile-head, .sports-toolbar, .sports-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.sports-profile-head { justify-content: space-between; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.sports-profile-head p { max-width: 58ch; }
+.sports-settings select, .sports-settings input[type=search] { min-height: 44px; padding: .65rem .8rem; color: var(--text-primary); background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+.sports-profile-select { min-width: 220px; }
+.sports-settings label { font-size: .9rem; }
+.sports-profile-select label, .sports-toolbar > label { display: grid; gap: .4rem; }
+.sports-toolbar { margin: 1rem 0; align-items: end; }
+.sports-toolbar > label { flex: 1; min-width: 160px; }
+.sports-tabs { display: flex; gap: 1.5rem; margin-top: .5rem; border-bottom: 1px solid var(--border); }
+.sports-tabs button { background: none; color: var(--text-secondary); padding: 1rem .1rem; border: 0; border-bottom: 2px solid transparent; font: inherit; cursor: pointer; }
+.sports-tabs button[aria-pressed=true] { border-bottom-color: var(--accent); color: var(--text-primary); }
+.sports-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 1.5rem; }
+.sports-choice { display: flex; gap: .8rem; align-items: center; min-height: 48px; padding: .8rem .4rem; border-bottom: 1px solid var(--border); cursor: pointer; overflow-wrap: anywhere; }
+.sports-choice:hover { background: var(--bg-hover); }
+.sports-choice input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+.sports-choice span { flex: 1; }
+.sports-choice small { display: block; color: var(--text-secondary); font-size: .8rem; margin-top: .25rem; }
+.sports-settings :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sports-list { max-height: 430px; overflow-y: auto; overscroll-behavior: contain; padding-right: .5rem; }
+.sports-actions { margin-top: 1rem; }
+.sports-savebar { position: sticky; bottom: 0; background: var(--bg-secondary); padding: 1rem 0 0; border-top: 1px solid var(--border); margin-top: 1.25rem; }
+.sports-savebar .sports-actions { margin-top: .75rem; }
+.sports-summary { font-size: .9rem; color: var(--text-secondary); }
+.sports-status { font-size: .9rem; min-height: 1.5em; margin-top: .75rem; }
+.sports-status[data-error=true] { color: #f5a3a3; }
+.sports-panel fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.sports-panel fieldset:disabled { opacity: .6; }
+.sports-section > summary { cursor: pointer; font-weight: 600; padding: .25rem 0; }
+.sports-section > summary span { font-weight: 400; color: var(--text-secondary); margin-left: .5rem; font-size: .9rem; }
+.sports-section[open] > summary { margin-bottom: 1rem; }
+.sports-settings [hidden] { display: none !important; }
+@media(max-width:600px) { .sports-panel { padding: 1rem; } .sports-options { grid-template-columns: 1fr; } .sports-profile-select { width: 100%; } .sports-tabs { gap: 1rem; } .sports-tabs button { flex: 1; } .sports-section > summary span { display: block; margin: .5rem 0 0; } }
+@media(max-height:850px), (max-width:900px) { .sports-savebar { position: static; } }
+.sports-sport-group { scroll-margin-top: 80px; margin-top: 1rem; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.sports-sport-heading { display: flex; align-items: center; gap: 1rem; padding: .25rem 1rem; background: var(--bg-tertiary); }
+.sports-sport-heading h3 { flex: 1; margin: 0; }
+.sports-sport-heading .sports-choice { border: 0; font-weight: 600; font-size: 1rem; }
+.sports-sport-count { color: var(--text-secondary); font-size: .85rem; white-space: nowrap; }
+.sports-sport-children { padding: .25rem 1rem .75rem 2.9rem; }
+.sports-availability-tools { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+.sports-availability-tools p { margin: 0; margin-right: auto; }
+#sports-availability { max-height: 540px; }
+@media(max-width:600px) { .sports-sport-heading { padding: .25rem .65rem; gap: .5rem; } .sports-sport-children { padding-left: 2rem; } }
+html { scrollbar-color: var(--text-muted) var(--bg-primary); scrollbar-width: thin; }
+.sports-settings * { scrollbar-color: var(--text-muted) var(--bg-secondary); scrollbar-width: thin; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border: 2px solid var(--bg-primary); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+.sports-server { scroll-margin-top: 80px; }
+.sports-sport-icon { width: 22px; height: 22px; flex: 0 0 22px; color: var(--text-secondary); }
+.sports-sport-toggle { display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.sports-sport-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sports-sport-toggle svg { width: 18px; height: 18px; }
+.sports-sport-toggle[aria-expanded=true] .sports-chevron { transform: rotate(180deg); }
+@media(max-width:600px) { .sports-sport-heading { flex-wrap: wrap; gap: .25rem; } .sports-sport-count { font-size: .75rem; } .sports-sport-heading .sports-choice { gap: .5rem; font-size: .9rem; } }
+.sports-sport-heading { gap: 0; padding: 0 .8rem; }
+.sports-sport-heading > input { width: 18px; height: 18px; accent-color: var(--accent); flex: 0 0 18px; cursor: pointer; }
+.sports-sport-toggle { display: flex; flex: 1; gap: .8rem; padding: .85rem .25rem .85rem .8rem; min-width: 0; text-align: left; font: inherit; color: var(--text-primary); }
+.sports-sport-name { flex: 1; font-weight: 600; }
+.sports-sport-toggle .sports-sport-icon { width: 22px; height: 22px; }
+.sports-chevron { flex: 0 0 18px; }
+@media(max-width:600px) { .sports-sport-toggle { gap: .5rem; flex-wrap: wrap; } .sports-sport-count { margin-left: auto; } }
+</style>
+{{end}}
+{{define "content"}}
+<div class="sports-settings">
+<h1>Sports Hub</h1>
+<p class="sports-intro">{{if .IsAdmin}}Favorites apply to the selected profile. Sport availability applies server-wide to every profile.{{else}}Choose what appears in each profile’s Following view.{{end}}</p>
+<details class="sports-panel sports-section" id="sports-profile-section" open><summary id="sports-profile-title">Profile favorites <span>Per profile · only the selected profile</span></summary>
+<div class="sports-profile-head">
+<div><p>Choose a profile, then follow sports, leagues, or teams. Saving favorites changes only that profile’s Following view.</p></div>
+<div class="sports-profile-select"><label for="sports-profile">Editing profile<select id="sports-profile" disabled><option value="">Choose a profile</option>{{range .Users}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label></div>
+</div>
+<fieldset id="sports-profile-fields" disabled>
+<div class="sports-tabs" role="group" aria-label="Favorite type">
+<button type="button" id="sports-tab-sports" aria-pressed="false" aria-controls="sports-panel-sports">Sports</button>
+<button type="button" id="sports-tab-leagues" aria-pressed="true" aria-controls="sports-panel-leagues">Leagues</button>
+<button type="button" id="sports-tab-teams" aria-pressed="false" aria-controls="sports-panel-teams">Teams</button>
+</div>
+<div class="sports-toolbar"><label>Browse sport<select id="sports-filter"><option value="">All sports</option></select></label><label><span>Show favorites</span><span><input id="sports-selected-only" type="checkbox"> Selected only</span></label></div>
+<div id="sports-panel-sports" hidden><p>Follow all events in a sport.</p><div id="sports-pins" class="sports-options sports-list"></div></div>
+<div id="sports-panel-leagues"><label for="sports-league-search">Find a league</label><input id="sports-league-search" type="search" placeholder="Search leagues" autocomplete="off"><div id="sports-follows" class="sports-options sports-list"></div></div>
+<div id="sports-panel-teams" hidden><h3>Favorite teams</h3><div class="sports-toolbar"><label>League<select id="sports-team-league"><option value="">All leagues</option></select></label><label for="sports-team-search">Find a team<input id="sports-team-search" type="search" placeholder="Search teams or leagues" autocomplete="off"></label></div><p id="sports-team-status" class="sports-status" role="status" aria-live="polite"></p><div id="sports-teams" class="sports-options sports-list"></div><div class="sports-actions"><button type="button" class="btn btn-secondary" id="sports-reload-teams">Retry team lists</button></div><p class="sports-status">Team lists are available for team-based leagues. Other sports can be followed by sport or competition.</p></div>
+</fieldset>
+<div class="sports-savebar"><div id="sports-summary" class="sports-summary" aria-live="polite">Choose a profile to begin.</div><div class="sports-actions"><button type="button" class="btn btn-primary" id="sports-save-profile" disabled>Save favorites</button><button type="button" class="btn btn-secondary" id="sports-reload-profile" disabled>Reload favorites</button></div><p id="sports-profile-status" class="sports-status" role="status" aria-live="polite">Loading sports…</p></div>
+</details>
+{{if .IsAdmin}}
+<details class="sports-panel sports-server sports-section" id="sports-server"><summary>Server league availability <span>Server-wide · affects every profile</span></summary>
+<p>Select a sport to enable or disable all its leagues, or choose leagues individually. All leagues are enabled by default.</p>
+<label for="sports-server-search">Find a league</label><input type="search" id="sports-server-search" placeholder="Search server leagues">
+<fieldset id="sports-server-fields" disabled><div class="sports-availability-tools"><p id="sports-availability-count" aria-live="polite"></p><button type="button" class="btn btn-secondary" id="sports-enable-all">Select all</button><button type="button" class="btn btn-secondary" id="sports-disable-all">Deselect all</button></div><div id="sports-availability" class="sports-list"></div></fieldset>
+<div class="sports-actions"><button type="button" class="btn btn-primary" id="sports-save-server" disabled>Save availability</button><button type="button" class="btn btn-secondary" id="sports-reload-server">Reload</button></div>
+<p id="sports-server-status" class="sports-status" role="status" aria-live="polite">Loading league availability…</p>
+</details>
+{{end}}
+</div>
+{{end}}
+{{define "scripts"}}
+<script>
+(() => {
+  'use strict';
+  const root = {{.BasePath}} + '/api/sports';
+  const master = {{.IsAdmin}};
+  const el = (id) => document.getElementById('sports-' + id);
+  let sports = [
+    ['american-football', 'American football'],
+    ['basketball', 'Basketball'],
+    ['baseball', 'Baseball'],
+    ['ice-hockey', 'Ice hockey'],
+    ['soccer', 'Soccer'],
+    ['motorsport', 'Motorsport'],
+    ['cycling', 'Cycling'],
+  ];
+  // Follow IDs are the stable profile IDs used by the app, rather than provider slugs.
+  const followIDs = {
+    nfl: 'nfl',
+    nba: 'nba',
+    mlb: 'mlb',
+    nhl: 'nhl',
+    'college-football': 'ncaa-football',
+    'mens-college-basketball': 'ncaa-mens-basketball',
+    'womens-college-basketball': 'ncaa-womens-basketball',
+    'soccer-eng.1': 'premier-league',
+    'soccer-esp.1': 'la-liga',
+    'soccer-ger.1': 'bundesliga',
+    'soccer-ita.1': 'serie-a',
+    'soccer-fra.1': 'ligue-1',
+    'soccer-usa.1': 'mls',
+    'soccer-usa.nwsl': 'nwsl',
+    'soccer-uefa.champions': 'uefa-champions-league',
+    'soccer-uefa.europa': 'soccer-uefa.europa',
+    'soccer-fifa.world': 'soccer-fifa.world',
+    'soccer-fifa.wwc': 'soccer-fifa.wwc',
+    f1: 'formula-one',
+    nascar: 'nascar-cup',
+    indycar: 'indycar',
+    motogp: 'motogp',
+  };
+  const cycling = [
+    ['rcs:giro', 'Giro d’Italia'],
+    ['aso:tour', 'Tour de France'],
+    ['aso:vuelta', 'La Vuelta'],
+    ['aso:tour-femmes', 'Tour de France Femmes'],
+    ['aso:paris-nice', 'Paris–Nice'],
+    ['aso:vuelta-femenina', 'La Vuelta Femenina'],
+    ['aso:paris-roubaix', 'Paris–Roubaix'],
+    ['aso:paris-roubaix-femmes', 'Paris–Roubaix Femmes'],
+    ['aso:liege-bastogne-liege', 'Liège–Bastogne–Liège'],
+    ['aso:liege-bastogne-liege-femmes', 'Liège–Bastogne–Liège Femmes'],
+    ['aso:fleche-wallonne', 'La Flèche Wallonne'],
+    ['aso:fleche-wallonne-femmes', 'La Flèche Wallonne Femmes'],
+  ];
+  let leagues = [],
+    teams = [],
+    settings = null,
+    availability = new Set();
+  let snapshot = null,
+    draft = null,
+    profile = '',
+    dirty = false,
+    serverDirty = false;
+  let generation = 0,
+    teamGeneration = 0,
+    profileSaving = false,
+    serverSaving = false;
+  function status(id, message, error = false) {
+    el(id).textContent = message;
+    el(id).dataset.error = String(error);
+  }
+  async function request(path, method = 'GET', body) {
+    const response = await fetch(root + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) {
+      const error = new Error(
+        response.status === 409
+          ? 'Favorites changed elsewhere. Reload before saving again.'
+          : `Unable to ${method === 'GET' ? 'load' : 'save'} sports settings. Try again.`,
+      );
+      error.status = response.status;
+      throw error;
+    }
+    return response.json();
+  }
+  function checkbox(target, label, id, checked, change) {
+    const row = document.createElement('label');
+    row.className = 'sports-choice';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = id;
+    input.checked = checked;
+    input.addEventListener('change', () => change(input.checked));
+    const text = document.createElement('span');
+    const [name, ...context] = label.split(' · ');
+    text.textContent = name;
+    if (context.length) { const small = document.createElement('small'); small.textContent = context.join(' · '); text.append(small); }
+    row.append(input, text);
+    target.append(row);
+    return row;
+  }
+  function edit(field, id, checked) {
+    const values = new Set(draft[field]);
+    checked ? values.add(id) : values.delete(id);
+    draft[field] = [...values];
+    dirty = true;
+    status('profile-status', 'Unsaved favorites.');
+    updateSummary();
+  }
+  const sportID = (id) => ({ football: 'american-football', hockey: 'ice-hockey', racing: 'motorsport' }[id] || id);
+  const sportLabels = { 'american-football': 'American football', basketball: 'Basketball', baseball: 'Baseball', 'ice-hockey': 'Ice hockey', soccer: 'Soccer', motorsport: 'Motorsport', cycling: 'Cycling', mma: 'MMA', golf: 'Golf', tennis: 'Tennis', rugby: 'Rugby', 'rugby-league': 'Rugby league' };
+  const followID = (league) => followIDs[league.id] || league.id;
+  function updateSummary() {
+    el('summary').textContent = draft ? `${draft.pinnedSportIds.length} sports · ${draft.competitionIds.length} leagues · ${draft.teamIds.length} teams selected` : 'Choose a profile to begin.';
+  }
+  function matches(sport, selected) {
+    return (!el('filter').value || el('filter').value === sport) && (!el('selected-only').checked || selected);
+  }
+  function empty(target, text) {
+    if (!target.children.length) { const p = document.createElement('p'); p.className = 'sports-status'; p.textContent = text; target.append(p); }
+  }
+  function renderFavorites() {
+    if (!draft) return;
+    el('pins').replaceChildren(); el('follows').replaceChildren();
+    const allSports = [...sports, ...draft.pinnedSportIds.filter((id) => !sports.some(([key]) => key === id)).map((id) => [id, 'Saved sport (' + id + ')'])];
+    for (const [id, label] of allSports) {
+      const selected = draft.pinnedSportIds.includes(id);
+      if (matches(id, selected)) checkbox(el('pins'), label, id, selected, (checked) => edit('pinnedSportIds', id, checked));
+    }
+    const query = el('league-search').value.trim().toLowerCase();
+    const entries = [...leagues, ...cycling.filter(([id]) => !leagues.some((l) => l.id === id)).map(([id, name]) => ({ id, name, sport: 'cycling', enabled: true }))];
+    for (const id of draft.competitionIds) if (!entries.some((l) => followID(l) === id)) entries.push({id, name: 'Saved league (' + id + ')', sport: '', enabled: false});
+    for (const league of entries) {
+      const id = followID(league), selected = draft.competitionIds.includes(id);
+      if (!matches(sportID(league.sport), selected) || !league.name.toLowerCase().includes(query)) continue;
+      checkbox(el('follows'), league.name + (league.enabled ? '' : ' · not enabled on server'), id, selected, (checked) => edit('competitionIds', id, checked));
+    }
+    empty(el('pins'), 'No sports match these filters.');
+    empty(el('follows'), 'No leagues match these filters.');
+    renderTeams(); updateSummary();
+  }
+  function renderTeams() {
+    const focused = el('teams').contains(document.activeElement) ? document.activeElement.value : null;
+    const scroll = el('teams').scrollTop;
+    el('teams').replaceChildren();
+    if (!draft) return;
+    const query = el('team-search').value.trim().toLowerCase();
+    const entries = new Map(teams.map((team) => [team.id, team]));
+    for (const id of draft.teamIds) if (!entries.has(id)) entries.set(id, { id, name: 'Saved team (' + id + ')', league: id.split(':')[0] });
+    for (const team of [...entries.values()].sort((a, b) => a.name.localeCompare(b.name))) {
+      const league = leagues.find((item) => item.id === team.league), label = league?.name || team.league;
+      const selected = draft.teamIds.includes(team.id);
+      if (el('team-league').value && el('team-league').value !== team.league) continue;
+      if (!matches(sportID(league?.sport || ''), selected) || !(team.name + ' ' + label).toLowerCase().includes(query)) continue;
+      checkbox(el('teams'), team.name + ' · ' + label + (league && !league.enabled ? ' · not enabled' : ''), team.id, selected, (checked) => edit('teamIds', team.id, checked));
+    }
+    empty(el('teams'), 'No teams match these filters. Try another sport or search.');
+    if (focused) [...el('teams').querySelectorAll('input')].find((input) => input.value === focused)?.focus({ preventScroll: true });
+    el('teams').scrollTop = scroll;
+  }
+  const loadedTeamLeagues = new Set();
+  async function loadTeams() {
+    const current = ++teamGeneration;
+    el('reload-teams').disabled = true;
+    const pending = leagues.filter((l) => l.supportsTeams && !loadedTeamLeagues.has(l.id));
+    const failures = [];
+    let done = 0;
+    status('team-status', pending.length ? 'Loading team lists…' : `${teams.length} teams available.`);
+    async function worker() {
+      while (pending.length && current === teamGeneration) {
+        const league = pending.shift();
+        try {
+          const data = await request('/catalog?teams=1&league=' + encodeURIComponent(league.id));
+          if (current !== teamGeneration) return;
+          const merged = new Map(teams.map((team) => [team.id, team]));
+          for (const team of data.teams || []) merged.set(team.id, team);
+          teams = [...merged.values()];
+          if (data.partial) failures.push(league.name); else loadedTeamLeagues.add(league.id);
+          renderTeams();
+        } catch { if (current === teamGeneration) failures.push(league.name); }
+        done++;
+        if (current === teamGeneration) status('team-status', `${teams.length} teams loaded · ${done} league lists checked…`);
+      }
+    }
+    await Promise.all(Array.from({length: 4}, worker));
+    if (current !== teamGeneration) return;
+    status('team-status', failures.length ? `${teams.length} teams loaded. Retry unavailable lists: ${failures.join(', ')}. Saved favorites are kept.` : `${teams.length} teams available across ${loadedTeamLeagues.size} leagues.`, failures.length > 0);
+    el('reload-teams').disabled = false;
+  }
+  async function loadProfile(id) {
+    const current = ++generation;
+    profile = id;
+    snapshot = null;
+    draft = null;
+    dirty = false;
+    updateSummary();
+    el('profile-fields').disabled = true;
+    el('save-profile').disabled = true;
+    el('reload-profile').disabled = !id;
+    for (const name of ['pins', 'follows', 'teams']) el(name).replaceChildren();
+    if (!id) {
+      status('profile-status', 'Choose a profile to edit favorites.');
+      return;
+    }
+    status('profile-status', 'Loading favorites…');
+    try {
+      const data = await request('/profiles/' + encodeURIComponent(id));
+      if (current !== generation) return;
+      snapshot = data;
+      draft = JSON.parse(JSON.stringify(data.preferences));
+      renderFavorites();
+      el('profile-fields').disabled = false;
+      el('save-profile').disabled = false;
+      status('profile-status', 'Favorites belong only to this profile.');
+    } catch (error) {
+      if (current === generation) status('profile-status', error.message, true);
+    }
+  }
+  el('profile').addEventListener('change', () => {
+    if (dirty && !window.confirm('Discard unsaved favorites and switch profiles?')) {
+      el('profile').value = profile;
+      return;
+    }
+    void loadProfile(el('profile').value);
+  });
+  el('reload-profile').addEventListener('click', () => {
+    if (!dirty || window.confirm('Discard unsaved favorites and reload?')) void loadProfile(profile);
+  });
+  for (const name of ['sports', 'leagues', 'teams']) el('tab-' + name).addEventListener('click', () => {
+    for (const other of ['sports', 'leagues', 'teams']) { el('tab-' + other).setAttribute('aria-pressed', String(other === name)); el('panel-' + other).hidden = other !== name; }
+  });
+  function renderTeamLeagueFilter() {
+    const previous = el('team-league').value;
+    el('team-league').replaceChildren(new Option('All leagues', ''));
+    for (const league of leagues.filter((l) => l.supportsTeams && (!el('filter').value || sportID(l.sport) === el('filter').value))) el('team-league').append(new Option(league.name, league.id));
+    if ([...el('team-league').options].some((o) => o.value === previous)) el('team-league').value = previous;
+  }
+  el('filter').addEventListener('change', () => { renderTeamLeagueFilter(); renderFavorites(); });
+  el('team-league').addEventListener('change', renderTeams);
+  el('selected-only').addEventListener('change', renderFavorites);
+  el('league-search').addEventListener('input', renderFavorites);
+  el('team-search').addEventListener('input', renderTeams);
+  el('reload-teams').addEventListener('click', loadTeams);
+  el('save-profile').addEventListener('click', async () => {
+    if (!snapshot || !draft || profileSaving) return;
+    profileSaving = true;
+    el('profile').disabled = true;
+    el('profile-fields').disabled = true;
+    el('save-profile').disabled = true;
+    el('reload-profile').disabled = true;
+    status('profile-status', 'Saving favorites…');
+    try {
+      snapshot = await request('/profiles/' + encodeURIComponent(profile), 'PUT', {
+        revision: snapshot.revision,
+        preferences: draft,
+      });
+      draft = JSON.parse(JSON.stringify(snapshot.preferences));
+      dirty = false;
+      status('profile-status', 'Saved. Reopen Sports Hub in the app and select Following.');
+    } catch (error) {
+      status('profile-status', error.message, true);
+      // After a conflict or uncertain response, require a fresh revision before writing.
+      snapshot = null;
+    } finally {
+      profileSaving = false;
+      el('profile').disabled = false;
+      el('profile-fields').disabled = !snapshot;
+      el('save-profile').disabled = !snapshot;
+      el('reload-profile').disabled = false;
+    }
+  });
+  function syncAvailability() {
+    for (const input of el('availability').querySelectorAll('[data-league]')) input.checked = availability.has(input.value);
+    for (const input of el('availability').querySelectorAll('[data-sport-parent]')) {
+      const children = leagues.filter((l) => l.sport === input.dataset.sportParent);
+      const count = children.filter((l) => availability.has(l.id)).length;
+      input.checked = count === children.length;
+      input.indeterminate = count > 0 && count < children.length;
+      input.closest('.sports-sport-heading').querySelector('.sports-sport-count').textContent = `${count} / ${children.length} enabled`;
+    }
+    el('availability-count').textContent = `${leagues.filter((l) => availability.has(l.id)).length} of ${leagues.length} leagues enabled`;
+  }
+  function changeAvailability(items, checked) {
+    for (const item of items) checked ? availability.add(item.id) : availability.delete(item.id);
+    serverDirty = true;
+    syncAvailability();
+    status('server-status', availability.size ? 'Unsaved availability. Save to apply to every profile.' : 'Select at least one league before saving.', !availability.size);
+  }
+  const expandedSports = new Set();
+  // Consistent 24px outline icons; decorative artwork keeps checkbox names concise.
+  const sportIconPaths = {
+    football: ['M4 5c5-3 11-2 15 2 2 5 1 10-3 13-5 1-10-1-13-5-1-4-1-7 1-10Z','m8 8 8 8m-7-4 3-3m0 6 3-3'],
+    basketball: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z','M2 12h20M12 2v20M5 5c9 3 9 11 14 14M19 5C10 8 10 16 5 19'],
+    baseball: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z','M6 4c5 4 5 12 0 16M18 4c-5 4-5 12 0 16M7 7l3-1M8 11h3M8 15l3 1M17 7l-3-1M16 11h-3M16 15l-3 1'],
+    hockey: ['m5 3 7 13h8v4h-9L3 5','M3 20h4'],
+    soccer: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z','m12 7 5 4-2 6H9l-2-6 5-4Zm0-5v5m10 5-5-1M2 12l5-1m0 10 2-4m8 4-2-4'],
+    cycling: ['M5 13a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm14 0a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z','m5 17 5-9 5 9H5l5-9h7m2 9-3-13h-3M8 8h4'],
+    racing: ['M5 22V3m0 1c5-5 9 5 15 0v10c-6 5-10-5-15 0','M10 3v10m5-8v10M5 9c5-5 9 5 15 0'],
+    mma: ['M7 14V6a2 2 0 0 1 4 0v4-6a2 2 0 0 1 4 0v6-4a2 2 0 0 1 4 0v8l-3 5H8l-4-7a2 2 0 0 1 3-2l3 3','M8 19v3h8v-3'],
+    golf: ['M7 21V3l11 4-11 4','M4 21h8m5-1h.01'],
+    tennis: ['M18 3c4 3 3 8 0 11s-7 3-10 0-2-8 1-11 6-3 9 0Z','m8 14-6 7m3-4 2 2M10 4l7 7M8 7l7 7m-5-1 7-9'],
+    rugby: ['M4 5c5-3 11-2 15 2 2 5 1 10-3 13-5 1-10-1-13-5-1-4-1-7 1-10Z','m7 7 10 10M4 10l10 10M10 4l10 10'],
+  };
+  sportIconPaths['rugby-league'] = sportIconPaths.rugby;
+  function outlineIcon(paths, className) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [key, value] of Object.entries({viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.6','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',focusable:'false',class:className})) svg.setAttribute(key, value);
+    for (const d of paths) { const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', d); svg.append(path); }
+    return svg;
+  }
+  function renderAvailability() {
+    const target = el('availability');
+    target.replaceChildren();
+    const query = el('server-search').value.trim().toLowerCase();
+    for (const sport of [...new Set(leagues.map((item) => item.sport))]) {
+      const label = sportLabels[sportID(sport)] || sport;
+      const children = leagues.filter((l) => l.sport === sport);
+      const visible = children.filter((l) => (label + ' ' + l.name).toLowerCase().includes(query));
+      if (!visible.length) continue;
+      const section = document.createElement('section'); section.className = 'sports-sport-group';
+      section.setAttribute('aria-label', label + ' leagues');
+      const header = document.createElement('div'); header.className = 'sports-sport-heading';
+      const input = document.createElement('input'); input.type = 'checkbox'; input.value = 'sport:' + sport;
+      input.dataset.sportParent = sport; input.setAttribute('aria-label', label);
+      input.title = `Select or deselect all ${children.length} ${label} leagues.`;
+      input.addEventListener('change', () => changeAvailability(children, input.checked));
+      const count = document.createElement('span'); count.className = 'sports-sport-count';
+      header.append(input);
+      const group = document.createElement('div'); group.className = 'sports-options sports-sport-children';
+      for (const league of visible) {
+        const row = checkbox(group, league.name, league.id, availability.has(league.id), (checked) => changeAvailability([league], checked));
+        row.querySelector('input').dataset.league = league.id;
+      }
+      group.id = 'sports-leagues-' + sport;
+      const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'sports-sport-toggle';
+      toggle.setAttribute('aria-controls', group.id);
+      const name = document.createElement('span'); name.className = 'sports-sport-name'; name.textContent = label;
+      toggle.append(outlineIcon(sportIconPaths[sport] || sportIconPaths.racing, 'sports-sport-icon'), name, count, outlineIcon(['m6 9 6 6 6-6'], 'sports-chevron'));
+      function setExpanded(open) {
+        group.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${label} leagues`);
+      }
+      setExpanded(!!query || expandedSports.has(sport));
+      toggle.addEventListener('click', () => {
+        const open = group.hidden;
+        open ? expandedSports.add(sport) : expandedSports.delete(sport);
+        setExpanded(open);
+        if (open) {
+          section.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+          group.querySelector('input')?.focus({ preventScroll: true });
+        }
+      });
+      header.append(toggle);
+      section.append(header, group); target.append(section);
+    }
+    empty(target, 'No sports or leagues match your search.');
+    syncAvailability();
+  }
+  async function loadServer() {
+    if (serverSaving) return;
+    el('server-fields').disabled = true;
+    el('save-server').disabled = true;
+    el('reload-server').disabled = true;
+    status('server-status', 'Loading league availability…');
+    try {
+      settings = await request('/settings');
+      availability = new Set(settings.enabledLeagues);
+      serverDirty = false;
+      leagues = leagues.map((item) => ({ ...item, enabled: settings.enabledLeagues.includes(item.id) }));
+      if (draft) renderFavorites();
+      renderAvailability();
+      el('server-fields').disabled = false;
+      el('save-server').disabled = false;
+      status('server-status', 'Availability applies to everyone on this server.');
+    } catch (error) {
+      settings = null;
+      status('server-status', error.message, true);
+    } finally {
+      el('reload-server').disabled = false;
+    }
+  }
+  if (master) {
+    el('server').addEventListener('toggle', (event) => {
+      const section = event.currentTarget;
+      if (!section.open || !section.isConnected) return;
+      section.querySelector('summary').focus({ preventScroll: true });
+      section.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+    });
+    el('server-search').addEventListener('input', renderAvailability);
+    el('enable-all').addEventListener('click', () => changeAvailability(leagues, true));
+    el('disable-all').addEventListener('click', () => changeAvailability(leagues, false));
+    el('reload-server').addEventListener('click', () => {
+      if (!serverDirty || window.confirm('Discard unsaved availability and reload?')) void loadServer();
+    });
+    el('save-server').addEventListener('click', async () => {
+      if (!settings || serverSaving) return;
+      if (!availability.size) {
+        status('server-status', 'Enable at least one league before saving.', true);
+        return;
+      }
+      serverSaving = true;
+      el('server-fields').disabled = true;
+      el('save-server').disabled = true;
+      el('reload-server').disabled = true;
+      status('server-status', 'Saving league availability…');
+      try {
+        // Preserve stream search scopes and other server settings not edited on this page.
+        settings = await request('/settings', 'PUT', { ...settings, enabledLeagues: [...availability] });
+        serverDirty = false;
+        leagues = leagues.map((item) => ({ ...item, enabled: settings.enabledLeagues.includes(item.id) }));
+        if (draft) renderFavorites();
+        void loadTeams();
+        status(
+          'server-status',
+          'Saved. Sports feeds are refreshing; reopen Sports Hub to see the new coverage.',
+        );
+      } catch (error) {
+        status('server-status', error.message, true);
+      } finally {
+        serverSaving = false;
+        el('server-fields').disabled = false;
+        el('save-server').disabled = false;
+        el('reload-server').disabled = false;
+      }
+    });
+  }
+  window.addEventListener('beforeunload', (event) => {
+    if (dirty || serverDirty) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+  async function start() {
+    try {
+      const data = await request('/catalog');
+      leagues = data.leagues;
+      sports = [...new Set([...leagues.map((league) => sportID(league.sport)), 'cycling'])].map((id) => [id, sportLabels[id] || id]);
+      for (const [id, label] of sports) { const option = document.createElement('option'); option.value = id; option.textContent = label; el('filter').append(option); }
+      renderTeamLeagueFilter();
+      el('profile').disabled = false;
+      status(
+        'profile-status',
+        el('profile').options.length > 1
+          ? 'Choose a profile to edit favorites.'
+          : 'Create a profile to choose favorites.',
+      );
+      if (master) void loadServer();
+      void loadTeams();
+      if (el('profile').options.length === 2) {
+        el('profile').selectedIndex = 1;
+        void loadProfile(el('profile').value);
+      }
+    } catch (error) {
+      status('profile-status', 'Could not load sports. Reload this page to try again.', true);
+      if (master) status('server-status', 'Could not load leagues. Reload this page to try again.', true);
+    }
+  }
+  void start();
+})();
+</script>
+{{end}}

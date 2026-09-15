@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"novastream/api"
@@ -115,6 +114,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load settings: %v", err)
 	}
+	applyRuntimeOverrides(&settings)
 	if config.MigrateGlobalLiveProxyToDefaultSource(&settings) {
 		if err := cfgManager.Save(settings); err != nil {
 			log.Printf("warning: failed to persist global Live TV proxy migration: %v", err)
@@ -1839,7 +1839,7 @@ func main() {
 
 	// Setup graceful shutdown
 	shutdownChan := make(chan os.Signal, 1)
-	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(shutdownChan, shutdownSignals()...)
 	defer signal.Stop(shutdownChan)
 	shutdownDone := make(chan struct{})
 

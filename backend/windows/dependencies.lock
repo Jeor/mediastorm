@@ -1,0 +1,22 @@
+# Windows x64 runtime inputs. Every download is rejected unless its SHA-256
+# matches this file. Update URLs and hashes together after reviewing a release.
+
+PYTHON_URL=https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip
+PYTHON_SHA256=4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3
+
+POSTGRES_URL=https://get.enterprisedb.com/postgresql/postgresql-16.15-1-windows-x64-binaries.zip
+POSTGRES_SHA256=25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e
+
+FFMPEG_URL=https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-07-31-14-10/ffmpeg-n8.1.2-34-g9b6c8969e0-win64-gpl-8.1.zip
+FFMPEG_SHA256=cc4156d51387566ea8ba653fc3a04897bdf812fddf652428d9030bbf7ae24835
+
+YTDLP_URL=https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe
+YTDLP_SHA256=66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a
+
+DENO_URL=https://github.com/denoland/deno/releases/download/v2.9.3/deno-x86_64-pc-windows-msvc.zip
+DENO_SHA256=60343461ac5fe3a31f4ef12667f2946bb852e20655c8610aeb7e751e87f7df3a
+
+CCEXTRACTOR_URL=https://github.com/CCExtractor/ccextractor/releases/download/v0.96.6/CCExtractor.0.96.6_win_portable.zip
+CCEXTRACTOR_SHA256=c9b14cd356c7ada66b294426ba25c52d7654396a31b8b115b789e4d5e73f62bc
+CCEXTRACTOR_LICENSE_URL=https://raw.githubusercontent.com/CCExtractor/ccextractor/v0.96.6/LICENSE.txt
+CCEXTRACTOR_LICENSE_SHA256=8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643

@@ -25,7 +25,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"novastream/internal/dnscache"
@@ -4597,7 +4596,7 @@ func (m *HLSManager) startTranscoding(ctx context.Context, session *HLSSession, 
 				pid := session.FFmpegPID
 				session.mu.RUnlock()
 				if paused && pid > 0 {
-					_ = syscall.Kill(pid, syscall.SIGCONT)
+					_ = resumeProcess(pid)
 					session.mu.Lock()
 					session.Paused = false
 					session.mu.Unlock()

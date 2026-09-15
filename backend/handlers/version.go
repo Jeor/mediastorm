@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -28,12 +29,21 @@ func NewVersionHandler() *VersionHandler {
 
 func readVersionFile() {
 	versionOnce.Do(func() {
-		// Try multiple locations for version.txt
-		paths := []string{
+		paths := []string{}
+		if configured := strings.TrimSpace(os.Getenv("STRMR_VERSION_FILE")); configured != "" {
+			paths = append(paths, configured)
+		}
+		if executable, err := os.Executable(); err == nil {
+			paths = append(paths,
+				filepath.Join(filepath.Dir(executable), "version.txt"),
+				filepath.Join(filepath.Dir(executable), "app", "version.txt"),
+			)
+		}
+		paths = append(paths,
 			"version.txt",         // Current directory (backend/)
 			"backend/version.txt", // From repo root
 			"/app/version.txt",    // Docker container path
-		}
+		)
 
 		for _, path := range paths {
 			data, err := os.ReadFile(path)

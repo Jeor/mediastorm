@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
+
+	"novastream/internal/runtimepaths"
 )
 
 // DetectionResult holds the result of credits detection for a video.
@@ -122,26 +121,13 @@ func (d *Detector) runPython(ctx context.Context, videoURL string, duration floa
 
 // getScriptPaths returns paths to the Python interpreter and credits detection script.
 func getScriptPaths() (scriptPath, pythonPath string, err error) {
-	// Docker paths
-	dockerScript := "/detect_credits.py"
-	dockerPython := "/.venv/bin/python3"
-
-	if _, err := os.Stat(dockerScript); err == nil {
-		if _, err := os.Stat(dockerPython); err == nil {
-			return dockerScript, dockerPython, nil
-		}
+	pythonPath, err = runtimepaths.Python()
+	if err != nil {
+		return "", "", err
 	}
-
-	// Local development paths
-	_, currentFile, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", "", fmt.Errorf("failed to get current file path")
+	scriptPath, err = runtimepaths.PythonScript("detect_credits.py")
+	if err != nil {
+		return "", "", err
 	}
-
-	// From backend/services/credits/, go up 2 levels to backend/
-	scriptPath = filepath.Join(filepath.Dir(currentFile), "..", "..", "detect_credits.py")
-	// From backend/services/credits/, go up 3 levels to project root for .venv
-	pythonPath = filepath.Join(filepath.Dir(currentFile), "..", "..", "..", ".venv", "bin", "python3")
-
 	return scriptPath, pythonPath, nil
 }

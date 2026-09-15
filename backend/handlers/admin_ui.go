@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"novastream/config"
@@ -37,6 +36,7 @@ import (
 	"novastream/internal/netproxy"
 	internalpool "novastream/internal/pool"
 	"novastream/internal/requestsecurity"
+	"novastream/internal/runtimepaths"
 	internalusenet "novastream/internal/usenet"
 
 	"github.com/google/uuid"
@@ -10197,16 +10197,9 @@ func testOpenSubtitlesXMLRPC(username, password string) (bool, string) {
 // testOpenSubtitlesSubliminal tests credentials using the subliminal Python library
 // This is the same library used for actual subtitle searches
 func testOpenSubtitlesSubliminal(username, password string) (bool, string) {
-	// Find Python path (Docker or local)
-	var pythonPath string
-	if _, err := os.Stat("/.venv/bin/python3"); err == nil {
-		pythonPath = "/.venv/bin/python3"
-	} else {
-		pythonPath = filepath.Join("..", ".venv", "bin", "python3")
-		if _, err := os.Stat(pythonPath); err != nil {
-			// Try from backend directory
-			pythonPath = filepath.Join(".venv", "bin", "python3")
-		}
+	pythonPath, err := runtimepaths.Python()
+	if err != nil {
+		return false, fmt.Sprintf("Python runtime unavailable: %v", err)
 	}
 
 	// Python script to test OpenSubtitles login using subliminal
@@ -13311,13 +13304,10 @@ type cpuTracker struct {
 var perfCPUTracker = &cpuTracker{}
 
 func (c *cpuTracker) sample() float64 {
-	var ru syscall.Rusage
-	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &ru); err != nil {
+	userTime, sysTime, err := processCPUTimes()
+	if err != nil {
 		return 0
 	}
-
-	userTime := time.Duration(ru.Utime.Nano())
-	sysTime := time.Duration(ru.Stime.Nano())
 	now := time.Now()
 
 	c.mu.Lock()

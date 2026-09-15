@@ -7,14 +7,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"novastream/config"
 	"novastream/internal/requestsecurity"
+	"novastream/internal/runtimepaths"
 	"novastream/models"
 	resultfilter "novastream/utils/filter"
 	langutil "novastream/utils/language"
@@ -49,27 +47,14 @@ func NewSubtitlesHandlerWithConfig(configManager *config.Manager) *SubtitlesHand
 
 // getSubtitleScriptPaths returns paths to the subtitle Python scripts
 func getSubtitleScriptPaths(scriptName string) (scriptPath, pythonPath string, err error) {
-	// Docker paths (scripts copied to / in container)
-	dockerScript := "/" + scriptName
-	dockerPython := "/.venv/bin/python3"
-
-	if _, err := os.Stat(dockerScript); err == nil {
-		if _, err := os.Stat(dockerPython); err == nil {
-			return dockerScript, dockerPython, nil
-		}
+	pythonPath, err = runtimepaths.Python()
+	if err != nil {
+		return "", "", err
 	}
-
-	// Local development paths
-	_, currentFile, _, ok := runtime.Caller(1)
-	if !ok {
-		return "", "", fmt.Errorf("failed to get current file path")
+	scriptPath, err = runtimepaths.PythonScript(scriptName)
+	if err != nil {
+		return "", "", err
 	}
-
-	// From backend/handlers/, go up 1 level to backend/
-	scriptPath = filepath.Join(filepath.Dir(currentFile), "..", scriptName)
-	// From backend/handlers/, go up 2 levels to project root for .venv
-	pythonPath = filepath.Join(filepath.Dir(currentFile), "..", "..", ".venv", "bin", "python3")
-
 	return scriptPath, pythonPath, nil
 }
 

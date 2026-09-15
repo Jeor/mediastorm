@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -390,7 +391,12 @@ func (m *IrohHostManager) validateWorkDirForPublish() error {
 }
 
 // irohBinaryName is the compiled host binary produced by the Rust host.
-const irohBinaryName = "iroh-direct-spike"
+var irohBinaryName = func() string {
+	if runtime.GOOS == "windows" {
+		return "iroh-direct-spike.exe"
+	}
+	return "iroh-direct-spike"
+}()
 
 // irohBinaryCandidates lists, in priority order, where a prebuilt host binary may live
 // under workDir. The target/release and target/debug paths cover a local `cargo build`;

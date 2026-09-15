@@ -463,7 +463,7 @@ func scoreMatchupSegment(target string, home, away sportsTeamIdentity) sportsEvi
 	// A dedicated team channel is plausible; an explicit matchup with a different
 	// opponent is not evidence for this event.
 	if containsMatchupMarker(target) {
-		return sportsEvidence{}
+		return scoreFuzzySportsMatchup(target, home, away)
 	}
 
 	if homeScore.score >= awayScore.score && homeScore.score > 0 {

@@ -303,3 +303,37 @@ func TestPossibleFeedsDoNotInheritStrongConfidence(t *testing.T) {
 		t.Fatalf("confidence was lost when grouping: %+v", groups)
 	}
 }
+
+func BenchmarkSportsMatchupRecall(b *testing.B) {
+	game := matchingFixtureGame()
+	home := identityFromTeam(game.HomeTeam, "mlb")
+	away := identityFromTeam(game.AwayTeam, "mlb")
+	names := []string{"Detroit Tigers vs Toronto Blue Jays", "Tigrs vs Blue Jays", "Tigrs vs Yankees", "Other network HD", "Boston Red Sox vs New York Yankees"}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 10000; j++ {
+			scoreMatchupText(names[j%len(names)], home, away)
+		}
+	}
+}
+func TestSportsFuzzyMatchup(t *testing.T) {
+	home := identityFromTeam(matchingFixtureGame().HomeTeam, "mlb")
+	away := identityFromTeam(matchingFixtureGame().AwayTeam, "mlb")
+	for _, tc := range []struct {
+		title    string
+		possible bool
+	}{
+		{"Tigres vs Blue Jays", false}, // Transposition is two edits, deliberately unsupported.
+		{"Tigrs vs Blue Jays", true}, {"Blue Jays @ Tigerrs", true},
+		{"Tigrs vs Yankees", false}, {"Tigrs", false}, {"Detroit vs Toronto", false},
+		{"Tigrs vs Blue Jays vs Yankees", false}, {"Tigrs vs Blue Jays replay", false},
+	} {
+		got := scoreFuzzySportsMatchup(tc.title, home, away)
+		if (got.score >= .65) != tc.possible || got.score >= strongSportsConfidence {
+			t.Errorf("%q: %+v", tc.title, got)
+		}
+	}
+	if got := scoreMatchupText("Tigrs vs Blue Jays", home, away); got.score < .65 || got.score >= strongSportsConfidence {
+		t.Fatalf("fallback not integrated: %+v", got)
+	}
+}

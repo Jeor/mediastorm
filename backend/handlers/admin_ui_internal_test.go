@@ -834,6 +834,24 @@ func TestSharedShellUsesOneConsistentNavigationIconSystem(t *testing.T) {
 	}
 }
 
+func TestSharedShellKeepsMobileLogoutAboveBrowserChrome(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
+	if err != nil {
+		t.Fatalf("read base template: %v", err)
+	}
+	source := string(templateBytes)
+
+	for _, marker := range []string{
+		`content="width=device-width, initial-scale=1, viewport-fit=cover"`,
+		`height: 100dvh;`,
+		`padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));`,
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("shared shell missing mobile viewport safety marker %q", marker)
+		}
+	}
+}
+
 func TestSharedShellUsesConciseMaintenanceGroupLabel(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/base.html")
 	if err != nil {

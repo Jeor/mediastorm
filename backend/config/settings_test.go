@@ -967,6 +967,35 @@ func TestLoadClampsHomeShelfAndHeroScale(t *testing.T) {
 	}
 }
 
+func TestLoadNormalizesHomeShelfFocusModel(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "missing", raw: `{"homeShelves":{"shelves":[]}}`, want: "left"},
+		{name: "invalid", raw: `{"homeShelves":{"shelves":[],"homeShelfFocusModel":"diagonal"}}`, want: "left"},
+		{name: "center", raw: `{"homeShelves":{"shelves":[],"homeShelfFocusModel":"center"}}`, want: "center"},
+		{name: "right", raw: `{"homeShelves":{"shelves":[],"homeShelfFocusModel":"right"}}`, want: "right"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "settings.json")
+			if err := os.WriteFile(path, []byte(tt.raw), 0o600); err != nil {
+				t.Fatalf("write settings: %v", err)
+			}
+			settings, err := NewManager(path).Load()
+			if err != nil {
+				t.Fatalf("load settings: %v", err)
+			}
+			if settings.HomeShelves.HomeShelfFocusModel != tt.want {
+				t.Fatalf("HomeShelfFocusModel = %q, want %q", settings.HomeShelves.HomeShelfFocusModel, tt.want)
+			}
+		})
+	}
+}
+
 func TestLoadPreservesHomeTopShelfSettings(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	raw := []byte(`{"homeShelves":{

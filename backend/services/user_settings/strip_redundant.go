@@ -225,6 +225,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			Shelves:                         configShelvesToModel(g.HomeShelves.Shelves),
 			ExploreCardPosition:             string(g.HomeShelves.ExploreCardPosition),
 			ItemCap:                         g.HomeShelves.ItemCap,
+			HomeShelfFocusModel:             g.HomeShelves.HomeShelfFocusModel,
 			MobileTopShelfMode:              g.HomeShelves.MobileTopShelfMode,
 			MobileTopShelfSourceID:          g.HomeShelves.MobileTopShelfSourceID,
 			TVTopShelfMode:                  g.HomeShelves.TVTopShelfMode,
@@ -623,6 +624,12 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	if eff.HomeShelves.ItemCap <= 0 {
 		eff.HomeShelves.ItemCap = g.HomeShelves.ItemCap
 	}
+	if eff.HomeShelves.HomeShelfFocusModel == "" {
+		eff.HomeShelves.HomeShelfFocusModel = g.HomeShelves.HomeShelfFocusModel
+	}
+	if eff.HomeShelves.HomeShelfFocusModel != "center" && eff.HomeShelves.HomeShelfFocusModel != "right" {
+		eff.HomeShelves.HomeShelfFocusModel = "left"
+	}
 	if eff.HomeShelves.MobileTopShelfMode == "" {
 		eff.HomeShelves.MobileTopShelfMode = g.HomeShelves.MobileTopShelfMode
 	}
@@ -930,6 +937,10 @@ func stripHomeShelves(h *models.HomeShelvesSettings, g config.HomeShelvesSetting
 		h.ItemCap = 0
 		changed = true
 	}
+	if h.HomeShelfFocusModel != "" && h.HomeShelfFocusModel == g.HomeShelfFocusModel {
+		h.HomeShelfFocusModel = ""
+		changed = true
+	}
 	if h.MobileTopShelfMode != "" && normalizeHomeTopShelfMode(h.MobileTopShelfMode) == normalizeHomeTopShelfMode(g.MobileTopShelfMode) {
 		h.MobileTopShelfMode = ""
 		changed = true
@@ -1190,6 +1201,12 @@ func userRankingSettingsEmpty(r *models.UserRankingSettings) bool {
 // stripClientSettings removes client overrides that match their parent profile's effective value.
 func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSettings) bool {
 	changed := false
+
+	// Home screen
+	if cs.HomeShelfFocusModel != nil && *cs.HomeShelfFocusModel == eff.HomeShelves.HomeShelfFocusModel {
+		cs.HomeShelfFocusModel = nil
+		changed = true
+	}
 
 	// Playback
 	if cs.PreferredPlayer != nil && *cs.PreferredPlayer == eff.Playback.PreferredPlayer {

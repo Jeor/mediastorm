@@ -1558,6 +1558,7 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			ExploreCardPosition:             string(globalSettings.HomeShelves.ExploreCardPosition),
 			ItemCap:                         globalSettings.HomeShelves.ItemCap,
 			ExcludeUpcomingFromContinue:     models.BoolPtr(globalSettings.HomeShelves.ExcludeUpcomingFromContinue),
+			HomeShelfFocusModel:             globalSettings.HomeShelves.HomeShelfFocusModel,
 			DisableTvLandscapeCardExpansion: models.BoolPtr(globalSettings.HomeShelves.DisableTvLandscapeCardExpansion),
 			HomeShelfScale:                  models.FloatPtr(globalSettings.HomeShelves.HomeShelfScale),
 			HomeHeroScale:                   models.FloatPtr(globalSettings.HomeShelves.HomeHeroScale),

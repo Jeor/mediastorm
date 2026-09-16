@@ -63,6 +63,35 @@ func TestUpdatePreservesExplicitlyHiddenWatchlistAcrossReload(t *testing.T) {
 	}
 }
 
+func TestUpdateSanitizesHomeShelfFocusModel(t *testing.T) {
+	dir := t.TempDir()
+	svc, err := NewService(dir)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	center := " CENTER "
+	if err := svc.Update("tv-1", "user-1", models.ClientFilterSettings{HomeShelfFocusModel: &center}); err != nil {
+		t.Fatalf("Update valid focus model: %v", err)
+	}
+	got, err := svc.Get("tv-1", "user-1")
+	if err != nil || got == nil || got.HomeShelfFocusModel == nil || *got.HomeShelfFocusModel != "center" {
+		t.Fatalf("HomeShelfFocusModel = %#v, err = %v; want center", got, err)
+	}
+
+	invalid := "diagonal"
+	if err := svc.Update("tv-1", "user-1", models.ClientFilterSettings{HomeShelfFocusModel: &invalid}); err != nil {
+		t.Fatalf("Update invalid focus model: %v", err)
+	}
+	got, err = svc.Get("tv-1", "user-1")
+	if err != nil {
+		t.Fatalf("Get after invalid focus model: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("invalid focus model should be removed, got %#v", got.HomeShelfFocusModel)
+	}
+}
+
 func containsNavigationTab(tabs []string, want string) bool {
 	for _, tab := range tabs {
 		if tab == want {

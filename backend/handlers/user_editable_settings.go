@@ -66,6 +66,7 @@ var userEditableFields = map[string]map[string]struct{}{
 }
 
 var deviceEditableFields = map[string]map[string]struct{}{
+	"homeShelves": fieldSet("homeShelfFocusModel"),
 	"filtering": fieldSet(
 		"maxSizeMovieGb", "maxSizeEpisodeGb", "maxResolution", "hdrDvPolicy", "requiredTerms",
 		"filterOutTerms", "preferredTerms", "nonPreferredTerms", "downloadPreferredTerms",

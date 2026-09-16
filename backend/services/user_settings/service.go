@@ -467,6 +467,12 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 				settings.HomeShelves.ItemCap = 20
 			}
 		}
+		if settings.HomeShelves.HomeShelfFocusModel == "" {
+			settings.HomeShelves.HomeShelfFocusModel = defaults.HomeShelves.HomeShelfFocusModel
+		}
+		if settings.HomeShelves.HomeShelfFocusModel != "center" && settings.HomeShelves.HomeShelfFocusModel != "right" {
+			settings.HomeShelves.HomeShelfFocusModel = "left"
+		}
 		if settings.HomeShelves.MobileTopShelfMode == "" {
 			settings.HomeShelves.MobileTopShelfMode = defaults.HomeShelves.MobileTopShelfMode
 		}
@@ -782,6 +788,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 	if len(s.HomeShelves.Shelves) > 0 ||
 		s.HomeShelves.ExploreCardPosition != "" ||
 		s.HomeShelves.ItemCap != 0 ||
+		s.HomeShelves.HomeShelfFocusModel != "" ||
 		s.HomeShelves.MobileTopShelfMode != "" ||
 		s.HomeShelves.MobileTopShelfSourceID != "" ||
 		s.HomeShelves.TVTopShelfMode != "" ||

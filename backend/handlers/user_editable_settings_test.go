@@ -112,11 +112,12 @@ func TestUserEditableSettingsSchemaIncludesSupportedScopes(t *testing.T) {
 		"filtering.debrid.hdrDvPolicy",
 		"filtering.preferredScraper",
 		"filtering.realDebridRestrictedTermsFilterEnabled",
+		"homeShelves.homeShelfFocusModel",
 	})
 	if got := strings.Join(schema["display.badgeVisibility"].Scopes, ","); got != "profile" {
 		t.Fatalf("badge visibility scopes = %q", got)
 	}
-	for _, path := range []string{"display.enableAnimations", "display.simpleMode", "display.simpleModeHomeShelves", "filtering.debrid.hdrDvPolicy"} {
+	for _, path := range []string{"display.enableAnimations", "display.simpleMode", "display.simpleModeHomeShelves", "filtering.debrid.hdrDvPolicy", "homeShelves.homeShelfFocusModel"} {
 		if got := strings.Join(schema[path].Scopes, ","); got != "profile,device" {
 			t.Fatalf("%s scopes = %q", path, got)
 		}

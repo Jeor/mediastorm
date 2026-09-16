@@ -4,6 +4,9 @@ package models
 // These fields use pointers to distinguish between "not set" (nil = use profile/global default)
 // and explicit values (including zero/false).
 type ClientFilterSettings struct {
+	// Home screen overrides
+	HomeShelfFocusModel *string `json:"homeShelfFocusModel,omitempty"`
+
 	// Filtering overrides
 	MaxSizeMovieGB                         *float64              `json:"maxSizeMovieGb,omitempty"`
 	MaxSizeEpisodeGB                       *float64              `json:"maxSizeEpisodeGb,omitempty"`
@@ -110,7 +113,8 @@ type ClientFilterSettings struct {
 
 // IsEmpty returns true if no settings are configured
 func (c *ClientFilterSettings) IsEmpty() bool {
-	return c.MaxSizeMovieGB == nil &&
+	return c.HomeShelfFocusModel == nil &&
+		c.MaxSizeMovieGB == nil &&
 		c.MaxSizeEpisodeGB == nil &&
 		c.MaxResolution == nil &&
 		c.HDRDVPolicy == nil &&

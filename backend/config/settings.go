@@ -848,6 +848,7 @@ type HomeShelvesSettings struct {
 	ExploreCardPosition         ExploreCardPosition `json:"exploreCardPosition,omitempty"`         // "front" or "end" (default)
 	ItemCap                     int                 `json:"itemCap,omitempty"`                     // Max items shown per home shelf before Explore card (default 20)
 	ExcludeUpcomingFromContinue bool                `json:"excludeUpcomingFromContinue,omitempty"` // Move unreleased next-up episodes out of Continue Watching
+	HomeShelfFocusModel         string              `json:"homeShelfFocusModel,omitempty"`         // "left" (default), "center", or "right"
 	// PopularOnServerWindowDays is the lookback window in days for the
 	// "Popular on This Server" shelf.
 	// Valid range: 7-365. Default 90.
@@ -1974,6 +1975,7 @@ func DefaultSettings() Settings {
 			Shelves:                      DefaultHomeShelfConfigs(),
 			ExploreCardPosition:          ExploreCardPositionEnd,
 			ItemCap:                      20,
+			HomeShelfFocusModel:          "left",
 			PopularOnServerWindowDays:    90,
 			RecentlyWatchedCapPerProfile: 3,
 			HomeShelfScale:               1.0,
@@ -2725,6 +2727,9 @@ func (m *Manager) Load() (Settings, error) {
 	// Backfill ItemCap if empty or invalid (default to 20)
 	if s.HomeShelves.ItemCap <= 0 {
 		s.HomeShelves.ItemCap = 20
+	}
+	if s.HomeShelves.HomeShelfFocusModel != "center" && s.HomeShelves.HomeShelfFocusModel != "right" {
+		s.HomeShelves.HomeShelfFocusModel = "left"
 	}
 	if s.HomeShelves.PopularOnServerWindowDays < 7 || s.HomeShelves.PopularOnServerWindowDays > 365 {
 		s.HomeShelves.PopularOnServerWindowDays = 90

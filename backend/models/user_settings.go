@@ -584,6 +584,7 @@ type HomeShelvesSettings struct {
 	ExploreCardPosition             string        `json:"exploreCardPosition,omitempty"`             // "front" or "end" (default)
 	ItemCap                         int           `json:"itemCap,omitempty"`                         // Max items shown per home shelf before Explore card (default 20)
 	ExcludeUpcomingFromContinue     *bool         `json:"excludeUpcomingFromContinue,omitempty"`     // Move unreleased next-up episodes out of Continue Watching
+	HomeShelfFocusModel             string        `json:"homeShelfFocusModel,omitempty"`             // "left" (default), "center", or "right"
 	MobileTopShelfMode              string        `json:"mobileTopShelfMode,omitempty"`              // "default", "disabled", or "shelf"
 	MobileTopShelfSourceID          string        `json:"mobileTopShelfSourceId,omitempty"`          // Shelf ID used when mobileTopShelfMode is "shelf"
 	TVTopShelfMode                  string        `json:"tvTopShelfMode,omitempty"`                  // "default", "disabled", or "shelf"
@@ -1125,6 +1126,7 @@ func DefaultUserSettings() UserSettings {
 			ExploreCardPosition:             "end",
 			ItemCap:                         20,
 			ExcludeUpcomingFromContinue:     BoolPtr(false),
+			HomeShelfFocusModel:             "left",
 			DisableTvLandscapeCardExpansion: BoolPtr(false),
 			HomeShelfScale:                  FloatPtr(1.0),
 			HomeHeroScale:                   FloatPtr(1.0),

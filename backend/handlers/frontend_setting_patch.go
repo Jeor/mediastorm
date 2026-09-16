@@ -161,6 +161,10 @@ func clientSettingPath(globalPath string) (string, bool) {
 	switch section {
 	case "filtering", "animeFiltering", "playback", "display", "network":
 		return field, true
+	case "homeShelves":
+		if field == "homeShelfFocusModel" {
+			return field, true
+		}
 	case "ranking":
 		if field == "newestReleaseFirst" {
 			return field, true

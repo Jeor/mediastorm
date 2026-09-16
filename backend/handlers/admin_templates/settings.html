@@ -4833,13 +4833,14 @@
         {
             key: 'homeShelves',
             label: 'Home Shelves',
-            description: 'Shelf configuration, top carousel/shelf behavior, item cap, Explore Card Position, TV Shelf Scale, TV Hero Area Scale',
+            description: 'Shelf configuration, top carousel/shelf behavior, item cap, focus position, Explore Card Position, TV Shelf Scale, TV Hero Area Scale',
             detailSection: 'Home Shelves',
             matchAllDetailFields: true,
             userPaths: [
                 'homeShelves.shelves',
                 'homeShelves.exploreCardPosition',
                 'homeShelves.itemCap',
+                'homeShelves.homeShelfFocusModel',
                 'homeShelves.mobileTopShelfMode',
                 'homeShelves.mobileTopShelfSourceId',
                 'homeShelves.tvTopShelfMode',
@@ -4848,7 +4849,9 @@
                 'homeShelves.homeShelfScale',
                 'homeShelves.homeHeroScale',
             ],
-            clientPaths: [],
+            clientPaths: [
+                'homeShelfFocusModel',
+            ],
         },
         {
             key: 'liveTV',

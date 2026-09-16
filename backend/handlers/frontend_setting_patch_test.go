@@ -91,6 +91,9 @@ func TestClientSettingPathRejectsProfileOnlySettings(t *testing.T) {
 	if _, ok := clientSettingPath("homeShelves.itemCap"); ok {
 		t.Fatal("home shelf settings must not be accepted as device overrides")
 	}
+	if got, ok := clientSettingPath("homeShelves.homeShelfFocusModel"); !ok || got != "homeShelfFocusModel" {
+		t.Fatalf("home shelf focus clientSettingPath() = %q, %v", got, ok)
+	}
 	if got, ok := clientSettingPath("display.enableAnimations"); !ok || got != "enableAnimations" {
 		t.Fatalf("clientSettingPath() = %q, %v", got, ok)
 	}

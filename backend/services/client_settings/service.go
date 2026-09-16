@@ -135,6 +135,7 @@ func (s *Service) Update(clientID, userID string, settings models.ClientFilterSe
 		return ErrUserIDRequired
 	}
 	sanitizeAllowedTrackLanguages(&settings)
+	sanitizeHomeShelfFocusModel(&settings)
 	markNavigationVisibilityMigrated(&settings)
 
 	s.mu.Lock()
@@ -173,6 +174,7 @@ func (s *Service) UpdateBatch(settings map[string]models.ClientFilterSettings) e
 	cleaned := make(map[string]models.ClientFilterSettings, len(settings))
 	for k, v := range settings {
 		sanitizeAllowedTrackLanguages(&v)
+		sanitizeHomeShelfFocusModel(&v)
 		markNavigationVisibilityMigrated(&v)
 		if !v.IsEmpty() {
 			cleaned[k] = v
@@ -180,6 +182,18 @@ func (s *Service) UpdateBatch(settings map[string]models.ClientFilterSettings) e
 	}
 	s.settings = cleaned
 	return s.saveLocked()
+}
+
+func sanitizeHomeShelfFocusModel(settings *models.ClientFilterSettings) {
+	if settings.HomeShelfFocusModel == nil {
+		return
+	}
+	value := strings.ToLower(strings.TrimSpace(*settings.HomeShelfFocusModel))
+	if value != "left" && value != "center" && value != "right" {
+		settings.HomeShelfFocusModel = nil
+		return
+	}
+	settings.HomeShelfFocusModel = &value
 }
 
 // Delete removes settings for a person×device pair.

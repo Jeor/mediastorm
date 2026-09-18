@@ -79,6 +79,9 @@ func espnTeamsToRecords(payload espnTeamsResponse, league League) []models.Sport
 }
 
 type espnEvent struct {
+	Groupings []struct {
+		Competitions []espnCompetition `json:"competitions"`
+	} `json:"groupings"`
 	ID           string            `json:"id"`
 	Date         string            `json:"date"`
 	Name         string            `json:"name"`
@@ -160,6 +163,8 @@ func scoreboardMLBSituation(raw *espnScoreboardSituation, inning string) *models
 }
 
 type espnCompetition struct {
+	ID          string                   `json:"id"`
+	Date        string                   `json:"date"`
 	Situation   *espnScoreboardSituation `json:"situation"`
 	Status      espnStatus               `json:"status"`
 	Competitors []espnCompetitor         `json:"competitors"`
@@ -183,6 +188,13 @@ type espnStatusType struct {
 }
 
 type espnCompetitor struct {
+	Roster *struct {
+		DisplayName      string `json:"displayName"`
+		ShortDisplayName string `json:"shortDisplayName"`
+	} `json:"roster"`
+	Linescores []struct {
+		Winner *bool `json:"winner"`
+	} `json:"linescores"`
 	CuratedRank struct {
 		Current int `json:"current"`
 	} `json:"curatedRank"`
@@ -262,6 +274,9 @@ func espnScore(raw json.RawMessage) string {
 }
 
 func competitorTeam(c espnCompetitor) models.SportsTeam {
+	if c.Roster != nil {
+		return models.SportsTeam{ID: c.ID, Name: c.Roster.DisplayName, Abbreviation: c.Roster.ShortDisplayName, Score: espnScore(c.Score), Winner: c.Winner}
+	}
 	if c.Athlete != nil {
 		name := c.Athlete.DisplayName
 		if name == "" {
@@ -271,7 +286,11 @@ func competitorTeam(c espnCompetitor) models.SportsTeam {
 		if c.Athlete.Headshot != nil {
 			logo = c.Athlete.Headshot.Href
 		}
-		return models.SportsTeam{ID: c.Athlete.ID, Name: name, Abbreviation: c.Athlete.ShortName, LogoURL: logo, Score: espnScore(c.Score), Winner: c.Winner}
+		id := c.Athlete.ID
+		if id == "" {
+			id = c.ID
+		}
+		return models.SportsTeam{ID: id, Name: name, Abbreviation: c.Athlete.ShortName, LogoURL: logo, Score: espnScore(c.Score), Winner: c.Winner}
 	}
 	return models.SportsTeam{Color: c.Team.Color, ShootoutScore: soccerShootoutScore(c.ShootoutScore), ID: c.Team.ID, Name: c.Team.DisplayName, Location: c.Team.Location, Nickname: c.Team.Name, Abbreviation: c.Team.Abbreviation, LogoURL: c.Team.Logo, Score: espnScore(c.Score), Winner: c.Winner}
 }

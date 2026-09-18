@@ -568,10 +568,7 @@ func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, 
 
 	games := make([]models.SportsGame, 0, len(payload.Events))
 	for _, event := range payload.Events {
-		game, ok := espnEventToGame(event, league)
-		if ok {
-			games = append(games, game)
-		}
+		games = append(games, scoreboardEventGames(event, league)...)
 	}
 	return games, nil
 }

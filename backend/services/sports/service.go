@@ -532,12 +532,20 @@ func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, 
 		return []models.SportsGame{}, nil
 	}
 	endpoint := fmt.Sprintf(espnScoreboardURLFmt, league.Sport, league.Slug)
+	// Oversized limits (e.g. 1000) can silently fall back to 25 events.
+	query := url.Values{"limit": {"200"}}
 	if date != "" {
-		endpoint += "?dates=" + strings.ReplaceAll(date, "-", "") + "&limit=1000"
-		if strings.Contains(league.ID, "college") {
-			endpoint += "&groups=50"
-		}
+		query.Set("dates", strings.ReplaceAll(date, "-", ""))
 	}
+	// ESPN group IDs are sport-specific. Football 50 is CAA–South;
+	// 90 covers Division I (FBS and FCS). Basketball uses 50 for Division I.
+	switch league.ID {
+	case "college-football":
+		query.Set("groups", "90")
+	case "mens-college-basketball", "womens-college-basketball":
+		query.Set("groups", "50")
+	}
+	endpoint += "?" + query.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -561,10 +569,7 @@ func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, 
 
 	games := make([]models.SportsGame, 0, len(payload.Events))
 	for _, event := range payload.Events {
-		game, ok := espnEventToGame(event, league)
-		if ok {
-			games = append(games, game)
-		}
+		games = append(games, scoreboardEventGames(event, league)...)
 	}
 	return games, nil
 }

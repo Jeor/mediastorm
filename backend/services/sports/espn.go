@@ -220,13 +220,14 @@ type espnAthlete struct {
 }
 
 type espnTeam struct {
-	Color        string `json:"color"`
-	ID           string `json:"id"`
-	DisplayName  string `json:"displayName"`
-	Location     string `json:"location"`
-	Name         string `json:"name"`
-	Abbreviation string `json:"abbreviation"`
-	Logo         string `json:"logo"`
+	Color          string `json:"color"`
+	AlternateColor string `json:"alternateColor"`
+	ID             string `json:"id"`
+	DisplayName    string `json:"displayName"`
+	Location       string `json:"location"`
+	Name           string `json:"name"`
+	Abbreviation   string `json:"abbreviation"`
+	Logo           string `json:"logo"`
 }
 
 type espnBroadcast struct {
@@ -292,7 +293,7 @@ func competitorTeam(c espnCompetitor) models.SportsTeam {
 		}
 		return models.SportsTeam{ID: id, Name: name, Abbreviation: c.Athlete.ShortName, LogoURL: logo, Score: espnScore(c.Score), Winner: c.Winner}
 	}
-	return models.SportsTeam{Color: c.Team.Color, ShootoutScore: soccerShootoutScore(c.ShootoutScore), ID: c.Team.ID, Name: c.Team.DisplayName, Location: c.Team.Location, Nickname: c.Team.Name, Abbreviation: c.Team.Abbreviation, LogoURL: c.Team.Logo, Score: espnScore(c.Score), Winner: c.Winner}
+	return models.SportsTeam{Color: c.Team.Color, AlternateColor: c.Team.AlternateColor, ShootoutScore: soccerShootoutScore(c.ShootoutScore), ID: c.Team.ID, Name: c.Team.DisplayName, Location: c.Team.Location, Nickname: c.Team.Name, Abbreviation: c.Team.Abbreviation, LogoURL: c.Team.Logo, Score: espnScore(c.Score), Winner: c.Winner}
 }
 
 func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {

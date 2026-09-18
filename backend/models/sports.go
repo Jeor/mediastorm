@@ -6,6 +6,7 @@ import "time"
 type SportsTeam struct {
 	StandingSummary  string `json:"standingSummary,omitempty"`
 	Color            string `json:"color,omitempty"`
+	AlternateColor   string `json:"alternateColor,omitempty"`
 	Rank             int    `json:"rank,omitempty"`
 	Record           string `json:"record,omitempty"`
 	ConferenceRecord string `json:"conferenceRecord,omitempty"`

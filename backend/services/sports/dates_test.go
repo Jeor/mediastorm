@@ -80,3 +80,39 @@ func TestDatedScoreboardIsolatesLeagueFailures(t *testing.T) {
 		}
 	}
 }
+
+// Group IDs are sport-specific: football 50 is CAA–South, not Division I.
+func TestScoreboardUsesFullCollegeDivisionForLiveAndDatedRequests(t *testing.T) {
+	for _, tc := range []struct{ id, group string }{
+		{"college-football", "90"},
+		{"mens-college-basketball", "50"},
+		{"womens-college-basketball", "50"},
+		{"nfl", ""},
+	} {
+		for _, date := range []string{"", "2026-09-17"} {
+			t.Run(tc.id+"/"+date, func(t *testing.T) {
+				s := NewService(t.TempDir())
+				s.client = &http.Client{Transport: detailTransport(func(r *http.Request) (*http.Response, error) {
+					q := r.URL.Query()
+					if q.Get("groups") != tc.group {
+						t.Errorf("groups = %q, want %q", q.Get("groups"), tc.group)
+					}
+					if q.Get("limit") != "1000" {
+						t.Error("scoreboard must request full event limit")
+					}
+					if q.Get("dates") != strings.ReplaceAll(date, "-", "") {
+						t.Error("incorrect date")
+					}
+					return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"events":[]}`))}, nil
+				})}
+				for _, league := range LeagueCatalog {
+					if league.ID == tc.id {
+						if _, err := s.fetchLeagueScoreboardDate(context.Background(), league, date); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+			})
+		}
+	}
+}

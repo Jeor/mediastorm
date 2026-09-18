@@ -1,0 +1,267 @@
+{
+  "events": [
+    {
+      "id": "600060963",
+      "date": "2026-09-19T21:00Z",
+      "name": "UFC 331: Van vs. Pantoja 2",
+      "competitions": [
+        {
+          "id": "401905382",
+          "uid": "s:3301~l:3321~e:600060963~c:401905382",
+          "date": "2026-09-19T21:30Z",
+          "endDate": "2026-09-19T21:30Z",
+          "type": {
+            "id": "999",
+            "abbreviation": "Featherweight"
+          },
+          "timeValid": true,
+          "neutralSite": false,
+          "playByPlayAvailable": false,
+          "recent": false,
+          "venue": {
+            "id": "1841",
+            "fullName": "crypto.com Arena",
+            "address": {
+              "city": "Los Angeles",
+              "state": "CA",
+              "address1": "STAPLES CENTER,  1111 S. FIGUE",
+              "country": "USA"
+            },
+            "indoor": true
+          },
+          "competitors": [
+            {
+              "id": "3957071",
+              "uid": "s:3301~a:3957071",
+              "type": "athlete",
+              "order": 1,
+              "winner": false,
+              "athlete": {
+                "fullName": "Giga Chikadze",
+                "displayName": "Giga Chikadze",
+                "shortName": "G. Chikadze",
+                "flag": {
+                  "href": "https://a.espncdn.com/i/teamlogos/countries/500/geo.png",
+                  "alt": "Georgia",
+                  "rel": [
+                    "country-flag"
+                  ]
+                }
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "TOT",
+                  "type": "total",
+                  "summary": "15-6-0"
+                }
+              ]
+            },
+            {
+              "id": "4422355",
+              "uid": "s:3301~a:4422355",
+              "type": "athlete",
+              "order": 2,
+              "winner": false,
+              "athlete": {
+                "fullName": "Joanderson Brito",
+                "displayName": "Joanderson Brito",
+                "shortName": "J. Brito",
+                "flag": {
+                  "href": "https://a.espncdn.com/i/teamlogos/countries/500/bra.png",
+                  "alt": "Brazil",
+                  "rel": [
+                    "country-flag"
+                  ]
+                }
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "TOT",
+                  "type": "total",
+                  "summary": "19-5-1"
+                }
+              ]
+            }
+          ],
+          "status": {
+            "clock": 0.0,
+            "displayClock": "-",
+            "period": 0,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, September 19th at 5:30 PM EDT",
+              "shortDetail": "9/19 - 5:30 PM EDT"
+            }
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Paramount+"
+              ]
+            }
+          ],
+          "format": {
+            "regulation": {
+              "periods": 3
+            }
+          },
+          "startDate": "2026-09-19T21:30Z",
+          "broadcast": "Paramount+",
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "4",
+                "shortName": "Streaming"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "Paramount+"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "highlights": []
+        },
+        {
+          "id": "401903511",
+          "uid": "s:3301~l:3321~e:600060963~c:401903511",
+          "date": "2026-09-19T21:30Z",
+          "endDate": "2026-09-19T21:30Z",
+          "type": {
+            "id": "1007",
+            "abbreviation": "W Flyweight"
+          },
+          "timeValid": true,
+          "neutralSite": false,
+          "playByPlayAvailable": false,
+          "recent": false,
+          "venue": {
+            "id": "1841",
+            "fullName": "crypto.com Arena",
+            "address": {
+              "city": "Los Angeles",
+              "state": "CA",
+              "address1": "STAPLES CENTER,  1111 S. FIGUE",
+              "country": "USA"
+            },
+            "indoor": true
+          },
+          "competitors": [
+            {
+              "id": "4699589",
+              "uid": "s:3301~a:4699589",
+              "type": "athlete",
+              "order": 1,
+              "winner": false,
+              "athlete": {
+                "fullName": "Casey O'Neill",
+                "displayName": "Casey O'Neill",
+                "shortName": "C. O'Neill",
+                "flag": {
+                  "href": "https://a.espncdn.com/i/teamlogos/countries/500/aus.png",
+                  "alt": "Australia",
+                  "rel": [
+                    "country-flag"
+                  ]
+                }
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "TOT",
+                  "type": "total",
+                  "summary": "11-2-0"
+                }
+              ]
+            },
+            {
+              "id": "5143888",
+              "uid": "s:3301~a:5143888",
+              "type": "athlete",
+              "order": 2,
+              "winner": false,
+              "athlete": {
+                "fullName": "Eduarda Moura",
+                "displayName": "Eduarda Moura",
+                "shortName": "E. Moura",
+                "flag": {
+                  "href": "https://a.espncdn.com/i/teamlogos/countries/500/bra.png",
+                  "alt": "Brazil",
+                  "rel": [
+                    "country-flag"
+                  ]
+                }
+              },
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "TOT",
+                  "type": "total",
+                  "summary": "12-2-0"
+                }
+              ]
+            }
+          ],
+          "status": {
+            "clock": 0.0,
+            "displayClock": "-",
+            "period": 0,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, September 19th at 5:30 PM EDT",
+              "shortDetail": "9/19 - 5:30 PM EDT"
+            }
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Paramount+"
+              ]
+            }
+          ],
+          "format": {
+            "regulation": {
+              "periods": 3
+            }
+          },
+          "startDate": "2026-09-19T21:30Z",
+          "broadcast": "Paramount+",
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "4",
+                "shortName": "Streaming"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "Paramount+"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "highlights": []
+        }
+      ]
+    }
+  ]
+}

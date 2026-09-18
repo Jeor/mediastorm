@@ -259,7 +259,7 @@ func normalizeMLBDetail(game models.SportsGame, payload mlbSummary, now time.Tim
 // EnrichGame fetches the selected core-league game, with a bounded cache and timeout.
 // The separate lock coalesces concurrent requests without blocking scoreboard reads.
 func (s *Service) EnrichGame(ctx context.Context, game models.SportsGame) models.SportsGame {
-	sport := map[string]string{"mlb": "baseball", "nfl": "football", "nba": "basketball", "nhl": "hockey", "college-football": "football", "mens-college-basketball": "basketball", "womens-college-basketball": "basketball"}[game.League]
+	sport := map[string]string{"mlb": "baseball", "nfl": "football", "nba": "basketball", "wnba": "basketball", "nhl": "hockey", "college-football": "football", "mens-college-basketball": "basketball", "womens-college-basketball": "basketball"}[game.League]
 	slug := game.League
 	if strings.HasPrefix(game.League, "soccer-") {
 		sport = "soccer"

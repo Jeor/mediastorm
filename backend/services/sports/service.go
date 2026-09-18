@@ -532,7 +532,8 @@ func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, 
 		return []models.SportsGame{}, nil
 	}
 	endpoint := fmt.Sprintf(espnScoreboardURLFmt, league.Sport, league.Slug)
-	query := url.Values{"limit": {"1000"}}
+	// Oversized limits (e.g. 1000) can silently fall back to 25 events.
+	query := url.Values{"limit": {"200"}}
 	if date != "" {
 		query.Set("dates", strings.ReplaceAll(date, "-", ""))
 	}

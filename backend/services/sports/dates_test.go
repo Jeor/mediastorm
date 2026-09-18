@@ -97,8 +97,8 @@ func TestScoreboardUsesFullCollegeDivisionForLiveAndDatedRequests(t *testing.T) 
 					if q.Get("groups") != tc.group {
 						t.Errorf("groups = %q, want %q", q.Get("groups"), tc.group)
 					}
-					if q.Get("limit") != "1000" {
-						t.Error("scoreboard must request full event limit")
+					if q.Get("limit") != "200" {
+						t.Error("scoreboard must use the provider-supported event limit")
 					}
 					if q.Get("dates") != strings.ReplaceAll(date, "-", "") {
 						t.Error("incorrect date")

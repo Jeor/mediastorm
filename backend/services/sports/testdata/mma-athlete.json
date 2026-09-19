@@ -1,0 +1,17 @@
+{
+  "id": "3166126",
+  "displayName": "Dricus Du Plessis",
+  "displayHeight": "6' 1\"",
+  "displayReach": "76\"",
+  "displayWeight": "185 lbs",
+  "stance": {
+    "id": "80",
+    "text": "Switch"
+  },
+  "weightClass": {
+    "id": "972",
+    "text": "Middleweight",
+    "shortName": "Middleweight",
+    "slug": "middleweight"
+  }
+}

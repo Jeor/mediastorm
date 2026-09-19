@@ -79,6 +79,7 @@ func espnTeamsToRecords(payload espnTeamsResponse, league League) []models.Sport
 }
 
 type espnEvent struct {
+	EndDate   string `json:"endDate"`
 	Groupings []struct {
 		Competitions []espnCompetition `json:"competitions"`
 	} `json:"groupings"`
@@ -163,6 +164,21 @@ func scoreboardMLBSituation(raw *espnScoreboardSituation, inning string) *models
 }
 
 type espnCompetition struct {
+	Details []struct {
+		Type struct {
+			Text string `json:"text"`
+		} `json:"type"`
+		Clock struct {
+			DisplayValue string `json:"displayValue"`
+		} `json:"clock"`
+		Team struct {
+			ID string `json:"id"`
+		} `json:"team"`
+		Athletes []struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+		} `json:"athletesInvolved"`
+	} `json:"details"`
 	ID          string                   `json:"id"`
 	Date        string                   `json:"date"`
 	Situation   *espnScoreboardSituation `json:"situation"`
@@ -173,6 +189,7 @@ type espnCompetition struct {
 }
 
 type espnStatus struct {
+	Summary      string         `json:"summary"`
 	Clock        float64        `json:"clock"`
 	DisplayClock string         `json:"displayClock"`
 	Period       int            `json:"period"`
@@ -192,9 +209,7 @@ type espnCompetitor struct {
 		DisplayName      string `json:"displayName"`
 		ShortDisplayName string `json:"shortDisplayName"`
 	} `json:"roster"`
-	Linescores []struct {
-		Winner *bool `json:"winner"`
-	} `json:"linescores"`
+	Linescores  []espnLineScore `json:"linescores"`
 	CuratedRank struct {
 		Current int `json:"current"`
 	} `json:"curatedRank"`
@@ -360,6 +375,7 @@ func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {
 		League:       league.ID,
 		Sport:        league.Sport,
 		StartTime:    parseESPNDate(event.Date),
+		EndTime:      parseESPNDate(event.EndDate),
 		Status:       espnStatusToGameStatus(comp.Status.Type),
 		StatusDetail: statusDetail,
 		Clock:        comp.Status.DisplayClock,
@@ -390,6 +406,7 @@ func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {
 		}
 		game.FootballSituation = &models.SportsFootballSituation{Kind: "nfl", Possession: possession, DownDistance: raw.ShortDownDistanceText, FieldPosition: raw.PossessionText, AwayTimeouts: validCount(raw.AwayTimeouts, 3), HomeTimeouts: validCount(raw.HomeTimeouts, 3)}
 	}
+	applyScoreboardDetail(&game, comp, league)
 	return game, true
 }
 

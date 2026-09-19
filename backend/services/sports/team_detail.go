@@ -18,6 +18,10 @@ type teamPlayPoint struct {
 	} `json:"team"`
 }
 type teamDetailPlay struct {
+	Coordinate *struct {
+		X *float64 `json:"x"`
+		Y *float64 `json:"y"`
+	} `json:"coordinate"`
 	Start teamPlayPoint `json:"start"`
 	End   teamPlayPoint `json:"end"`
 	Team  struct {
@@ -95,6 +99,10 @@ type teamSportSummary struct {
 				ID string `json:"id"`
 			} `json:"team"`
 			Statistics []struct {
+				Stats []struct {
+					Name         string `json:"name"`
+					DisplayValue string `json:"displayValue"`
+				} `json:"stats"`
 				Name         string `json:"name"`
 				DisplayValue string `json:"displayValue"`
 			} `json:"statistics"`
@@ -226,6 +234,7 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 		d.TournamentContext = strings.TrimSpace(p.Header.Season.Name)
 	}
 	d.FootballDrives = normalizeFootballDrives(game, p)
+	previousDetail := game.Detail
 	game.Detail = d
 	normalizeTeamContext(&game, p)
 	// Pregame summaries contain season leaders and statistics, not game values.
@@ -255,6 +264,9 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 	}
 	if strings.HasPrefix(game.League, "soccer-") {
 		family = "soccer"
+	}
+	if strings.HasPrefix(game.League, "rugby-") && !strings.HasPrefix(game.League, "rugby-league-") {
+		family = "rugby"
 	}
 	if family == "nfl" {
 		plays = nil
@@ -296,10 +308,14 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 		values := map[string]string{}
 		for _, stat := range team.Statistics {
 			values[stat.Name] = stat.DisplayValue
+			for _, nested := range stat.Stats {
+				values[nested.Name] = nested.DisplayValue
+			}
 		}
 		stats[team.Team.ID] = values
 	}
 	fields := map[string][][2]string{
+		"rugby":  {{"possession", "Possession %"}, {"territory", "Territory %"}, {"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"metres", "Meters run"}, {"penaltiesConceded", "Penalties conceded"}, {"lineoutsWon", "Lineouts won"}, {"scrumsWon", "Scrums won"}},
 		"soccer": {{"possessionPct", "Possession %"}, {"totalShots", "Shots"}, {"shotsOnTarget", "Shots on target"}, {"wonCorners", "Corners"}, {"foulsCommitted", "Fouls"}, {"yellowCards", "Yellow cards"}, {"redCards", "Red cards"}, {"saves", "Saves"}, {"offsides", "Offsides"}},
 		"nfl":    {{"totalYards", "Total yards"}, {"netPassingYards", "Passing yards"}, {"rushingYards", "Rushing yards"}, {"firstDowns", "First downs"}, {"thirdDownEff", "Third downs"}, {"fourthDownEff", "Fourth downs"}, {"turnovers", "Turnovers"}, {"totalPenaltiesYards", "Penalties–yards"}, {"possessionTime", "Time of possession"}},
 		"nba":    {{"fieldGoalsMade-fieldGoalsAttempted", "Field goals"}, {"fieldGoalPct", "Field goal %"}, {"threePointFieldGoalsMade-threePointFieldGoalsAttempted", "Three-pointers"}, {"freeThrowsMade-freeThrowsAttempted", "Free throws"}, {"totalRebounds", "Rebounds"}, {"assists", "Assists"}, {"steals", "Steals"}, {"blocks", "Blocks"}, {"totalTurnovers", "Turnovers"}, {"pointsInPaint", "Points in paint"}},
@@ -332,6 +348,12 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 				break
 			}
 		}
+	}
+	if family == "rugby" && previousDetail != nil && len(d.Plays) == 0 {
+		d.Plays = previousDetail.Plays
+	}
+	if game.League == "nhl" {
+		d.Shots = normalizeHockeyShots(p.Plays, game.AwayTeam.ID, game.HomeTeam.ID)
 	}
 	d.Capabilities.Plays = len(d.Plays) > 0
 	d.Capabilities.Stats = len(d.Comparisons) > 0 || len(d.Leaders) > 0 || len(d.PlayerStats) > 0
@@ -434,4 +456,37 @@ func footballScoringTeam(play teamDetailPlay, earlier []teamDetailPlay, game mod
 		return ""
 	}
 	return ""
+}
+
+func normalizeHockeyShots(plays []teamDetailPlay, awayID, homeID string) []models.SportsHockeyShot {
+	out := []models.SportsHockeyShot{}
+	seen := map[string]bool{}
+	for _, p := range plays {
+		kind := strings.ToLower(p.Type.Text)
+		if kind != "shot" && kind != "goal" && kind != "missed" && kind != "blocked" {
+			continue
+		}
+		if p.ID == "" || seen[p.ID] || p.Coordinate == nil || p.Coordinate.X == nil || p.Coordinate.Y == nil {
+			continue
+		}
+		x, y := *p.Coordinate.X, *p.Coordinate.Y
+		if math.IsNaN(x) || math.IsNaN(y) || math.Abs(x) > 100 || math.Abs(y) > 42.5 {
+			continue
+		}
+		teamID := p.Team.ID
+		if teamID != awayID && teamID != homeID {
+			continue
+		}
+		// ESPN credits a blocked event to the defending team; the attempt belongs to its opponent.
+		if kind == "blocked" {
+			if teamID == awayID {
+				teamID = homeID
+			} else {
+				teamID = awayID
+			}
+		}
+		seen[p.ID] = true
+		out = append(out, models.SportsHockeyShot{ID: p.ID, TeamID: teamID, X: x, Y: y, Kind: kind, Period: p.Period.DisplayValue, Clock: p.Clock.DisplayValue, Description: p.Text})
+	}
+	return out
 }

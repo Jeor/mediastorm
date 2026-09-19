@@ -54,6 +54,7 @@ func (a *AIOStreamsScraper) Name() string {
 }
 
 func (a *AIOStreamsScraper) Search(ctx context.Context, req SearchRequest) ([]ScrapeResult, error) {
+	req = req.forIMDBStreamProvider()
 	// AIOStreams requires an IMDB ID - it doesn't support text search
 	imdbID := strings.TrimSpace(req.IMDBID)
 	if imdbID == "" {

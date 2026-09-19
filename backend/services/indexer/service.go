@@ -1244,6 +1244,7 @@ func (s *Service) sortResultsByScore(results []models.NZBResult, scoringCtx Scor
 }
 
 type SearchOptions struct {
+	TitleID               string                        // Canonical selected title identity; independent of provider stream identity.
 	AdaptiveSummary       *models.AdaptiveSearchSummary // Optional request-owned output, populated before presentation limits.
 	Query                 string
 	Categories            []string
@@ -1322,6 +1323,7 @@ type searchRankingSettings struct {
 }
 
 type searchCacheOptions struct {
+	TitleID               string
 	Query                 string
 	Categories            []string
 	MaxResults            int
@@ -1346,6 +1348,7 @@ type searchCacheOptions struct {
 
 func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 	return searchCacheOptions{
+		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            append([]string(nil), opts.Categories...),
 		MaxResults:            opts.MaxResults,
@@ -1645,6 +1648,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 			hasResolver := opts.EpisodeResolver != nil
 			log.Printf("[indexer] TIMING: debrid search starting (query=%q, hasEpisodeResolver=%v)", opts.Query, hasResolver)
 			debOpts := debrid.SearchOptions{
+				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
 				MaxResults:            sourceOpts.MaxResults,
@@ -2324,6 +2328,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		return out
 	}
 	debOpts := debrid.SearchOptions{
+		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            append([]string{}, opts.Categories...),
 		MaxResults:            0, // ranking is final-order; a source cap would truncate before filter/rank (non-split path uses 0)
@@ -2661,6 +2666,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				return
 			}
 			debOpts := debrid.SearchOptions{
+				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
 				MaxResults:            opts.MaxResults,
@@ -2984,6 +2990,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		log.Printf("[indexer] TIMING: split debrid search starting (query=%q)", opts.Query)
 
 		debOpts := debrid.SearchOptions{
+			TitleID:               opts.TitleID,
 			Query:                 opts.Query,
 			Categories:            append([]string{}, opts.Categories...),
 			MaxResults:            opts.MaxResults,

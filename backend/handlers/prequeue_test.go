@@ -54,12 +54,16 @@ func TestResolveFirstReadySourceForWorker(t *testing.T) {
 
 func TestCombinedPrequeueSearchOptionsPreservesAlternateTitles(t *testing.T) {
 	opts := combinedPrequeueSearchOptions(indexer.SearchOptions{
+		TitleID:         "tmdb:tv:299939",
 		Query:           "Batman: Death in the Family",
 		AlternateTitles: []string{"DC Showcase - Batman: Death in the Family"},
 	})
 
 	if !opts.IncludeFiltered {
 		t.Fatal("combined prequeue search must include filtered results")
+	}
+	if opts.TitleID != "tmdb:tv:299939" {
+		t.Fatalf("selected title identity lost: %q", opts.TitleID)
 	}
 	if len(opts.AlternateTitles) != 1 || opts.AlternateTitles[0] != "DC Showcase - Batman: Death in the Family" {
 		t.Fatalf("alternate titles = %v, want canonical DC Showcase title", opts.AlternateTitles)

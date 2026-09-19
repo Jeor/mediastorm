@@ -2616,6 +2616,7 @@ func (m *Manager) Load() (Settings, error) {
 			{Name: "Real Debrid", Provider: "realdebrid"},
 			{Name: "Torbox", Provider: "torbox"},
 			{Name: "AllDebrid", Provider: "alldebrid"},
+			{Name: "Debrid-Link", Provider: "debridlink"},
 			{Name: "Premiumize", Provider: "premiumize"},
 		}
 	}

@@ -377,7 +377,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		}
 
 		// Check title similarity
-		titleSim, matchedTitle := bestTitleSimilarity(candidateTitles, parsed.Title, result.Title)
+		titleSim, matchedTitle := bestTitleSimilarityForMedia(candidateTitles, parsed.Title, opts.IsMovie, result.Title)
 		if i < 5 {
 			ref := opts.ExpectedTitle
 			if matchedTitle != "" {
@@ -874,6 +874,10 @@ func containsJapaneseRune(value string) bool {
 }
 
 func bestTitleSimilarity(candidates []string, parsedTitle string, rawTitle ...string) (float64, string) {
+	return bestTitleSimilarityForMedia(candidates, parsedTitle, false, rawTitle...)
+}
+
+func bestTitleSimilarityForMedia(candidates []string, parsedTitle string, isMovie bool, rawTitle ...string) (float64, string) {
 	if len(candidates) == 0 {
 		return 0.0, ""
 	}
@@ -892,6 +896,9 @@ func bestTitleSimilarity(candidates []string, parsedTitle string, rawTitle ...st
 	for _, candidate := range candidates {
 		normalizedCandidate := normalizeForContainment(candidate)
 		for _, parsedVariant := range parsedTitles {
+			if isMovie && movieInstallmentMismatch(parsedVariant, candidate) {
+				continue
+			}
 			score := similarity.Similarity(candidate, parsedVariant)
 
 			// Also check containment: if one title contains the other as a whole word/phrase,

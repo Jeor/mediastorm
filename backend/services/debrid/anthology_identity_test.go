@@ -65,7 +65,7 @@ func TestAnthologySearchUsesProviderCoordinates(t *testing.T) {
 			var paths []string
 			client := newStubClient(func(r *http.Request) (*http.Response, error) {
 				paths = append(paths, r.URL.Path)
-				return jsonResponse(http.StatusOK, `{"streams":[{"url":"https://example.test/video.mkv","infoHash":"0123456789012345678901234567890123456789","title":"Monster.The.Lizzie.Borden.Story.S01E02.1080p.WEB.mkv","behaviorHints":{"filename":"Monster.The.Lizzie.Borden.Story.S01E02.1080p.WEB.mkv"}}]}`), nil
+				return jsonResponse(http.StatusOK, `{"streams":[{"url":"https://example.test/video.mkv","infoHash":"0123456789012345678901234567890123456789","title":"Monster.The.Lizzie.Borden.Story.S04E02.1080p.WEB.mkv","behaviorHints":{"filename":"Monster.The.Lizzie.Borden.Story.S04E02.1080p.WEB.mkv"}}]}`), nil
 			})
 			var scraper Scraper = NewAIOStreamsScraper("https://example.test/manifest.json", "AIO", false, client)
 			if provider == "torrentio" {
@@ -96,7 +96,7 @@ func TestAnthologySearchUsesProviderCoordinates(t *testing.T) {
 				t.Fatalf("provider requests = %v", paths)
 			}
 			if len(results) != 1 {
-				t.Fatalf("expected S01 release to survive original-identity filtering, got %d", len(results))
+				t.Fatalf("expected mapped S04 release to survive original-identity filtering, got %d", len(results))
 			}
 		})
 	}

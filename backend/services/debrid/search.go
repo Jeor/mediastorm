@@ -650,6 +650,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 		log.Printf("[debrid] Applying filter with title=%q, year=%d, mediaType=%s, hasEpisodeResolver=%v, targetS%02dE%02d, absoluteEp=%d",
 			expectedTitle, parsed.Year, parsed.MediaType, hasResolver, parsed.Season, parsed.Episode, opts.AbsoluteEpisodeNumber)
 		filterOpts := FilterOptions{
+			TitleID:               opts.TitleID,
 			ExpectedTitle:         expectedTitle,
 			ExpectedYear:          parsed.Year,
 			EpisodeAirYear:        opts.EpisodeAirYear,

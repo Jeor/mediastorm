@@ -13,6 +13,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 
+	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/models"
 	"novastream/utils/parsett"
@@ -131,6 +132,7 @@ func (r *SeriesEpisodeResolver) GetEpisodesForSeasons(seasons []int) int {
 
 // Options contains the expected metadata for filtering results
 type Options struct {
+	TitleID             string // Selected title identity for verified anthology episode aliases.
 	ExpectedTitle       string
 	ExpectedYear        int
 	ExpectedCountry     string      // Original production country; normalized before comparison
@@ -489,10 +491,28 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// This rejects season packs and episodes that obviously can't contain the target episode
 		// Skip this check for daily shows with matching dates - they use date-based matching instead
 		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
-			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, opts); rejected {
+			episodeOpts := opts
+			// Only explicit single episodes of the known split title may use
+			// anthology numbering. Keep title/year/quality checks intact and
+			// leave packs and unrelated seasons on the normal path.
+			mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
+			mappedRelease := known && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season &&
+				len(parsed.Episodes) == 1 && explicitEpisodePattern.MatchString(result.Title)
+			if mappedRelease {
+				episodeOpts.TargetSeason = mapped.Season
+				episodeOpts.TargetEpisode = mapped.Episode
+			}
+			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, episodeOpts); rejected {
 				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
 				reject(result, reason)
 				continue
+			}
+			if mappedRelease {
+				// File-selection hints follow the release's numbering; the
+				// selected title and history episode remain in TMDB order.
+				result.Attributes["targetSeason"] = strconv.Itoa(mapped.Season)
+				result.Attributes["targetEpisode"] = strconv.Itoa(mapped.Episode)
+				result.Attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", mapped.Season, mapped.Episode)
 			}
 		}
 

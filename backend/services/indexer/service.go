@@ -2852,6 +2852,7 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 	}
 
 	return filter.Options{
+		TitleID:               opts.TitleID,
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
 		ExpectedCountry:       opts.CountryCode,
@@ -4308,6 +4309,7 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 	}
 
 	filterOpts := filter.Options{
+		TitleID:               opts.TitleID,
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
 		ExpectedCountry:       opts.CountryCode,

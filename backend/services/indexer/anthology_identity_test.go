@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"novastream/config"
@@ -45,5 +46,34 @@ func TestSearchPreservesTitleIdentityAndSeparatesCache(t *testing.T) {
 				t.Fatalf("identity must reach provider and distinguish cached searches: %v", provider.ids)
 			}
 		})
+	}
+}
+
+func TestAnthologySeasonFourResultsSurviveScoring(t *testing.T) {
+	cfg := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	settings.Display.BypassFilteringForAIOStreamsOnly = false
+	if err := cfg.Save(settings); err != nil {
+		t.Fatal(err)
+	}
+	provider := &countingDebridSearchService{results: []models.NZBResult{
+		{Title: "Monster.The.Lizzie.Borden.Story.S04E01.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
+		{Title: "Monster.The.Lizzie.Borden.Story.S01E01.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
+		{Title: "Monster.The.Lizzie.Borden.Story.S04E02.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
+	}}
+	svc := NewService(cfg, nil, provider)
+	results, err := svc.SearchWithScoring(t.Context(), SearchOptions{TitleID: "tmdb:tv:299939", Query: "Monster: The Lizzie Borden Story S01E01", MediaType: "series", Year: 2026, IncludeFiltered: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("results = %d", len(results))
+	}
+	for _, r := range results {
+		wantFiltered := strings.Contains(r.Title, "S04E02")
+		if (r.FilterStatus == "filtered") != wantFiltered {
+			t.Errorf("%s status=%s reason=%s", r.Title, r.FilterStatus, r.FilterReason)
+		}
 	}
 }

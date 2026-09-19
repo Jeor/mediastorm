@@ -3,6 +3,8 @@ package debrid
 import (
 	"log"
 	"strings"
+
+	"novastream/internal/mediaidentity"
 )
 
 type streamEpisodeIdentity struct {
@@ -17,15 +19,16 @@ type streamEpisodeIdentity struct {
 // episode external TVDB IDs match Cinemeta tt13207736 season 4 (11934436,
 // 11963721–11963727). Do not apply the parent IMDb ID to TMDB season 1 globally.
 func anthologyStreamIdentity(titleID, imdbID string, parsed ParsedQuery) (streamEpisodeIdentity, bool) {
-	if strings.TrimSpace(titleID) != "tmdb:tv:299939" || strings.TrimSpace(imdbID) != "" ||
-		parsed.MediaType != MediaTypeSeries || parsed.Season != 1 || parsed.Episode < 1 || parsed.Episode > 8 {
+	if strings.TrimSpace(imdbID) != "" || parsed.MediaType != MediaTypeSeries {
 		return streamEpisodeIdentity{}, false
 	}
-	return streamEpisodeIdentity{imdbID: "tt13207736", season: 4, episode: parsed.Episode}, true
+	mapped, ok := mediaidentity.KnownAnthologyEpisode(titleID, parsed.Season, parsed.Episode)
+	return streamEpisodeIdentity{imdbID: mapped.IMDBID, season: mapped.Season, episode: mapped.Episode}, ok
 }
 
-// Only IMDb stream providers use this copy. The original query, result filters,
-// text-search providers, display identity, and watch history retain TMDB order.
+// Only IMDb stream providers use this copy. The original query, text-search
+// providers, display identity, and watch history retain TMDB order. Filtering
+// independently accepts the verified episode's alternate release numbering.
 func (req SearchRequest) forIMDBStreamProvider() SearchRequest {
 	if identity, ok := anthologyStreamIdentity(req.TitleID, req.IMDBID, req.Parsed); ok {
 		log.Printf("[debrid] anthology stream mapping titleId=%s S%02dE%02d -> %s:%d:%d",

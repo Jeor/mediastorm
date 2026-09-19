@@ -61,13 +61,14 @@ func TestAnthologySeasonFourResultsSurviveScoring(t *testing.T) {
 		{Title: "Monster.The.Lizzie.Borden.Story.S04E01.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
 		{Title: "Monster.The.Lizzie.Borden.Story.S01E01.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
 		{Title: "Monster.The.Lizzie.Borden.Story.S04E02.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
+		{Title: "Monster.The.Lizzie.Borden.Story.S04.1080p.Rus.ColdFilm", ServiceType: models.ServiceTypeDebrid},
 	}}
 	svc := NewService(cfg, nil, provider)
 	results, err := svc.SearchWithScoring(t.Context(), SearchOptions{TitleID: "tmdb:tv:299939", Query: "Monster: The Lizzie Borden Story S01E01", MediaType: "series", Year: 2026, IncludeFiltered: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 3 {
+	if len(results) != 4 {
 		t.Fatalf("results = %d", len(results))
 	}
 	for _, r := range results {

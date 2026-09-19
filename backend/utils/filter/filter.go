@@ -490,17 +490,17 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// Target episode filtering for TV shows
 		// This rejects season packs and episodes that obviously can't contain the target episode
 		// Skip this check for daily shows with matching dates - they use date-based matching instead
+		episodeOpts := opts
 		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
-			episodeOpts := opts
-			// Only explicit single episodes of the known split title may use
-			// anthology numbering. Keep title/year/quality checks intact and
-			// leave packs and unrelated seasons on the normal path.
+			// Episodes and packs of the known anthology season use provider
+			// numbering. Other seasons and multi-season packs stay unchanged.
 			mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
-			mappedRelease := known && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season &&
-				len(parsed.Episodes) == 1 && explicitEpisodePattern.MatchString(result.Title)
+			mappedRelease := known && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
 			if mappedRelease {
 				episodeOpts.TargetSeason = mapped.Season
 				episodeOpts.TargetEpisode = mapped.Episode
+				episodeOpts.TargetAbsoluteEpisode = 0
+				episodeOpts.EpisodeResolver = NewSeriesEpisodeResolver(map[int]int{mapped.Season: mapped.SeasonEpisodeCount})
 			}
 			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, episodeOpts); rejected {
 				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
@@ -513,6 +513,8 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				result.Attributes["targetSeason"] = strconv.Itoa(mapped.Season)
 				result.Attributes["targetEpisode"] = strconv.Itoa(mapped.Episode)
 				result.Attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", mapped.Season, mapped.Episode)
+				delete(result.Attributes, "absoluteEpisodeNumber")
+				delete(result.Attributes, "targetAbsoluteEpisode")
 			}
 		}
 
@@ -574,7 +576,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// configured. The UI and ranking both need to know whether SizeBytes is
 		// a pack total or the size of the selected playable file.
 		if !opts.IsMovie && result.SizeBytes > 0 {
-			normalizePackSizeMetadata(&result, parsed, isCompletePack, opts)
+			normalizePackSizeMetadata(&result, parsed, isCompletePack, episodeOpts)
 		}
 
 		// Check size limits if configured

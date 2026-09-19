@@ -4,9 +4,10 @@ import "strings"
 
 // AnthologyEpisode identifies the same episode in the provider's anthology.
 type AnthologyEpisode struct {
-	IMDBID  string
-	Season  int
-	Episode int
+	IMDBID             string
+	Season             int
+	Episode            int
+	SeasonEpisodeCount int
 }
 
 // KnownAnthologyEpisode is an exact allowlist, never a title/year heuristic.
@@ -16,5 +17,5 @@ func KnownAnthologyEpisode(titleID string, season, episode int) (AnthologyEpisod
 	if strings.TrimSpace(titleID) != "tmdb:tv:299939" || season != 1 || episode < 1 || episode > 8 {
 		return AnthologyEpisode{}, false
 	}
-	return AnthologyEpisode{IMDBID: "tt13207736", Season: 4, Episode: episode}, true
+	return AnthologyEpisode{IMDBID: "tt13207736", Season: 4, Episode: episode, SeasonEpisodeCount: 8}, true
 }

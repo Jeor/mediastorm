@@ -8336,17 +8336,19 @@ type HistoryChecker interface {
 
 // CustomListOptions configures filtering and pagination for GetCustomList.
 type CustomListOptions struct {
-	DeferArtwork     bool // use cached artwork for the initial response
-	Limit            int
-	Offset           int
-	HideUnreleased   bool
-	HideWatched      bool
-	Lite             bool // true skips expensive nonessential enrichment for fast shelf loads
-	ArtworkLimit     int  // optional cap for blocking artwork enrichment
-	UserID           string
-	HistorySvc       HistoryChecker // nil if hideWatched is false
-	Label            string         // optional display name for progress tracking (e.g. shelf name)
-	SuppressProgress bool           // true for background/internal refreshes that should not surface in UI progress
+	DeferArtwork         bool // use cached artwork for the initial response
+	Limit                int
+	Offset               int
+	HideUnreleased       bool
+	HideUnreleasedMovies bool
+	HideUnreleasedShows  bool
+	HideWatched          bool
+	Lite                 bool // true skips expensive nonessential enrichment for fast shelf loads
+	ArtworkLimit         int  // optional cap for blocking artwork enrichment
+	UserID               string
+	HistorySvc           HistoryChecker // nil if hideWatched is false
+	Label                string         // optional display name for progress tracking (e.g. shelf name)
+	SuppressProgress     bool           // true for background/internal refreshes that should not surface in UI progress
 }
 
 const (
@@ -9242,88 +9244,6 @@ func filterWatchedMDBListItems(items []mdblistItem, userID string, historySvc Hi
 	return result
 }
 
-// preFilterUnreleased does a lightweight concurrent pass to remove unreleased items
-// before full enrichment. For movies it checks TMDB release data; for series it checks
-// whether any known episode has aired.
-func (s *Service) preFilterUnreleased(ctx context.Context, items []mdblistItem) []mdblistItem {
-	const maxConcurrent = 10
-	sem := make(chan struct{}, maxConcurrent)
-	var wg sync.WaitGroup
-
-	keep := make([]bool, len(items))
-	for i := range keep {
-		keep[i] = true // default: keep
-	}
-
-	for i, item := range items {
-		mediaType := mdblistItemMediaType(item)
-
-		wg.Add(1)
-		go func(idx int, it mdblistItem, mt string) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			if mt == "movie" {
-				tmdbID := int64(0)
-				if it.TMDBID != nil && *it.TMDBID > 0 {
-					tmdbID = *it.TMDBID
-				} else if it.IMDBID != "" {
-					tmdbID = s.getTMDBIDForIMDB(ctx, it.IMDBID)
-				}
-				if tmdbID <= 0 {
-					return // can't determine, keep
-				}
-				title := models.Title{MediaType: "movie", TMDBID: tmdbID}
-				if s.enrichMovieReleases(ctx, &title, tmdbID) {
-					if title.Status != models.MovieReleaseStatusReleased {
-						keep[idx] = false
-					}
-				}
-			} else {
-				// Series: check status via lightweight extended call (no artworks)
-				if s.client.isConfigured() && it.TVDBID != nil && *it.TVDBID > 0 {
-					ext, err := s.cachedSeriesExtended(*it.TVDBID, []string{"episodes"})
-					if err == nil {
-						status := seriesReleaseStatusFromTVDBExtended(ext, models.Title{
-							MediaType: "series",
-							Year:      it.ReleaseYear,
-						})
-						if status != models.SeriesReleaseStatusReleased {
-							keep[idx] = false
-						}
-					}
-				} else if s.tmdb != nil && s.tmdb.isConfigured() {
-					tmdbID := s.resolveTMDBSeriesID(ctx, models.SeriesDetailsQuery{Name: it.Title, Year: it.ReleaseYear, IMDBID: it.IMDBID})
-					if tmdbID > 0 {
-						if title, err := s.tmdb.seriesDetails(ctx, tmdbID); err == nil && title != nil && title.Status != models.SeriesReleaseStatusReleased {
-							keep[idx] = false
-						}
-					}
-				}
-			}
-		}(i, item, mediaType)
-	}
-	wg.Wait()
-
-	result := make([]mdblistItem, 0, len(items))
-	filteredCount := 0
-	for i, item := range items {
-		if keep[i] {
-			result = append(result, item)
-		} else {
-			filteredCount++
-			if filteredCount <= 3 {
-				log.Printf("[hideUnreleased] pre-filtered: %s (type=%s)", item.Title, mdblistItemMediaType(item))
-			}
-		}
-	}
-	if filteredCount > 0 {
-		log.Printf("[hideUnreleased] pre-filter result: %d/%d items kept (filtered %d)", len(result), len(items), filteredCount)
-	}
-	return result
-}
-
 func seriesReleaseStatusFromTVDBEpisodes(episodes []tvdbEpisode) string {
 	now := time.Now()
 	for _, episode := range episodes {
@@ -9952,6 +9872,9 @@ func parseTVDBSearchYear(year string) (int, bool) {
 // Pre-filters watched/unreleased items before enrichment so only displayed items incur full
 // TVDB lookups. Returns (items, filteredTotal, unfilteredTotal, error).
 func (s *Service) GetCustomList(ctx context.Context, listURL string, opts CustomListOptions) ([]models.TrendingItem, int, int, error) {
+	hideMovies := opts.HideUnreleased || opts.HideUnreleasedMovies
+	hideShows := opts.HideUnreleased || opts.HideUnreleasedShows
+	filterReleases := hideMovies || hideShows
 	liteMovieEnrichment := opts.Lite || opts.Limit <= 0
 	cacheMode := "full"
 	if opts.Lite {
@@ -9965,12 +9888,16 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 	var cached []models.TrendingItem
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
 		log.Printf("[metadata] custom list cache hit for %s (%d items)", listURL, len(cached))
-		total := len(cached)
-		// Apply offset + limit to cached results
+		unfilteredTotal := len(cached)
 		result := cached
+		if filterReleases || opts.HideWatched {
+			result = s.filterCachedCustomList(ctx, cached, opts)
+		}
+		total := len(result)
+		// Apply offset + limit only after request-specific filtering.
 		if opts.Offset > 0 {
 			if opts.Offset >= len(result) {
-				return []models.TrendingItem{}, total, total, nil
+				return []models.TrendingItem{}, total, unfilteredTotal, nil
 			}
 			result = result[opts.Offset:]
 		}
@@ -9987,7 +9914,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 			_ = s.cache.set(cacheID, cached)
 		}
 		ensureTrendingMovieReleaseStatuses(result)
-		return result, total, total, nil
+		return result, total, unfilteredTotal, nil
 	}
 
 	var progressID string
@@ -10030,8 +9957,8 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 	}
 
 	// Pre-filter unreleased items (lightweight concurrent check)
-	if opts.HideUnreleased {
-		remaining = s.preFilterUnreleased(ctx, remaining)
+	if filterReleases {
+		remaining = s.preFilterUnreleasedTypes(ctx, remaining, hideMovies, hideShows)
 	}
 
 	filteredTotal := len(remaining)
@@ -10089,7 +10016,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 	s.enrichShelfArtworkForLoad(ctx, results, customListArtworkLimit(opts), opts.DeferArtwork)
 
 	// Only cache full-list results when no filtering was applied
-	if !opts.HideWatched && !opts.HideUnreleased && opts.Offset == 0 &&
+	if !opts.HideWatched && !filterReleases && opts.Offset == 0 &&
 		(opts.Limit == 0 || opts.Limit >= unfilteredTotal) && len(results) > 0 {
 		_ = s.cache.set(cacheID, results)
 		log.Printf("[metadata] cached %d enriched items for custom list: %s", len(results), listURL)

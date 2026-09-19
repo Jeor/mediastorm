@@ -1232,6 +1232,11 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		listURL = listURL + "/json"
 	}
 
+	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)
+	visibilityFiltered := hideUnreleased || !policy.IncludeMovies || !policy.IncludeShows
+
+	// Resolve visibility before loading: the service checks release dates before
+	// pagination. Lite display rows are not authoritative release metadata.
 	// Build options — filtering + pagination handled inside the service
 	serviceLimit, serviceOffset := limit, offset
 	if query.RequiresIndex() {
@@ -1240,15 +1245,17 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		serviceLimit, serviceOffset = 0, 0
 	}
 	opts := metadatapkg.CustomListOptions{
-		DeferArtwork:   strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
-		Limit:          serviceLimit,
-		Offset:         serviceOffset,
-		HideUnreleased: hideUnreleased,
-		HideWatched:    hideWatched,
-		Lite:           lite,
-		ArtworkLimit:   artworkLimit,
-		UserID:         userID,
-		Label:          strings.TrimSpace(r.URL.Query().Get("name")),
+		DeferArtwork:         strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
+		Limit:                serviceLimit,
+		Offset:               serviceOffset,
+		HideUnreleased:       hideUnreleased,
+		HideUnreleasedMovies: !policy.IncludeMovies,
+		HideUnreleasedShows:  !policy.IncludeShows,
+		HideWatched:          hideWatched,
+		Lite:                 lite,
+		ArtworkLimit:         artworkLimit,
+		UserID:               userID,
+		Label:                strings.TrimSpace(r.URL.Query().Get("name")),
 	}
 	if hideWatched && userID != "" && h.HistoryService != nil {
 		opts.HistorySvc = h.HistoryService
@@ -1262,22 +1269,6 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
-	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)
-	if hideUnreleased {
-		policy.IncludeMovies = false
-		policy.IncludeShows = false
-	}
-	visibilityFiltered := false
-	if !policy.IncludeMovies || !policy.IncludeShows {
-		before := len(items)
-		items = filterTrendingItemsByUnreleasedVisibility(items, policy)
-		filteredTotal = len(items)
-		visibilityFiltered = len(items) != before
-		if unfilteredTotal == 0 || unfilteredTotal < before {
-			unfilteredTotal = before
-		}
-	}
-
 	// Apply kids rating filter for kids profiles.
 	if filtered := h.filterTrendingByKids(r.Context(), userID, service, items); len(filtered) != len(items) {
 		filteredTotal = len(filtered)

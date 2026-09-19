@@ -19,8 +19,9 @@ var webTemplates embed.FS
 
 // WebAppHandler serves a static single-page web app from disk.
 type WebAppHandler struct {
-	root   string
-	prefix string
+	root     string
+	prefix   string
+	Branding *SettingsHandler
 }
 
 // NewWebAppHandler creates a handler for a static SPA hosted under prefix.
@@ -93,6 +94,10 @@ func (h *WebAppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+		if cleanPath == "manifest.json" {
+			h.serveManifest(w, r, filePath)
+			return
+		}
 		serveWebAppAsset(w, r, filePath)
 		return
 	}

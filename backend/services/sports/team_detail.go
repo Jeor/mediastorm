@@ -11,6 +11,8 @@ import (
 )
 
 type teamPlayPoint struct {
+	Down           *int     `json:"down"`
+	Distance       *float64 `json:"distance"`
 	PossessionText string   `json:"possessionText"`
 	YardsToEndzone *float64 `json:"yardsToEndzone"`
 	Team           struct {
@@ -18,7 +20,9 @@ type teamPlayPoint struct {
 	} `json:"team"`
 }
 type teamDetailPlay struct {
-	Coordinate *struct {
+	Wallclock   string   `json:"wallclock"`
+	StatYardage *float64 `json:"statYardage"`
+	Coordinate  *struct {
 		X *float64 `json:"x"`
 		Y *float64 `json:"y"`
 	} `json:"coordinate"`
@@ -42,6 +46,7 @@ type teamDetailPlay struct {
 	Scoring   bool     `json:"scoringPlay"`
 	Type      struct {
 		Text string `json:"text"`
+		ID   string `json:"id"`
 	} `json:"type"`
 	Period struct {
 		Number       int    `json:"number"`
@@ -58,6 +63,11 @@ type teamDrivePoint struct {
 	} `json:"period"`
 }
 type teamDetailDrive struct {
+	OffensivePlays *int     `json:"offensivePlays"`
+	Yards          *float64 `json:"yards"`
+	TimeElapsed    struct {
+		DisplayValue string `json:"displayValue"`
+	} `json:"timeElapsed"`
 	ID   string `json:"id"`
 	Team struct {
 		ID string `json:"id"`
@@ -412,14 +422,14 @@ func normalizeFootballDrives(game models.SportsGame, p teamSportSummary) []model
 			return
 		}
 		seen[drive.ID] = true
-		row := models.SportsFootballDrive{ID: drive.ID, TeamID: drive.Team.ID, Start: start, End: end, StartKnown: &okStart, EndKnown: &okEnd, StartLabel: drive.Start.Text, EndLabel: drive.End.Text, Period: teamPeriodLabel(game.League, drive.Start.Period.Number), Result: drive.Result, Description: drive.Description, Current: current}
+		row := models.SportsFootballDrive{PlayCount: drive.OffensivePlays, Yards: drive.Yards, Elapsed: drive.TimeElapsed.DisplayValue, ID: drive.ID, TeamID: drive.Team.ID, Start: start, End: end, StartKnown: &okStart, EndKnown: &okEnd, StartLabel: drive.Start.Text, EndLabel: drive.End.Text, Period: teamPeriodLabel(game.League, drive.Start.Period.Number), Result: drive.Result, Description: drive.Description, Current: current}
 		seenPlays := map[string]bool{}
 		for _, play := range drive.Plays {
 			if play.ID == "" || seenPlays[play.ID] {
 				continue
 			}
 			seenPlays[play.ID] = true
-			row.Plays = append(row.Plays, models.SportsFootballPlay{ID: play.ID, Type: play.Type.Text, Description: play.Text, Clock: play.Clock.DisplayValue, Period: teamPeriodLabel(game.League, play.Period.Number), Start: footballPlayPoint(play.Start, game), End: footballPlayPoint(play.End, game), Scoring: play.Scoring})
+			row.Plays = append(row.Plays, models.SportsFootballPlay{TypeID: play.Type.ID, Wallclock: play.Wallclock, Down: play.Start.Down, Distance: play.Start.Distance, Yards: play.StatYardage, PossessionTeamID: play.Start.Team.ID, ID: play.ID, Type: play.Type.Text, Description: play.Text, Clock: play.Clock.DisplayValue, Period: teamPeriodLabel(game.League, play.Period.Number), Start: footballPlayPoint(play.Start, game), End: footballPlayPoint(play.End, game), Scoring: play.Scoring})
 		}
 		rows = append(rows, row)
 	}

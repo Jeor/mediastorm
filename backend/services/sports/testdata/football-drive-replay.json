@@ -1,0 +1,1347 @@
+{
+  "drives": {
+    "previous": [
+      {
+        "id": "4018566852",
+        "description": "3 plays, 6 yards, 2:17",
+        "team": {
+          "id": "333",
+          "name": "Crimson Tide",
+          "abbreviation": "ALA",
+          "displayName": "Alabama Crimson Tide",
+          "shortDisplayName": "Alabama",
+          "logos": [
+            {
+              "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+              "width": 500,
+              "height": 500,
+              "alt": "",
+              "rel": [
+                "full",
+                "default"
+              ],
+              "lastUpdated": "2025-12-19T23:48Z"
+            },
+            {
+              "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png",
+              "width": 500,
+              "height": 500,
+              "alt": "",
+              "rel": [
+                "full",
+                "dark"
+              ],
+              "lastUpdated": "2025-12-19T23:47Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/primary_logo_on_white_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_white_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/primary_logo_on_black_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_black_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/primary_logo_on_primary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_primary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/primary_logo_on_secondary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_secondary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/primary_logo_black.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_black"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/primary_logo_white.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_white"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/secondary_logo_on_white_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_white_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/secondary_logo_on_black_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_black_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/secondary_logo_on_primary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_primary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/secondary_logo_on_secondary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_secondary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/secondary_logo_black.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_black"
+              ],
+              "lastUpdated": "2026-07-23T17:17Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/258022c1-fed4-a0ce-c017-1f853c81d1a8/logos/secondary_logo_white.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_white"
+              ],
+              "lastUpdated": "2026-07-23T17:18Z"
+            }
+          ]
+        },
+        "start": {
+          "period": {
+            "type": "quarter",
+            "number": 1
+          },
+          "clock": {
+            "displayValue": "15:00"
+          },
+          "yardLine": 25,
+          "text": "ALA 25"
+        },
+        "end": {
+          "period": {
+            "type": "quarter",
+            "number": 1
+          },
+          "clock": {
+            "displayValue": "12:43"
+          },
+          "yardLine": 31,
+          "text": "ALA 31"
+        },
+        "timeElapsed": {
+          "displayValue": "2:17"
+        },
+        "yards": 6,
+        "isScore": false,
+        "offensivePlays": 3,
+        "result": "PUNT",
+        "shortDisplayResult": "PUNT",
+        "displayResult": "Punt",
+        "plays": [
+          {
+            "id": "4018566853",
+            "sequenceNumber": "1",
+            "type": {
+              "id": "53",
+              "text": "Kickoff",
+              "abbreviation": "K"
+            },
+            "text": "(15:00) #93 C.McAneney kickoff 65 yards to the ALA00, Touchback",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "15:00"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:16Z",
+            "wallclock": "2026-09-19T21:13:53Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 0,
+            "start": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 65,
+              "yardsToEndzone": 65,
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 25,
+              "yardsToEndzone": 75,
+              "downDistanceText": "1st & 10 at ALA 25",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "ALA 25",
+              "team": {
+                "id": "333"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668512",
+            "sequenceNumber": "2",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(15:00) Shotgun #4 D.Hill rush middle for 4 yards gain to the ALA29 (#11 C.Richard Jr.; #8 D.McCray)",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "14:52"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:17Z",
+            "wallclock": "2026-09-19T21:16:29Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 4,
+            "start": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 25,
+              "yardsToEndzone": 75,
+              "downDistanceText": "1st & 10 at ALA 25",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "ALA 25",
+              "team": {
+                "id": "333"
+              }
+            },
+            "end": {
+              "down": 2,
+              "distance": 6,
+              "yardLine": 29,
+              "yardsToEndzone": 71,
+              "downDistanceText": "2nd & 6 at ALA 29",
+              "shortDownDistanceText": "2nd & 6",
+              "possessionText": "ALA 29",
+              "team": {
+                "id": "333"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668518",
+            "sequenceNumber": "3",
+            "type": {
+              "id": "8",
+              "text": "Penalty",
+              "abbreviation": "PEN"
+            },
+            "text": "PENALTY ALA False Start (#54 J.James) 5 yards from ALA29 to ALA24. NO PLAY",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "14:23"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:17Z",
+            "wallclock": "2026-09-19T21:17:11Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": true,
+            "statYardage": 5,
+            "start": {
+              "down": 2,
+              "distance": 6,
+              "yardLine": 29,
+              "yardsToEndzone": 71,
+              "downDistanceText": "2nd & 6 at ALA 29",
+              "shortDownDistanceText": "2nd & 6",
+              "possessionText": "ALA 29",
+              "team": {
+                "id": "333"
+              }
+            },
+            "end": {
+              "down": 2,
+              "distance": 11,
+              "yardLine": 24,
+              "yardsToEndzone": 76,
+              "downDistanceText": "2nd & 11 at ALA 24",
+              "shortDownDistanceText": "2nd & 11",
+              "possessionText": "ALA 24",
+              "team": {
+                "id": "333"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668521",
+            "sequenceNumber": "4",
+            "type": {
+              "id": "24",
+              "text": "Pass Reception",
+              "abbreviation": "REC"
+            },
+            "text": "(14:07) Shotgun #12 K.Russell pass complete short right to #7 R.Scott caught at ALA30, for 8 yards to the ALA32 (#15 R.Kennedy)",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "13:58"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:18Z",
+            "wallclock": "2026-09-19T21:17:43Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 8,
+            "start": {
+              "down": 2,
+              "distance": 11,
+              "yardLine": 24,
+              "yardsToEndzone": 76,
+              "downDistanceText": "2nd & 11 at ALA 24",
+              "shortDownDistanceText": "2nd & 11",
+              "possessionText": "ALA 24",
+              "team": {
+                "id": "333"
+              }
+            },
+            "end": {
+              "down": 3,
+              "distance": 3,
+              "yardLine": 32,
+              "yardsToEndzone": 68,
+              "downDistanceText": "3rd & 3 at ALA 32",
+              "shortDownDistanceText": "3rd & 3",
+              "possessionText": "ALA 32",
+              "team": {
+                "id": "333"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668526",
+            "sequenceNumber": "5",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(13:24) Shotgun #13 E.Crowell rush left for 1 yard loss to the ALA31 (#10 C.Jones; #3 M.Desir)",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "13:15"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:19Z",
+            "wallclock": "2026-09-19T21:18:27Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": -1,
+            "start": {
+              "down": 3,
+              "distance": 3,
+              "yardLine": 32,
+              "yardsToEndzone": 68,
+              "downDistanceText": "3rd & 3 at ALA 32",
+              "shortDownDistanceText": "3rd & 3",
+              "possessionText": "ALA 32",
+              "team": {
+                "id": "333"
+              }
+            },
+            "end": {
+              "down": 4,
+              "distance": 4,
+              "yardLine": 31,
+              "yardsToEndzone": 69,
+              "downDistanceText": "4th & 4 at ALA 31",
+              "shortDownDistanceText": "4th & 4",
+              "possessionText": "ALA 31",
+              "team": {
+                "id": "333"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668530",
+            "sequenceNumber": "6",
+            "type": {
+              "id": "52",
+              "text": "Punt",
+              "abbreviation": "PUNT"
+            },
+            "text": "(12:47) #32 A.Asparuhov punt 41 yards to the FSU28 fair catch by #7 J.Lopez at FSU28",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "12:43"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:24Z",
+            "wallclock": "2026-09-19T21:19:00Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "defense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "offense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 0,
+            "start": {
+              "down": 4,
+              "distance": 4,
+              "yardLine": 31,
+              "yardsToEndzone": 69,
+              "downDistanceText": "4th & 4 at ALA 31",
+              "shortDownDistanceText": "4th & 4",
+              "possessionText": "ALA 31",
+              "team": {
+                "id": "333"
+              }
+            },
+            "end": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 72,
+              "yardsToEndzone": 72,
+              "downDistanceText": "1st & 10 at FSU 28",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "FSU 28",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          }
+        ]
+      },
+      {
+        "id": "4018566853",
+        "description": "7 plays, 72 yards, 3:24",
+        "team": {
+          "id": "52",
+          "name": "Seminoles",
+          "abbreviation": "FSU",
+          "displayName": "Florida State Seminoles",
+          "shortDisplayName": "Florida St",
+          "logos": [
+            {
+              "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/52.png",
+              "width": 500,
+              "height": 500,
+              "alt": "",
+              "rel": [
+                "full",
+                "default"
+              ],
+              "lastUpdated": "2025-12-19T22:33Z"
+            },
+            {
+              "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/52.png",
+              "width": 500,
+              "height": 500,
+              "alt": "",
+              "rel": [
+                "full",
+                "dark"
+              ],
+              "lastUpdated": "2025-12-19T22:35Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/primary_logo_on_white_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_white_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/primary_logo_on_black_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_black_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/primary_logo_on_primary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_primary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/primary_logo_on_secondary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_on_secondary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/primary_logo_black.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_black"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/primary_logo_white.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "primary_logo_white"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/secondary_logo_on_white_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_white_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/secondary_logo_on_black_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_black_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/secondary_logo_on_primary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_primary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/secondary_logo_on_secondary_color.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_on_secondary_color"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/secondary_logo_black.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_black"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            },
+            {
+              "href": "https://a.espncdn.com/guid/fa181128-4809-a209-1add-d5a3b0cefd3c/logos/secondary_logo_white.png",
+              "width": 4096,
+              "height": 4096,
+              "alt": "",
+              "rel": [
+                "full",
+                "secondary_logo_white"
+              ],
+              "lastUpdated": "2026-07-23T17:26Z"
+            }
+          ]
+        },
+        "start": {
+          "period": {
+            "type": "quarter",
+            "number": 1
+          },
+          "clock": {
+            "displayValue": "12:27"
+          },
+          "yardLine": 72,
+          "text": "FSU 28"
+        },
+        "end": {
+          "period": {
+            "type": "quarter",
+            "number": 1
+          },
+          "clock": {
+            "displayValue": "9:19"
+          },
+          "yardLine": 3,
+          "text": "ALA 3"
+        },
+        "timeElapsed": {
+          "displayValue": "3:24"
+        },
+        "yards": 72,
+        "isScore": true,
+        "offensivePlays": 7,
+        "result": "TD",
+        "shortDisplayResult": "TD",
+        "displayResult": "Touchdown",
+        "plays": [
+          {
+            "id": "40185668534",
+            "sequenceNumber": "7",
+            "type": {
+              "id": "24",
+              "text": "Pass Reception",
+              "abbreviation": "REC"
+            },
+            "text": "(12:43) No Huddle-Shotgun #14 A.Daniels pass complete short middle to #0 D.Robinson caught at FSU40, for 15 yards to the FSU43 (#2 Z.Brown; #3 K.Sabb), 1ST DOWN",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "12:27"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:20Z",
+            "wallclock": "2026-09-19T21:19:49Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 15,
+            "start": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 72,
+              "yardsToEndzone": 72,
+              "downDistanceText": "1st & 10 at FSU 28",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "FSU 28",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 57,
+              "yardsToEndzone": 57,
+              "downDistanceText": "1st & 10 at FSU 43",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "FSU 43",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668539",
+            "sequenceNumber": "8",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(12:17) No Huddle-Shotgun #32 O.Kromah rush left for 9 yards gain to the ALA48 (#18 B.Hubbard), out of bounds",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "12:11"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:21Z",
+            "wallclock": "2026-09-19T21:20:13Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 9,
+            "start": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 57,
+              "yardsToEndzone": 57,
+              "downDistanceText": "1st & 10 at FSU 43",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "FSU 43",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 2,
+              "distance": 1,
+              "yardLine": 48,
+              "yardsToEndzone": 48,
+              "downDistanceText": "2nd & 1 at ALA 48",
+              "shortDownDistanceText": "2nd & 1",
+              "possessionText": "ALA 48",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668543",
+            "sequenceNumber": "9",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(11:47) No Huddle-Shotgun #14 A.Daniels rush left for 0 yards to the ALA48 (#4 L.Metz)",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "11:36"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:21Z",
+            "wallclock": "2026-09-19T21:20:47Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 0,
+            "start": {
+              "down": 2,
+              "distance": 1,
+              "yardLine": 48,
+              "yardsToEndzone": 48,
+              "downDistanceText": "2nd & 1 at ALA 48",
+              "shortDownDistanceText": "2nd & 1",
+              "possessionText": "ALA 48",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 3,
+              "distance": 1,
+              "yardLine": 48,
+              "yardsToEndzone": 52,
+              "downDistanceText": "3rd & 1 at ALA 48",
+              "shortDownDistanceText": "3rd & 1",
+              "possessionText": "ALA 48",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668547",
+            "sequenceNumber": "10",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(11:06) No Huddle-Shotgun #32 O.Kromah rush right for 27 yards gain to the ALA21 (#6 R.Morgan), out of bounds, 1ST DOWN",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "10:58"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:22Z",
+            "wallclock": "2026-09-19T21:21:31Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 27,
+            "start": {
+              "down": 3,
+              "distance": 1,
+              "yardLine": 48,
+              "yardsToEndzone": 48,
+              "downDistanceText": "3rd & 1 at ALA 48",
+              "shortDownDistanceText": "3rd & 1",
+              "possessionText": "ALA 48",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 21,
+              "yardsToEndzone": 21,
+              "downDistanceText": "1st & 10 at ALA 21",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "ALA 21",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668551",
+            "sequenceNumber": "11",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(10:39) No Huddle-Shotgun #32 O.Kromah rush left for 2 yards gain to the ALA19 (#1 D.Thompkins)",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "10:32"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:22Z",
+            "wallclock": "2026-09-19T21:21:57Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 2,
+            "start": {
+              "down": 1,
+              "distance": 10,
+              "yardLine": 21,
+              "yardsToEndzone": 21,
+              "downDistanceText": "1st & 10 at ALA 21",
+              "shortDownDistanceText": "1st & 10",
+              "possessionText": "ALA 21",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 2,
+              "distance": 8,
+              "yardLine": 19,
+              "yardsToEndzone": 19,
+              "downDistanceText": "2nd & 8 at ALA 19",
+              "shortDownDistanceText": "2nd & 8",
+              "possessionText": "ALA 19",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668555",
+            "sequenceNumber": "12",
+            "type": {
+              "id": "5",
+              "text": "Rush",
+              "abbreviation": "RUSH"
+            },
+            "text": "(10:01) No Huddle-Shotgun #3 S.Singleton Jr. rush right for 1 yard loss to the ALA20 (#0 Y.Pierre), out of bounds",
+            "awayScore": 0,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "9:57"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:23Z",
+            "wallclock": "2026-09-19T21:22:36Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": -1,
+            "start": {
+              "down": 2,
+              "distance": 8,
+              "yardLine": 19,
+              "yardsToEndzone": 19,
+              "downDistanceText": "2nd & 8 at ALA 19",
+              "shortDownDistanceText": "2nd & 8",
+              "possessionText": "ALA 19",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 3,
+              "distance": 9,
+              "yardLine": 20,
+              "yardsToEndzone": 20,
+              "downDistanceText": "3rd & 9 at ALA 20",
+              "shortDownDistanceText": "3rd & 9",
+              "possessionText": "ALA 20",
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668559",
+            "sequenceNumber": "13",
+            "type": {
+              "id": "67",
+              "text": "Passing Touchdown",
+              "abbreviation": "TD"
+            },
+            "text": "(09:24) No Huddle-Shotgun #14 A.Daniels pass complete deep right to #0 D.Robinson caught at ALA00, for 20 yards to the ALA00 TOUCHDOWN, clock 09:19, 1ST DOWN #39 G.Panikowski kick attempt good (H: #87 C.Jula, LS: #48 C.Bowers)",
+            "awayScore": 7,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "9:19"
+            },
+            "scoringPlay": true,
+            "priority": true,
+            "modified": "2026-09-19T21:24Z",
+            "wallclock": "2026-09-19T21:23:22Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense"
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 20,
+            "start": {
+              "down": 3,
+              "distance": 9,
+              "yardLine": 20,
+              "yardsToEndzone": 20,
+              "downDistanceText": "3rd & 9 at ALA 20",
+              "shortDownDistanceText": "3rd & 9",
+              "possessionText": "ALA 20",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": -1,
+              "distance": 0,
+              "yardLine": 0,
+              "yardsToEndzone": 0,
+              "team": {
+                "id": "52"
+              }
+            },
+            "scoringType": {
+              "name": "touchdown",
+              "displayName": "Touchdown",
+              "abbreviation": "TD"
+            },
+            "pointAfterAttempt": {
+              "id": 61,
+              "text": "Extra Point Good",
+              "abbreviation": "Extra Point Good",
+              "value": 1
+            },
+            "isTurnover": false
+          },
+          {
+            "id": "40185668569",
+            "sequenceNumber": "14",
+            "type": {
+              "id": "21",
+              "text": "Timeout",
+              "abbreviation": "TO"
+            },
+            "text": "Timeout Florida State, clock 09:19",
+            "awayScore": 7,
+            "homeScore": 0,
+            "period": {
+              "number": 1
+            },
+            "clock": {
+              "displayValue": "9:19"
+            },
+            "scoringPlay": false,
+            "priority": false,
+            "modified": "2026-09-19T21:28Z",
+            "wallclock": "2026-09-19T21:24:35Z",
+            "teamParticipants": [
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/52?lang=en&region=us"
+                },
+                "id": "52",
+                "order": 1,
+                "type": "offense",
+                "timeout": true
+              },
+              {
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/football/leagues/college-football/seasons/2026/teams/333?lang=en&region=us"
+                },
+                "id": "333",
+                "order": 2,
+                "type": "defense"
+              }
+            ],
+            "isPenalty": false,
+            "statYardage": 0,
+            "start": {
+              "down": 0,
+              "distance": 3,
+              "yardLine": 3,
+              "yardsToEndzone": 3,
+              "downDistanceText": " & Goal at ALA 3",
+              "shortDownDistanceText": " & Goal",
+              "possessionText": "ALA 3",
+              "team": {
+                "id": "52"
+              }
+            },
+            "end": {
+              "down": 0,
+              "distance": 3,
+              "yardLine": 3,
+              "yardsToEndzone": 3,
+              "team": {
+                "id": "52"
+              }
+            },
+            "isTurnover": false
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -127,16 +127,25 @@ type SportsStandingRow struct {
 
 // Coordinates orient the away end at 0 and the home end at 100 for consistent comparison.
 type SportsFootballPlay struct {
-	ID          string   `json:"id"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Clock       string   `json:"clock"`
-	Period      string   `json:"period"`
-	Start       *float64 `json:"start,omitempty"`
-	End         *float64 `json:"end,omitempty"`
-	Scoring     bool     `json:"scoring"`
+	TypeID           string   `json:"typeId,omitempty"`
+	Wallclock        string   `json:"wallclock,omitempty"`
+	Down             *int     `json:"down,omitempty"`
+	Distance         *float64 `json:"distance,omitempty"`
+	Yards            *float64 `json:"yards,omitempty"`
+	PossessionTeamID string   `json:"possessionTeamId,omitempty"`
+	ID               string   `json:"id"`
+	Type             string   `json:"type"`
+	Description      string   `json:"description"`
+	Clock            string   `json:"clock"`
+	Period           string   `json:"period"`
+	Start            *float64 `json:"start,omitempty"`
+	End              *float64 `json:"end,omitempty"`
+	Scoring          bool     `json:"scoring"`
 }
 type SportsFootballDrive struct {
+	PlayCount   *int                 `json:"playCount,omitempty"`
+	Yards       *float64             `json:"yards,omitempty"`
+	Elapsed     string               `json:"elapsed,omitempty"`
 	StartKnown  *bool                `json:"startKnown,omitempty"`
 	EndKnown    *bool                `json:"endKnown,omitempty"`
 	Plays       []SportsFootballPlay `json:"plays,omitempty"`

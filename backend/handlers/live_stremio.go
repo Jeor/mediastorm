@@ -77,6 +77,10 @@ type stremioCatalogResponse struct {
 }
 
 type stremioStream struct {
+	// Addon metadata is optional and not standardized; tolerate unexpected types.
+	Resolution    json.RawMessage      `json:"resolution"`
+	Quality       json.RawMessage      `json:"quality"`
+	Bitrate       json.RawMessage      `json:"bitrate"`
 	Name          string               `json:"name"`
 	Title         string               `json:"title"`
 	Description   string               `json:"description"`
@@ -167,7 +171,8 @@ func firstPlayableStremioStreamURL(streams []stremioStream) (string, bool) {
 
 func playableStremioStream(streams []stremioStream, selectedIndex int) (resolvedStremioStream, bool) {
 	availableIndexes := playableStremioStreamIndexes(streams)
-	for i, stream := range streams {
+	for _, i := range availableIndexes {
+		stream := streams[i]
 		u, headers := normalizeStremioPlayableURL(stream.URL, stream.BehaviorHints.ProxyHeaders.Request)
 		if u == "" || isUnplayableStremioStreamURL(u) {
 			continue
@@ -203,13 +208,10 @@ func stremioStreamLooksLikeHLS(stream stremioStream, normalizedURL string) bool 
 }
 
 func playableStremioStreamIndexes(streams []stremioStream) []int {
-	indexes := make([]int, 0, len(streams))
-	for i, stream := range streams {
-		u, _ := normalizeStremioPlayableURL(stream.URL, stream.BehaviorHints.ProxyHeaders.Request)
-		if u == "" || isUnplayableStremioStreamURL(u) {
-			continue
-		}
-		indexes = append(indexes, i)
+	options := playableStremioStreamOptions(streams)
+	indexes := make([]int, 0, len(options))
+	for _, option := range options {
+		indexes = append(indexes, option.Index)
 	}
 	return indexes
 }
@@ -334,7 +336,7 @@ func playableStremioStreamOptions(streams []stremioStream) []StremioStreamOption
 		}
 		labelCounts[label]++
 		options = append(options, StremioStreamOption{
-			ReportedQuality: reportedSportsQuality(strings.Join([]string{name, title, description}, " ")),
+			ReportedQuality: reportedStremioQuality(stream),
 			Index:           i,
 			Name:            name,
 			Title:           title,
@@ -641,7 +643,7 @@ func fetchStremioCatalog(ctx context.Context, client *http.Client, baseURL strin
 }
 
 // resolveStremioStream fetches a stream resource and returns a playable stream.
-// selectedIndex < 0 means "first playable".
+// selectedIndex < 0 means highest reported quality; explicit indexes are preserved.
 func (h *LiveHandler) resolveStremioStream(ctx context.Context, streamResourceURL, proxyURL string, selectedIndex int) (resolvedStremioStream, error) {
 	if _, err := h.parseRemoteURL(ctx, streamResourceURL); err != nil {
 		return resolvedStremioStream{}, fmt.Errorf("stremio: stream URL is not allowed")

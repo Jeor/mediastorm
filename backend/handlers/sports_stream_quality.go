@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"novastream/models"
 	"regexp"
 	"strconv"
@@ -73,4 +74,51 @@ func compareSportsQuality(a, b *models.SportsReportedQuality) int {
 		return 1
 	}
 	return 0
+}
+
+var stremioDimensions = regexp.MustCompile(`(?i)^([0-9]{2,5})\s*x\s*([0-9]{2,5})$`)
+
+// Metadata values may be strings, numbers, null, or malformed optional fields.
+func stremioQualityText(raw json.RawMessage) string {
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		return strings.TrimSpace(text)
+	}
+	var number json.Number
+	if json.Unmarshal(raw, &number) == nil {
+		return number.String()
+	}
+	return ""
+}
+
+// Use explicit reported values, never provider scores or generic HD labels as
+// a resolution. Conflicting claims retain the lower value, as labels do.
+func reportedStremioQuality(stream stremioStream) *models.SportsReportedQuality {
+	labels := []string{stream.Name, stream.Title, stream.Description}
+	for _, raw := range []json.RawMessage{stream.Resolution, stream.Quality} {
+		value := stremioQualityText(raw)
+		if dimensions := stremioDimensions.FindStringSubmatch(value); dimensions != nil {
+			value = dimensions[2]
+		}
+		if height, err := strconv.Atoi(value); err == nil {
+			switch height {
+			case 480, 720, 1080, 2160, 4320:
+				value += "p"
+			default:
+				value = ""
+			}
+		}
+		labels = append(labels, value)
+	}
+	bitrate := stremioQualityText(stream.Bitrate)
+	if value, err := strconv.ParseFloat(bitrate, 64); err == nil {
+		// Numeric bitrate metadata is bits per second; do not guess Mbps units.
+		if value >= 10000 && value <= 1000000000 {
+			bitrate = strconv.FormatFloat(value/1000, 'f', -1, 64) + " kbps"
+		} else {
+			bitrate = ""
+		}
+	}
+	labels = append(labels, bitrate)
+	return reportedSportsQuality(strings.Join(labels, " "))
 }

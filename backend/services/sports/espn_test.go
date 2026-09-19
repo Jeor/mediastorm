@@ -55,3 +55,25 @@ func TestESPNScoreboardMLBSituation(t *testing.T) {
 		t.Fatal("absent situation must stay absent")
 	}
 }
+
+func TestCompetitorTeamPreservesAlternateColor(t *testing.T) {
+	var competitor espnCompetitor
+	if err := json.Unmarshal([]byte(`{"team":{"id":"1","displayName":"Example","color":"008800","alternateColor":"ffffff"}}`), &competitor); err != nil {
+		t.Fatal(err)
+	}
+	team := competitorTeam(competitor)
+	if team.Color != "008800" || team.AlternateColor != "ffffff" {
+		t.Fatalf("lost team palette: %+v", team)
+	}
+	encoded, err := json.Marshal(team)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["alternateColor"] != "ffffff" {
+		t.Fatalf("alternate missing from API: %s", encoded)
+	}
+}

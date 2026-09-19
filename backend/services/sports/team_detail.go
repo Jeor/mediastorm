@@ -250,7 +250,7 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 	if game.League == "college-football" {
 		family = "nfl"
 	}
-	if strings.Contains(game.League, "college-basketball") {
+	if game.League == "wnba" || strings.Contains(game.League, "college-basketball") {
 		family = "nba"
 	}
 	if strings.HasPrefix(game.League, "soccer-") {

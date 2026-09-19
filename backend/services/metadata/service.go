@@ -8484,6 +8484,9 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	if ok, _ := s.cache.get(key, &cached); ok {
 		return &cached, nil
 	}
+	if shelfArtworkDeferred(ctx) {
+		return nil, nil
+	}
 	value, err := s.singleflightCachedFetch(ctx, key, func() (any, error) {
 		var cached tmdbImagesResult
 		if ok, _ := s.cache.get(key, &cached); ok {
@@ -8609,6 +8612,10 @@ func (s *Service) enrichShelfArtworkFromCache(items []models.TrendingItem) bool 
 }
 
 func (s *Service) enrichShelfArtwork(ctx context.Context, items []models.TrendingItem, limit int) {
+	if shelfArtworkDeferred(ctx) {
+		s.enrichShelfArtworkFromCache(items)
+		return
+	}
 	if len(items) == 0 || limit == 0 || s.tmdb == nil || !s.tmdb.isConfigured() {
 		return
 	}
@@ -10152,6 +10159,15 @@ func (s *Service) cachedCuratedList(ctx context.Context, cacheID, label string) 
 // IMDB ID) and returns them as TrendingItems, using the same concurrent enrichment
 // pipeline as custom MDBList lists.
 func (s *Service) GetCuratedList(ctx context.Context, items []CuratedItem, label string) ([]models.TrendingItem, error) {
+	return s.GetCuratedListWithOptions(ctx, items, label, ShelfLoadOptions{})
+}
+
+// GetCuratedListWithOptions lets imported lists render base/cached artwork
+// without waiting for optional image requests across the whole list.
+func (s *Service) GetCuratedListWithOptions(ctx context.Context, items []CuratedItem, label string, opts ShelfLoadOptions) ([]models.TrendingItem, error) {
+	if opts.DeferArtwork {
+		ctx = withDeferredShelfArtwork(ctx)
+	}
 	rawCacheID := s.curatedListCacheID(items)
 	if cached, ok := s.cachedCuratedList(ctx, rawCacheID, label); ok {
 		return cached, nil

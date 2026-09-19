@@ -170,7 +170,7 @@ func (h *MetadataHandler) GetPersonalizedRecommendations(w http.ResponseWriter, 
 		}
 	}
 
-	resp := h.buildPersonalizedRecommendations(r.Context(), userID, history, progress, days, limitPerType, kidsRatingFilter)
+	resp := h.buildPersonalizedRecommendations(r.Context(), userID, history, progress, days, limitPerType, kidsRatingFilter, parseShelfLoadOptions(r).DeferArtwork)
 	service := h.serviceForUser(userID)
 	if resp.Items == nil {
 		resp.Items = []models.TrendingItem{}
@@ -208,6 +208,15 @@ func (h *MetadataHandler) writePersonalizedRecommendations(
 	progress []models.PlaybackProgress,
 ) {
 	service := h.serviceForUser(userID)
+	// Cached/in-flight responses may be shared with other clients. Artwork
+	// refreshes update copies and must not mutate their base cards.
+	response.Items = append(make([]models.TrendingItem, 0, len(response.Items)), response.Items...)
+	response.Movies = append(make([]models.TrendingItem, 0, len(response.Movies)), response.Movies...)
+	response.Series = append(make([]models.TrendingItem, 0, len(response.Series)), response.Series...)
+	deferArtwork := parseShelfLoadOptions(r).DeferArtwork
+	enrichPersonalizedArtwork(r.Context(), response.Items, service, deferArtwork)
+	enrichPersonalizedArtwork(r.Context(), response.Movies, service, true)
+	enrichPersonalizedArtwork(r.Context(), response.Series, service, true)
 	if len(response.Items) > 0 {
 		cw, _ := h.HistoryService.ListSeriesStates(userID)
 		idx := buildWatchStateIndex(history, cw, progress)
@@ -456,6 +465,7 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 	days int,
 	limitPerType int,
 	kidsRatingFilter personalizedKidsRatingFilter,
+	deferArtwork ...bool,
 ) PersonalizedRecommendationsResponse {
 	startedAt := time.Now()
 	service := h.serviceForUser(userID)
@@ -639,8 +649,8 @@ func (h *MetadataHandler) buildPersonalizedRecommendations(
 
 	movies := finalizePersonalizedBucket(movieCandidates, limitPerType)
 	series := finalizePersonalizedBucket(seriesCandidates, limitPerType)
-	enrichPersonalizedArtwork(ctx, movies, service)
-	enrichPersonalizedArtwork(ctx, series, service)
+	enrichPersonalizedArtwork(ctx, movies, service, deferArtwork...)
+	enrichPersonalizedArtwork(ctx, series, service, deferArtwork...)
 	items := interleavePersonalizedItems(movies, series, limitPerType)
 	diagnostics.MovieCandidateCount = len(movieCandidates)
 	diagnostics.SeriesCandidateCount = len(seriesCandidates)
@@ -1177,7 +1187,7 @@ func finalizePersonalizedBucket(candidates map[string]*personalizedCandidate, li
 	return items
 }
 
-func enrichPersonalizedArtwork(ctx context.Context, items []models.TrendingItem, meta metadataService) {
+func enrichPersonalizedArtwork(ctx context.Context, items []models.TrendingItem, meta metadataService, deferArtwork ...bool) {
 	if meta == nil {
 		return
 	}
@@ -1211,6 +1221,10 @@ func enrichPersonalizedArtwork(ctx context.Context, items []models.TrendingItem,
 		if personalizedArtworkURLCount(*title) < 2 {
 			missingArtwork = append(missingArtwork, i)
 		}
+	}
+
+	if len(deferArtwork) > 0 && deferArtwork[0] {
+		return
 	}
 
 	// Personalized candidates often come from Similar() and have not appeared

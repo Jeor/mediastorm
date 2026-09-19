@@ -1460,7 +1460,7 @@ func (h *MetadataHandler) TraktList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	service := h.serviceForUser(userID)
-	items, err := service.GetCuratedList(r.Context(), curated, label)
+	items, err := getCuratedListForRequest(r, service, curated, label)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
@@ -1912,7 +1912,7 @@ func (h *MetadataHandler) LetterboxdSources(w http.ResponseWriter, r *http.Reque
 // (after writing an error) on failure.
 func (h *MetadataHandler) buildShelfFromCurated(w http.ResponseWriter, r *http.Request, curated []metadatapkg.CuratedItem, label, userID string, hideUnreleased, hideWatched bool, limit, offset int) *CustomListResponse {
 	service := h.serviceForUser(userID)
-	items, err := service.GetCuratedList(r.Context(), curated, label)
+	items, err := getCuratedListForRequest(r, service, curated, label)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadGateway)
 		return nil
@@ -1988,7 +1988,7 @@ func (h *MetadataHandler) CuratedList(w http.ResponseWriter, r *http.Request) {
 
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
 	service := h.serviceForUser(userID)
-	items, err := service.GetCuratedList(r.Context(), req.Items, req.Label)
+	items, err := getCuratedListForRequest(r, service, req.Items, req.Label)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
@@ -2516,7 +2516,9 @@ func (h *MetadataHandler) TopTen(w http.ResponseWriter, r *http.Request) {
 		debug []metadatapkg.TopTenDebugEntry
 		err   error
 	)
-	if svc, ok := service.(topTenCandidatesService); ok {
+	if svc, ok := service.(topTenCandidatesOptionsService); ok {
+		items, err = svc.GetTopTenCandidatesWithOptions(r.Context(), mediaType, nil, parseShelfLoadOptions(r))
+	} else if svc, ok := service.(topTenCandidatesService); ok {
 		items, err = svc.GetTopTenCandidates(r.Context(), mediaType, nil)
 	} else if debugMode {
 		if svc, ok := service.(topTenDebugService); ok {

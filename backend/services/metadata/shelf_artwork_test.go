@@ -92,3 +92,44 @@ func TestDeferredCustomListKeepsCachedArtworkAndTotal(t *testing.T) {
 		t.Fatalf("cached artwork should render without network: requests=%d logo=%v", requests.Load(), page[0].Title.Logo)
 	}
 }
+
+func TestImportedAndTopTenListsDeferArtworkWithoutPoisoningCache(t *testing.T) {
+	for _, kind := range []string{"curated", "top-ten"} {
+		t.Run(kind, func(t *testing.T) {
+			cache := newFileCache(t.TempDir(), 24)
+			var requests atomic.Int32
+			httpc := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				requests.Add(1)
+				return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"backdrops":[],"posters":[],"logos":[]}`))}, nil
+			})}
+			svc := &Service{client: &tvdbClient{language: "eng"}, cache: cache, tmdb: newTMDBClient("test", "eng", httpc, cache)}
+			raw := []CuratedItem{{Title: "First", TMDBID: 1, MediaType: "movie"}}
+			items := []models.TrendingItem{{Rank: 1, Title: models.Title{ID: "tmdb:movie:1", TMDBID: 1, MediaType: "movie", Name: "First", Poster: &models.Image{URL: "base.jpg"}}}}
+			key := svc.curatedListCacheID(raw)
+			if kind == "top-ten" {
+				key = topTenCacheKey("movie", nil, "eng")
+			}
+			if err := cache.set(key, items); err != nil {
+				t.Fatal(err)
+			}
+			fetch := func(deferArtwork bool) ([]models.TrendingItem, error) {
+				opts := ShelfLoadOptions{DeferArtwork: deferArtwork}
+				if kind == "top-ten" {
+					return svc.GetTopTenCandidatesWithOptions(context.Background(), "movie", nil, opts)
+				}
+				return svc.GetCuratedListWithOptions(context.Background(), raw, "Imported", opts)
+			}
+			got, err := fetch(true)
+			if err != nil || len(got) != 1 || got[0].Title.Poster == nil || requests.Load() != 0 {
+				t.Fatalf("base cards must not fetch optional images: items=%v requests=%d err=%v", got, requests.Load(), err)
+			}
+			// Even nested metadata hydration must not fetch uncached artwork.
+			if _, err := svc.cachedFetchImages(withDeferredShelfArtwork(context.Background()), "movie", 99); err != nil || requests.Load() != 0 {
+				t.Fatalf("nested deferred image fetch: requests=%d err=%v", requests.Load(), err)
+			}
+			if _, err := fetch(false); err != nil || requests.Load() == 0 {
+				t.Fatalf("explicit artwork refresh did not fetch images: requests=%d err=%v", requests.Load(), err)
+			}
+		})
+	}
+}

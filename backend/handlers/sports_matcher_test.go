@@ -337,3 +337,22 @@ func TestSportsFuzzyMatchup(t *testing.T) {
 		t.Fatalf("fallback not integrated: %+v", got)
 	}
 }
+
+func TestUFCBoutMatchesParentCardAndIndividualBroadcasts(t *testing.T) {
+	game := models.SportsGame{League: "ufc", EventKind: "fight-card", Title: "UFC 331: Van vs. Pantoja 2: Joanderson Brito vs Giga Chikadze"}
+	for _, name := range []string{"UFC 331", "Giga Chikadze vs Joanderson Brito"} {
+		t.Run(name, func(t *testing.T) {
+			channels := []LiveChannel{{ID: "feed", Name: name, URL: "https://example.test/live"}}
+			matches := selectableSportsMatches(matchGameToChannels(game, channels, nil, ""))
+			if len(matches) != 1 || matches[0].ConfidenceTier != "strong" {
+				t.Fatalf("lost broadcast: %+v", matches)
+			}
+		})
+	}
+	channels := []LiveChannel{{ID: "feed", Name: "Sports Network", TvgID: "sports", URL: "https://example.test/live"}}
+	program := models.EPGProgram{Title: "UFC 331"}
+	epg := sportsMatcherEPG{items: []models.EPGNowPlaying{{ChannelID: "sports", Current: &program}}}
+	if matches := selectableSportsMatches(matchGameToChannels(game, channels, epg, "")); len(matches) != 1 {
+		t.Fatalf("lost parent card in EPG: %+v", matches)
+	}
+}

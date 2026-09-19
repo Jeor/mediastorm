@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"novastream/models"
 	"strconv"
+	"strings"
 )
 
 // Tennis groups matches beneath tournaments; MMA puts every bout in competitions.
@@ -56,6 +57,11 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 		}
 		match.Competitions = []espnCompetition{competition}
 		if game, ok := espnEventToGame(match, league); ok {
+			// Broadcasts often name the whole card/tournament, not each bout or
+			// match. Keep that identity alongside the individual competitors.
+			if parent := strings.TrimSpace(event.Name); parent != "" {
+				game.Title = parent + ": " + game.Title
+			}
 			games = append(games, game)
 		}
 	}

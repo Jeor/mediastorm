@@ -14,6 +14,7 @@ type EpisodeReference struct {
 	RuntimeMinutes        int       `json:"runtimeMinutes,omitempty"`
 	AirDate               string    `json:"airDate,omitempty"`
 	AirDateTimeUTC        string    `json:"airDateTimeUTC,omitempty"`
+	AirTimeEstimated      bool      `json:"airTimeEstimated,omitempty"` // Date-only end-of-day cutoff, not a displayable broadcast time.
 	Image                 *Image    `json:"image,omitempty"`
 	WatchedAt             time.Time `json:"watchedAt,omitempty"`
 }

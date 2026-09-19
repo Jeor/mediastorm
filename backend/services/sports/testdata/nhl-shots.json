@@ -1,0 +1,374 @@
+{
+  "plays": [
+    {
+      "id": "401777460000000680",
+      "sequenceNumber": "11",
+      "type": {
+        "id": "506",
+        "text": "Shot",
+        "abbreviation": "shot-on-goal"
+      },
+      "text": "Evander Kane Wrist Shot saved by Sergei Bobrovsky",
+      "awayScore": 0,
+      "homeScore": 0,
+      "period": {
+        "number": 1,
+        "displayValue": "1st"
+      },
+      "clock": {
+        "displayValue": "1:08"
+      },
+      "scoringPlay": false,
+      "scoreValue": 0,
+      "modified": "2025-06-18T00:39Z",
+      "team": {
+        "id": "6"
+      },
+      "participants": [
+        {
+          "athlete": {
+            "id": "5251",
+            "displayName": "Evander Kane",
+            "shortName": "E. Kane",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5251.png",
+              "alt": "Evander Kane"
+            }
+          },
+          "type": "shooter",
+          "ytdGoals": 6
+        },
+        {
+          "athlete": {
+            "id": "5571",
+            "displayName": "Sergei Bobrovsky",
+            "shortName": "S. Bobrovsky",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/5571.png",
+              "alt": "Sergei Bobrovsky"
+            }
+          },
+          "type": "saver",
+          "ytdAssists": 0
+        }
+      ],
+      "wallclock": "2025-06-18T00:22:58Z",
+      "shootingPlay": true,
+      "coordinate": {
+        "x": 56,
+        "y": -22
+      },
+      "strength": {
+        "id": "701",
+        "text": "Even Strength",
+        "abbreviation": "even-strength"
+      }
+    },
+    {
+      "id": "401777460000001120",
+      "sequenceNumber": "31",
+      "type": {
+        "id": "505",
+        "text": "Goal",
+        "abbreviation": "goal"
+      },
+      "text": "Sam Reinhart Goal (8) Snap Shot, assists: none",
+      "awayScore": 0,
+      "homeScore": 1,
+      "period": {
+        "number": 1,
+        "displayValue": "1st"
+      },
+      "clock": {
+        "displayValue": "4:36"
+      },
+      "scoringPlay": true,
+      "scoreValue": 1,
+      "modified": "2025-06-18T02:48Z",
+      "team": {
+        "id": "26"
+      },
+      "participants": [
+        {
+          "athlete": {
+            "id": "3114722",
+            "displayName": "Sam Reinhart",
+            "shortName": "S. Reinhart",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3114722.png",
+              "alt": "Sam Reinhart"
+            }
+          },
+          "type": "scorer",
+          "ytdGoals": 8
+        }
+      ],
+      "wallclock": "2025-06-18T00:28:02Z",
+      "shootingPlay": true,
+      "shotInfo": {
+        "id": "901",
+        "text": "None",
+        "abbreviation": "regular"
+      },
+      "coordinate": {
+        "x": -72,
+        "y": -6
+      },
+      "strength": {
+        "id": "701",
+        "text": "Even Strength",
+        "abbreviation": "even-strength"
+      }
+    },
+    {
+      "id": "401777460000003510",
+      "sequenceNumber": "8",
+      "type": {
+        "id": "508",
+        "text": "Blocked",
+        "abbreviation": "shot-blocked"
+      },
+      "text": "Mattias Ekholm shot blocked by Carter Verhaeghe",
+      "awayScore": 0,
+      "homeScore": 0,
+      "period": {
+        "number": 1,
+        "displayValue": "1st"
+      },
+      "clock": {
+        "displayValue": "0:17"
+      },
+      "scoringPlay": false,
+      "scoreValue": 0,
+      "modified": "2025-06-18T00:39Z",
+      "team": {
+        "id": "26"
+      },
+      "participants": [
+        {
+          "athlete": {
+            "id": "2558631",
+            "displayName": "Mattias Ekholm",
+            "shortName": "M. Ekholm",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/2558631.png",
+              "alt": "Mattias Ekholm"
+            }
+          },
+          "type": "shooter",
+          "ytdGoals": 1
+        },
+        {
+          "athlete": {
+            "id": "3042088",
+            "displayName": "Carter Verhaeghe",
+            "shortName": "C. Verhaeghe",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3042088.png",
+              "alt": "Carter Verhaeghe"
+            }
+          },
+          "type": "defender",
+          "ytdAssists": 13
+        }
+      ],
+      "wallclock": "2025-06-18T00:22:07Z",
+      "shootingPlay": true,
+      "coordinate": {
+        "x": 54,
+        "y": 12
+      },
+      "strength": {
+        "id": "701",
+        "text": "Even Strength",
+        "abbreviation": "even-strength"
+      }
+    },
+    {
+      "id": "401777460000001500",
+      "sequenceNumber": "45",
+      "type": {
+        "id": "507",
+        "text": "Missed",
+        "abbreviation": "shot-missed"
+      },
+      "text": "Carter Verhaeghe Snap Shot Wide Right",
+      "awayScore": 0,
+      "homeScore": 1,
+      "period": {
+        "number": 1,
+        "displayValue": "1st"
+      },
+      "clock": {
+        "displayValue": "6:56"
+      },
+      "scoringPlay": false,
+      "scoreValue": 0,
+      "modified": "2025-06-18T01:16Z",
+      "team": {
+        "id": "26"
+      },
+      "participants": [
+        {
+          "athlete": {
+            "id": "3042088",
+            "displayName": "Carter Verhaeghe",
+            "shortName": "C. Verhaeghe",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3042088.png",
+              "alt": "Carter Verhaeghe"
+            }
+          },
+          "type": "shooter",
+          "ytdGoals": 7
+        },
+        {
+          "athlete": {
+            "id": "4268767",
+            "displayName": "Stuart Skinner",
+            "shortName": "S. Skinner",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/4268767.png",
+              "alt": "Stuart Skinner"
+            }
+          },
+          "ytdAssists": 0
+        }
+      ],
+      "wallclock": "2025-06-18T00:32:11Z",
+      "shootingPlay": true,
+      "coordinate": {
+        "x": -68,
+        "y": -18
+      },
+      "strength": {
+        "id": "701",
+        "text": "Even Strength",
+        "abbreviation": "even-strength"
+      }
+    },
+    {
+      "id": "401777460000000720",
+      "sequenceNumber": "9",
+      "type": {
+        "id": "503",
+        "text": "Hit",
+        "abbreviation": "hit"
+      },
+      "text": "Corey Perry hit Brad Marchand",
+      "awayScore": 0,
+      "homeScore": 0,
+      "period": {
+        "number": 1,
+        "displayValue": "1st"
+      },
+      "clock": {
+        "displayValue": "0:46"
+      },
+      "scoringPlay": false,
+      "scoreValue": 0,
+      "modified": "2025-06-18T00:39Z",
+      "team": {
+        "id": "6"
+      },
+      "participants": [
+        {
+          "athlete": {
+            "id": "2273",
+            "displayName": "Corey Perry",
+            "shortName": "C. Perry",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/2273.png",
+              "alt": "Corey Perry"
+            }
+          },
+          "type": "hit-credited",
+          "ytdGoals": 10
+        },
+        {
+          "athlete": {
+            "id": "3852",
+            "displayName": "Brad Marchand",
+            "shortName": "B. Marchand",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3852.png",
+              "alt": "Brad Marchand"
+            }
+          },
+          "type": "hitted",
+          "ytdAssists": 10
+        }
+      ],
+      "wallclock": "2025-06-18T00:22:36Z",
+      "shootingPlay": true,
+      "coordinate": {
+        "x": 1,
+        "y": -39
+      },
+      "strength": {
+        "id": "701",
+        "text": "Even Strength",
+        "abbreviation": "even-strength"
+      }
+    },
+    {
+      "id": "401777460000000510",
+      "sequenceNumber": "3",
+      "type": {
+        "id": "502",
+        "text": "Face Off",
+        "abbreviation": "faceoff"
+      },
+      "text": "Connor McDavid faceoff won against Aleksander Barkov",
+      "awayScore": 0,
+      "homeScore": 0,
+      "period": {
+        "number": 1,
+        "displayValue": "1st"
+      },
+      "clock": {
+        "displayValue": "0:00"
+      },
+      "scoringPlay": false,
+      "scoreValue": 0,
+      "modified": "2025-06-18T00:21Z",
+      "team": {
+        "id": "6"
+      },
+      "participants": [
+        {
+          "athlete": {
+            "id": "3895074",
+            "displayName": "Connor McDavid",
+            "shortName": "C. McDavid",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3895074.png",
+              "alt": "Connor McDavid"
+            }
+          },
+          "type": "face-off-winner",
+          "ytdGoals": 7
+        },
+        {
+          "athlete": {
+            "id": "3041970",
+            "displayName": "Aleksander Barkov",
+            "shortName": "A. Barkov",
+            "headshot": {
+              "href": "https://a.espncdn.com/i/headshots/nhl/players/full/3041970.png",
+              "alt": "Aleksander Barkov"
+            }
+          },
+          "ytdAssists": 14
+        }
+      ],
+      "wallclock": "2025-06-18T00:21:05Z",
+      "shootingPlay": true,
+      "strength": {
+        "id": "701",
+        "text": "Even Strength",
+        "abbreviation": "even-strength"
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "splits": {
+    "id": "0",
+    "name": "All Splits",
+    "abbreviation": "TOT",
+    "type": "total",
+    "categories": [
+      {
+        "name": "general",
+        "displayName": "General",
+        "shortDisplayName": "General",
+        "abbreviation": "gen",
+        "summary": "",
+        "stats": [
+          {
+            "name": "knockDowns",
+            "displayValue": "0"
+          },
+          {
+            "name": "totalStrikesLanded",
+            "displayValue": "45"
+          },
+          {
+            "name": "sigStrikesAttempted",
+            "displayValue": "29"
+          },
+          {
+            "name": "sigStrikesLanded",
+            "displayValue": "13"
+          },
+          {
+            "name": "takedownsAttempted",
+            "displayValue": "1"
+          },
+          {
+            "name": "takedownsLanded",
+            "displayValue": "1"
+          },
+          {
+            "name": "timeInControl",
+            "displayValue": "0:53"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -234,7 +234,9 @@ func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
 		items = h.HiddenItemsService.FilterHiddenWatchlistItems(userID, items)
 	}
 	h.enrich(userID, items, r)
-	if h.MetadataHandler != nil {
+	// Personal watchlists retain explicitly saved titles regardless of release
+	// status. Discovery and other lists still follow release visibility settings.
+	if source != "watchlist" && h.MetadataHandler != nil {
 		policy := resolveUnreleasedVisibilityPolicy(
 			h.MetadataHandler.CfgManager,
 			h.MetadataHandler.UserSettings,

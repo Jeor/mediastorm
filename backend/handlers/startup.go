@@ -511,7 +511,8 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Enrich items with pre-computed watch state (after all concurrent fetches complete)
+	// Enrich saved watchlist titles without filtering by release visibility,
+	// matching the personal display-list endpoint.
 	idx := buildWatchStateIndex(watchHistory, resp.ContinueWatching, playbackProgress)
 	startupMetadataSvc := metadataServiceForUser(h.metadata, h.cfgManager, h.userSettings, userID)
 	warmEpisodeCounts := resp.UserSettings != nil && stringSliceContainsFold(resp.UserSettings.Display.BadgeVisibility, "unwatchedCount")
@@ -521,7 +522,6 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 	// Match display-list watchlist enrichment so the initial home shelf does not
 	// need to repair missing movie release metadata after first paint.
 	enrichDisplayListReleases(r, resp.Watchlist, h.metadata)
-	resp.Watchlist = filterWatchlistItemsByUnreleasedVisibility(resp.Watchlist, listPolicy)
 	if resp.TrendingMovies != nil {
 		enrichTrendingItems(resp.TrendingMovies.Items, idx, startupMetadataSvc, false)
 	}

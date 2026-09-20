@@ -57,6 +57,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	categories := r.URL.Query()["cat"]
 	imdbID := strings.TrimSpace(r.URL.Query().Get("imdbId"))
+	titleID := strings.TrimSpace(r.URL.Query().Get("titleId"))
 	mediaType := strings.TrimSpace(r.URL.Query().Get("mediaType"))
 	query = normalizeDecoratedSeriesQuery(query, mediaType)
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
@@ -92,6 +93,9 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	if mediaType == "series" && h.MetadataSvc != nil {
 		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
 		if seriesMeta != nil {
+			if titleID == "" {
+				titleID = seriesMeta.TitleID
+			}
 			episodeResolver = seriesMeta.EpisodeResolver
 			isDaily = seriesMeta.IsDaily
 			isAnime = seriesMeta.IsAnime
@@ -137,6 +141,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := indexer.SearchOptions{
+		TitleID:               titleID,
 		Query:                 query,
 		Categories:            categories,
 		MaxResults:            max,
@@ -270,6 +275,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	categories := r.URL.Query()["cat"]
 	imdbID := strings.TrimSpace(r.URL.Query().Get("imdbId"))
+	titleID := strings.TrimSpace(r.URL.Query().Get("titleId"))
 	mediaType := strings.TrimSpace(r.URL.Query().Get("mediaType"))
 	query = normalizeDecoratedSeriesQuery(query, mediaType)
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
@@ -305,6 +311,9 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	if mediaType == "series" && h.MetadataSvc != nil {
 		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
 		if seriesMeta != nil {
+			if titleID == "" {
+				titleID = seriesMeta.TitleID
+			}
 			episodeResolver = seriesMeta.EpisodeResolver
 			isDaily = seriesMeta.IsDaily
 			isAnime = seriesMeta.IsAnime
@@ -339,6 +348,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := indexer.SearchOptions{
+		TitleID:               titleID,
 		Query:                 query,
 		Categories:            categories,
 		MaxResults:            max,
@@ -475,6 +485,7 @@ func classifySearchError(err error) (int, map[string]interface{}) {
 
 // seriesSearchMetadata contains series metadata needed for search
 type seriesSearchMetadata struct {
+	TitleID               string
 	EpisodeResolver       *filter.SeriesEpisodeResolver
 	IsDaily               bool
 	IsAnime               bool
@@ -524,6 +535,7 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 	}
 
 	result := &seriesSearchMetadata{
+		TitleID:     details.Title.ID,
 		IsDaily:     details.Title.IsDaily,
 		Year:        details.Title.Year,
 		CountryCode: details.Title.CountryCode,

@@ -40,6 +40,12 @@ func TestNestedScoreboardCoverage(t *testing.T) {
 					t.Fatal("lost distinct match identity")
 				}
 				ids[g.ID] = true
+				if !strings.Contains(g.Title, g.HomeTeam.Name) || !strings.Contains(g.Title, g.AwayTeam.Name) {
+					t.Fatalf("lost match title: %q", g.Title)
+				}
+				if tc.sport == "mma" && !strings.Contains(g.Title, "UFC 331: Van vs. Pantoja 2") {
+					t.Fatalf("lost parent card title for stream matching: %q", g.Title)
+				}
 				if g.HomeTeam.ID == "" || g.AwayTeam.ID == "" || g.HomeTeam.Name == "" || g.AwayTeam.Name == "" {
 					t.Fatalf("lost competitor: %+v", g)
 				}

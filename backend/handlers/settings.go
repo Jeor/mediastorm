@@ -450,7 +450,6 @@ func (h *SettingsHandler) ServeWebIcon(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		if localPath, pathErr := h.brandingImagePath(settings, brandingSlots["web-icon"]); pathErr == nil {
 			w.Header().Set("Cache-Control", "no-cache, max-age=0, must-revalidate")
-			w.Header().Set("Content-Type", "image/png")
 			http.ServeFile(w, r, localPath)
 			return
 		}
@@ -472,7 +471,6 @@ func (h *SettingsHandler) ServeAppleTouchIcon(w http.ResponseWriter, r *http.Req
 	if err == nil {
 		if localPath, pathErr := h.brandingImagePath(settings, brandingSlots["web-icon"]); pathErr == nil {
 			w.Header().Set("Cache-Control", "no-cache, max-age=0, must-revalidate")
-			w.Header().Set("Content-Type", "image/png")
 			http.ServeFile(w, r, localPath)
 			return
 		}

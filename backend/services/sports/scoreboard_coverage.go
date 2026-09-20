@@ -65,12 +65,14 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 					}
 				}
 				game.EventContext = strings.Join(parts, " · ")
-				if event.Name != "" {
-					game.Title = event.Name + ": " + game.Title
-				}
 				if competition.Status.Period > 0 {
 					game.Period = "Set " + strconv.Itoa(competition.Status.Period)
 				}
+			}
+			// Broadcasts often name the whole card/tournament, not each bout or
+			// match. Keep that identity alongside the individual competitors.
+			if parent := strings.TrimSpace(event.Name); parent != "" {
+				game.Title = parent + ": " + game.Title
 			}
 			games = append(games, game)
 		}

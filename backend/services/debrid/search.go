@@ -44,6 +44,7 @@ type imdbResolver interface {
 
 // SearchOptions mirrors the indexer search contract but is scoped for debrid providers.
 type SearchOptions struct {
+	TitleID               string
 	Query                 string
 	Categories            []string
 	MaxResults            int
@@ -503,7 +504,8 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 
 	// If no IMDB ID provided, try to resolve it via metadata service (TVDB fallback)
 	imdbID := opts.IMDBID
-	if imdbID == "" && s.imdbResolver != nil && parsed.Title != "" {
+	_, hasAnthologyMapping := anthologyStreamIdentity(opts.TitleID, imdbID, parsed)
+	if imdbID == "" && !hasAnthologyMapping && s.imdbResolver != nil && parsed.Title != "" {
 		resolvedID := s.imdbResolver.ResolveIMDBID(ctx, parsed.Title, string(parsed.MediaType), parsed.Year)
 		if resolvedID != "" {
 			log.Printf("[debrid] Resolved IMDB ID via fallback: %s for %q", resolvedID, parsed.Title)
@@ -512,6 +514,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 	}
 
 	req := SearchRequest{
+		TitleID:         opts.TitleID,
 		Query:           opts.Query,
 		Categories:      append([]string(nil), opts.Categories...),
 		MaxResults:      opts.MaxResults,
@@ -647,6 +650,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 		log.Printf("[debrid] Applying filter with title=%q, year=%d, mediaType=%s, hasEpisodeResolver=%v, targetS%02dE%02d, absoluteEp=%d",
 			expectedTitle, parsed.Year, parsed.MediaType, hasResolver, parsed.Season, parsed.Episode, opts.AbsoluteEpisodeNumber)
 		filterOpts := FilterOptions{
+			TitleID:               opts.TitleID,
 			ExpectedTitle:         expectedTitle,
 			ExpectedYear:          parsed.Year,
 			EpisodeAirYear:        opts.EpisodeAirYear,

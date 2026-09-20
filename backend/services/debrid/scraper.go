@@ -10,6 +10,7 @@ import (
 
 // SearchRequest provides normalized inputs to scraper implementations.
 type SearchRequest struct {
+	TitleID         string
 	Query           string
 	Categories      []string
 	MaxResults      int

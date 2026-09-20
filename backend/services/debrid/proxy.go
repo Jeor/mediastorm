@@ -123,6 +123,7 @@ var allowedDebridHosts = []string{
 	".realdebrid.com",
 	".alldebrid.com",
 	".premiumize.me",
+	".debrid.link",
 	".debrid-link.com",
 	".debrid-link.fr",
 	".put.io",

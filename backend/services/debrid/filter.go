@@ -7,6 +7,7 @@ import (
 
 // FilterOptions contains the expected metadata for filtering results
 type FilterOptions struct {
+	TitleID             string
 	ExpectedTitle       string
 	ExpectedYear        int
 	EpisodeAirYear      int                // Year the target episode aired (for year filter tolerance)
@@ -33,6 +34,7 @@ type FilterOptions struct {
 // For all media types: filters by title similarity (90%+) and year (±1 year) when expected year is set
 func FilterResults(results []models.NZBResult, opts FilterOptions) []models.NZBResult {
 	filterOpts := filter.Options{
+		TitleID:               opts.TitleID,
 		ExpectedTitle:         opts.ExpectedTitle,
 		ExpectedYear:          opts.ExpectedYear,
 		EpisodeAirYear:        opts.EpisodeAirYear,

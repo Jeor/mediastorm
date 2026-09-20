@@ -32,6 +32,7 @@ import (
 	"novastream/config"
 	"novastream/internal/apiusage"
 	"novastream/internal/auth"
+	"novastream/internal/httpheaders"
 	"novastream/internal/importer"
 	"novastream/internal/netproxy"
 	internalpool "novastream/internal/pool"
@@ -365,7 +366,7 @@ var SettingsSchema = map[string]interface{}{
 		"key":      "debridProviders",
 		"fields": map[string]interface{}{
 			"name":     map[string]interface{}{"type": "text", "label": "Name", "description": "Provider display name", "order": 1},
-			"provider": map[string]interface{}{"type": "select", "label": "Provider", "options": []string{"realdebrid", "torbox", "alldebrid", "premiumize", "torrin"}, "description": "Provider type", "order": 2},
+			"provider": map[string]interface{}{"type": "select", "label": "Provider", "options": []string{"realdebrid", "torbox", "alldebrid", "debridlink", "premiumize", "torrin"}, "description": "Provider type", "order": 2},
 			"apiKey":   map[string]interface{}{"type": "password", "label": "API Key", "description": "Provider API key", "order": 3},
 			"enabled":  map[string]interface{}{"type": "boolean", "label": "Enabled", "description": "Enable this provider", "order": 4},
 			"config.autoClearQueue": map[string]interface{}{
@@ -3715,6 +3716,19 @@ func (h *AdminUIHandler) GetDebridStatus(w http.ResponseWriter, r *http.Request)
 				} else {
 					status.Error = err.Error()
 				}
+			case "debridlink":
+				client := debrid.NewDebridLinkClient(p.APIKey)
+				if info, err := client.GetAccountInfo(ctx); err == nil {
+					status.Username = info.Username
+					status.Email = info.Email
+					status.PremiumActive = info.PremiumActive
+					if info.ExpiresAt != nil {
+						status.ExpiresAt = info.ExpiresAt.Format("2006-01-02")
+						status.DaysRemaining = info.DaysRemaining
+					}
+				} else {
+					status.Error = err.Error()
+				}
 			case "premiumize":
 				client := debrid.NewPremiumizeClient(p.APIKey)
 				if info, err := client.GetAccountInfo(ctx); err == nil {
@@ -4599,16 +4613,16 @@ func (h *AdminUIHandler) TestIndexer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build the test URL
-	testURL := strings.TrimSpace(req.URL)
+	testURL := strings.TrimRight(strings.TrimSpace(req.URL), "/")
 	if !strings.HasSuffix(strings.ToLower(testURL), "/api") {
 		testURL = strings.TrimRight(testURL, "/") + "/api"
 	}
 
 	// Make a test search request
 	client := &http.Client{Timeout: 15 * time.Second}
-	searchURL := fmt.Sprintf("%s?t=search&q=test&apikey=%s", testURL, req.APIKey)
+	searchURL := fmt.Sprintf("%s?t=search&q=test&apikey=%s", testURL, url.QueryEscape(req.APIKey))
 
-	searchReq, err := http.NewRequest(http.MethodGet, searchURL, nil)
+	searchReq, err := http.NewRequestWithContext(r.Context(), http.MethodGet, searchURL, nil)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -4617,6 +4631,7 @@ func (h *AdminUIHandler) TestIndexer(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	httpheaders.SetIndexerSearchHeaders(searchReq)
 	resp, err := apiusage.Do(client, displayName(req.Name, "Indexer"), "Indexer search test", searchReq)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -4630,10 +4645,14 @@ func (h *AdminUIHandler) TestIndexer(w http.ResponseWriter, r *http.Request) {
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		message := fmt.Sprintf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		if resp.StatusCode == http.StatusForbidden && strings.Contains(strings.ToLower(string(body)), "cloudflare") {
+			message = "HTTP 403: Cloudflare blocked the indexer request. Check that the indexer URL is its Newznab base/API URL (not a login page). If it is correct, contact the indexer about access from your backend server's IP address."
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
-			"error":   fmt.Sprintf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body))),
+			"error":   message,
 		})
 		return
 	}
@@ -10421,6 +10440,15 @@ func (h *AdminUIHandler) TestDebridProvider(w http.ResponseWriter, r *http.Reque
 			"success": true,
 			"message": fmt.Sprintf("Connected as %s (%s)", result.Data.Email, planName),
 		})
+
+	case "debridlink":
+		info, err := debrid.NewDebridLinkClient(req.APIKey).GetAccountInfo(r.Context())
+		w.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": fmt.Sprintf("Connected as %s (premium: %t)", info.Username, info.PremiumActive)})
 
 	case "alldebrid":
 		// Test AllDebrid by getting user info

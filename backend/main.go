@@ -1779,6 +1779,7 @@ func main() {
 
 	// Dedicated consumer web app served from the frontend Expo web export.
 	webAppHandler := handlers.NewWebAppHandler(handlers.ResolveWebAppDir(), "/watch")
+	webAppHandler.Branding = settingsHandler
 	r.Handle("/watch", webAppHandler).Methods(http.MethodGet, http.MethodHead)
 	r.PathPrefix("/watch/").Handler(webAppHandler).Methods(http.MethodGet, http.MethodHead)
 	fmt.Println("🎬 Web app available at /watch")

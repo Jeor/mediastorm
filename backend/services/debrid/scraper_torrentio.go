@@ -64,6 +64,7 @@ func (t *TorrentioScraper) Name() string {
 }
 
 func (t *TorrentioScraper) Search(ctx context.Context, req SearchRequest) ([]ScrapeResult, error) {
+	req = req.forIMDBStreamProvider()
 	cleanTitle := strings.TrimSpace(req.Parsed.Title)
 	if cleanTitle == "" && req.IMDBID == "" {
 		return nil, nil

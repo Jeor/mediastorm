@@ -1795,6 +1795,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// Use the same search path as the regular search UI: wait for all sources
 	// (debrid + usenet), combine, rank, and return a single ordered list.
 	searchOpts := indexer.SearchOptions{
+		TitleID:            titleID,
 		Query:              query,
 		MaxResults:         50,
 		MediaType:          mediaType,
@@ -3421,6 +3422,7 @@ func logPrequeueCandidateList(scoredResults []models.ScoredNZBResult, source str
 // returned slice is also the complete ordered migration candidate list.
 func combinedPrequeueSearchOptions(opts indexer.SearchOptions) indexer.SearchOptions {
 	return indexer.SearchOptions{
+		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            opts.Categories,
 		IMDBID:                opts.IMDBID,

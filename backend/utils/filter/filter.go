@@ -13,6 +13,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 
+	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/models"
 	"novastream/utils/parsett"
@@ -131,6 +132,7 @@ func (r *SeriesEpisodeResolver) GetEpisodesForSeasons(seasons []int) int {
 
 // Options contains the expected metadata for filtering results
 type Options struct {
+	TitleID             string // Selected title identity for verified anthology episode aliases.
 	ExpectedTitle       string
 	ExpectedYear        int
 	ExpectedCountry     string      // Original production country; normalized before comparison
@@ -377,7 +379,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		}
 
 		// Check title similarity
-		titleSim, matchedTitle := bestTitleSimilarity(candidateTitles, parsed.Title, result.Title)
+		titleSim, matchedTitle := bestTitleSimilarityForMedia(candidateTitles, parsed.Title, opts.IsMovie, result.Title)
 		if i < 5 {
 			ref := opts.ExpectedTitle
 			if matchedTitle != "" {
@@ -488,11 +490,31 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// Target episode filtering for TV shows
 		// This rejects season packs and episodes that obviously can't contain the target episode
 		// Skip this check for daily shows with matching dates - they use date-based matching instead
+		episodeOpts := opts
 		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
-			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, opts); rejected {
+			// Episodes and packs of the known anthology season use provider
+			// numbering. Other seasons and multi-season packs stay unchanged.
+			mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
+			mappedRelease := known && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
+			if mappedRelease {
+				episodeOpts.TargetSeason = mapped.Season
+				episodeOpts.TargetEpisode = mapped.Episode
+				episodeOpts.TargetAbsoluteEpisode = 0
+				episodeOpts.EpisodeResolver = NewSeriesEpisodeResolver(map[int]int{mapped.Season: mapped.SeasonEpisodeCount})
+			}
+			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, episodeOpts); rejected {
 				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
 				reject(result, reason)
 				continue
+			}
+			if mappedRelease {
+				// File-selection hints follow the release's numbering; the
+				// selected title and history episode remain in TMDB order.
+				result.Attributes["targetSeason"] = strconv.Itoa(mapped.Season)
+				result.Attributes["targetEpisode"] = strconv.Itoa(mapped.Episode)
+				result.Attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", mapped.Season, mapped.Episode)
+				delete(result.Attributes, "absoluteEpisodeNumber")
+				delete(result.Attributes, "targetAbsoluteEpisode")
 			}
 		}
 
@@ -554,7 +576,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// configured. The UI and ranking both need to know whether SizeBytes is
 		// a pack total or the size of the selected playable file.
 		if !opts.IsMovie && result.SizeBytes > 0 {
-			normalizePackSizeMetadata(&result, parsed, isCompletePack, opts)
+			normalizePackSizeMetadata(&result, parsed, isCompletePack, episodeOpts)
 		}
 
 		// Check size limits if configured
@@ -874,6 +896,10 @@ func containsJapaneseRune(value string) bool {
 }
 
 func bestTitleSimilarity(candidates []string, parsedTitle string, rawTitle ...string) (float64, string) {
+	return bestTitleSimilarityForMedia(candidates, parsedTitle, false, rawTitle...)
+}
+
+func bestTitleSimilarityForMedia(candidates []string, parsedTitle string, isMovie bool, rawTitle ...string) (float64, string) {
 	if len(candidates) == 0 {
 		return 0.0, ""
 	}
@@ -892,6 +918,9 @@ func bestTitleSimilarity(candidates []string, parsedTitle string, rawTitle ...st
 	for _, candidate := range candidates {
 		normalizedCandidate := normalizeForContainment(candidate)
 		for _, parsedVariant := range parsedTitles {
+			if isMovie && movieInstallmentMismatch(parsedVariant, candidate) {
+				continue
+			}
 			score := similarity.Similarity(candidate, parsedVariant)
 
 			// Also check containment: if one title contains the other as a whole word/phrase,

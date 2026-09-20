@@ -1,6 +1,7 @@
 package sports
 
 import (
+	"encoding/json"
 	"novastream/models"
 	"strconv"
 	"strings"
@@ -22,6 +23,25 @@ func applyTeamRecords(team *models.SportsTeam, records []teamContextRecord) {
 	}
 }
 
+// ESPN returns substitution flags either directly or wrapped with timing metadata.
+type substitutionFlag bool
+
+func (f *substitutionFlag) UnmarshalJSON(data []byte) error {
+	var direct bool
+	if err := json.Unmarshal(data, &direct); err == nil {
+		*f = substitutionFlag(direct)
+		return nil
+	}
+	var wrapped struct {
+		DidSub bool `json:"didSub"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err != nil {
+		return err
+	}
+	*f = substitutionFlag(wrapped.DidSub)
+	return nil
+}
+
 type teamContextRoster struct {
 	Team struct {
 		ID string `json:"id"`
@@ -40,10 +60,10 @@ type teamContextRoster struct {
 			Name         string `json:"name"`
 			DisplayValue string `json:"displayValue"`
 		} `json:"stats"`
-		Jersey    string `json:"jersey"`
-		Starter   *bool  `json:"starter"`
-		SubbedIn  bool   `json:"subbedIn"`
-		SubbedOut bool   `json:"subbedOut"`
+		Jersey    string           `json:"jersey"`
+		Starter   *bool            `json:"starter"`
+		SubbedIn  substitutionFlag `json:"subbedIn"`
+		SubbedOut substitutionFlag `json:"subbedOut"`
 	} `json:"roster"`
 }
 type teamContextStandings struct {
@@ -82,7 +102,7 @@ func normalizeTeamContext(game *models.SportsGame, summary teamSportSummary) {
 					continue
 				}
 				seen[player.Athlete.ID] = true
-				lineup.Players = append(lineup.Players, models.SportsLineupPlayer{ID: player.Athlete.ID, Name: player.Athlete.DisplayName, Number: player.Jersey, Position: player.Position.DisplayName, Starter: *player.Starter, SubbedIn: player.SubbedIn, SubbedOut: player.SubbedOut})
+				lineup.Players = append(lineup.Players, models.SportsLineupPlayer{ID: player.Athlete.ID, Name: player.Athlete.DisplayName, Number: player.Jersey, Position: player.Position.DisplayName, Starter: *player.Starter, SubbedIn: bool(player.SubbedIn), SubbedOut: bool(player.SubbedOut)})
 			}
 			if len(lineup.Players) > 0 {
 				game.Detail.Lineups = append(game.Detail.Lineups, lineup)

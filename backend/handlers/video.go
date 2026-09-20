@@ -154,6 +154,7 @@ type VideoHandler struct {
 	userSettingsSvc   UserSettingsProvider
 	clientSettingsSvc ClientSettingsProvider
 	configManager     ConfigProvider
+	liveChannels      LiveChannelProvider
 
 	// Metadata response cache for /video/metadata endpoint
 	// Prevents repeated ffprobe calls during playback
@@ -190,6 +191,13 @@ type VideoHandler struct {
 	// disabled globally (no manager exists) and a DLNA renderer forces the path.
 	dlnaCapsOnce sync.Once
 	dlnaCaps     HWAccelCaps
+}
+
+// LiveChannelProvider resolves the profile-filtered channels that the backend
+// has issued to clients. Quality probes must be bound to one of these channels
+// instead of accepting an arbitrary authenticated URL.
+type LiveChannelProvider interface {
+	FetchFilteredChannelsForRequest(r *http.Request) ([]LiveChannel, error)
 }
 
 const (
@@ -716,6 +724,10 @@ func (h *VideoHandler) SetConfigManager(cfgManager ConfigProvider) {
 	if h.hlsManager != nil {
 		h.hlsManager.SetConfigManager(cfgManager)
 	}
+}
+
+func (h *VideoHandler) SetLiveChannelProvider(provider LiveChannelProvider) {
+	h.liveChannels = provider
 }
 
 // SetClientSettingsService sets the client settings service for per-device policy checks

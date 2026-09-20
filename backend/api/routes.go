@@ -140,6 +140,9 @@ func Register(
 	homepageAPIKey string,
 	latencyAdmin *handlers.PlaybackLatencyAdmin,
 ) {
+	if videoHandler != nil && liveHandler != nil {
+		videoHandler.SetLiveChannelProvider(liveHandler)
+	}
 	api := r.PathPrefix("/api").Subrouter()
 
 	// Add CORS middleware to API subrouter
@@ -568,6 +571,8 @@ func Register(
 	// Video streaming endpoints
 	protected.HandleFunc("/video/stream", videoHandler.StreamVideo).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 	protected.HandleFunc("/video/stream/{displayName}", videoHandler.StreamVideo).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	protected.HandleFunc("/video/live/quality", videoHandler.ProbeLiveQuality).Methods(http.MethodPost)
+	protected.HandleFunc("/video/live/quality", handleOptions).Methods(http.MethodOptions)
 	protected.HandleFunc("/video/metadata", RateLimitHandlerFunc(probeLimiter, videoHandler.ProbeVideo)).Methods(http.MethodGet, http.MethodOptions)
 	protected.HandleFunc("/video/direct-url", videoHandler.GetDirectURL).Methods(http.MethodGet, http.MethodOptions)
 	protected.HandleFunc("/video/share-progress", videoHandler.UpdateSharePlaybackProgress).Methods(http.MethodPost, http.MethodOptions)

@@ -148,7 +148,7 @@ func (s *Service) GetDatedScoreboard(ctx context.Context, date, leagueID string)
 func supportsHubLeague(id string) bool {
 	for _, league := range LeagueCatalog {
 		if league.ID == id {
-			return league.EventKind == "matchup" || league.EventKind == "fight-card"
+			return league.EventKind == "matchup" || league.EventKind == "fight-card" || league.EventKind == "tournament"
 		}
 	}
 	return false

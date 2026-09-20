@@ -338,6 +338,55 @@ func TestSportsFuzzyMatchup(t *testing.T) {
 	}
 }
 
+// Guide descriptions are prose, not dedicated team-channel labels. Carolina's CAR
+// abbreviation must not turn ordinary car references into NFL feeds.
+func TestPanthersFalconsEPGRequiresBothOpponents(t *testing.T) {
+	game := models.SportsGame{
+		League: "nfl", StartTime: time.Date(2026, 9, 20, 17, 0, 0, 0, time.UTC),
+		HomeTeam: models.SportsTeam{Name: "Atlanta Falcons", Location: "Atlanta", Nickname: "Falcons", Abbreviation: "ATL"},
+		AwayTeam: models.SportsTeam{Name: "Carolina Panthers", Location: "Carolina", Nickname: "Panthers", Abbreviation: "CAR"},
+	}
+	for _, tc := range []struct {
+		name, title, description string
+		want                     bool
+	}{
+		{"Discovery Life", "My 600-Lb. Life: Where Are They Now?", "A difficult car journey to a medical appointment.", false},
+		{"FYI", "Counting Cars", "Danny restores a custom car in Las Vegas.", false},
+		{"ScreenPix", "Car trouble", "A driver gets stranded on the highway.", false},
+		{"Nature", "Wild Panthers", "Panthers and their habitat.", false},
+		{"Travel", "Atlanta", "Exploring the city.", false},
+		{"Team documentary", "Carolina Panthers documentary", "A history of the franchise.", false},
+		{"Separate segments", "Panthers: Falcons", "", false},
+		{"Wrong opponent", "Carolina Panthers at New Orleans Saints", "", false},
+		{"FOX", "NFL Football", "Carolina Panthers at Atlanta Falcons", true},
+		{"FOX short", "CAR vs ATL", "", true},
+		{"FOX names", "Panthers at Falcons", "", true},
+		{"FOX fuzzy", "Panthrs vs Falcons", "", true},
+		{"FOX segments", "Panthers: CAR vs ATL", "", true},
+		{"FOX fuzzy segments", "Carolina Panthers: Panthrs vs Falcons", "", true},
+	} {
+		for _, next := range []bool{false, true} {
+			t.Run(tc.name+map[bool]string{false: "/current", true: "/next"}[next], func(t *testing.T) {
+				program := &models.EPGProgram{Title: tc.title, Description: tc.description, Start: game.StartTime}
+				now := models.EPGNowPlaying{ChannelID: "test", Current: program}
+				if next {
+					now.Current, now.Next = nil, program
+				}
+				channels := []LiveChannel{{ID: "test", Name: "US: " + tc.name, TvgID: "test", URL: "https://example.test/live"}}
+				got := selectableSportsMatches(matchGameToChannels(game, channels, sportsMatcherEPG{items: []models.EPGNowPlaying{now}}, ""))
+				if (len(got) > 0) != tc.want {
+					t.Fatalf("got %+v, want match %v", got, tc.want)
+				}
+			})
+		}
+	}
+	channels := []LiveChannel{{ID: "team", Name: "NFL Carolina Panthers HD", TvgID: "team", URL: "https://example.test/team"}}
+	epg := sportsMatcherEPG{items: []models.EPGNowPlaying{{ChannelID: "team", Current: &models.EPGProgram{Title: "Pregame"}}}}
+	if got := selectableSportsMatches(matchGameToChannels(game, channels, epg, "")); len(got) != 1 {
+		t.Fatalf("lost dedicated team feed: %+v", got)
+	}
+}
+
 func TestUFCBoutMatchesParentCardAndIndividualBroadcasts(t *testing.T) {
 	game := models.SportsGame{League: "ufc", EventKind: "fight-card", Title: "UFC 331: Van vs. Pantoja 2: Joanderson Brito vs Giga Chikadze"}
 	for _, name := range []string{"UFC 331", "Giga Chikadze vs Joanderson Brito"} {

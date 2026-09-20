@@ -48,6 +48,9 @@ type League struct {
 // contract (currently motorsports). Do not advertise a league here until one of those API
 // contracts can actually surface it in the Sports Hub.
 var LeagueCatalog = []League{
+	{ID: "pga", Name: "PGA Tour", Sport: "golf", Slug: "pga", Category: "golf", EventKind: "tournament"},
+	{ID: "boxing", Name: "Boxing", Sport: "boxing", Category: "boxing", EventKind: "fight-card"},
+	{ID: "cricket-8048", Name: "Indian Premier League", Sport: "cricket", Slug: "8048", Category: "cricket", EventKind: "matchup", SupportsTeams: true},
 	{ID: "nfl", Name: "NFL", Sport: "football", Slug: "nfl", Category: "football", EventKind: "matchup", SupportsTeams: true},
 	{ID: "college-football", Name: "NCAAF", Sport: "football", Slug: "college-football", Category: "football", EventKind: "matchup", SupportsTeams: true},
 	{ID: "nba", Name: "NBA", Sport: "basketball", Slug: "nba", Category: "basketball", EventKind: "matchup", SupportsTeams: true},
@@ -524,6 +527,9 @@ func (s *Service) fetchLeagueScoreboard(ctx context.Context, league League) ([]m
 }
 
 func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, date string) ([]models.SportsGame, error) {
+	if league.ID == "boxing" {
+		return s.fetchBoxingDate(ctx, date)
+	}
 	if league.Sport == "cycling" {
 		return []models.SportsGame{}, nil
 	}

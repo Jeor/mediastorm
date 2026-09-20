@@ -505,12 +505,12 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 				if hasNonLiveSportsLabel(program.Title) || hasNonLiveSportsLabel(program.Description) {
 					continue
 				}
-				programEvidence := scoreMatchupText(program.Title, home, away)
+				programEvidence := scoreSportsProgramMatchup(program.Title, home, away)
 				if game.EventKind != "" && game.EventKind != "matchup" {
 					programEvidence = scoreSportsEventTitle(program.Title, game.Title)
 				}
 				fromDescription := false
-				descriptionEvidence := scoreMatchupText(program.Description, home, away)
+				descriptionEvidence := scoreSportsProgramMatchup(program.Description, home, away)
 				if game.EventKind != "" && game.EventKind != "matchup" {
 					descriptionEvidence = scoreSportsEventTitle(program.Description, game.Title)
 				}

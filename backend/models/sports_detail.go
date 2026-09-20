@@ -5,8 +5,13 @@ import "time"
 // SportsGameDetail is additive to the legacy game response. Empty data never
 // implies a zero statistic; capability flags describe verified available panels.
 type SportsGameDetail struct {
-	Pregame     *SportsPregame          `json:"pregame,omitempty"`
-	PlayerStats []SportsPlayerGameStats `json:"playerStats,omitempty"`
+	FighterProfiles []SportsPlayerGameStats `json:"fighterProfiles,omitempty"`
+	Shots           []SportsHockeyShot      `json:"shots,omitempty"`
+	Leaderboard     []SportsGolfEntry       `json:"leaderboard,omitempty"`
+	Innings         []SportsCricketInnings  `json:"innings,omitempty"`
+	CoverageNote    string                  `json:"coverageNote,omitempty"`
+	Pregame         *SportsPregame          `json:"pregame,omitempty"`
+	PlayerStats     []SportsPlayerGameStats `json:"playerStats,omitempty"`
 	// TournamentContext is the literal soccer provider season/round label, not inferred progression.
 	TournamentContext string                   `json:"tournamentContext,omitempty"`
 	ScoreHistory      *SportsScoreHistory      `json:"scoreHistory,omitempty"`
@@ -122,16 +127,25 @@ type SportsStandingRow struct {
 
 // Coordinates orient the away end at 0 and the home end at 100 for consistent comparison.
 type SportsFootballPlay struct {
-	ID          string   `json:"id"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Clock       string   `json:"clock"`
-	Period      string   `json:"period"`
-	Start       *float64 `json:"start,omitempty"`
-	End         *float64 `json:"end,omitempty"`
-	Scoring     bool     `json:"scoring"`
+	TypeID           string   `json:"typeId,omitempty"`
+	Wallclock        string   `json:"wallclock,omitempty"`
+	Down             *int     `json:"down,omitempty"`
+	Distance         *float64 `json:"distance,omitempty"`
+	Yards            *float64 `json:"yards,omitempty"`
+	PossessionTeamID string   `json:"possessionTeamId,omitempty"`
+	ID               string   `json:"id"`
+	Type             string   `json:"type"`
+	Description      string   `json:"description"`
+	Clock            string   `json:"clock"`
+	Period           string   `json:"period"`
+	Start            *float64 `json:"start,omitempty"`
+	End              *float64 `json:"end,omitempty"`
+	Scoring          bool     `json:"scoring"`
 }
 type SportsFootballDrive struct {
+	PlayCount   *int                 `json:"playCount,omitempty"`
+	Yards       *float64             `json:"yards,omitempty"`
+	Elapsed     string               `json:"elapsed,omitempty"`
 	StartKnown  *bool                `json:"startKnown,omitempty"`
 	EndKnown    *bool                `json:"endKnown,omitempty"`
 	Plays       []SportsFootballPlay `json:"plays,omitempty"`
@@ -163,4 +177,43 @@ type SportsScorePoint struct {
 	Clock       string  `json:"clock"`
 	Away        float64 `json:"away"`
 	Home        float64 `json:"home"`
+}
+
+// Golf preserves the provider order without claiming that order is a tied rank.
+type SportsGolfEntry struct {
+	ID     string            `json:"id"`
+	Name   string            `json:"name"`
+	Score  string            `json:"score,omitempty"`
+	Rounds []SportsGolfRound `json:"rounds,omitempty"`
+}
+type SportsGolfRound struct {
+	Round   int              `json:"round"`
+	Strokes string           `json:"strokes,omitempty"`
+	ToPar   string           `json:"toPar,omitempty"`
+	Holes   []SportsGolfHole `json:"holes,omitempty"`
+}
+type SportsGolfHole struct {
+	Hole    int    `json:"hole"`
+	Strokes string `json:"strokes"`
+	ToPar   string `json:"toPar,omitempty"`
+}
+type SportsCricketInnings struct {
+	TeamID      string `json:"teamId"`
+	Number      int    `json:"number"`
+	Runs        *int   `json:"runs,omitempty"`
+	Wickets     *int   `json:"wickets,omitempty"`
+	Overs       string `json:"overs,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// Provider rink coordinates in feet, centered at (0,0). No attack-direction inference.
+type SportsHockeyShot struct {
+	ID          string  `json:"id"`
+	TeamID      string  `json:"teamId"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	Kind        string  `json:"kind"`
+	Period      string  `json:"period"`
+	Clock       string  `json:"clock"`
+	Description string  `json:"description"`
 }

@@ -491,6 +491,22 @@ func scoreMatchupText(target string, home, away sportsTeamIdentity) sportsEviden
 	return best
 }
 
+// Guide titles and descriptions are arbitrary prose: one team token (especially
+// CAR, NO or a nickname like Panthers) does not identify the scheduled game.
+// Keep the dedicated-team fallback for channel names, but require both opponents
+// together in a single guide segment. Evaluate each segment before choosing the
+// best evidence so a single-team segment cannot mask a valid fuzzy matchup.
+func scoreSportsProgramMatchup(target string, home, away sportsTeamIdentity) sportsEvidence {
+	best := sportsEvidence{}
+	for _, segment := range sportsMatchSegments(target) {
+		candidate := scoreMatchupSegment(segment, home, away)
+		if candidate.on == "matchup-name" && candidate.score > best.score {
+			best = candidate
+		}
+	}
+	return best
+}
+
 func canonicalBroadcastVariants(value string) [][]string {
 	normed := normalizeSportsText(value)
 	canonical := normed

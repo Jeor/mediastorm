@@ -2869,6 +2869,7 @@ func (s *Service) syncLocalHistoryToSimkl(task config.ScheduledTask, simklAccoun
 				continue
 			}
 			ids := extractSimklIDs(item.MediaType, item.ItemID, item.SeriesID, item.ExternalIDs)
+			ids, seasonNumber, episodeNumber = simkl.EpisodeIdentity(ids, seasonNumber, episodeNumber)
 			if ids.IMDB == "" && ids.TMDB == 0 && ids.TVDB == 0 && ids.Simkl == 0 {
 				skippedNoIDs++
 				continue
@@ -2900,6 +2901,7 @@ func (s *Service) syncLocalHistoryToSimkl(task config.ScheduledTask, simklAccoun
 				continue
 			}
 			ids := extractSimklIDs(item.MediaType, item.ItemID, item.SeriesID, item.ExternalIDs)
+			ids, seasonNumber, episodeNumber = simkl.EpisodeIdentity(ids, seasonNumber, episodeNumber)
 			if ids.IMDB == "" && ids.TMDB == 0 && ids.TVDB == 0 && ids.Simkl == 0 {
 				skippedNoIDs++
 				continue
@@ -3197,25 +3199,31 @@ func (s *Service) simklShowToUpdates(raw json.RawMessage, watched *bool) []model
 				}
 				watchedAt = simklFirstTime(obj, "watched_at", "last_watched_at", "completed_at", "last_watched")
 			}
-			episodeIDs := cloneStringMap(ids)
+			localSeriesID, localTitle, localYear := seriesID, showTitle, showYear
+			localIDs, sourceSeason := ids, seasonNumber
+			if mappedID, mappedIDs, mappedSeason, ok := simkl.CatalogEpisodeIdentity(ids, seasonNumber, episodeNumber); ok {
+				localSeriesID, localIDs, sourceSeason = mappedID, mappedIDs, mappedSeason
+				localTitle, localYear = "Monster: The Lizzie Borden Story", 2026
+			}
+			episodeIDs := cloneStringMap(localIDs)
 			absoluteEpisode := 0
 			if episodeNumber >= 1000 {
 				absoluteEpisode = episodeNumber
 			}
-			localSeason, localEpisode, localAbsolute, episodeTitle := s.canonicalizeProviderEpisode("simkl", ids, nil, seasonNumber, episodeNumber, absoluteEpisode, stringFromAny(episodeObj["title"]))
+			localSeason, localEpisode, localAbsolute, episodeTitle := s.canonicalizeProviderEpisode("simkl", localIDs, nil, sourceSeason, episodeNumber, absoluteEpisode, stringFromAny(episodeObj["title"]))
 			if localAbsolute > 0 {
 				episodeIDs["absoluteEpisode"] = strconv.Itoa(localAbsolute)
 			}
 			updates = append(updates, models.WatchHistoryUpdate{
 				MediaType:     "episode",
-				ItemID:        fmt.Sprintf("%s:s%02de%02d", seriesID, localSeason, localEpisode),
+				ItemID:        fmt.Sprintf("%s:s%02de%02d", localSeriesID, localSeason, localEpisode),
 				Name:          episodeTitle,
-				Year:          showYear,
+				Year:          localYear,
 				Watched:       watched,
 				WatchedAt:     watchedAt,
 				ExternalIDs:   episodeIDs,
-				SeriesID:      seriesID,
-				SeriesName:    showTitle,
+				SeriesID:      localSeriesID,
+				SeriesName:    localTitle,
 				SeasonNumber:  localSeason,
 				EpisodeNumber: localEpisode,
 			})

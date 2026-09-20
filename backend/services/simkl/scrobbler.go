@@ -111,6 +111,7 @@ func (s *Scrobbler) ScrobbleEpisode(userID string, showTVDBID, season, episode i
 		return nil
 	}
 
+	showIDs, season, episode = EpisodeIdentity(showIDs, season, episode)
 	req := SyncHistoryRequest{
 		Shows: []SyncHistoryShow{{
 			IDs: showIDs,
@@ -163,6 +164,7 @@ func (s *Scrobbler) UnscrobbleEpisode(userID string, showTVDBID, season, episode
 	if ids == (IDs{}) || season <= 0 || episode <= 0 {
 		return nil
 	}
+	ids, season, episode = EpisodeIdentity(ids, season, episode)
 	return s.client.RemoveFromHistory(account.ClientID, account.AccessToken, SyncHistoryRequest{
 		Shows: []SyncHistoryShow{{
 			IDs:     ids,

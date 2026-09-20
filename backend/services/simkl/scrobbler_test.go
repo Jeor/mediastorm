@@ -121,3 +121,50 @@ func TestUnscrobbleEpisodeRemovesSimklHistory(t *testing.T) {
 		t.Fatalf("body=%+v", body)
 	}
 }
+
+func TestAnthologyWatchedAndUnwatchedRequests(t *testing.T) {
+	var requests []SyncHistoryRequest
+	var paths []string
+	client := NewClient()
+	client.SetHTTPClientForTest(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var body SyncHistoryRequest
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		requests = append(requests, body)
+		paths = append(paths, req.URL.Path)
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{}`)), Header: make(http.Header)}, nil
+	})})
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Simkl: config.SimklSettings{Accounts: []config.SimklAccount{{ID: "simkl-1", ClientID: "client-id", AccessToken: "token"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	scrobbler := NewScrobbler(client, mgr)
+	scrobbler.SetUserService(&mockSimklUserService{users: map[string]models.User{"user-1": {ID: "user-1", SimklAccountID: "simkl-1"}}})
+	ids := map[string]string{"tmdb": "299939"}
+	if err := scrobbler.ScrobbleEpisode("user-1", 0, 1, 1, time.Now(), ids); err != nil {
+		t.Fatal(err)
+	}
+	if err := scrobbler.UnscrobbleEpisode("user-1", 0, 1, 1, ids); err != nil {
+		t.Fatal(err)
+	}
+	if len(requests) != 2 || paths[0] != "/sync/history" || paths[1] != "/sync/history/remove" {
+		t.Fatalf("requests=%v", paths)
+	}
+	for _, body := range requests {
+		if len(body.Shows) != 1 {
+			t.Fatalf("body=%+v", body)
+		}
+		show := body.Shows[0]
+		if show.IDs != (IDs{IMDB: "tt13207736"}) || len(show.Seasons) != 1 || show.Seasons[0].Number != 4 || len(show.Seasons[0].Episodes) != 1 || show.Seasons[0].Episodes[0].Number != 1 {
+			t.Fatalf("show=%+v", show)
+		}
+	}
+	scrobbler.noteRecentStop("user-1", models.PlaybackProgressUpdate{MediaType: "episode", SeriesID: "tmdb:tv:299939", SeasonNumber: 1, EpisodeNumber: 1, ExternalIDs: ids})
+	if err := scrobbler.ScrobbleEpisode("user-1", 0, 1, 1, time.Now(), ids); err != nil {
+		t.Fatal(err)
+	}
+	if len(requests) != 2 {
+		t.Fatal("recent stop should suppress duplicate watched sync before translating identity")
+	}
+}

@@ -1254,6 +1254,82 @@ func TestAdminDashboardBasicViewKeepsOnlyUserActivityCards(t *testing.T) {
 	}
 }
 
+func TestLiveTVConfigurationLabelUsesEffectiveSources(t *testing.T) {
+	enabled := true
+	disabled := false
+	tests := []struct {
+		name     string
+		settings config.LiveSettings
+		want     string
+	}{
+		{
+			name: "named m3u sources",
+			settings: config.LiveSettings{Sources: []config.LivePlaylistSource{
+				{Mode: "m3u", PlaylistURL: "https://example.com/one.m3u", Enabled: &enabled},
+				{Mode: "m3u", PlaylistURL: "https://example.com/two.m3u", Enabled: &enabled},
+			}},
+			want: "M3U Configured",
+		},
+		{
+			name: "legacy playlistSources fallback",
+			settings: config.LiveSettings{PlaylistSources: []config.LivePlaylistSource{
+				{PlaylistURL: "https://example.com/live.m3u"},
+			}},
+			want: "M3U Configured",
+		},
+		{
+			name: "named xtream source",
+			settings: config.LiveSettings{Sources: []config.LivePlaylistSource{
+				{Mode: "xtream", XtreamHost: "https://example.com", XtreamUsername: "user", XtreamPassword: "pass"},
+			}},
+			want: "Xtream Configured",
+		},
+		{
+			name: "mixed source modes",
+			settings: config.LiveSettings{Sources: []config.LivePlaylistSource{
+				{Mode: "m3u", PlaylistURL: "https://example.com/live.m3u"},
+				{Mode: "stremio", ManifestURL: "https://example.com/manifest.json"},
+			}},
+			want: "Live TV Configured",
+		},
+		{
+			name: "disabled and incomplete sources",
+			settings: config.LiveSettings{Sources: []config.LivePlaylistSource{
+				{Mode: "m3u", PlaylistURL: "https://example.com/live.m3u", Enabled: &disabled},
+				{Mode: "xtream", XtreamHost: "https://example.com", XtreamUsername: "user"},
+			}},
+			want: "",
+		},
+		{
+			name:     "legacy single playlist",
+			settings: config.LiveSettings{Mode: "m3u", PlaylistURL: "https://example.com/live.m3u"},
+			want:     "M3U Configured",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := liveTVConfigurationLabel(tt.settings); got != tt.want {
+				t.Fatalf("liveTVConfigurationLabel() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAdminDashboardLiveTVSummaryUsesEffectiveConfiguration(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
+	if err != nil {
+		t.Fatalf("read status template: %v", err)
+	}
+	source := string(templateBytes)
+	if !strings.Contains(source, `{{with liveTVConfigurationLabel .Settings.Live}}`) {
+		t.Fatal("status template does not use the effective Live TV configuration")
+	}
+	if strings.Contains(source, `if or .Settings.Live.PlaylistURL`) {
+		t.Fatal("status template still checks only the legacy Live TV fields")
+	}
+}
+
 func TestAdminDashboardKeepsModuleSourcesHiddenUntilLayoutIsReady(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/status.html")
 	if err != nil {

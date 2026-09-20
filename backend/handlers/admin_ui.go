@@ -1815,7 +1815,8 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		"hasFiltering": func(f config.FilterSettings) bool {
 			return f.HDRDVPolicy != "" && f.HDRDVPolicy != config.HDRDVPolicyNoExclusion || f.MaxSizeMovieGB > 0 || len(f.FilterOutTerms) > 0
 		},
-		"join": strings.Join,
+		"liveTVConfigurationLabel": liveTVConfigurationLabel,
+		"join":                     strings.Join,
 		// brandingURL resolves an admin webui branding surface to a custom
 		// uploaded image (reusing the app branding slots) when one is present,
 		// otherwise falls back to the bundled static asset. The server base
@@ -1934,6 +1935,51 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		plexClient:            plex.NewClient(plex.GenerateClientID()),
 		traktClient:           trakt.NewClient("", ""), // Will be updated with credentials from settings
 		serverBasePath:        serverBasePath,
+	}
+}
+
+// liveTVConfigurationLabel describes the effective server-wide Live TV setup.
+// Resolve the same named-source and legacy fields as playback so the dashboard
+// cannot report "Not Set" for a configuration that Live TV is actively using.
+func liveTVConfigurationLabel(settings config.LiveSettings) string {
+	resolved := resolvedLiveSources(models.ResolvedLiveSource{
+		Mode:                settings.Mode,
+		PlaylistURL:         settings.PlaylistURL,
+		ManifestURL:         settings.ManifestURL,
+		ProxyURL:            settings.ProxyURL,
+		XtreamHost:          settings.XtreamHost,
+		XtreamUsername:      settings.XtreamUsername,
+		XtreamPassword:      settings.XtreamPassword,
+		StalkerPortalURL:    settings.StalkerPortalURL,
+		StalkerMAC:          settings.StalkerMAC,
+		StalkerSerialNumber: settings.StalkerSerialNumber,
+		StalkerDeviceID:     settings.StalkerDeviceID,
+		StalkerDeviceID2:    settings.StalkerDeviceID2,
+		StalkerSignature:    settings.StalkerSignature,
+		StalkerModel:        settings.StalkerModel,
+		PlaylistSources:     configPlaylistSourcesToModel(settings.PlaylistSources),
+		Sources:             configPlaylistSourcesToModel(settings.Sources),
+	})
+	if len(resolved) == 0 {
+		return ""
+	}
+
+	mode := resolved[0].Mode
+	for _, source := range resolved[1:] {
+		if source.Mode != mode {
+			return "Live TV Configured"
+		}
+	}
+
+	switch mode {
+	case "xtream":
+		return "Xtream Configured"
+	case "stremio":
+		return "Stremio Configured"
+	case "stalker":
+		return "Stalker Configured"
+	default:
+		return "M3U Configured"
 	}
 }
 

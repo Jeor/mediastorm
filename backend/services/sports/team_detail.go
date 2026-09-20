@@ -278,6 +278,9 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 	if strings.HasPrefix(game.League, "rugby-") && !strings.HasPrefix(game.League, "rugby-league-") {
 		family = "rugby"
 	}
+	if strings.HasPrefix(game.League, "rugby-league-") {
+		family = "rugby-league"
+	}
 	if family == "nfl" {
 		plays = nil
 		for _, drive := range p.Drives.Previous {
@@ -325,11 +328,12 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 		stats[team.Team.ID] = values
 	}
 	fields := map[string][][2]string{
-		"rugby":  {{"possession", "Possession %"}, {"territory", "Territory %"}, {"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"metres", "Meters run"}, {"penaltiesConceded", "Penalties conceded"}, {"lineoutsWon", "Lineouts won"}, {"scrumsWon", "Scrums won"}},
-		"soccer": {{"possessionPct", "Possession %"}, {"totalShots", "Shots"}, {"shotsOnTarget", "Shots on target"}, {"wonCorners", "Corners"}, {"foulsCommitted", "Fouls"}, {"yellowCards", "Yellow cards"}, {"redCards", "Red cards"}, {"saves", "Saves"}, {"offsides", "Offsides"}},
-		"nfl":    {{"totalYards", "Total yards"}, {"netPassingYards", "Passing yards"}, {"rushingYards", "Rushing yards"}, {"firstDowns", "First downs"}, {"thirdDownEff", "Third downs"}, {"fourthDownEff", "Fourth downs"}, {"turnovers", "Turnovers"}, {"totalPenaltiesYards", "Penalties–yards"}, {"possessionTime", "Time of possession"}},
-		"nba":    {{"fieldGoalsMade-fieldGoalsAttempted", "Field goals"}, {"fieldGoalPct", "Field goal %"}, {"threePointFieldGoalsMade-threePointFieldGoalsAttempted", "Three-pointers"}, {"freeThrowsMade-freeThrowsAttempted", "Free throws"}, {"totalRebounds", "Rebounds"}, {"assists", "Assists"}, {"steals", "Steals"}, {"blocks", "Blocks"}, {"totalTurnovers", "Turnovers"}, {"pointsInPaint", "Points in paint"}},
-		"nhl":    {{"shotsTotal", "Shots on goal"}, {"hits", "Hits"}, {"blockedShots", "Blocked shots"}, {"faceoffPercent", "Faceoff win %"}, {"powerPlayGoals", "Power-play goals"}, {"powerPlayOpportunities", "Power-play chances"}, {"penaltyMinutes", "Penalty minutes"}, {"giveaways", "Giveaways"}, {"takeaways", "Takeaways"}},
+		"rugby-league": {{"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"missedTackles", "Missed tackles"}, {"metres", "Meters run"}, {"cleanBreaks", "Clean breaks"}, {"offload", "Offloads"}, {"penaltiesConceded", "Penalties conceded"}},
+		"rugby":        {{"possession", "Possession %"}, {"territory", "Territory %"}, {"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"metres", "Meters run"}, {"penaltiesConceded", "Penalties conceded"}, {"lineoutsWon", "Lineouts won"}, {"scrumsWon", "Scrums won"}},
+		"soccer":       {{"possessionPct", "Possession %"}, {"totalShots", "Shots"}, {"shotsOnTarget", "Shots on target"}, {"wonCorners", "Corners"}, {"foulsCommitted", "Fouls"}, {"yellowCards", "Yellow cards"}, {"redCards", "Red cards"}, {"saves", "Saves"}, {"offsides", "Offsides"}},
+		"nfl":          {{"totalYards", "Total yards"}, {"netPassingYards", "Passing yards"}, {"rushingYards", "Rushing yards"}, {"firstDowns", "First downs"}, {"thirdDownEff", "Third downs"}, {"fourthDownEff", "Fourth downs"}, {"turnovers", "Turnovers"}, {"totalPenaltiesYards", "Penalties–yards"}, {"possessionTime", "Time of possession"}},
+		"nba":          {{"fieldGoalsMade-fieldGoalsAttempted", "Field goals"}, {"fieldGoalPct", "Field goal %"}, {"threePointFieldGoalsMade-threePointFieldGoalsAttempted", "Three-pointers"}, {"freeThrowsMade-freeThrowsAttempted", "Free throws"}, {"totalRebounds", "Rebounds"}, {"assists", "Assists"}, {"steals", "Steals"}, {"blocks", "Blocks"}, {"totalTurnovers", "Turnovers"}, {"pointsInPaint", "Points in paint"}},
+		"nhl":          {{"shotsTotal", "Shots on goal"}, {"hits", "Hits"}, {"blockedShots", "Blocked shots"}, {"faceoffPercent", "Faceoff win %"}, {"powerPlayGoals", "Power-play goals"}, {"powerPlayOpportunities", "Power-play chances"}, {"penaltyMinutes", "Penalty minutes"}, {"giveaways", "Giveaways"}, {"takeaways", "Takeaways"}},
 	}[family]
 	for _, field := range fields {
 		a, h := stats[game.AwayTeam.ID][field[0]], stats[game.HomeTeam.ID][field[0]]

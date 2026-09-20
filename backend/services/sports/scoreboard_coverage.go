@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"novastream/models"
 	"strconv"
+	"strings"
 )
 
 // Tennis groups matches beneath tournaments; MMA puts every bout in competitions.
@@ -56,6 +57,21 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 		}
 		match.Competitions = []espnCompetition{competition}
 		if game, ok := espnEventToGame(match, league); ok {
+			if league.Sport == "tennis" {
+				parts := []string{}
+				for _, value := range []string{event.Name, competition.Type.Text, competition.Round.DisplayName} {
+					if value = strings.TrimSpace(value); value != "" {
+						parts = append(parts, value)
+					}
+				}
+				game.EventContext = strings.Join(parts, " · ")
+				if event.Name != "" {
+					game.Title = event.Name + ": " + game.Title
+				}
+				if competition.Status.Period > 0 {
+					game.Period = "Set " + strconv.Itoa(competition.Status.Period)
+				}
+			}
 			games = append(games, game)
 		}
 	}

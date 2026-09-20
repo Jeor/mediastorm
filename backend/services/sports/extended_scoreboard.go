@@ -40,12 +40,12 @@ func (c *espnCompetitor) UnmarshalJSON(data []byte) error {
 }
 
 func applyScoreboardDetail(g *models.SportsGame, comp espnCompetition, league League) {
-	if league.Sport != "golf" && league.Sport != "cricket" && league.Sport != "tennis" && league.Sport != "rugby" {
+	if league.Sport != "golf" && league.Sport != "cricket" && league.Sport != "tennis" && league.Sport != "rugby" && league.Sport != "rugby-league" {
 		return
 	}
 	d := &models.SportsGameDetail{Source: "espn", UpdatedAt: time.Now(), Periods: []models.SportsPeriodScore{}, Plays: []models.SportsDetailPlay{}, Comparisons: []models.SportsComparison{}}
 	switch league.Sport {
-	case "rugby":
+	case "rugby", "rugby-league":
 		for i, play := range comp.Details {
 			row := models.SportsDetailPlay{ID: fmt.Sprintf("%s:%d", g.ID, i), TeamID: play.Team.ID, Title: play.Type.Text, Clock: play.Clock.DisplayValue}
 			row.Scoring = play.Type.Text == "try" || play.Type.Text == "conversion" || play.Type.Text == "penalty goal" || play.Type.Text == "drop goal"

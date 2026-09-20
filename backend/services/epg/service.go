@@ -38,11 +38,12 @@ type Service struct {
 	storageDir string
 	client     *http.Client
 
-	mu          sync.RWMutex
-	schedule    *models.EPGSchedule
-	refreshing  bool
-	lastError   string
-	restoreDone chan struct{}
+	mu                    sync.RWMutex
+	schedule              *models.EPGSchedule
+	refreshing            bool
+	lastError             string
+	discoveredSourceCount int
+	restoreDone           chan struct{}
 
 	// normalizedIDIndex/normalizedNameIndex let findProgramsByChannelMatch resolve most
 	// misses with an O(1) lookup instead of the linear scan it used to always fall back to
@@ -62,6 +63,7 @@ type epgXMLTVSource struct {
 	url      string
 	proxyURL string
 	priority int
+	inferred bool
 }
 
 type epgXtreamSource struct {
@@ -243,6 +245,11 @@ func collectXMLTVSources(settings config.Settings) []epgXMLTVSource {
 		result = appendEPGXMLTVSources(result, source.EPG, name, proxyURL, 10000+i*1000)
 	}
 
+	for i, source := range discoveryPlaylists(settings) {
+		if guide := inferPlaylistGuide(source.PlaylistURL); guide != "" {
+			result = append(result, epgXMLTVSource{name: fmt.Sprintf("inferred Xtream guide %d", i+1), url: guide, proxyURL: source.ProxyURL, priority: 20000 + i, inferred: true})
+		}
+	}
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].priority < result[j].priority
 	})
@@ -332,7 +339,7 @@ func (s *Service) GetStatus() models.EPGStatus {
 		ProgramCount: s.countPrograms(),
 		Refreshing:   s.refreshing,
 		LastError:    s.lastError,
-		SourceCount:  countConfiguredXMLTVSources(settings),
+		SourceCount:  countConfiguredXMLTVSources(settings) + s.discoveredSourceCount,
 	}
 
 	if !s.schedule.LastUpdated.IsZero() {
@@ -416,6 +423,23 @@ func (s *Service) Refresh(ctx context.Context) error {
 	}
 
 	xmltvSources := collectXMLTVSources(settings)
+	discovered := s.discoverPlaylistHeaders(ctx, settings)
+	seenGuides := make(map[string]bool)
+	for _, source := range xmltvSources {
+		seenGuides[source.url] = true
+	}
+	discoveredCount := 0
+	for _, source := range discovered {
+		if !seenGuides[source.url] {
+			xmltvSources = append(xmltvSources, source)
+			seenGuides[source.url] = true
+			discoveredCount++
+		}
+	}
+	log.Printf("[epg] guide sources resolved configuredOrInferred=%d playlistHeaders=%d", len(xmltvSources)-discoveredCount, discoveredCount)
+	s.mu.Lock()
+	s.discoveredSourceCount = discoveredCount
+	s.mu.Unlock()
 	for _, source := range xmltvSources {
 		log.Printf("[epg] fetching XMLTV source name=%q proxyConfigured=%v", source.name, strings.TrimSpace(source.proxyURL) != "")
 		beforeChannels := len(newSchedule.Channels)
@@ -423,7 +447,14 @@ func (s *Service) Refresh(ctx context.Context) error {
 		for _, programs := range newSchedule.Programs {
 			beforePrograms += len(programs)
 		}
-		if err := s.fetchXMLTVWithProxy(ctx, source.url, source.proxyURL, newSchedule); err != nil {
+		var userAgents []string
+		if source.inferred {
+			userAgents = xtreamUserAgents
+		}
+		if err := s.fetchXMLTVWithProxyAndUserAgents(ctx, source.url, source.proxyURL, newSchedule, userAgents); err != nil {
+			if source.inferred {
+				err = errors.New("discovered guide fetch failed")
+			}
 			log.Printf("[epg] failed to fetch XMLTV source name=%q: %v", source.name, err)
 			refreshErrors = append(refreshErrors, fmt.Sprintf("%s: %v", source.name, err))
 		} else if newSchedule.SourceType == "" {
@@ -568,8 +599,8 @@ func (s *Service) fetchXMLTVWithProxyAndUserAgents(ctx context.Context, xmltvURL
 		resp, err = client.Do(req)
 	}
 	if err != nil {
-		log.Printf("[epg] XMLTV HTTP request failed host=%q elapsed=%s error=%v", hostLabel, time.Since(started).Round(time.Millisecond), err)
-		return fmt.Errorf("fetch EPG: %w", err)
+		log.Printf("[epg] XMLTV HTTP request failed host=%q elapsed=%s", hostLabel, time.Since(started).Round(time.Millisecond))
+		return errors.New("EPG HTTP request failed (connection, timeout, or redirect error)")
 	}
 	defer resp.Body.Close()
 

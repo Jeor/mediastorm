@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"novastream/internal/auth"
 	"novastream/internal/requestsecurity"
 	"novastream/models"
 	"novastream/services/accounts"
@@ -49,6 +50,11 @@ type AccountResponse struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	IsMaster bool   `json:"isMaster"`
+}
+
+// VerifyPasswordRequest represents a current-account password check.
+type VerifyPasswordRequest struct {
+	Password string `json:"password"`
 }
 
 // Login authenticates a user and returns a session token.
@@ -195,6 +201,37 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// VerifyPassword re-authenticates the account associated with the current session.
+// This route must be mounted behind AccountAuthMiddleware.
+func (h *AuthHandler) VerifyPassword(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+
+	var req VerifyPasswordRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	accountID := auth.GetAccountID(r)
+	account, ok := h.accounts.Get(accountID)
+	if !ok {
+		http.Error(w, `{"error": "account not found"}`, http.StatusUnauthorized)
+		return
+	}
+	verified, err := h.accounts.Authenticate(account.Username, req.Password)
+	if err != nil || verified.ID != accountID {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "account password is incorrect"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"verified": true})
 }
 
 // Refresh extends the session expiration.

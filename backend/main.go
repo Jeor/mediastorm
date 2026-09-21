@@ -416,7 +416,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialise users: %v", err)
 	}
-	usersHandler := handlers.NewUsersHandler(userService)
+	usersHandler := handlers.NewUsersHandler(userService, accountsService)
 	var sessionsService *sessions.Service
 	if store != nil {
 		sessionsService, err = sessions.NewServiceWithStore(store, 0)

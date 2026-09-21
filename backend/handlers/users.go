@@ -58,11 +58,21 @@ var _ usersService = (*users.Service)(nil)
 
 type UsersHandler struct {
 	Service       usersService
+	accounts      accountPasswordVerifier
 	configManager *config.Manager
 }
 
-func NewUsersHandler(service usersService) *UsersHandler {
-	return &UsersHandler{Service: service}
+type accountPasswordVerifier interface {
+	Get(id string) (models.Account, bool)
+	Authenticate(username, password string) (models.Account, error)
+}
+
+func NewUsersHandler(service usersService, accountServices ...accountPasswordVerifier) *UsersHandler {
+	handler := &UsersHandler{Service: service}
+	if len(accountServices) > 0 {
+		handler.accounts = accountServices[0]
+	}
+	return handler
 }
 
 func (h *UsersHandler) SetConfigManager(configManager *config.Manager) {
@@ -149,7 +159,8 @@ func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *UsersHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name string `json:"name"`
+		Name     string `json:"name"`
+		Password string `json:"password"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -158,8 +169,23 @@ func (h *UsersHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create profile under the logged-in account
 	accountID := auth.GetAccountID(r)
+	if h.accounts == nil {
+		http.Error(w, "account authentication is unavailable", http.StatusInternalServerError)
+		return
+	}
+	account, ok := h.accounts.Get(accountID)
+	if !ok {
+		http.Error(w, "account not found", http.StatusUnauthorized)
+		return
+	}
+	verified, err := h.accounts.Authenticate(account.Username, body.Password)
+	if err != nil || verified.ID != accountID {
+		http.Error(w, "invalid account password", http.StatusUnauthorized)
+		return
+	}
+
+	// Create the profile only after re-authenticating the logged-in account.
 	user, err := h.Service.CreateForAccount(accountID, body.Name)
 	if err != nil {
 		status := http.StatusInternalServerError

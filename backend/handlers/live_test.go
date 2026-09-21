@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -325,6 +326,79 @@ http://stream.example/sports`))
 	}
 	if len(resp.Sources) != 2 {
 		t.Fatalf("sources length = %d, want 2", len(resp.Sources))
+	}
+}
+
+func TestGetChannelsReturnsHealthySourcesWhenXtreamFails(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/player_api.php" {
+			http.Error(w, "provider unavailable", http.StatusBadGateway)
+			return
+		}
+		if r.URL.Path == "/healthy.m3u" {
+			_, _ = w.Write([]byte("#EXTM3U\n#EXTINF:-1 group-title=\"News\",Healthy Channel\nhttp://stream.example/healthy\n"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer provider.Close()
+
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Live: config.LiveSettings{Sources: []config.LivePlaylistSource{
+		{ID: "failed", Name: "Failed", Mode: "xtream", XtreamHost: provider.URL, XtreamUsername: "user", XtreamPassword: "pass"},
+		{ID: "healthy", Name: "Healthy", Mode: "m3u", PlaylistURL: provider.URL + "/healthy.m3u"},
+	}}}); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	h := NewLiveHandler(provider.Client(), false, "", 24, 0, 0, false, mgr, nil)
+
+	for _, test := range []struct {
+		name       string
+		query      string
+		wantStatus int
+		wantCount  int
+	}{
+		{name: "combined", wantStatus: http.StatusOK, wantCount: 1},
+		{name: "failed source", query: "?sourceId=failed", wantStatus: http.StatusBadGateway},
+		{name: "healthy source", query: "?sourceId=healthy", wantStatus: http.StatusOK, wantCount: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			h.GetChannels(rec, httptest.NewRequest(http.MethodGet, "/live/channels"+test.query, nil))
+			if rec.Code != test.wantStatus {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, test.wantStatus, rec.Body.String())
+			}
+			if rec.Code != http.StatusOK {
+				return
+			}
+			var response LiveChannelsResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if len(response.Channels) != test.wantCount || response.Channels[0].SourceID != "healthy" {
+				t.Fatalf("channels = %+v, want healthy channel", response.Channels)
+			}
+		})
+	}
+}
+
+func TestGetChannelsReturnsErrorWhenAllSourcesFail(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "provider unavailable", http.StatusBadGateway)
+	}))
+	defer provider.Close()
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Live: config.LiveSettings{Sources: []config.LivePlaylistSource{
+		{ID: "first", Mode: "m3u", PlaylistURL: provider.URL + "/first.m3u"},
+		{ID: "second", Mode: "m3u", PlaylistURL: provider.URL + "/second.m3u"},
+	}}}); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	h := NewLiveHandler(provider.Client(), false, "", 24, 0, 0, false, mgr, nil)
+	rec := httptest.NewRecorder()
+	h.GetChannels(rec, httptest.NewRequest(http.MethodGet, "/live/channels", nil))
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -920,6 +994,108 @@ func TestFetchXtreamChannelsSendsUserAgent(t *testing.T) {
 	}
 	if streamUA != liveStreamUserAgent {
 		t.Fatalf("streams User-Agent = %q, want %q", streamUA, liveStreamUserAgent)
+	}
+}
+
+func TestFetchXtreamChannelsCachesFailureAndRetriesAfterCooldown(t *testing.T) {
+	var failing atomic.Bool
+	failing.Store(true)
+	var categoryRequests atomic.Int32
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("action") {
+		case "get_live_categories":
+			categoryRequests.Add(1)
+			if failing.Load() {
+				http.Error(w, "unavailable", http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write([]byte(`[{"category_id":"1","category_name":"News"}]`))
+		case "get_live_streams":
+			_, _ = w.Write([]byte(`[{"stream_id":10,"name":"Channel One","stream_type":"live","category_id":"1"}]`))
+		}
+	}))
+	defer provider.Close()
+	h := NewLiveHandler(provider.Client(), false, "", 24, 0, 0, false, config.NewManager(filepath.Join(t.TempDir(), "settings.json")), nil)
+	fetch := func() ([]LiveChannel, error) {
+		return h.fetchXtreamChannels(context.Background(), provider.URL, "user", "pass", "")
+	}
+	if _, err := fetch(); err == nil {
+		t.Fatal("first fetch should fail")
+	}
+	if _, err := fetch(); err == nil {
+		t.Fatal("cached failure should fail")
+	}
+	if got := categoryRequests.Load(); got != int32(len(xtreamUserAgents)) {
+		t.Fatalf("category requests during cooldown = %d, want %d", got, len(xtreamUserAgents))
+	}
+
+	failing.Store(false)
+	h.xtreamMu.Lock()
+	for key, entry := range h.xtreamCache {
+		entry.retryAfter = time.Now().Add(-time.Second)
+		h.xtreamCache[key] = entry
+	}
+	h.xtreamMu.Unlock()
+	channels, err := fetch()
+	if err != nil || len(channels) != 1 {
+		t.Fatalf("retry after cooldown: channels=%+v error=%v", channels, err)
+	}
+	if got := categoryRequests.Load(); got != int32(len(xtreamUserAgents)+1) {
+		t.Fatalf("category requests after recovery = %d, want %d", got, len(xtreamUserAgents)+1)
+	}
+}
+
+func TestFetchXtreamChannelsServesStaleCatalogDuringFailure(t *testing.T) {
+	var failing atomic.Bool
+	var categoryRequests atomic.Int32
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("action") {
+		case "get_live_categories":
+			categoryRequests.Add(1)
+			if failing.Load() {
+				http.Error(w, "unavailable", http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write([]byte(`[{"category_id":"1","category_name":"News"}]`))
+		case "get_live_streams":
+			_, _ = w.Write([]byte(`[{"stream_id":10,"name":"Channel One","stream_type":"live","category_id":"1"}]`))
+		}
+	}))
+	defer provider.Close()
+	h := NewLiveHandler(provider.Client(), false, "", 24, 0, 0, false, config.NewManager(filepath.Join(t.TempDir(), "settings.json")), nil)
+	fetch := func() ([]LiveChannel, error) {
+		return h.fetchXtreamChannels(context.Background(), provider.URL, "user", "pass", "")
+	}
+	if _, err := fetch(); err != nil {
+		t.Fatalf("initial fetch: %v", err)
+	}
+	h.xtreamMu.Lock()
+	for key, entry := range h.xtreamCache {
+		entry.expiresAt = time.Now().Add(-time.Second)
+		h.xtreamCache[key] = entry
+	}
+	h.xtreamMu.Unlock()
+	failing.Store(true)
+	for range 2 {
+		channels, err := fetch()
+		if err != nil || len(channels) != 1 || channels[0].Name != "Channel One" {
+			t.Fatalf("stale catalog: channels=%+v error=%v", channels, err)
+		}
+	}
+	if got := categoryRequests.Load(); got != int32(1+len(xtreamUserAgents)) {
+		t.Fatalf("category requests with stale cache = %d, want %d", got, 1+len(xtreamUserAgents))
+	}
+}
+
+func TestXtreamRequestErrorOmitsCredentials(t *testing.T) {
+	err := &url.Error{
+		Op:  "Get",
+		URL: "http://provider.example/player_api.php?username=user&password=secret",
+		Err: fmt.Errorf("dial tcp: i/o timeout"),
+	}
+	got := xtreamRequestError(err).Error()
+	if strings.Contains(got, "secret") || !strings.Contains(got, "i/o timeout") {
+		t.Fatalf("sanitized error = %q", got)
 	}
 }
 

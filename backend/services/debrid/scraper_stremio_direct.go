@@ -182,6 +182,7 @@ var (
 	directTechLine   = regexp.MustCompile(`(?mi)^\s*🎞️\s*(.+?)\s*$`)
 	directSizeLine   = regexp.MustCompile(`(?mi)^\s*💾\s*([\d.,]+)\s*([KMGTP]?B)\s*$`)
 	directExt        = regexp.MustCompile(`(?i)\.(mkv|mp4|m4v|avi|webm|ts|m2ts)`)
+	directTagPrefix  = regexp.MustCompile(`^(?:\[[^\]]+\]\s*)+`)
 )
 
 func (s *DirectStremioScraper) resultFromEntry(entry directStremioEntry, index int, mediaType, streamID, imdbID, metaName string) (ScrapeResult, bool) {
@@ -196,7 +197,10 @@ func (s *DirectStremioScraper) resultFromEntry(entry directStremioEntry, index i
 	streamURL = streamheaders.Attach(streamURL, headers)
 	filename := normalizeDirectStremioFilename(entry.BehaviorHints.Filename)
 	if filename == "" {
-		filename = extractFilenameFromURL(entry.URL)
+		urlFilename := extractFilenameFromURL(entry.URL)
+		if directExt.MatchString(urlFilename) {
+			filename = normalizeDirectStremioFilename(urlFilename)
+		}
 	}
 	if filename == "" {
 		filename = directStremioDisplayTitle(entry.Description)
@@ -260,7 +264,8 @@ func normalizeDirectStremioFilename(value string) string {
 
 func directStremioDisplayTitle(description string) string {
 	line := strings.TrimSpace(strings.Split(description, "\n")[0])
-	return strings.TrimSpace(strings.TrimLeft(line, "🍿📡🎬✎☁︎ "))
+	line = strings.TrimSpace(strings.TrimLeft(line, "🍿📡🎬✎☁︎ "))
+	return strings.TrimSpace(directTagPrefix.ReplaceAllString(line, ""))
 }
 
 func directStremioMatch(pattern *regexp.Regexp, value string) string {

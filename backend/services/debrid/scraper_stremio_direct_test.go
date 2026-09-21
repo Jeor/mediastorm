@@ -111,3 +111,22 @@ func TestDirectStremioSearchSkipsDownloadOnlyEntries(t *testing.T) {
 		t.Fatalf("remaining URL = %q", results[0].TorrentURL)
 	}
 }
+
+func TestDirectStremioSearchUsesDescriptionForOpaqueDirectURL(t *testing.T) {
+	body := `{"streams":[{"name":"4KHDHub 1080p","description":"[PixelDrain] [💾 6.3 GB] The Matrix (1999) REMASTERED 1080p 10bit BluRay HEVC x265.mkv\nHindi\npixeldrain | 4KHDHub","url":"https://pixeldrain.dev/api/file/tuFC27VB","behaviorHints":{"videoSize":6762161523,"notWebReady":true}}]}`
+	scraper := NewDirectStremioScraper("https://addon.example/configured/manifest.json", "HDHub", directStremioTestClient(t, body))
+	results, err := scraper.Search(context.Background(), SearchRequest{
+		IMDBID: "tt0133093",
+		Parsed: ParsedQuery{Title: "The Matrix", MediaType: MediaTypeMovie},
+	})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Search() returned %d results", len(results))
+	}
+	want := "The Matrix (1999) REMASTERED 1080p 10bit BluRay HEVC x265.mkv"
+	if results[0].Title != want {
+		t.Fatalf("Title = %q, want %q", results[0].Title, want)
+	}
+}

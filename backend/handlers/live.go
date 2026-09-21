@@ -56,6 +56,8 @@ const (
 // browser UA as a fallback for providers that whitelist only browsers.
 var xtreamUserAgents = []string{liveStreamUserAgent, liveBrowserUserAgent}
 
+var liveStreamRequestSequence uint64
+
 // LiveChannel represents a parsed channel from an M3U playlist.
 type LiveChannel struct {
 	ID          string `json:"id"`
@@ -467,10 +469,17 @@ func (h *LiveHandler) FetchPlaylist(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
+	requestID := atomic.AddUint64(&liveStreamRequestSequence, 1)
+	requestStartedAt := time.Now()
+	requestTarget := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("target")))
+	requestSourceID := strings.TrimSpace(r.URL.Query().Get("liveSourceId"))
+	log.Printf("[live-request] id=%d start method=%s target=%q source=%q range=%q", requestID, r.Method, requestTarget, requestSourceID, r.Header.Get("Range"))
+
 	if r.Method == http.MethodHead {
 		w.Header().Set("Content-Type", "video/mp4")
 		w.Header().Set("Accept-Ranges", "none")
 		w.WriteHeader(http.StatusOK)
+		log.Printf("[live-request] id=%d end mode=head status=200 elapsed=%s", requestID, time.Since(requestStartedAt).Round(time.Millisecond))
 		return
 	}
 
@@ -485,9 +494,11 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 
 	targetURL, err := h.parseRemoteURL(r.Context(), r.URL.Query().Get("url"))
 	if err != nil {
+		log.Printf("[live-request] id=%d reject reason=invalid-url elapsed=%s", requestID, time.Since(requestStartedAt).Round(time.Millisecond))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	log.Printf("[live-request] id=%d resolved upstream=%s", requestID, requestsecurity.URLForLog(targetURL.String()))
 
 	ctx, cancel := context.WithTimeout(r.Context(), liveStreamTimeout)
 	defer cancel()
@@ -515,7 +526,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !isWebLiveStreamRequest(r) {
-		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL)
+		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL, requestID, requestStartedAt)
 		return
 	}
 
@@ -627,9 +638,11 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := cmd.Start(); err != nil {
+		log.Printf("[live-request] id=%d ffmpeg-start-failed error=%v elapsed=%s", requestID, err, time.Since(requestStartedAt).Round(time.Millisecond))
 		http.Error(w, "failed to start transmuxer", http.StatusBadGateway)
 		return
 	}
+	log.Printf("[live-request] id=%d ffmpeg-start pid=%d mode=transmux", requestID, cmd.Process.Pid)
 
 	// Capture the first chunk of ffmpeg stderr so failures are diagnosable; at
 	// loglevel warning this stays small. Drain the rest to avoid blocking.
@@ -655,10 +668,15 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	flusher, _ := w.(http.Flusher)
 	buf := make([]byte, 256*1024)
 	var total int64
+	endReason := "ffmpeg-eof"
+	defer func() {
+		log.Printf("[live-request] id=%d end mode=transmux reason=%s bytes=%d elapsed=%s", requestID, endReason, total, time.Since(requestStartedAt).Round(time.Millisecond))
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
+			endReason = "request-context-done"
 			_ = cmd.Process.Kill()
 			return
 		default:
@@ -667,6 +685,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		n, readErr := stdout.Read(buf)
 		if n > 0 {
 			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				endReason = "client-write-error"
 				_ = cmd.Process.Kill()
 				if !errors.Is(writeErr, context.Canceled) && !errors.Is(writeErr, io.EOF) && !isConnectionError(writeErr) {
 					log.Printf("[live] writer error for %q: %v", targetURL.String(), writeErr)
@@ -685,6 +704,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 			if errors.Is(readErr, io.EOF) {
 				break
 			}
+			endReason = "ffmpeg-read-error"
 			_ = cmd.Process.Kill()
 			log.Printf("[live] ffmpeg read error for %q: %v", targetURL.String(), readErr)
 			return
@@ -692,6 +712,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := cmd.Wait(); err != nil {
+		endReason = "ffmpeg-exit-error"
 		if !errors.Is(err, context.Canceled) && !strings.Contains(strings.ToLower(err.Error()), "broken pipe") {
 			<-stderrDone
 			detail := strings.TrimSpace(string(ffmpegStderr))
@@ -704,7 +725,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.Request, ctx context.Context, targetURL *url.URL, proxyURL string) {
+func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.Request, ctx context.Context, targetURL *url.URL, proxyURL string, requestID uint64, requestStartedAt time.Time) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 	if err != nil {
 		http.Error(w, "failed to prepare live stream", http.StatusInternalServerError)
@@ -714,6 +735,7 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 
 	resp, err := h.liveStreamHTTPClient(proxyURL).Do(req)
 	if err != nil {
+		log.Printf("[live-request] id=%d proxy-open-failed error=%v elapsed=%s", requestID, err, time.Since(requestStartedAt).Round(time.Millisecond))
 		log.Printf("[live] proxied stream request failed for %q via %q: %v", targetURL.String(), proxyURL, err)
 		http.Error(w, "failed to open proxied live stream", http.StatusBadGateway)
 		return
@@ -721,6 +743,7 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= http.StatusBadRequest {
+		log.Printf("[live-request] id=%d proxy-upstream-status status=%d elapsed=%s", requestID, resp.StatusCode, time.Since(requestStartedAt).Round(time.Millisecond))
 		log.Printf("[live] proxied stream returned status %d for %q via %q", resp.StatusCode, targetURL.String(), proxyURL)
 		http.Error(w, fmt.Sprintf("live stream returned status %d", resp.StatusCode), http.StatusBadGateway)
 		return
@@ -743,10 +766,15 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 
 	buf := make([]byte, 256*1024)
 	var total int64
+	endReason := "upstream-eof"
+	defer func() {
+		log.Printf("[live-request] id=%d end mode=direct-proxy reason=%s bytes=%d elapsed=%s", requestID, endReason, total, time.Since(requestStartedAt).Round(time.Millisecond))
+	}()
 	for {
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
 			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				endReason = "client-write-error"
 				if !errors.Is(writeErr, context.Canceled) && !errors.Is(writeErr, io.EOF) && !isConnectionError(writeErr) {
 					log.Printf("[live] proxied stream writer error for %q: %v", targetURL.String(), writeErr)
 				}
@@ -760,6 +788,9 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 			}
 		}
 		if readErr != nil {
+			if !errors.Is(readErr, io.EOF) {
+				endReason = "upstream-read-error"
+			}
 			if !errors.Is(readErr, io.EOF) && !errors.Is(readErr, context.Canceled) {
 				log.Printf("[live] proxied stream reader error for %q: %v", targetURL.String(), readErr)
 			}

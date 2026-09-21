@@ -603,11 +603,11 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 							ErrorMessage: "stream returned 404 (not found)",
 						}, nil
 					}
-					// 405 = Method Not Allowed means HEAD isn't supported but GET may work fine
-					// Fall through to ffprobe check instead of treating as uncached
-					// Don't check content-length for 405 - it's the error body size, not the file size
-					if resp.StatusCode == http.StatusMethodNotAllowed {
-						log.Printf("[debrid-health] pre-resolved stream %s: HEAD not supported (405), falling through to ffprobe", result.Title)
+					// Some direct media hosts reject HEAD with 403 or 405 while serving
+					// ranged GET requests normally. Verify a small range before rejecting
+					// the stream; don't treat the HEAD error body's size as media size.
+					if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusMethodNotAllowed {
+						log.Printf("[debrid-health] pre-resolved stream %s: HEAD returned %d, trying ranged GET", result.Title, resp.StatusCode)
 						placeholder, getStatus, getFinalURL, probeErr := probePreResolvedPlaceholderRedirect(ctx, encodedStreamURL, requestHeaders, healthCheckTimeout)
 						if probeErr != nil {
 							log.Printf("[debrid-health] placeholder redirect probe failed for pre-resolved stream %s: %v", result.Title, probeErr)

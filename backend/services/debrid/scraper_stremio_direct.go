@@ -185,6 +185,9 @@ var (
 )
 
 func (s *DirectStremioScraper) resultFromEntry(entry directStremioEntry, index int, mediaType, streamID, imdbID, metaName string) (ScrapeResult, bool) {
+	if directStremioDownloadOnly(entry) {
+		return ScrapeResult{}, false
+	}
 	streamURL := strings.TrimSpace(entry.URL)
 	if streamURL == "" || IsKnownPlaceholderURL(streamURL) {
 		return ScrapeResult{}, false
@@ -240,6 +243,11 @@ func (s *DirectStremioScraper) resultFromEntry(entry directStremioEntry, index i
 		Attributes:  attrs,
 		ServiceType: models.ServiceTypeDebrid,
 	}, true
+}
+
+func directStremioDownloadOnly(entry directStremioEntry) bool {
+	label := strings.Join([]string{entry.Name, entry.Title, entry.Description}, "\n")
+	return strings.Contains(strings.ToLower(label), "download only")
 }
 
 func normalizeDirectStremioFilename(value string) string {

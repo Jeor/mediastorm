@@ -90,3 +90,24 @@ func TestRefreshDirectStremioCandidateReplacesSignedURL(t *testing.T) {
 		t.Fatalf("SizeBytes = %d", refreshed.SizeBytes)
 	}
 }
+
+func TestDirectStremioSearchSkipsDownloadOnlyEntries(t *testing.T) {
+	body := `{"streams":[
+		{"name":"4KHDHub 4K","description":"[10Gbps Download Only] [💾 42.16 GB] The Matrix 2160p.mkv","url":"https://download.example/file.mkv","behaviorHints":{"videoSize":45268970000,"notWebReady":true}},
+		{"name":"4KHDHub 1080p","description":"[PixelDrain] [💾 6.3 GB] The Matrix 1080p.mkv","url":"https://stream.example/file.mkv","behaviorHints":{"videoSize":6762161523,"notWebReady":true}}
+	]}`
+	scraper := NewDirectStremioScraper("https://addon.example/configured/manifest.json", "HDHub", directStremioTestClient(t, body))
+	results, err := scraper.Search(context.Background(), SearchRequest{
+		IMDBID: "tt0133093",
+		Parsed: ParsedQuery{Title: "The Matrix", MediaType: MediaTypeMovie},
+	})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Search() returned %d results, want only the streamable entry", len(results))
+	}
+	if results[0].TorrentURL != "https://stream.example/file.mkv" {
+		t.Fatalf("remaining URL = %q", results[0].TorrentURL)
+	}
+}

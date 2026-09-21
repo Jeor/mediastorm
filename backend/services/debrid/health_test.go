@@ -635,3 +635,42 @@ func TestPreResolvedHead405RejectsElfHostedSlatePlaylist(t *testing.T) {
 		t.Fatalf("unexpected error message: %q", health.ErrorMessage)
 	}
 }
+
+func TestPreResolvedHead403FallsBackToRangeGet(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodHead:
+			http.Error(w, "HEAD forbidden", http.StatusForbidden)
+		case http.MethodGet:
+			if got := r.Header.Get("Range"); got != "bytes=0-4095" {
+				t.Fatalf("Range header = %q, want bytes=0-4095", got)
+			}
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Range", "bytes 0-4095/4585111806")
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write(make([]byte, 4096))
+		default:
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+	}))
+	defer server.Close()
+
+	hs := NewHealthService(config.NewManager(t.TempDir() + "/settings.json"))
+	health, err := hs.CheckHealth(context.Background(), models.NZBResult{
+		Title:       "HDHub FSLv2 stream",
+		Link:        server.URL + "/video.mkv",
+		ServiceType: models.ServiceTypeDebrid,
+		Attributes: map[string]string{
+			"preresolved": "true",
+			"stream_url":  server.URL + "/video.mkv",
+			"scraper":     directStremioType,
+			"tracker":     "FSLv2",
+		},
+	}, false)
+	if err != nil {
+		t.Fatalf("CheckHealth returned error: %v", err)
+	}
+	if !health.Healthy || !health.Cached {
+		t.Fatalf("expected ranged GET to verify stream, got %#v", health)
+	}
+}

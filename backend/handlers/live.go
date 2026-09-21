@@ -1078,6 +1078,7 @@ func parseM3UPlaylist(contents string) []LiveChannel {
 
 type resolvedM3USource struct {
 	ID                  string
+	ConfigIndex         int
 	Name                string
 	Mode                string
 	PlaylistURL         string
@@ -1152,6 +1153,7 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 		}
 		sources = append(sources, resolvedM3USource{
 			ID:                  id,
+			ConfigIndex:         i,
 			Name:                name,
 			Mode:                mode,
 			PlaylistURL:         strings.TrimSpace(candidate.PlaylistURL),
@@ -1316,6 +1318,21 @@ func selectM3USources(sources []resolvedM3USource, sourceID string) []resolvedM3
 	for _, src := range sources {
 		if src.ID == sourceID {
 			return []resolvedM3USource{src}
+		}
+	}
+	return nil
+}
+
+// selectLiveSourceByConfigIndex preserves the settings list position even when
+// disabled or incomplete sources are omitted from the resolved source list.
+func selectLiveSourceByConfigIndex(sources []resolvedM3USource, rawIndex string) []resolvedM3USource {
+	index, err := strconv.Atoi(rawIndex)
+	if err != nil || index < 0 {
+		return nil
+	}
+	for _, source := range sources {
+		if source.ConfigIndex == index {
+			return []resolvedM3USource{source}
 		}
 	}
 	return nil
@@ -2347,6 +2364,9 @@ func (h *LiveHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selectedSources := selectM3USources(sources, r.URL.Query().Get("sourceId"))
+	if _, hasIndex := r.URL.Query()["sourceIndex"]; hasIndex {
+		selectedSources = selectLiveSourceByConfigIndex(sources, r.URL.Query().Get("sourceIndex"))
+	}
 	if len(selectedSources) == 0 {
 		http.Error(w, `{"error":"unknown source"}`, http.StatusBadRequest)
 		return

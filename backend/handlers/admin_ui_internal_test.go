@@ -275,6 +275,25 @@ func TestAdminSettingsProfileOverrideRefreshPublishesAtomicSnapshot(t *testing.T
 	}
 }
 
+func TestAdminSettingsLiveCategoryPickerScopesSourceAndProfile(t *testing.T) {
+	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
+	if err != nil {
+		t.Fatalf("read settings template: %v", err)
+	}
+	source := string(templateBytes)
+	for _, marker := range []string{
+		"function liveCategorySourceIndex(sectionPath)",
+		"params.set('sourceIndex', String(sourceIndex))",
+		"params.set('profileId', selectedUserId)",
+		"hasProfileLiveSourceOverride()",
+		"sources.slice(0, index).filter(allowedForProfile).length",
+	} {
+		if !strings.Contains(source, marker) {
+			t.Fatalf("settings template missing scoped category picker marker %q", marker)
+		}
+	}
+}
+
 func TestAdminSettingsSensitiveFieldsAllowOnlyOneReveal(t *testing.T) {
 	templateBytes, err := adminTemplates.ReadFile("admin_templates/settings.html")
 	if err != nil {

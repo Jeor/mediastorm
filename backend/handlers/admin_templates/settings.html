@@ -6829,6 +6829,23 @@
         return value;
     }
 
+    function liveCategorySourceIndex(sectionPath) {
+        const match = /^(live|liveTV)\.sources\.(\d+)$/.exec(sectionPath);
+        if (!match) return null;
+        const index = Number(match[2]);
+        if (match[1] !== 'liveTV' || !selectedUserId || hasProfileLiveSourceOverride()) return index;
+
+        // The backend removes global sources unavailable to this profile before
+        // assigning source indexes. Match that filtered list when inheriting it.
+        const sources = getValue('liveTV.sources') || [];
+        const allowedForProfile = source => {
+            const allowed = source?.allowedProfiles || [];
+            return allowed.length === 0 || allowed.some(id => String(id).trim().toLowerCase() === selectedUserId.trim().toLowerCase());
+        };
+        if (!allowedForProfile(sources[index])) return -1;
+        return sources.slice(0, index).filter(allowedForProfile).length;
+    }
+
     async function openMultiselectModal(sectionPath, fieldKey, endpoint, label, optionsFrom, ordered) {
         multiselectState.basePath = sectionPath;
         multiselectState.fieldKey = fieldKey;
@@ -6896,8 +6913,14 @@
                 }));
             renderMultiselectOptions();
         } else if (endpoint) {
+            const params = new URLSearchParams();
+            if (endpoint === '/live/categories') {
+                const sourceIndex = liveCategorySourceIndex(sectionPath);
+                if (sourceIndex !== null) params.set('sourceIndex', String(sourceIndex));
+                if (selectedUserId && sectionPath.startsWith('liveTV.')) params.set('profileId', selectedUserId);
+            }
+            const apiUrl = basePath + '/api' + endpoint + (params.size ? '?' + params.toString() : '');
             try {
-                const apiUrl = basePath + '/api' + endpoint;  // basePath is the global admin path ("/admin")
                 const response = await fetch(apiUrl, { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to fetch options: ' + response.status);
                 const data = await response.json();

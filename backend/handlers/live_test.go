@@ -923,6 +923,75 @@ func TestFetchXtreamChannelsSendsUserAgent(t *testing.T) {
 	}
 }
 
+func TestGetCategoriesSourceIndexIsolatesOtherSources(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("action") {
+		case "get_live_categories":
+			_, _ = w.Write([]byte(`[{"category_id":"1","category_name":"Xtream News"}]`))
+		case "get_live_streams":
+			_, _ = w.Write([]byte(`[{"stream_id":10,"name":"Channel One","stream_type":"live","category_id":"1"}]`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer provider.Close()
+
+	var otherFails atomic.Bool
+	otherFails.Store(true)
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if otherFails.Load() {
+			http.Error(w, "addon unavailable", http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write([]byte("#EXTM3U\n#EXTINF:-1 group-title=\"Other Addon\",Other Channel\nhttp://example.com/stream\n"))
+	}))
+	defer other.Close()
+
+	disabled := false
+	mgr := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := mgr.Save(config.Settings{Live: config.LiveSettings{Sources: []config.LivePlaylistSource{
+		{Mode: "m3u", PlaylistURL: other.URL, Enabled: &disabled},
+		{Mode: "xtream", XtreamHost: provider.URL, XtreamUsername: "user", XtreamPassword: "pass"},
+		{Mode: "m3u", PlaylistURL: other.URL},
+	}}}); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+	h := NewLiveHandler(provider.Client(), false, "", 24, 0, 0, false, mgr, nil)
+	get := func(query string) (int, CategoriesResponse) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.GetCategories(rec, httptest.NewRequest(http.MethodGet, "/live/categories"+query, nil))
+		var response CategoriesResponse
+		if rec.Code == http.StatusOK {
+			if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+				t.Fatalf("decode categories: %v", err)
+			}
+		}
+		return rec.Code, response
+	}
+
+	if status, _ := get(""); status != http.StatusBadGateway {
+		t.Fatalf("unscoped status = %d, want 502 from other source", status)
+	}
+	status, response := get("?sourceIndex=1")
+	if status != http.StatusOK || len(response.Categories) != 1 || response.Categories[0].Name != "Xtream News" {
+		t.Fatalf("scoped status = %d, categories = %+v, want only Xtream News", status, response.Categories)
+	}
+	if status, _ := get("?sourceIndex=0"); status != http.StatusBadRequest {
+		t.Fatalf("disabled source status = %d, want 400", status)
+	}
+
+	otherFails.Store(false)
+	status, response = get("")
+	if status != http.StatusOK || len(response.Categories) != 2 {
+		t.Fatalf("unscoped status = %d, categories = %+v, want merged categories", status, response.Categories)
+	}
+	status, response = get("?sourceIndex=1")
+	if status != http.StatusOK || len(response.Categories) != 1 || response.Categories[0].Name != "Xtream News" {
+		t.Fatalf("scoped status = %d, categories = %+v after other recovers", status, response.Categories)
+	}
+}
+
 func TestFetchXtreamChannelsCachesCatalog(t *testing.T) {
 	var requests atomic.Int32
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

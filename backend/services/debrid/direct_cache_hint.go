@@ -19,7 +19,7 @@ func annotateDirectStreamCacheHint(attributes map[string]string) {
 
 	scraper := strings.ToLower(strings.TrimSpace(attributes["scraper"]))
 	switch scraper {
-	case "comet", "mediafusion", "aiostreams":
+	case "comet", "mediafusion", "aiostreams", directStremioType:
 	default:
 		return
 	}

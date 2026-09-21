@@ -153,6 +153,13 @@ func buildScrapersFromSettings(settings config.Settings) []Scraper {
 			passthroughFormat := scraperCfg.Config["passthroughFormat"] == "true"
 			log.Printf("[debrid] Initializing AIOStreams scraper: %s at %s (passthrough=%v)", scraperCfg.Name, requestsecurity.URLForLog(scraperCfg.URL), passthroughFormat)
 			scrapers = append(scrapers, NewAIOStreamsScraper(scraperCfg.URL, scraperCfg.Name, passthroughFormat, httpClient))
+		case directStremioType:
+			if scraperCfg.URL == "" {
+				log.Printf("[debrid] Skipping direct Stremio scraper %s: missing URL", scraperCfg.Name)
+				continue
+			}
+			log.Printf("[debrid] Initializing direct Stremio scraper: %s at %s", scraperCfg.Name, requestsecurity.URLForLog(scraperCfg.URL))
+			scrapers = append(scrapers, NewDirectStremioScraper(scraperCfg.URL, scraperCfg.Name, httpClient))
 		case "nyaa":
 			baseURL := scraperCfg.URL
 			if baseURL == "" {
@@ -705,7 +712,7 @@ func hasActiveDirectStreamScrapers(scrapers []config.TorrentScraperConfig) bool 
 			continue
 		}
 		switch strings.ToLower(strings.TrimSpace(scraper.Type)) {
-		case "aiostreams", "comet", "mediafusion", "internetarchive":
+		case "aiostreams", directStremioType, "comet", "mediafusion", "internetarchive":
 			return true
 		}
 	}

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"novastream/config"
+	"novastream/internal/streamheaders"
 	"novastream/services/credits"
 	"novastream/services/playback"
 	"novastream/services/streaming"
@@ -131,6 +132,43 @@ func TestProxyExternalURLUsesConfiguredUsenetWebDAVAuth(t *testing.T) {
 	}
 	if !sawAuth {
 		t.Fatal("upstream did not receive auth")
+	}
+}
+
+func TestProxyExternalURLAppliesSafeStremioHeaders(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Referer"); got != "https://source.example/watch" {
+			t.Errorf("Referer = %q", got)
+		}
+		if got := r.Header.Get("User-Agent"); got != "PenguPlayer" {
+			t.Errorf("User-Agent = %q", got)
+		}
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("Authorization was forwarded: %q", got)
+		}
+		w.Header().Set("Content-Type", "video/x-matroska")
+		_, _ = io.WriteString(w, "video")
+	}))
+	defer upstream.Close()
+
+	handler := NewVideoHandler(false, "", "")
+	settings := config.DefaultSettings()
+	settings.Server.AllowedPrivateMediaOrigins = []string{upstream.URL}
+	handler.SetConfigManager(staticVideoConfigProvider{settings: settings})
+	decorated := streamheaders.Attach(upstream.URL+"/movie.mkv", map[string]string{
+		"Referer":       "https://source.example/watch",
+		"User-Agent":    "PenguPlayer",
+		"Authorization": "Bearer forbidden",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/video/stream?path=x", nil)
+	rec := httptest.NewRecorder()
+	handled, err := handler.proxyExternalURL(rec, req, decorated)
+	if err != nil {
+		t.Fatalf("proxyExternalURL: %v", err)
+	}
+	if !handled || rec.Code != http.StatusOK {
+		t.Fatalf("handled = %v status = %d", handled, rec.Code)
 	}
 }
 

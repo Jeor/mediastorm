@@ -593,6 +593,9 @@ func redactSettings(s *config.Settings) {
 	// Torrent scrapers (Prowlarr/Jackett)
 	for i := range s.TorrentScrapers {
 		mask(&s.TorrentScrapers[i].APIKey)
+		if strings.EqualFold(strings.TrimSpace(s.TorrentScrapers[i].Type), "stremio-direct") {
+			mask(&s.TorrentScrapers[i].URL)
+		}
 	}
 
 	// Metadata API keys
@@ -758,6 +761,9 @@ func preserveRedactedFields(incoming *config.Settings, existing *config.Settings
 	for i := range incoming.TorrentScrapers {
 		if i < len(existing.TorrentScrapers) {
 			restore(&incoming.TorrentScrapers[i].APIKey, existing.TorrentScrapers[i].APIKey)
+			if strings.EqualFold(strings.TrimSpace(incoming.TorrentScrapers[i].Type), "stremio-direct") {
+				restore(&incoming.TorrentScrapers[i].URL, existing.TorrentScrapers[i].URL)
+			}
 		}
 	}
 

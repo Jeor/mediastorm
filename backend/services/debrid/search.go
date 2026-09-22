@@ -61,6 +61,7 @@ type SearchOptions struct {
 	IsDaily               bool                        // True for daily shows (talk shows, news) - enables date-based matching
 	TargetAirDate         string                      // For daily shows: air date in YYYY-MM-DD format
 	EpisodeAirYear        int                         // Year the target episode aired (for year filter tolerance)
+	SeasonPremiereYear    int                         // Premiere year of the requested season only.
 	EpisodeReleased       bool                        // True only when metadata confirms the target episode has aired
 	SkipFilter            bool                        // When true, skip result filtering (used by SearchTest)
 }
@@ -667,6 +668,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 			ExpectedTitle:         expectedTitle,
 			ExpectedYear:          parsed.Year,
 			EpisodeAirYear:        opts.EpisodeAirYear,
+			SeasonPremiereYear:    opts.SeasonPremiereYear,
 			MediaType:             parsed.MediaType,
 			MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 			MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),

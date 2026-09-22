@@ -944,7 +944,8 @@ func episodeYearWithinTolerance(candidate, expected int) bool {
 
 // applyEpisodeYearPriority activates series-year precedence only when an
 // explicit, conflicting year remains in the passed result set. A target
-// episode's air year is valid and must not be treated as a reboot conflict.
+// episode's air year, season premiere year, and verified mapped identity year
+// are valid and must not be treated as reboot conflicts.
 func applyEpisodeYearPriority(results []models.NZBResult, seriesYear, episodeAirYear int) {
 	for i := range results {
 		delete(results[i].Attributes, "episodeYearPriority")
@@ -955,6 +956,9 @@ func applyEpisodeYearPriority(results []models.NZBResult, seriesYear, episodeAir
 
 	hasConflict := false
 	for _, result := range results {
+		if result.Attributes["episodeSeasonYearMatch"] == "true" || result.Attributes["episodeMappedYearMatch"] == "true" {
+			continue
+		}
 		releaseYear, err := strconv.Atoi(result.Attributes["episodeReleaseYear"])
 		if err != nil || releaseYear <= 0 {
 			continue
@@ -1266,6 +1270,7 @@ type SearchOptions struct {
 	IsDaily               bool                              // True for daily shows (talk shows, news) that use date-based naming
 	TargetAirDate         string                            // For daily shows: air date in YYYY-MM-DD format
 	EpisodeAirYear        int                               // Year the target episode aired (for year filter tolerance)
+	SeasonPremiereYear    int                               // Premiere year of the requested season only.
 	EpisodeReleased       bool                              // True only when metadata confirms the target episode has aired
 	IncludeFiltered       bool                              // When true, return filtered results alongside passed results
 	IncludeScoreBreakdown bool                              // When true, attach per-criterion scoring details (admin search tester)
@@ -1341,6 +1346,7 @@ type searchCacheOptions struct {
 	IsDaily               bool
 	TargetAirDate         string
 	EpisodeAirYear        int
+	SeasonPremiereYear    int // Premiere year of the requested season only.
 	EpisodeReleased       bool
 	IncludeFiltered       bool
 	SkipFilter            bool
@@ -1366,6 +1372,7 @@ func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		EpisodeReleased:       opts.EpisodeReleased,
 		IncludeFiltered:       opts.IncludeFiltered,
 		SkipFilter:            opts.SkipFilter,
@@ -1666,6 +1673,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 				IsDaily:               opts.IsDaily,
 				TargetAirDate:         opts.TargetAirDate,
 				EpisodeAirYear:        opts.EpisodeAirYear,
+				SeasonPremiereYear:    opts.SeasonPremiereYear,
 				EpisodeReleased:       opts.EpisodeReleased,
 				SkipFilter:            opts.SkipFilter,
 			}
@@ -2346,6 +2354,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		EpisodeReleased:       opts.EpisodeReleased,
 		SkipFilter:            true,
 	}
@@ -2684,6 +2693,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				IsDaily:               opts.IsDaily,
 				TargetAirDate:         opts.TargetAirDate,
 				EpisodeAirYear:        opts.EpisodeAirYear,
+				SeasonPremiereYear:    opts.SeasonPremiereYear,
 				EpisodeReleased:       opts.EpisodeReleased,
 				SkipFilter:            opts.SkipFilter,
 			}
@@ -2856,6 +2866,7 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 		ExpectedYear:          expectedYear,
 		ExpectedCountry:       opts.CountryCode,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		IsMovie:               isMovie,
 		MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 		MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),
@@ -3007,6 +3018,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 			IsDaily:               opts.IsDaily,
 			TargetAirDate:         opts.TargetAirDate,
 			EpisodeAirYear:        opts.EpisodeAirYear,
+			SeasonPremiereYear:    opts.SeasonPremiereYear,
 			EpisodeReleased:       opts.EpisodeReleased,
 		}
 
@@ -4316,6 +4328,7 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 		ExpectedYear:          expectedYear,
 		ExpectedCountry:       opts.CountryCode,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		IsMovie:               isMovie,
 		MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 		MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),

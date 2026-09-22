@@ -137,6 +137,7 @@ type Options struct {
 	ExpectedYear        int
 	ExpectedCountry     string      // Original production country; normalized before comparison
 	EpisodeAirYear      int         // Year the target episode aired (allows results tagged with this year)
+	SeasonPremiereYear  int         // Premiere year of the requested season only.
 	IsMovie             bool        // true for movies, false for TV shows
 	MaxSizeMovieGB      float64     // Maximum size in GB for movies (0 = no limit)
 	MaxSizeEpisodeGB    float64     // Maximum size in GB for episodes (0 = no limit)
@@ -372,6 +373,10 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			result.Attributes = make(map[string]string)
 		}
 
+		// Revalidate these context-dependent year exceptions on every filtering pass.
+		delete(result.Attributes, "episodeSeasonYearMatch")
+		delete(result.Attributes, "episodeMappedYearMatch")
+
 		// Log parsed info for first few results
 		if i < 5 {
 			log.Printf("[filter] Parsed result[%d]: Title=%q -> ParsedTitle=%q, Year=%d, Seasons=%v, Episodes=%v, Complete=%v",
@@ -535,9 +540,10 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				// Also accept if the parsed year matches the episode's air year (±1)
 				// This handles shows where S02 airs years after the series premiere
 				episodeYearMatch := opts.EpisodeAirYear > 0 && abs(opts.EpisodeAirYear-parsedYear) <= MaxYearDifference
+				seasonYearMatch := !opts.IsMovie && opts.TargetSeason > 0 && opts.SeasonPremiereYear > 0 && abs(opts.SeasonPremiereYear-parsedYear) <= MaxYearDifference
 				formulaOneSeasonYearMatch := hasFormulaOneEvent && opts.TargetSeason > 1900 && parsedYear == opts.TargetSeason
 				mappedYearMatch := mappedRelease && mapped.Year > 0 && parsedYear == mapped.Year
-				if yearDiff > MaxYearDifference && !episodeYearMatch && !formulaOneSeasonYearMatch && !mappedYearMatch {
+				if yearDiff > MaxYearDifference && !episodeYearMatch && !seasonYearMatch && !formulaOneSeasonYearMatch && !mappedYearMatch {
 					reason := fmt.Sprintf("year difference %d > %d (expected: %d, got: %d)", yearDiff, MaxYearDifference, opts.ExpectedYear, parsedYear)
 					log.Printf("[filter] Rejecting %q: %s, episodeAirYear: %d",
 						result.Title, reason, opts.EpisodeAirYear)
@@ -556,10 +562,16 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				// A confirmed year is especially valuable for a targeted episode
 				// search when a different series year also survives filtering. Preserve
 				// the parsed year so ranking can make that decision over the complete
-				// passed result set. An episode's air year remains valid, but is not a
-				// match for the series premiere year.
+				// passed result set. Preserve accepted season and mapped years as
+				// valid alternatives so ranking does not mistake them for reboots.
 				if !opts.IsMovie && (opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0 || opts.TargetAirDate != "") {
 					result.Attributes["episodeReleaseYear"] = strconv.Itoa(parsedYear)
+					if seasonYearMatch {
+						result.Attributes["episodeSeasonYearMatch"] = "true"
+					}
+					if mappedYearMatch {
+						result.Attributes["episodeMappedYearMatch"] = "true"
+					}
 					if seriesYearMatch {
 						result.Attributes["episodeYearMatch"] = "true"
 					} else if episodeYearMatch {

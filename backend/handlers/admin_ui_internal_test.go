@@ -1372,7 +1372,7 @@ func TestAdminDashboardUpdateNoticeUsesCompactVersionFields(t *testing.T) {
 		`class="dashboard-update-versions"`,
 		`id="dashboardUpdateCurrent"`,
 		`id="dashboardUpdateLatest"`,
-		`class="dashboard-update-instruction">Update through Docker.`,
+		`class="dashboard-update-instruction">Windows: extract the new package and run Start-MediaStorm.cmd.`,
 		`current.textContent = currentLabel;`,
 		`latest.textContent = latestLabel;`,
 	} {

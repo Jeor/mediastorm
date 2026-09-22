@@ -8,6 +8,17 @@ import (
 	"testing"
 )
 
+func TestRendezvousPublicKeyFromOutput(t *testing.T) {
+	if got := rendezvousPublicKeyFromOutput("publishing under ybndrfg8ejkmcpqxot1uwisza345h769\npublished\n"); got != "ybndrfg8ejkmcpqxot1uwisza345h769" {
+		t.Fatalf("public key = %q", got)
+	}
+	for _, output := range []string{"", "publishing under code-with-hyphens", "publishing under secret value"} {
+		if got := rendezvousPublicKeyFromOutput(output); got != "" {
+			t.Fatalf("unexpected public key %q from %q", got, output)
+		}
+	}
+}
+
 // NewIrohHostManager must derive the persistent secret-key path from the data dir so the
 // host keeps a stable node ID across restarts. With no data dir it stays ephemeral.
 func TestNewIrohHostManagerSecretFileFromDataDir(t *testing.T) {

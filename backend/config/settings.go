@@ -40,6 +40,7 @@ type Settings struct {
 	Display         DisplaySettings         `json:"display"`
 	Subtitles       SubtitleSettings        `json:"subtitles"`
 	MDBList         MDBListSettings         `json:"mdblist"`
+	PublicMetaDB    PublicMetaDBSettings    `json:"publicMetaDB,omitempty"`
 	Trakt           TraktSettings           `json:"trakt,omitempty"`
 	Simkl           SimklSettings           `json:"simkl,omitempty"`
 	Scrob           ScrobSettings           `json:"scrob,omitempty"`
@@ -754,27 +755,29 @@ func (ls *LiveSettings) GetEffectivePlaylistURL() string {
 
 // ShelfConfig represents a configurable home screen shelf.
 type ShelfConfig struct {
-	ID                     string                 `json:"id"`                               // Unique identifier (e.g., "continue-watching", "watchlist", "trending-movies")
-	Name                   string                 `json:"name"`                             // Display name
-	Enabled                bool                   `json:"enabled"`                          // Whether the shelf is visible
-	Order                  int                    `json:"order"`                            // Sort order (lower numbers appear first)
-	Type                   string                 `json:"type,omitempty"`                   // "builtin" (default), "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "genre", "decade", "collection-hub", or "library"
-	LibraryID              string                 `json:"libraryId,omitempty"`              // Configured media library selected by a "library" shelf
-	ListURL                string                 `json:"listUrl,omitempty"`                // MDBList URL for custom lists (e.g., https://mdblist.com/lists/username/list-name/json)
-	AddonManifestURL       string                 `json:"addonManifestUrl,omitempty"`       // Stremio add-on manifest URL selected by a "stremio" shelf
-	AddonCatalogType       string                 `json:"addonCatalogType,omitempty"`       // Stremio catalog media type ("movie" or "series")
-	AddonCatalogID         string                 `json:"addonCatalogId,omitempty"`         // Stremio catalog ID from the add-on manifest
-	AddonName              string                 `json:"addonName,omitempty"`              // Stremio add-on name captured during manifest ingestion
-	TMDBSourceType         string                 `json:"tmdbSourceType,omitempty"`         // TMDB source builder type (public-list, production-company, network, movie-collection, person-credits, director-credits, custom-discover)
-	TMDBSourceID           string                 `json:"tmdbSourceId,omitempty"`           // Numeric TMDB list/company/network/collection/person ID
-	TMDBSourceName         string                 `json:"tmdbSourceName,omitempty"`         // Resolved source name shown by the shelf editor
-	TMDBMediaType          string                 `json:"tmdbMediaType,omitempty"`          // "movie", "tv", or "all"
-	TMDBDiscoverQuery      string                 `json:"tmdbDiscoverQuery,omitempty"`      // URL-encoded custom filters shared by every TMDB source type
-	StreamingServices      []StreamingServiceLink `json:"streamingServices,omitempty"`      // Service cards for the built-in Streaming Services shelf
-	CollectionItems        []CollectionHubLink    `json:"collectionItems,omitempty"`        // Shelf cards for collection hub shelves
-	TraktAccountID         string                 `json:"traktAccountId,omitempty"`         // Trakt account ID, or "__all__" for master-account global watchlists
-	TraktListType          string                 `json:"traktListType,omitempty"`          // "watchlist" or "custom"
-	TraktListID            string                 `json:"traktListId,omitempty"`            // Trakt custom list slug/ID when traktListType == "custom"
+	ID                     string                 `json:"id"`                          // Unique identifier (e.g., "continue-watching", "watchlist", "trending-movies")
+	Name                   string                 `json:"name"`                        // Display name
+	Enabled                bool                   `json:"enabled"`                     // Whether the shelf is visible
+	Order                  int                    `json:"order"`                       // Sort order (lower numbers appear first)
+	Type                   string                 `json:"type,omitempty"`              // "builtin" (default), "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "genre", "decade", "collection-hub", or "library"
+	LibraryID              string                 `json:"libraryId,omitempty"`         // Configured media library selected by a "library" shelf
+	ListURL                string                 `json:"listUrl,omitempty"`           // MDBList URL for custom lists (e.g., https://mdblist.com/lists/username/list-name/json)
+	AddonManifestURL       string                 `json:"addonManifestUrl,omitempty"`  // Stremio add-on manifest URL selected by a "stremio" shelf
+	AddonCatalogType       string                 `json:"addonCatalogType,omitempty"`  // Stremio catalog media type ("movie" or "series")
+	AddonCatalogID         string                 `json:"addonCatalogId,omitempty"`    // Stremio catalog ID from the add-on manifest
+	AddonName              string                 `json:"addonName,omitempty"`         // Stremio add-on name captured during manifest ingestion
+	TMDBSourceType         string                 `json:"tmdbSourceType,omitempty"`    // TMDB source builder type (public-list, production-company, network, movie-collection, person-credits, director-credits, custom-discover)
+	TMDBSourceID           string                 `json:"tmdbSourceId,omitempty"`      // Numeric TMDB list/company/network/collection/person ID
+	TMDBSourceName         string                 `json:"tmdbSourceName,omitempty"`    // Resolved source name shown by the shelf editor
+	TMDBMediaType          string                 `json:"tmdbMediaType,omitempty"`     // "movie", "tv", or "all"
+	TMDBDiscoverQuery      string                 `json:"tmdbDiscoverQuery,omitempty"` // URL-encoded custom filters shared by every TMDB source type
+	StreamingServices      []StreamingServiceLink `json:"streamingServices,omitempty"` // Service cards for the built-in Streaming Services shelf
+	CollectionItems        []CollectionHubLink    `json:"collectionItems,omitempty"`   // Shelf cards for collection hub shelves
+	TraktAccountID         string                 `json:"traktAccountId,omitempty"`    // Trakt account ID, or "__all__" for master-account global watchlists
+	TraktListType          string                 `json:"traktListType,omitempty"`     // "watchlist" or "custom"
+	TraktListID            string                 `json:"traktListId,omitempty"`       // Trakt custom list slug/ID when traktListType == "custom"
+	PublicMetaDBAccountID  string                 `json:"publicMetaDBAccountId,omitempty"`
+	PublicMetaDBListID     string                 `json:"publicMetaDBListId,omitempty"`
 	SimklAccountID         string                 `json:"simklAccountId,omitempty"`         // Simkl account ID
 	SimklListType          string                 `json:"simklListType,omitempty"`          // Simkl status bucket: "plantowatch", "watching", "completed", "hold", or "dropped"
 	SimklMediaType         string                 `json:"simklMediaType,omitempty"`         // Simkl media bucket: "movies", "shows", or "anime"
@@ -1519,6 +1522,27 @@ type MDBListAccount struct {
 	Name           string `json:"name"`                     // Display name
 	APIKey         string `json:"apiKey"`                   // MDBList API key
 	OwnerAccountID string `json:"ownerAccountId,omitempty"` // Login account that owns this integration
+}
+
+// PublicMetaDBAccount keeps API credentials on the server, outside shelf data.
+type PublicMetaDBAccount struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	APIKey         string `json:"apiKey"`
+	OwnerAccountID string `json:"ownerAccountId,omitempty"`
+}
+
+type PublicMetaDBSettings struct {
+	Accounts []PublicMetaDBAccount `json:"accounts,omitempty"`
+}
+
+func (s PublicMetaDBSettings) GetAccountByID(id string) *PublicMetaDBAccount {
+	for i := range s.Accounts {
+		if s.Accounts[i].ID == id {
+			return &s.Accounts[i]
+		}
+	}
+	return nil
 }
 
 // MDBListSettings defines MDBList integration for aggregated ratings and scrobbling.

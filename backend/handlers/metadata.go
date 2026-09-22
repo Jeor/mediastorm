@@ -21,6 +21,7 @@ import (
 	"novastream/services/letterboxd"
 	"novastream/services/mdblist"
 	metadatapkg "novastream/services/metadata"
+	"novastream/services/publicmetadb"
 	"novastream/services/simkl"
 	"novastream/services/trakt"
 )
@@ -201,6 +202,7 @@ type MetadataHandler struct {
 	TraktClient        *trakt.Client
 	SimklClient        *simkl.Client
 	MDBListListsClient *mdblist.ListsClient
+	PublicMetaDBClient *publicmetadb.Client
 	LetterboxdClient   *letterboxd.Client
 	stremioHTTPClient  *http.Client
 

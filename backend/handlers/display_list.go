@@ -190,6 +190,9 @@ func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
 	case "trakt-list":
 		h.delegateMetadata(w, r, source, h.MetadataHandler.TraktList, displayListQuery(r, userID, nil))
 		return
+	case "publicmetadb-list":
+		h.delegateMetadata(w, r, source, h.MetadataHandler.PublicMetaDBList, displayListQuery(r, userID, nil))
+		return
 	case "simkl-list":
 		h.delegateMetadata(w, r, source, h.MetadataHandler.SimklList, displayListQuery(r, userID, nil))
 		return

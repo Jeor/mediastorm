@@ -627,6 +627,9 @@ func redactSettings(s *config.Settings) {
 	for i := range s.MDBList.Accounts {
 		mask(&s.MDBList.Accounts[i].APIKey)
 	}
+	for i := range s.PublicMetaDB.Accounts {
+		mask(&s.PublicMetaDB.Accounts[i].APIKey)
+	}
 
 	// Trakt (legacy fields + account-level tokens)
 	mask(&s.Trakt.ClientSecret)
@@ -798,6 +801,14 @@ func preserveRedactedFields(incoming *config.Settings, existing *config.Settings
 	for i := range incoming.MDBList.Accounts {
 		if i < len(existing.MDBList.Accounts) {
 			restore(&incoming.MDBList.Accounts[i].APIKey, existing.MDBList.Accounts[i].APIKey)
+		}
+	}
+	for i := range incoming.PublicMetaDB.Accounts {
+		for _, old := range existing.PublicMetaDB.Accounts {
+			if incoming.PublicMetaDB.Accounts[i].ID == old.ID {
+				restore(&incoming.PublicMetaDB.Accounts[i].APIKey, old.APIKey)
+				break
+			}
 		}
 	}
 

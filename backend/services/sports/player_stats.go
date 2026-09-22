@@ -54,7 +54,7 @@ func normalizePlayerGameStats(game models.SportsGame, teams []playerBoxscoreTeam
 						category, selected = "Batting", "|AB|H|R|RBI|HR|BB|K|"
 					}
 				}
-			case game.League == "nba" || strings.Contains(game.League, "college-basketball"):
+			case game.League == "nba" || game.League == "wnba" || strings.Contains(game.League, "college-basketball"):
 				category, selected = "Game stats", "|MIN|PTS|FG|3PT|FT|REB|AST|TO|STL|BLK|PF|+/-|"
 			case game.League == "nhl":
 				switch group.Name {

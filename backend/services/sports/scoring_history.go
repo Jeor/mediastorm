@@ -31,11 +31,11 @@ func validScore(value *float64) bool {
 }
 
 func normalizeScoreHistory(game models.SportsGame, p teamSportSummary) *models.SportsScoreHistory {
-	if game.Status != models.SportsGameFinal || (game.League != "nba" && game.League != "mens-college-basketball" && game.League != "womens-college-basketball") || p.Header.ID != game.ID || len(p.Header.Competitions) != 1 || len(p.Plays) < 2 {
+	if (game.Status != models.SportsGameFinal && game.Status != models.SportsGameLive) || (game.League != "nba" && game.League != "wnba" && game.League != "mens-college-basketball" && game.League != "womens-college-basketball") || p.Header.ID != game.ID || len(p.Header.Competitions) != 1 || len(p.Plays) < 2 {
 		return nil
 	}
 	c := p.Header.Competitions[0]
-	if !c.Status.Type.Completed || len(c.Competitors) != 2 || game.AwayTeam.ID == "" || game.HomeTeam.ID == "" || game.AwayTeam.ID == game.HomeTeam.ID {
+	if (game.Status == models.SportsGameFinal) != c.Status.Type.Completed || len(c.Competitors) != 2 || game.AwayTeam.ID == "" || game.HomeTeam.ID == "" || game.AwayTeam.ID == game.HomeTeam.ID {
 		return nil
 	}
 	finals := map[string]float64{}
@@ -58,19 +58,19 @@ func normalizeScoreHistory(game models.SportsGame, p teamSportSummary) *models.S
 	first, last := p.Plays[0], p.Plays[len(p.Plays)-1]
 	// Require the opening countdown observed in the supported complete sources;
 	// an early scoreless play alone does not establish start coverage.
-	openingSeconds := map[string]float64{"nba": 12 * 60, "mens-college-basketball": 20 * 60, "womens-college-basketball": 10 * 60}[game.League]
+	openingSeconds := map[string]float64{"nba": 12 * 60, "wnba": 10 * 60, "mens-college-basketball": 20 * 60, "womens-college-basketball": 10 * 60}[game.League]
 	openingClock, openingOK := scoreClock(first.Clock.DisplayValue)
 	if !openingOK || openingClock != openingSeconds {
 		return nil
 	}
-	if first.Period.Number != 1 || !validScore(first.AwayScore) || !validScore(first.HomeScore) || *first.AwayScore != 0 || *first.HomeScore != 0 || !strings.EqualFold(last.Type.Text, "End Game") || (c.Status.Period > 0 && last.Period.Number != c.Status.Period) {
+	if first.Period.Number != 1 || !validScore(first.AwayScore) || !validScore(first.HomeScore) || *first.AwayScore != 0 || *first.HomeScore != 0 || (game.Status == models.SportsGameFinal && !strings.EqualFold(last.Type.Text, "End Game")) || (c.Status.Period > 0 && last.Period.Number != c.Status.Period) {
 		return nil
 	}
 	if !validScore(last.AwayScore) || !validScore(last.HomeScore) || *last.AwayScore != finals["away"] || *last.HomeScore != finals["home"] {
 		return nil
 	}
 	endClock, ok := scoreClock(last.Clock.DisplayValue)
-	if !ok || endClock != 0 {
+	if !ok || (game.Status == models.SportsGameFinal && endClock != 0) {
 		return nil
 	}
 	history := &models.SportsScoreHistory{EventID: game.ID, AwayTeamID: game.AwayTeam.ID, HomeTeamID: game.HomeTeam.ID, Complete: true}

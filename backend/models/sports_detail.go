@@ -5,13 +5,15 @@ import "time"
 // SportsGameDetail is additive to the legacy game response. Empty data never
 // implies a zero statistic; capability flags describe verified available panels.
 type SportsGameDetail struct {
-	FighterProfiles []SportsPlayerGameStats `json:"fighterProfiles,omitempty"`
-	Shots           []SportsHockeyShot      `json:"shots,omitempty"`
-	Leaderboard     []SportsGolfEntry       `json:"leaderboard,omitempty"`
-	Innings         []SportsCricketInnings  `json:"innings,omitempty"`
-	CoverageNote    string                  `json:"coverageNote,omitempty"`
-	Pregame         *SportsPregame          `json:"pregame,omitempty"`
-	PlayerStats     []SportsPlayerGameStats `json:"playerStats,omitempty"`
+	BasketballShots []SportsBasketballShot      `json:"basketballShots,omitempty"`
+	WinProbability  []SportsWinProbabilityPoint `json:"winProbability,omitempty"`
+	FighterProfiles []SportsPlayerGameStats     `json:"fighterProfiles,omitempty"`
+	Shots           []SportsHockeyShot          `json:"shots,omitempty"`
+	Leaderboard     []SportsGolfEntry           `json:"leaderboard,omitempty"`
+	Innings         []SportsCricketInnings      `json:"innings,omitempty"`
+	CoverageNote    string                      `json:"coverageNote,omitempty"`
+	Pregame         *SportsPregame              `json:"pregame,omitempty"`
+	PlayerStats     []SportsPlayerGameStats     `json:"playerStats,omitempty"`
 	// TournamentContext is the literal soccer provider season/round label, not inferred progression.
 	TournamentContext string                   `json:"tournamentContext,omitempty"`
 	ScoreHistory      *SportsScoreHistory      `json:"scoreHistory,omitempty"`
@@ -216,4 +218,29 @@ type SportsHockeyShot struct {
 	Period      string  `json:"period"`
 	Clock       string  `json:"clock"`
 	Description string  `json:"description"`
+}
+
+// Basketball coordinates are feet across the court (x) and from the attacking rim (y).
+// They describe a normalized attacking basket, never inferred broadcast direction.
+type SportsBasketballShot struct {
+	ID          string  `json:"id"`
+	TeamID      string  `json:"teamId"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	Made        bool    `json:"made"`
+	Points      int     `json:"points"`
+	Period      int     `json:"period"`
+	PeriodLabel string  `json:"periodLabel"`
+	Clock       string  `json:"clock"`
+	Description string  `json:"description"`
+	AthleteID   string  `json:"athleteId,omitempty"`
+	PlayerName  string  `json:"playerName,omitempty"`
+	HeadshotURL string  `json:"headshotUrl,omitempty"`
+}
+type SportsWinProbabilityPoint struct {
+	PlayID      string  `json:"playId"`
+	Period      int     `json:"period"`
+	PeriodLabel string  `json:"periodLabel"`
+	Clock       string  `json:"clock"`
+	Home        float64 `json:"home"`
 }

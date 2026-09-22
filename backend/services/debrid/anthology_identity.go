@@ -8,7 +8,7 @@ import (
 )
 
 // mappedSearchRequests keeps the catalog request and adds a distinct provider
-// request only for an explicit cross mapping. No metadata/network discovery.
+// request only for a verified cross mapping. Discovery runs before this helper.
 func mappedSearchRequests(req SearchRequest, imdbBased bool) []SearchRequest {
 	if req.Parsed.MediaType != MediaTypeSeries {
 		return []SearchRequest{req}

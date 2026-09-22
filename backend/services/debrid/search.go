@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"novastream/config"
+	"novastream/internal/mediaidentity"
 	"novastream/internal/requestsecurity"
 	"novastream/models"
 	"novastream/utils/filter"
@@ -509,6 +510,10 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 	}
 
 	log.Printf("[debrid] Search called with Query=%q, IMDBID=%q, MediaType=%q, Year=%d, UserID=%q", opts.Query, opts.IMDBID, opts.MediaType, opts.Year, opts.UserID)
+
+	if parsed.MediaType == MediaTypeSeries && !opts.IsAnime {
+		mediaidentity.DiscoverSeason(ctx, settings.Metadata.TMDBAPIKey, opts.TitleID, opts.IMDBID, parsed.Season)
+	}
 
 	// If no IMDB ID provided, try to resolve it via metadata service (TVDB fallback)
 	imdbID := opts.IMDBID

@@ -18,7 +18,7 @@ type AnthologyEpisode struct {
 type EpisodeCoordinate struct{ Season, Episode int }
 
 // SeriesCrossMapping describes a verified catalog-to-provider relationship.
-// Additional series need data entries, not changes to search/filter code.
+// Discovered mappings and manual fallbacks share the same search/filter logic.
 type SeriesCrossMapping struct {
 	TitleID          string
 	CatalogSeason    int
@@ -37,7 +37,15 @@ var seriesCrossMappings = []SeriesCrossMapping{{
 
 // KnownAnthologyEpisode performs only an in-memory exact-identity lookup.
 func KnownAnthologyEpisode(titleID string, season, episode int) (AnthologyEpisode, bool) {
-	return lookupCrossMapping(seriesCrossMappings, titleID, season, episode)
+	if mapped, ok := discoveries.lookup(strings.TrimSpace(titleID), season, episode); ok {
+		discoveries.logSelection(titleID, season, episode, mapped, "wikidata")
+		return mapped, true
+	}
+	mapped, ok := lookupCrossMapping(seriesCrossMappings, titleID, season, episode)
+	if ok {
+		discoveries.logSelection(titleID, season, episode, mapped, "manual_fallback")
+	}
+	return mapped, ok
 }
 
 func lookupCrossMapping(mappings []SeriesCrossMapping, titleID string, season, episode int) (AnthologyEpisode, bool) {

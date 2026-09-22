@@ -1550,6 +1550,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	// Get effective filtering settings (cascade: global -> profile -> client)
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, opts.AdaptiveThroughput, settings)
@@ -1836,6 +1837,7 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, opts.AdaptiveThroughput, settings)
 	filterSettings := filterBundle.Default
@@ -2057,6 +2059,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 		return usenetOut, debridOut
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	includeUsenet := shouldUseUsenet(settings.Streaming.ServiceMode)
 	includeDebrid := shouldUseDebrid(settings.Streaming.ServiceMode)
@@ -2562,6 +2565,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	includeUsenet := shouldUseUsenet(settings.Streaming.ServiceMode)
 	includeDebrid := shouldUseDebrid(settings.Streaming.ServiceMode)
@@ -2922,6 +2926,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		return debridOut, usenetOut
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	filterBundle, animeSettings2, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, opts.AdaptiveThroughput, settings)
 	filterSettings := filterBundle.Default

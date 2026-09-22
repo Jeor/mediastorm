@@ -35,6 +35,9 @@ func TestBasketballTrackingAllLeagues(t *testing.T) {
 			if len(d.BasketballShots) < 30 || len(d.WinProbability) < 100 || !d.Capabilities.WinProbability || len(d.PlayerStats) == 0 || d.ScoreHistory == nil {
 				t.Fatalf("missing tracking: shots %d probabilities %d players %d history %v", len(d.BasketballShots), len(d.WinProbability), len(d.PlayerStats), d.ScoreHistory != nil)
 			}
+			if league == "nba" && d.BasketballShots[0].Jersey == "" {
+				t.Fatal("provider jersey not joined to shot")
+			}
 			if d.BasketballShots[0].PlayerName == "" {
 				t.Fatal("shooter identity not joined")
 			}

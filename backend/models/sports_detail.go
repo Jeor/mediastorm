@@ -40,6 +40,7 @@ type SportsPlayParticipant struct {
 	Name string `json:"name"`
 }
 type SportsPlayerGameStats struct {
+	Jersey      string                  `json:"jersey,omitempty"`
 	HeadshotURL string                  `json:"headshotUrl,omitempty"`
 	ID          string                  `json:"id"`
 	TeamID      string                  `json:"teamId"`
@@ -223,6 +224,7 @@ type SportsHockeyShot struct {
 // Basketball coordinates are feet across the court (x) and from the attacking rim (y).
 // They describe a normalized attacking basket, never inferred broadcast direction.
 type SportsBasketballShot struct {
+	Jersey      string  `json:"jersey,omitempty"`
 	ID          string  `json:"id"`
 	TeamID      string  `json:"teamId"`
 	X           float64 `json:"x"`

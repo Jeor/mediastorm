@@ -55,6 +55,7 @@ func normalizeBasketballTracking(game models.SportsGame, p teamSportSummary, d *
 				shot.AthleteID = id
 				shot.PlayerName = player.Name
 				shot.HeadshotURL = player.HeadshotURL
+				shot.Jersey = player.Jersey
 			}
 		}
 		d.BasketballShots = append(d.BasketballShots, shot)

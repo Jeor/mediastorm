@@ -20,6 +20,7 @@ type playerBoxscoreTeam struct {
 			Athlete    struct {
 				ID          string         `json:"id"`
 				DisplayName string         `json:"displayName"`
+				Jersey      string         `json:"jersey"`
 				Headshot    playerHeadshot `json:"headshot"`
 			} `json:"athlete"`
 		} `json:"athletes"`
@@ -96,7 +97,7 @@ func normalizePlayerGameStats(game models.SportsGame, teams []playerBoxscoreTeam
 				if player.Athlete.ID == "" || player.Athlete.DisplayName == "" || player.DidNotPlay || seen[key] || len(labels) != len(player.Stats) {
 					continue
 				}
-				row := models.SportsPlayerGameStats{ID: player.Athlete.ID, TeamID: team.Team.ID, Name: player.Athlete.DisplayName, HeadshotURL: string(player.Athlete.Headshot), Category: category}
+				row := models.SportsPlayerGameStats{ID: player.Athlete.ID, TeamID: team.Team.ID, Name: player.Athlete.DisplayName, Jersey: strings.TrimSpace(player.Athlete.Jersey), HeadshotURL: string(player.Athlete.Headshot), Category: category}
 				for i, label := range labels {
 					value := strings.TrimSpace(player.Stats[i])
 					if label != "" && strings.Contains(selected, "|"+label+"|") && value != "" && value != "--" && value != "—" && value != "-" {

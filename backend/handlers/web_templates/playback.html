@@ -1850,9 +1850,7 @@
           const replacementSubtitle = webPlayerSubtitleStreams.find((stream) => webLanguageMatches(stream, requestedSubtitle?.language)) || webPlayerSubtitleStreams[0];
           webPlayerSelectedSubtitleTrack = Number(replacementSubtitle?.index ?? -1);
         }
-        // Embedded chapters are applied synchronously before this function's
-        // first await. Let the remote IntroDB fallback finish off the playback
-        // startup path so an unavailable third party cannot delay HLS creation.
+        // Segment lookup runs separately so an unavailable provider cannot delay HLS creation.
         loadWebPlayerSegments(metadata).catch((error) => console.warn('[web-player] segment lookup failed', error));
         maybeSearchWebSubtitles();
       } catch (error) {
@@ -3418,20 +3416,28 @@
       webPlayerSegments = { recap: null, intro: null, outro: null };
       webPlayerSkipDismissed = new Set();
       const chapters = Array.isArray(metadata?.chapters) ? metadata.chapters : [];
+      const chapterSegments = { recap: null, intro: null, outro: null };
       chapters.forEach((chapter, index) => {
         const segment = normalizedWebChapter(chapter, index, chapters, Number(metadata?.durationSeconds || hlsDuration));
-        if (segment && !webPlayerSegments[segment.type]) webPlayerSegments[segment.type] = segment;
+        if (segment && !chapterSegments[segment.type]) chapterSegments[segment.type] = segment;
       });
       if (playbackMeta.mediaType === 'episode' && playbackMeta.imdbId && playbackMeta.seasonNumber && playbackMeta.episodeNumber) {
         const params = new URLSearchParams({ imdbId: playbackMeta.imdbId, season: String(playbackMeta.seasonNumber), episode: String(playbackMeta.episodeNumber) });
+        const duration = Number(metadata?.durationSeconds || hlsDuration);
+        if (Number.isFinite(duration) && duration > 0) params.set('duration', String(Math.round(duration)));
         const remote = await apiCall('/video/segments?' + params.toString()).catch(() => null);
         if (generation !== webPlayerSegmentGeneration) return;
+        webPlayerSegments = chapterSegments;
         for (const type of ['recap','intro','outro']) {
-          if (webPlayerSegments[type] || !remote?.[type]) continue;
+          if (!remote?.[type]) continue;
           const start = Number(remote[type].start_ms) / 1000;
           const end = Number(remote[type].end_ms) / 1000;
-          if (Number.isFinite(start) && Number.isFinite(end) && end > start) webPlayerSegments[type] = { type, start, end, source: 'introdb', confirmed: true };
+          if (Number.isFinite(start) && Number.isFinite(end) && start >= 0 && end > start && (!(duration > 0) || start < duration)) {
+            webPlayerSegments[type] = { type, start, end: duration > 0 ? Math.min(end, duration) : end, source: remote[type].source || 'introdb', confirmed: true };
+          }
         }
+      } else {
+        webPlayerSegments = chapterSegments;
       }
       maybeStartWebCreditsDetection(generation);
       updateWebSegmentPrompts();

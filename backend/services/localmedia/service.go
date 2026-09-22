@@ -3,6 +3,7 @@ package localmedia
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -204,7 +205,7 @@ func (s *Service) FindMatches(ctx context.Context, query models.LocalMediaMatchQ
 }
 
 func (s *Service) CreateLibrary(ctx context.Context, input models.LocalMediaLibraryCreateInput) (*models.LocalMediaLibrary, error) {
-	name, rootPath, filterOutTerms, minFileSizeBytes, err := validateLocalMediaLibraryInput(input)
+	name, rootPaths, filterOutTerms, minFileSizeBytes, err := validateLocalMediaLibraryInput(input)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +215,8 @@ func (s *Service) CreateLibrary(ctx context.Context, input models.LocalMediaLibr
 		ID:               uuid.NewString(),
 		Name:             name,
 		Type:             input.Type,
-		RootPath:         rootPath,
+		RootPath:         rootPaths[0],
+		RootPaths:        rootPaths,
 		FilterOutTerms:   filterOutTerms,
 		MinFileSizeBytes: minFileSizeBytes,
 		CreatedAt:        now,
@@ -243,14 +245,23 @@ func (s *Service) UpdateLibrary(ctx context.Context, libraryID string, input mod
 		return nil, ErrLibraryScanning
 	}
 
-	name, rootPath, filterOutTerms, minFileSizeBytes, err := validateLocalMediaLibraryInput(input)
+	name, rootPaths, filterOutTerms, minFileSizeBytes, err := validateLocalMediaLibraryInput(input)
 	if err != nil {
 		return nil, err
+	}
+	// Keep the original root first while it remains configured, preserving the
+	// relative paths and item IDs already stored for that root.
+	for index, root := range rootPaths {
+		if root == library.RootPath {
+			rootPaths = append([]string{root}, append(rootPaths[:index], rootPaths[index+1:]...)...)
+			break
+		}
 	}
 
 	library.Name = name
 	library.Type = input.Type
-	library.RootPath = rootPath
+	library.RootPath = rootPaths[0]
+	library.RootPaths = rootPaths
 	library.FilterOutTerms = filterOutTerms
 	library.MinFileSizeBytes = minFileSizeBytes
 	library.UpdatedAt = time.Now().UTC()
@@ -1220,9 +1231,7 @@ func (s *Service) GetItem(ctx context.Context, itemID string) (*models.LocalMedi
 	if cleanFilePath == "" || cleanFilePath == "." {
 		return nil, ErrItemNotFound
 	}
-	cleanRoot := filepath.Clean(strings.TrimSpace(library.RootPath))
-	rel, err := filepath.Rel(cleanRoot, cleanFilePath)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if !pathWithinLibraryRoots(*library, cleanFilePath) {
 		return nil, fmt.Errorf("local media item path escaped library root")
 	}
 	if _, err := os.Stat(cleanFilePath); err != nil {
@@ -1499,9 +1508,22 @@ func (s *Service) scanLibrary(ctx context.Context, library models.LocalMediaLibr
 }
 
 func (s *Service) discoverAndMatch(ctx context.Context, library models.LocalMediaLibrary, scanID string) (models.LocalMediaScanSummary, error) {
-	candidates, err := collectVideoFiles(library.RootPath)
-	if err != nil {
-		return models.LocalMediaScanSummary{}, err
+	var candidates []scanFileCandidate
+	for index, root := range libraryRoots(library) {
+		if info, err := os.Stat(root); err != nil || !info.IsDir() {
+			return models.LocalMediaScanSummary{}, fmt.Errorf("library root unavailable: %s", root)
+		}
+		found, err := collectVideoFiles(root)
+		if err != nil {
+			return models.LocalMediaScanSummary{}, err
+		}
+		if index > 0 {
+			prefix := fmt.Sprintf("@root-%x", sha256.Sum256([]byte(root)))[:19]
+			for i := range found {
+				found[i].relativePath = filepath.Join(prefix, found[i].relativePath)
+			}
+		}
+		candidates = append(candidates, found...)
 	}
 
 	videoFiles := make([]scanFileCandidate, 0, len(candidates))
@@ -1565,7 +1587,7 @@ func (s *Service) discoverAndMatch(ctx context.Context, library models.LocalMedi
 
 	for index, candidate := range videoFiles {
 		existing, hasExisting := existingByRelativePath[candidate.relativePath]
-		item, reused, err := s.buildItem(ctx, library, candidate.path, detectedByPath[candidate.path], metadataCache, scanID, existing, hasExisting)
+		item, reused, err := s.buildItem(ctx, library, candidate.path, candidate.relativePath, detectedByPath[candidate.path], metadataCache, scanID, existing, hasExisting)
 		if err != nil {
 			buildErrors++
 			if buildErrors <= 10 || buildErrors%100 == 0 {
@@ -1630,31 +1652,67 @@ func (s *Service) discoverAndMatch(ctx context.Context, library models.LocalMedi
 	return summary, nil
 }
 
-func validateLocalMediaLibraryInput(input models.LocalMediaLibraryCreateInput) (string, string, []string, int64, error) {
+func validateLocalMediaLibraryInput(input models.LocalMediaLibraryCreateInput) (string, []string, []string, int64, error) {
 	name := strings.TrimSpace(input.Name)
-	rootPath := strings.TrimSpace(input.RootPath)
-	if name == "" {
-		return "", "", nil, 0, ErrLibraryNameNeeded
+	roots := input.RootPaths
+	if len(roots) == 0 && strings.TrimSpace(input.RootPath) != "" {
+		roots = []string{input.RootPath}
 	}
-	if rootPath == "" {
-		return "", "", nil, 0, ErrLibraryPathNeeded
+	if name == "" {
+		return "", nil, nil, 0, ErrLibraryNameNeeded
+	}
+	if len(roots) == 0 {
+		return "", nil, nil, 0, ErrLibraryPathNeeded
 	}
 	if input.Type == "" {
-		return "", "", nil, 0, ErrLibraryTypeNeeded
+		return "", nil, nil, 0, ErrLibraryTypeNeeded
 	}
 	if input.MinFileSizeBytes < 0 {
-		return "", "", nil, 0, fmt.Errorf("minimum file size must be zero or greater")
+		return "", nil, nil, 0, fmt.Errorf("minimum file size must be zero or greater")
 	}
+	normalized := make([]string, 0, len(roots))
+	for _, raw := range roots {
+		root := strings.TrimSpace(raw)
+		if root == "" {
+			return "", nil, nil, 0, ErrLibraryPathNeeded
+		}
+		root = filepath.Clean(root)
+		info, err := os.Stat(root)
+		if err != nil {
+			return "", nil, nil, 0, fmt.Errorf("stat library path %s: %w", root, err)
+		}
+		if !info.IsDir() {
+			return "", nil, nil, 0, fmt.Errorf("library path is not a directory: %s", root)
+		}
+		for _, previous := range normalized {
+			if pathWithinRoot(previous, root) || pathWithinRoot(root, previous) {
+				return "", nil, nil, 0, fmt.Errorf("library roots must not overlap: %s and %s", previous, root)
+			}
+		}
+		normalized = append(normalized, root)
+	}
+	return name, normalized, normalizeLibraryFilterTerms(input.FilterOutTerms), input.MinFileSizeBytes, nil
+}
 
-	info, err := os.Stat(rootPath)
-	if err != nil {
-		return "", "", nil, 0, fmt.Errorf("stat library path: %w", err)
+func libraryRoots(library models.LocalMediaLibrary) []string {
+	if len(library.RootPaths) > 0 {
+		return library.RootPaths
 	}
-	if !info.IsDir() {
-		return "", "", nil, 0, fmt.Errorf("library path is not a directory: %s", rootPath)
-	}
+	return []string{library.RootPath}
+}
 
-	return name, rootPath, normalizeLibraryFilterTerms(input.FilterOutTerms), input.MinFileSizeBytes, nil
+func pathWithinRoot(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func pathWithinLibraryRoots(library models.LocalMediaLibrary, path string) bool {
+	for _, root := range libraryRoots(library) {
+		if pathWithinRoot(root, path) {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeLibraryFilterTerms(terms []string) []string {
@@ -1681,12 +1739,8 @@ func normalizeLibraryFilterTerms(terms []string) []string {
 	return normalized
 }
 
-func (s *Service) buildItem(ctx context.Context, library models.LocalMediaLibrary, filePath string, detected detectedTitle, metadataCache *scanMetadataCache, scanID string, existing models.LocalMediaItem, hasExisting bool) (models.LocalMediaItem, bool, error) {
+func (s *Service) buildItem(ctx context.Context, library models.LocalMediaLibrary, filePath, relativePath string, detected detectedTitle, metadataCache *scanMetadataCache, scanID string, existing models.LocalMediaItem, hasExisting bool) (models.LocalMediaItem, bool, error) {
 	info, err := os.Stat(filePath)
-	if err != nil {
-		return models.LocalMediaItem{}, false, err
-	}
-	relativePath, err := filepath.Rel(library.RootPath, filePath)
 	if err != nil {
 		return models.LocalMediaItem{}, false, err
 	}

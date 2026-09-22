@@ -18,7 +18,7 @@
         <summary class="card-header library-form-summary">
             <div>
                 <h2 id="libraryFormTitle">Add Library</h2>
-                <div id="libraryFormSubtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Create a new library root and scan profile.</div>
+                <div id="libraryFormSubtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Create a new library and scan profile.</div>
             </div>
         </summary>
         <div class="card-body">
@@ -84,12 +84,12 @@
                     </select>
                 </div>
                 <div class="form-group local-library-field">
-                    <label class="form-label" for="libraryRootPath">Root Path</label>
+                    <label class="form-label" for="libraryRootPath">Root Folders</label>
                     <div class="path-picker-row">
-                        <input id="libraryRootPath" class="form-input" placeholder="/Volumes/Media/Movies" required>
-                        <button class="btn btn-secondary" type="button" id="browseDirsBtn">Browse</button>
+                        <textarea id="libraryRootPath" class="form-input" rows="3" placeholder="/Volumes/Media/Movies&#10;/Volumes/More/Movies" required></textarea>
+                        <button class="btn btn-secondary" type="button" id="browseDirsBtn" style="align-self: flex-start;">Add Folder</button>
                     </div>
-                    <div class="form-hint">Use the browser to pick a folder on the server filesystem.</div>
+                    <div class="form-hint">One server folder per line. Use Add Folder to browse; folders cannot overlap.</div>
                 </div>
                 <details class="form-disclosure local-library-field">
                     <summary>Advanced scan options</summary>
@@ -1080,10 +1080,11 @@ async function createLibrary(event) {
   const source = document.getElementById('librarySource').value || 'local';
   const minFileSizeBytes = source === 'local' ? parseLibraryMinFileSizeBytes() : 0;
   if (minFileSizeBytes === null) return;
+  const rootPaths = document.getElementById('libraryRootPath').value.split(/\r?\n/).map(path => path.trim()).filter(Boolean);
   let payload = {
     name: document.getElementById('libraryName').value.trim(),
     type: document.getElementById('libraryType').value,
-    rootPath: document.getElementById('libraryRootPath').value.trim(),
+    rootPaths,
     filterOutTerms: parseFilterOutTerms(document.getElementById('libraryFilterOutTerms').value),
     minFileSizeBytes,
   };
@@ -1214,7 +1215,7 @@ function renderLibraries(container) {
           <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
             <div>
               <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;"><div style="font-weight: 600;">${escapeHtml(library.name)}</div><span class="status-badge online">${escapeHtml(library.sourceName || 'Local')}</span></div>
-              <div style="color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(library.sourceServerName || library.rootPath || '')}</div>
+              <div style="color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(library.sourceServerName || (library.rootPaths || [library.rootPath]).join(' · ') || '')}</div>
             </div>
             <div class="status-badge ${statusClass(library.lastScanStatus)}">${formatStatus(library.lastScanStatus)}</div>
           </div>
@@ -1433,7 +1434,7 @@ function editLibrary(id) {
   editingLibraryId = id;
   document.getElementById('libraryName').value = library.name || '';
   document.getElementById('libraryType').value = library.type || 'movie';
-  document.getElementById('libraryRootPath').value = library.rootPath || '';
+  document.getElementById('libraryRootPath').value = (library.rootPaths || [library.rootPath]).join('\n');
   document.getElementById('libraryFilterOutTerms').value = formatFilterOutTerms(library.filterOutTerms);
   document.getElementById('libraryMinFileSizeMb').value = bytesToMegabytesString(library.minFileSizeBytes);
   document.querySelector('.form-disclosure.local-library-field').open =
@@ -1509,7 +1510,7 @@ function updateSelectedLibrarySummary(library) {
   const itemsSummaryPills = document.getElementById('itemsSummaryPills');
   if (!itemsTitle || !itemsSubtitle || !itemsSummaryPills) return;
   itemsTitle.textContent = library ? library.name : 'Library Items';
-  itemsSubtitle.textContent = library ? `${library.rootPath} · ${library.type}` : 'Select a library to inspect scan results.';
+  itemsSubtitle.textContent = library ? `${(library.rootPaths || [library.rootPath]).join(' · ')} · ${library.type}` : 'Select a library to inspect scan results.';
   itemsSummaryPills.innerHTML = renderSummaryPills(library);
 }
 
@@ -2296,7 +2297,7 @@ async function deleteMissingItem(itemId) {
 }
 
 function openDirectoryBrowser() {
-  const existing = document.getElementById('libraryRootPath').value.trim();
+  const existing = document.getElementById('libraryRootPath').value.trim().split(/\r?\n/).pop();
   document.getElementById('directoryBrowserModal').classList.add('open');
   loadDirectoryListing(existing || currentBrowsePath);
 }
@@ -2307,7 +2308,10 @@ function closeDirectoryBrowser() {
 
 function useCurrentBrowseDirectory() {
   if (!currentBrowsePath) return;
-  document.getElementById('libraryRootPath').value = currentBrowsePath;
+  const field = document.getElementById('libraryRootPath');
+  const paths = field.value.split(/\r?\n/).map(path => path.trim()).filter(Boolean);
+  if (!paths.includes(currentBrowsePath)) paths.push(currentBrowsePath);
+  field.value = paths.join('\n');
   if (!document.getElementById('libraryName').value.trim()) {
     const parts = currentBrowsePath.split('/').filter(Boolean);
     if (parts.length > 0) {
@@ -2518,8 +2522,8 @@ function syncLibraryFormSettings() {
   document.getElementById('libraryMinFileSizeHint').textContent = hintByType[type] || hintByType.movie;
   document.getElementById('libraryFormTitle').textContent = isEditing ? 'Edit Library' : 'Add Library';
   document.getElementById('libraryFormSubtitle').textContent = isEditing
-    ? 'Update scan filters, file-size rules, or the library root.'
-    : 'Create a new library root and scan profile.';
+    ? 'Update scan filters, file-size rules, or library folders.'
+    : 'Create a new library and scan profile.';
   document.getElementById('librarySubmitBtn').textContent = isEditing ? 'Save Changes' : 'Add Library';
   document.getElementById('cancelLibraryEditBtn').style.display = isEditing ? 'inline-flex' : 'none';
 }

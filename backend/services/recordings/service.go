@@ -42,9 +42,10 @@ var (
 )
 
 type Service struct {
-	repo       datastore.RecordingRepository
-	ffmpegPath string
-	outputDir  string
+	repo           datastore.RecordingRepository
+	ffmpegPath     string
+	outputDir      string
+	remuxRecording func(string) error
 
 	mu      sync.Mutex
 	ctx     context.Context
@@ -55,14 +56,16 @@ type Service struct {
 }
 
 func NewService(repo datastore.RecordingRepository, ffmpegPath, outputDir string) *Service {
+	ffmpegPath = strings.TrimSpace(ffmpegPath)
 	if strings.TrimSpace(outputDir) == "" {
 		outputDir = filepath.Join("cache", "recordings")
 	}
 	return &Service{
-		repo:       repo,
-		ffmpegPath: strings.TrimSpace(ffmpegPath),
-		outputDir:  outputDir,
-		active:     make(map[string]context.CancelFunc),
+		repo:           repo,
+		ffmpegPath:     ffmpegPath,
+		outputDir:      outputDir,
+		active:         make(map[string]context.CancelFunc),
+		remuxRecording: func(path string) error { return remuxRecordingTimestamps(ffmpegPath, path) },
 	}
 }
 
@@ -418,10 +421,13 @@ func (s *Service) startRecording(recording models.Recording) {
 	}
 	finishedAt := time.Now().UTC()
 	if latest.Status == models.RecordingStatusCancelled {
-		if err := os.Remove(latest.OutputPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Printf("[recordings] cleanup cancelled file failed: %v", err)
-		}
+		s.finalizeCancelledRecording(latest)
 		return
+	}
+	if attempt > 1 && lastErrMsg == "" {
+		if err := s.remuxRecording(latest.OutputPath); err != nil {
+			lastErrMsg = fmt.Sprintf("repair recording timestamps: %v", err)
+		}
 	}
 
 	if info, err := os.Stat(latest.OutputPath); err == nil {
@@ -442,6 +448,37 @@ func (s *Service) startRecording(recording models.Recording) {
 	if err := s.repo.Update(context.Background(), latest); err != nil {
 		log.Printf("[recordings] finalize recording update failed: %v", err)
 	}
+}
+
+// Appending a new MPEG-TS muxer output after a reconnect resets its PTS/DTS.
+// Remux the completed file so players see one continuous seekable timeline.
+func remuxRecordingTimestamps(ffmpegPath, path string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".recording-remux-*.ts")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	defer os.Remove(tmpPath)
+
+	cmd := execCommandContext(context.Background(), ffmpegPath,
+		"-nostdin", "-loglevel", "error", "-y",
+		"-i", path, "-map", "0", "-c", "copy",
+		"-mpegts_flags", "+resend_headers", "-f", "mpegts", tmpPath,
+	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ffmpeg: %w: %s", err, truncateRecordingError(stderr.String()))
+	}
+	info, err := os.Stat(tmpPath)
+	if err != nil || info.Size() == 0 {
+		return fmt.Errorf("remux produced no media data")
+	}
+	return os.Rename(tmpPath, path)
 }
 
 func (s *Service) runRecordingAttempt(ctx context.Context, recording models.Recording, remaining time.Duration, truncate bool) (error, string) {
@@ -500,12 +537,28 @@ func (s *Service) handleInterruptedRecording(id string, ts time.Time) {
 		return
 	}
 	if latest.Status == models.RecordingStatusCancelled {
-		if err := os.Remove(latest.OutputPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Printf("[recordings] cleanup cancelled file failed: %v", err)
-		}
+		s.finalizeCancelledRecording(latest)
 		return
 	}
 	s.finalizeFailure(*latest, ts, "recording interrupted before scheduled stop time")
+}
+
+func (s *Service) finalizeCancelledRecording(recording *models.Recording) {
+	if recording == nil {
+		return
+	}
+	if info, err := os.Stat(recording.OutputPath); err == nil && info.Size() > 0 {
+		if err := s.remuxRecording(recording.OutputPath); err != nil {
+			log.Printf("[recordings] remux cancelled recording %s failed: %v", recording.ID, err)
+		}
+		if info, err := os.Stat(recording.OutputPath); err == nil {
+			recording.OutputSizeBytes = info.Size()
+		}
+	}
+	recording.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(context.Background(), recording); err != nil {
+		log.Printf("[recordings] update cancelled recording %s failed: %v", recording.ID, err)
+	}
 }
 
 func (s *Service) finalizeFailure(recording models.Recording, ts time.Time, msg string) {

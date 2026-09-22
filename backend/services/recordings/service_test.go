@@ -3,8 +3,12 @@ package recordings
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -173,12 +177,112 @@ exit 1
 	}
 }
 
+func TestCancelledRecordingKeepsPlayableFile(t *testing.T) {
+	script := writeFakeFFmpeg(t, `#!/bin/sh
+printf 'recorded-media-data'
+exec sleep 10
+`)
+	recording := newTestRecording(time.Now().UTC().Add(time.Minute))
+	repo := newFakeRecordingRepo(recording)
+	svc := newTestService(repo, script, t.TempDir())
+	svc.ctx = context.Background()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		svc.startRecording(recording)
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if current, err := svc.Get(recording.ID); err == nil && current.OutputPath != "" {
+			if info, statErr := os.Stat(current.OutputPath); statErr == nil && info.Size() > 0 {
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("recording did not write media before cancellation")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := svc.Cancel(recording.ID); err != nil {
+		t.Fatalf("Cancel() error = %v", err)
+	}
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("recording did not stop after cancellation")
+	}
+	latest, err := svc.Get(recording.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latest.Status != models.RecordingStatusCancelled || latest.OutputSizeBytes == 0 {
+		t.Fatalf("cancelled recording status=%q size=%d", latest.Status, latest.OutputSizeBytes)
+	}
+	if _, err := os.Stat(latest.OutputPath); err != nil {
+		t.Fatalf("cancelled recording file missing: %v", err)
+	}
+}
+
 func newTestService(repo *fakeRecordingRepo, ffmpegPath, outputDir string) *Service {
 	return &Service{
-		repo:       repo,
-		ffmpegPath: ffmpegPath,
-		outputDir:  outputDir,
-		active:     make(map[string]context.CancelFunc),
+		repo:           repo,
+		ffmpegPath:     ffmpegPath,
+		outputDir:      outputDir,
+		active:         make(map[string]context.CancelFunc),
+		remuxRecording: func(string) error { return nil },
+	}
+}
+
+func TestRetriedRecordingHasContinuousTimeline(t *testing.T) {
+	ffmpegPath, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Skip("ffmpeg is not installed")
+	}
+	ffprobePath, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Skip("ffprobe is not installed")
+	}
+
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.ts")
+	output := filepath.Join(dir, "recording.ts")
+	cmd := exec.Command(ffmpegPath, "-nostdin", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25", "-t", "3",
+		"-c:v", "mpeg2video", "-g", "25", "-f", "mpegts", source)
+	if result, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generate source: %v: %s", err, result)
+	}
+	server := httptest.NewServer(http.FileServer(http.Dir(dir)))
+	defer server.Close()
+
+	svc := NewService(nil, ffmpegPath, dir)
+	recording := models.Recording{SourceURL: server.URL + "/source.ts", OutputPath: output}
+	for attempt := 0; attempt < 2; attempt++ {
+		if err, detail := svc.runRecordingAttempt(context.Background(), recording, 3*time.Second, attempt == 0); err != nil {
+			t.Fatalf("recording attempt %d: %v: %s", attempt+1, err, detail)
+		}
+	}
+	duration := func() float64 {
+		t.Helper()
+		result, err := exec.Command(ffprobePath, "-v", "error", "-show_entries", "format=duration",
+			"-of", "default=noprint_wrappers=1:nokey=1", output).CombinedOutput()
+		if err != nil {
+			t.Fatalf("probe recording: %v: %s", err, result)
+		}
+		value, err := strconv.ParseFloat(strings.TrimSpace(string(result)), 64)
+		if err != nil {
+			t.Fatalf("parse duration %q: %v", result, err)
+		}
+		return value
+	}
+	if got := duration(); got > 4 {
+		t.Fatalf("unrepaired duration = %.2fs, want timestamp reset near 3s", got)
+	}
+	if err := svc.remuxRecording(output); err != nil {
+		t.Fatalf("remux recording: %v", err)
+	}
+	if got := duration(); got < 5.5 || got > 6.5 {
+		t.Fatalf("repaired duration = %.2fs, want about 6s", got)
 	}
 }
 

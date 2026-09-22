@@ -2389,6 +2389,25 @@
         stopSubtitleRenderLoop();
         updateControls();
         renderSubtitles();
+        if (routeParam('growingRecording') === '1') {
+          const endsAt = Date.parse(routeParam('recordingEndsAt'));
+          if (!Number.isFinite(endsAt) || Date.now() < endsAt - 1000) {
+            const now = Date.now();
+            const reloadAfter = Number(video.dataset.growingReloadAfter || 0);
+            if (now >= reloadAfter) {
+              video.dataset.growingReloadAfter = String(now + 5000);
+              const target = Math.max(0, currentAbsoluteTime() - 0.75);
+              setTimeout(() => {
+                recoverWebPlayerHlsSession('recording-edge', {
+                  target,
+                  wasPlaying: true,
+                  forceNewSession: true,
+                });
+              }, 1500);
+            }
+            return;
+          }
+        }
         // MSE/HLS playback can emit `ended` when the currently appended media
         // runs out even though the full title has not finished. Report the
         // actual playhead; a genuine ending is already at the media duration.
@@ -4511,6 +4530,7 @@
     }
 
     function sendWebPlayerProgress(options = {}) {
+      if (sourcePath.startsWith('recording:')) return Promise.resolve(null);
       // Share-link viewers must not write into the sharer's watch history.
       if (SHARE_MODE) return sendSharePlaybackProgress(options);
       const video = document.getElementById('webPlayer');

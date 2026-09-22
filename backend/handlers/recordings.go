@@ -270,6 +270,18 @@ func (h *RecordingsHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		trackedWriter.Header().Set("Content-Type", "video/mp2t")
 	}
 	trackedWriter.Header().Set("Content-Disposition", buildInlineContentDisposition(filename))
+	if rangeHeader := strings.TrimSpace(streamRequest.Header.Get("Range")); rangeHeader != "" {
+		diagnosticWriter := &recordingRangeDiagnosticWriter{ResponseWriter: trackedWriter}
+		trackedWriter = diagnosticWriter
+		defer func() {
+			log.Printf("[recordings] range response id=%s status=%d request=%q contentRange=%q contentLength=%q acceptRanges=%q fileSize=%d bytesWritten=%d",
+				recordingID, diagnosticWriter.statusCode(), rangeHeader,
+				diagnosticWriter.Header().Get("Content-Range"),
+				diagnosticWriter.Header().Get("Content-Length"),
+				diagnosticWriter.Header().Get("Accept-Ranges"),
+				info.Size(), diagnosticWriter.bytesWritten)
+		}()
+	}
 	if recording.Status == models.RecordingStatusRunning {
 		rangeHeader := strings.TrimSpace(streamRequest.Header.Get("Range"))
 		log.Printf("[recordings] streaming running recording id=%s mode=growing range=%q path=%s", recordingID, rangeHeader, outputPath)
@@ -280,6 +292,35 @@ func (h *RecordingsHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[recordings] streaming recording id=%s mode=file status=%s path=%s", recordingID, recording.Status, outputPath)
 	http.ServeFile(trackedWriter, streamRequest, outputPath)
+}
+
+type recordingRangeDiagnosticWriter struct {
+	http.ResponseWriter
+	status       int
+	bytesWritten int64
+}
+
+func (w *recordingRangeDiagnosticWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+func (w *recordingRangeDiagnosticWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *recordingRangeDiagnosticWriter) Write(p []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	n, err := w.ResponseWriter.Write(p)
+	w.bytesWritten += int64(n)
+	return n, err
+}
+
+func (w *recordingRangeDiagnosticWriter) statusCode() int {
+	if w.status == 0 {
+		return http.StatusOK
+	}
+	return w.status
 }
 
 func (h *RecordingsHandler) requestWithRecordingStreamMetadata(r *http.Request, recording *models.Recording) *http.Request {
@@ -332,6 +373,19 @@ func (h *RecordingsHandler) streamGrowingRecording(w http.ResponseWriter, r *htt
 		return err
 	}
 	defer file.Close()
+
+	// Native players seek with byte ranges. Serve a snapshot of the bytes already
+	// recorded so a seek does not restart playback at the beginning of the file.
+	if r.Header.Get("Range") != "" {
+		info, err := file.Stat()
+		if err != nil {
+			return err
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "video/mp2t")
+		http.ServeContent(w, r, filepath.Base(outputPath), info.ModTime(), file)
+		return nil
+	}
 
 	flusher, _ := w.(http.Flusher)
 	w.Header().Set("Accept-Ranges", "none")

@@ -378,8 +378,15 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				i, result.Title, parsed.Title, parsed.Year, parsed.Seasons, parsed.Episodes, parsed.Complete)
 		}
 
+		// A provider title alias is valid only within its verified season.
+		mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
+		mappedRelease := known && !opts.IsMovie && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
+		releaseTitles := candidateTitles
+		if mappedRelease {
+			releaseTitles = append(append([]string(nil), candidateTitles...), mapped.ReleaseTitle)
+		}
 		// Check title similarity
-		titleSim, matchedTitle := bestTitleSimilarityForMedia(candidateTitles, parsed.Title, opts.IsMovie, result.Title)
+		titleSim, matchedTitle := bestTitleSimilarityForMedia(releaseTitles, parsed.Title, opts.IsMovie, result.Title)
 		if i < 5 {
 			ref := opts.ExpectedTitle
 			if matchedTitle != "" {
@@ -494,8 +501,6 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
 			// Episodes and packs of the known anthology season use provider
 			// numbering. Other seasons and multi-season packs stay unchanged.
-			mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
-			mappedRelease := known && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
 			if mappedRelease {
 				episodeOpts.TargetSeason = mapped.Season
 				episodeOpts.TargetEpisode = mapped.Episode
@@ -531,7 +536,8 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				// This handles shows where S02 airs years after the series premiere
 				episodeYearMatch := opts.EpisodeAirYear > 0 && abs(opts.EpisodeAirYear-parsedYear) <= MaxYearDifference
 				formulaOneSeasonYearMatch := hasFormulaOneEvent && opts.TargetSeason > 1900 && parsedYear == opts.TargetSeason
-				if yearDiff > MaxYearDifference && !episodeYearMatch && !formulaOneSeasonYearMatch {
+				mappedYearMatch := mappedRelease && mapped.Year > 0 && parsedYear == mapped.Year
+				if yearDiff > MaxYearDifference && !episodeYearMatch && !formulaOneSeasonYearMatch && !mappedYearMatch {
 					reason := fmt.Sprintf("year difference %d > %d (expected: %d, got: %d)", yearDiff, MaxYearDifference, opts.ExpectedYear, parsedYear)
 					log.Printf("[filter] Rejecting %q: %s, episodeAirYear: %d",
 						result.Title, reason, opts.EpisodeAirYear)

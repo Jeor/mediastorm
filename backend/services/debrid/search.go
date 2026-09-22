@@ -511,8 +511,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 
 	// If no IMDB ID provided, try to resolve it via metadata service (TVDB fallback)
 	imdbID := opts.IMDBID
-	_, hasAnthologyMapping := anthologyStreamIdentity(opts.TitleID, imdbID, parsed)
-	if imdbID == "" && !hasAnthologyMapping && s.imdbResolver != nil && parsed.Title != "" {
+	if imdbID == "" && s.imdbResolver != nil && parsed.Title != "" {
 		resolvedID := s.imdbResolver.ResolveIMDBID(ctx, parsed.Title, string(parsed.MediaType), parsed.Year)
 		if resolvedID != "" {
 			log.Printf("[debrid] Resolved IMDB ID via fallback: %s for %q", resolvedID, parsed.Title)
@@ -555,19 +554,26 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 		if scraper == nil {
 			continue
 		}
-		scraperCount++
-		wg.Add(1)
-		go func(sc Scraper) {
-			defer wg.Done()
-			start := time.Now()
-			results, err := sc.Search(ctx, req)
-			resultsChan <- scraperResult{
-				name:    sc.Name(),
-				results: results,
-				err:     err,
-				elapsed: time.Since(start),
-			}
-		}(scraper)
+		imdbBased := false
+		switch scraper.(type) {
+		case *AIOStreamsScraper, *TorrentioScraper, *DirectStremioScraper:
+			imdbBased = true
+		}
+		for _, providerReq := range mappedSearchRequests(req, imdbBased) {
+			scraperCount++
+			wg.Add(1)
+			go func(sc Scraper, providerReq SearchRequest) {
+				defer wg.Done()
+				start := time.Now()
+				results, err := sc.Search(ctx, providerReq)
+				resultsChan <- scraperResult{
+					name:    sc.Name(),
+					results: results,
+					err:     err,
+					elapsed: time.Since(start),
+				}
+			}(scraper, providerReq)
+		}
 	}
 
 	// Wait for all scrapers to complete, then close channel

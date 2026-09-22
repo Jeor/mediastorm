@@ -1,41 +1,40 @@
 package debrid
 
 import (
-	"log"
+	"fmt"
 	"strings"
 
 	"novastream/internal/mediaidentity"
 )
 
-type streamEpisodeIdentity struct {
-	imdbID  string
-	season  int
-	episode int
-}
-
-// anthologyStreamIdentity is deliberately an allowlist, not a fuzzy title or
-// year fallback. TMDB splits Lizzie Borden into its own series, while IMDb and
-// Cinemeta place it in Monster season 4. Verified 2026-09-19: all eight TMDB
-// episode external TVDB IDs match Cinemeta tt13207736 season 4 (11934436,
-// 11963721–11963727). Do not apply the parent IMDb ID to TMDB season 1 globally.
-func anthologyStreamIdentity(titleID, imdbID string, parsed ParsedQuery) (streamEpisodeIdentity, bool) {
-	if strings.TrimSpace(imdbID) != "" || parsed.MediaType != MediaTypeSeries {
-		return streamEpisodeIdentity{}, false
+// mappedSearchRequests keeps the catalog request and adds a distinct provider
+// request only for an explicit cross mapping. No metadata/network discovery.
+func mappedSearchRequests(req SearchRequest, imdbBased bool) []SearchRequest {
+	if req.Parsed.MediaType != MediaTypeSeries {
+		return []SearchRequest{req}
 	}
-	mapped, ok := mediaidentity.KnownAnthologyEpisode(titleID, parsed.Season, parsed.Episode)
-	return streamEpisodeIdentity{imdbID: mapped.IMDBID, season: mapped.Season, episode: mapped.Episode}, ok
-}
-
-// Only IMDb stream providers use this copy. The original query, text-search
-// providers, display identity, and watch history retain TMDB order. Filtering
-// independently accepts the verified episode's alternate release numbering.
-func (req SearchRequest) forIMDBStreamProvider() SearchRequest {
-	if identity, ok := anthologyStreamIdentity(req.TitleID, req.IMDBID, req.Parsed); ok {
-		log.Printf("[debrid] anthology stream mapping titleId=%s S%02dE%02d -> %s:%d:%d",
-			req.TitleID, req.Parsed.Season, req.Parsed.Episode, identity.imdbID, identity.season, identity.episode)
-		req.IMDBID = identity.imdbID
-		req.Parsed.Season = identity.season
-		req.Parsed.Episode = identity.episode
+	mapped, ok := mediaidentity.KnownAnthologyEpisode(req.TitleID, req.Parsed.Season, req.Parsed.Episode)
+	if !ok {
+		return []SearchRequest{req}
 	}
-	return req
+	alternate := req
+	alternate.IMDBID = mapped.IMDBID
+	alternate.Parsed.Title = mapped.ReleaseTitle
+	alternate.Parsed.Year = mapped.Year
+	alternate.Parsed.Season = mapped.Season
+	alternate.Parsed.Episode = mapped.Episode
+	alternate.Query = fmt.Sprintf("%s S%02dE%02d", mapped.ReleaseTitle, mapped.Season, mapped.Episode)
+	if imdbBased {
+		// An absent catalog IMDb ID has no stream endpoint. The mapped endpoint
+		// can return both catalog- and anthology-named releases.
+		if strings.TrimSpace(req.IMDBID) == "" {
+			return []SearchRequest{alternate}
+		}
+		if strings.TrimSpace(req.IMDBID) == alternate.IMDBID {
+			return []SearchRequest{alternate}
+		}
+	} else if strings.EqualFold(strings.TrimSpace(req.Query), alternate.Query) {
+		return []SearchRequest{req}
+	}
+	return []SearchRequest{req, alternate}
 }

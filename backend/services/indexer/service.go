@@ -26,6 +26,7 @@ import (
 	"novastream/internal/apiusage"
 	"novastream/internal/dnscache"
 	"novastream/internal/httpheaders"
+	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/internal/providerbreaker"
 	"novastream/models"
@@ -1651,7 +1652,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
-				MaxResults:            sourceOpts.MaxResults,
+				MaxResults:            crossMappingSourceLimit(opts, sourceOpts.MaxResults),
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
@@ -2669,7 +2670,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
-				MaxResults:            opts.MaxResults,
+				MaxResults:            crossMappingSourceLimit(opts, opts.MaxResults),
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
@@ -2773,8 +2774,7 @@ func (s *Service) fetchUsenetResultsAllQueries(ctx context.Context, settings con
 
 	// Single query — no parallelization overhead
 	if len(validQueries) == 1 {
-		queryOpts := opts
-		queryOpts.Query = validQueries[0]
+		queryOpts := mappedQueryOptions(opts, validQueries[0])
 		return s.fetchUsenetResults(ctx, settings, queryOpts)
 	}
 
@@ -2789,8 +2789,7 @@ func (s *Service) fetchUsenetResultsAllQueries(ctx context.Context, settings con
 	resultsChan := make(chan searchResult, len(validQueries))
 	for _, query := range validQueries {
 		go func(q string) {
-			queryOpts := opts
-			queryOpts.Query = q
+			queryOpts := mappedQueryOptions(opts, q)
 			results, err := s.fetchUsenetResults(ctx, settings, queryOpts)
 			resultsChan <- searchResult{results: results, err: err}
 		}(query)
@@ -2994,7 +2993,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 			TitleID:               opts.TitleID,
 			Query:                 opts.Query,
 			Categories:            append([]string{}, opts.Categories...),
-			MaxResults:            opts.MaxResults,
+			MaxResults:            crossMappingSourceLimit(opts, opts.MaxResults),
 			IMDBID:                opts.IMDBID,
 			MediaType:             opts.MediaType,
 			Year:                  opts.Year,
@@ -3545,8 +3544,14 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 		addQuery(eventQuery)
 	}
 
-	// Add the original query
+	// Add both catalog and explicitly mapped provider queries.
 	addQuery(opts.Query)
+	if parsed.MediaType == debrid.MediaTypeSeries {
+		if mapped, ok := mediaidentity.KnownAnthologyEpisode(opts.TitleID, parsed.Season, parsed.Episode); ok {
+			addQuery(fmt.Sprintf("%s S%02dE%02d", mapped.ReleaseTitle, mapped.Season, mapped.Episode))
+			addQuery(fmt.Sprintf("%s S%02d", mapped.ReleaseTitle, mapped.Season))
+		}
+	}
 
 	// Add S##E## variants (for non-daily shows, or as fallback for daily shows)
 	addVariants := func(title string) {
@@ -4054,8 +4059,7 @@ func (s *Service) searchUsenetWithFilter(ctx context.Context, settings config.Se
 	// Launch all searches in parallel
 	for idx, query := range validQueries {
 		go func(priority int, q string) {
-			queryOpts := opts
-			queryOpts.Query = q
+			queryOpts := mappedQueryOptions(opts, q)
 
 			if priority > 0 {
 				log.Printf("[indexer/usenet] parallel search with alternate query: %q", q)
@@ -4183,8 +4187,7 @@ func (s *Service) searchUsenet(ctx context.Context, settings config.Settings, op
 
 // searchUsenetSingleWithFilter performs a single usenet search with explicit filter settings
 func (s *Service) searchUsenetSingleWithFilter(ctx context.Context, settings config.Settings, opts SearchOptions, baseParsed debrid.ParsedQuery, alternateTitles []string, query string, filterSettings models.FilterSettings) ([]models.NZBResult, error) {
-	queryOpts := opts
-	queryOpts.Query = query
+	queryOpts := mappedQueryOptions(opts, query)
 
 	allResults, err := s.fetchUsenetResults(ctx, settings, queryOpts)
 	if err != nil {
@@ -4196,14 +4199,13 @@ func (s *Service) searchUsenetSingleWithFilter(ctx context.Context, settings con
 	}
 
 	parsedForQuery := debrid.ParseQuery(query)
-	filtered := s.applyUsenetFilteringWithSettings(allResults, queryOpts, baseParsed, parsedForQuery, alternateTitles, filterSettings)
+	filtered := s.applyUsenetFilteringWithSettings(allResults, opts, baseParsed, parsedForQuery, alternateTitles, filterSettings)
 	return filtered, nil
 }
 
 // searchUsenetSingle performs a single usenet search (non-parallel path)
 func (s *Service) searchUsenetSingle(ctx context.Context, settings config.Settings, opts SearchOptions, baseParsed debrid.ParsedQuery, alternateTitles []string, query string) ([]models.NZBResult, error) {
-	queryOpts := opts
-	queryOpts.Query = query
+	queryOpts := mappedQueryOptions(opts, query)
 
 	allResults, err := s.fetchUsenetResults(ctx, settings, queryOpts)
 	if err != nil {
@@ -4215,7 +4217,7 @@ func (s *Service) searchUsenetSingle(ctx context.Context, settings config.Settin
 	}
 
 	parsedForQuery := debrid.ParseQuery(query)
-	filtered := s.applyUsenetFiltering(allResults, settings, queryOpts, baseParsed, parsedForQuery, alternateTitles)
+	filtered := s.applyUsenetFiltering(allResults, settings, opts, baseParsed, parsedForQuery, alternateTitles)
 	return filtered, nil
 }
 

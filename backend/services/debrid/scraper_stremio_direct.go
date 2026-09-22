@@ -75,7 +75,6 @@ func (s *DirectStremioScraper) Name() string {
 }
 
 func (s *DirectStremioScraper) Search(ctx context.Context, req SearchRequest) ([]ScrapeResult, error) {
-	req = req.forIMDBStreamProvider()
 	imdbID := strings.ToLower(strings.TrimSpace(req.IMDBID))
 	if imdbID == "" {
 		return nil, nil

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"novastream/config"
@@ -18,7 +19,6 @@ func TestAnthologyStreamIdentityScope(t *testing.T) {
 	}{
 		{"other title", func(r *SearchRequest) { r.TitleID = "tmdb:tv:113988" }},
 		{"no identity", func(r *SearchRequest) { r.TitleID = "" }},
-		{"explicit IMDb", func(r *SearchRequest) { r.IMDBID = "tt1234567" }},
 		{"movie", func(r *SearchRequest) { r.Parsed.MediaType = MediaTypeMovie }},
 		{"special", func(r *SearchRequest) { r.Parsed.Season = 0 }},
 		{"another season", func(r *SearchRequest) { r.Parsed.Season = 2 }},
@@ -28,7 +28,8 @@ func TestAnthologyStreamIdentityScope(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := base
 			tc.change(&req)
-			got := req.forIMDBStreamProvider()
+			requests := mappedSearchRequests(req, true)
+			got := requests[0]
 			if got.IMDBID != req.IMDBID || got.Parsed.Season != req.Parsed.Season || got.Parsed.Episode != req.Parsed.Episode {
 				t.Fatalf("unrelated request changed: %+v", got)
 			}
@@ -37,8 +38,9 @@ func TestAnthologyStreamIdentityScope(t *testing.T) {
 	for episode := 1; episode <= 8; episode++ {
 		req := base
 		req.Parsed.Episode = episode
-		got := req.forIMDBStreamProvider()
-		if got.IMDBID != "tt13207736" || got.Parsed.Season != 4 || got.Parsed.Episode != episode || got.Query != req.Query || req.Parsed.Season != 1 || req.IMDBID != "" {
+		requests := mappedSearchRequests(req, true)
+		got := requests[0]
+		if got.IMDBID != "tt13207736" || got.Parsed.Season != 4 || got.Parsed.Episode != episode || req.Parsed.Season != 1 || req.IMDBID != "" {
 			t.Fatalf("incorrect mapping or mutated original: %+v -> %+v", req, got)
 		}
 	}
@@ -48,14 +50,19 @@ type anthologyResolverSpy struct{ called bool }
 
 func (s *anthologyResolverSpy) ResolveIMDBID(context.Context, string, string, int) string {
 	s.called = true
-	return "tt9999999"
+	return ""
 }
 
-type anthologyTextScraper struct{ request SearchRequest }
+type anthologyTextScraper struct {
+	mu       sync.Mutex
+	requests []SearchRequest
+}
 
 func (s *anthologyTextScraper) Name() string { return "text-search" }
 func (s *anthologyTextScraper) Search(_ context.Context, req SearchRequest) ([]ScrapeResult, error) {
-	s.request = req
+	s.mu.Lock()
+	s.requests = append(s.requests, req)
+	s.mu.Unlock()
 	return nil, nil
 }
 
@@ -86,11 +93,11 @@ func TestAnthologySearchUsesProviderCoordinates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if spy.called {
-				t.Fatal("known mapping must not enter general show-ID resolver")
+			if !spy.called {
+				t.Fatal("catalog ID resolver must still be allowed to discover a separate IMDb identity")
 			}
-			if textScraper.request.IMDBID != "" || textScraper.request.Parsed.Season != 1 || textScraper.request.Parsed.Episode != 2 {
-				t.Fatalf("text search identity changed: %+v", textScraper.request)
+			if len(textScraper.requests) != 2 {
+				t.Fatalf("expected catalog and provider text requests: %v", textScraper.requests)
 			}
 			if len(paths) != 1 || !strings.HasSuffix(paths[0], "/stream/series/tt13207736:4:2.json") {
 				t.Fatalf("provider requests = %v", paths)

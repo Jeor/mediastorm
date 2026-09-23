@@ -244,6 +244,71 @@ type readyValidationSnapshot struct {
 	RecentlyValidated bool
 }
 
+// copyPrequeueEntryForRead captures one coherent entry version while the store
+// lock is held. Store updates replace fields under the write lock, so callers
+// must not retain the live pointer after releasing the lock.
+func copyPrequeueEntryForRead(entry *PrequeueEntry) *PrequeueEntry {
+	if entry == nil {
+		return nil
+	}
+
+	copy := *entry
+	if entry.TargetEpisode != nil {
+		targetEpisode := *entry.TargetEpisode
+		if entry.TargetEpisode.Image != nil {
+			image := *entry.TargetEpisode.Image
+			targetEpisode.Image = &image
+		}
+		copy.TargetEpisode = &targetEpisode
+	}
+	if entry.DolbyVisionConfiguration != nil {
+		configuration := *entry.DolbyVisionConfiguration
+		copy.DolbyVisionConfiguration = &configuration
+	}
+	copy.AudioTracks = append([]AudioTrackInfo(nil), entry.AudioTracks...)
+	copy.SubtitleTracks = append([]SubtitleTrackInfo(nil), entry.SubtitleTracks...)
+	if entry.SubtitleSessions != nil {
+		copy.SubtitleSessions = make(map[int]*models.SubtitleSessionInfo, len(entry.SubtitleSessions))
+		for trackIndex, session := range entry.SubtitleSessions {
+			if session == nil {
+				copy.SubtitleSessions[trackIndex] = nil
+				continue
+			}
+			sessionCopy := *session
+			copy.SubtitleSessions[trackIndex] = &sessionCopy
+		}
+	}
+	if entry.ResultAttributes != nil {
+		copy.ResultAttributes = make(map[string]string, len(entry.ResultAttributes))
+		for key, value := range entry.ResultAttributes {
+			copy.ResultAttributes[key] = value
+		}
+	}
+	if entry.SelectedResult != nil {
+		selectedResult := copyNZBResult(*entry.SelectedResult)
+		copy.SelectedResult = &selectedResult
+	}
+	if entry.MigrationCandidates != nil {
+		copy.MigrationCandidates = make([]models.NZBResult, len(entry.MigrationCandidates))
+		for index, candidate := range entry.MigrationCandidates {
+			copy.MigrationCandidates[index] = copyNZBResult(candidate)
+		}
+	}
+	return &copy
+}
+
+func copyNZBResult(result models.NZBResult) models.NZBResult {
+	result.Categories = append([]string(nil), result.Categories...)
+	if result.Attributes != nil {
+		attributes := make(map[string]string, len(result.Attributes))
+		for key, value := range result.Attributes {
+			attributes[key] = value
+		}
+		result.Attributes = attributes
+	}
+	return result
+}
+
 // PrequeueStore manages prequeue entries with TTL
 type PrequeueStore struct {
 	mu      sync.RWMutex
@@ -756,14 +821,15 @@ func (s *PrequeueStore) Get(id string) (*PrequeueEntry, bool) {
 		return nil, false
 	}
 
+	entryCopy := copyPrequeueEntryForRead(entry)
 	validator := s.streamPathValidator
 	snapshot := readyValidationSnapshot{
-		ID:                id,
-		TitleID:           entry.TitleID,
-		UserID:            entry.UserID,
-		Status:            entry.Status,
-		StreamPath:        entry.StreamPath,
-		RecentlyValidated: s.streamPathRecentlyValidatedLocked(id, entry.StreamPath, time.Now()),
+		ID:                entryCopy.ID,
+		TitleID:           entryCopy.TitleID,
+		UserID:            entryCopy.UserID,
+		Status:            entryCopy.Status,
+		StreamPath:        entryCopy.StreamPath,
+		RecentlyValidated: s.streamPathRecentlyValidatedLocked(id, entryCopy.StreamPath, time.Now()),
 	}
 	s.mu.RUnlock()
 
@@ -771,7 +837,7 @@ func (s *PrequeueStore) Get(id string) (*PrequeueEntry, bool) {
 		return nil, false
 	}
 
-	return entry, true
+	return entryCopy, true
 }
 
 // GetByTitleUser retrieves a prequeue entry by title+user
@@ -785,39 +851,13 @@ func (s *PrequeueStore) GetByTitleUserScope(titleID, userID, settingsScopeKey st
 
 	key := titleUserKey(titleID, userID, settingsScopeKey)
 	id, exists := s.byTitleUser[key]
-	if !exists {
-		s.mu.RUnlock()
-		return nil, false
-	}
-
-	entry, exists := s.entries[id]
-	if !exists {
-		s.mu.RUnlock()
-		return nil, false
-	}
-
-	// Check if expired
-	if time.Now().After(entry.ExpiresAt) {
-		s.mu.RUnlock()
-		return nil, false
-	}
-
-	validator := s.streamPathValidator
-	snapshot := readyValidationSnapshot{
-		ID:                id,
-		TitleID:           entry.TitleID,
-		UserID:            entry.UserID,
-		Status:            entry.Status,
-		StreamPath:        entry.StreamPath,
-		RecentlyValidated: s.streamPathRecentlyValidatedLocked(id, entry.StreamPath, time.Now()),
-	}
 	s.mu.RUnlock()
 
-	if !s.validateReadyEntry(snapshot, validator) {
+	if !exists {
 		return nil, false
 	}
 
-	return entry, true
+	return s.Get(id)
 }
 
 func (s *PrequeueStore) validateReadyEntry(entry readyValidationSnapshot, validator StreamPathValidator) bool {
@@ -1093,7 +1133,7 @@ func (s *PrequeueStore) FindReadyByStreamPath(streamPath string) (*PrequeueEntry
 			continue
 		}
 		if best == nil || entry.CreatedAt.After(best.CreatedAt) {
-			best = entry
+			best = copyPrequeueEntryForRead(entry)
 		}
 	}
 	if best == nil {
@@ -1220,7 +1260,7 @@ func (s *PrequeueStore) ListAll() []*PrequeueEntry {
 	var result []*PrequeueEntry
 	for _, entry := range s.entries {
 		if now.Before(entry.ExpiresAt) {
-			result = append(result, entry)
+			result = append(result, copyPrequeueEntryForRead(entry))
 		}
 	}
 	return result
@@ -1251,7 +1291,7 @@ func (s *PrequeueStore) ListExpiringBefore(deadline time.Time) []*PrequeueEntry 
 	var result []*PrequeueEntry
 	for _, entry := range s.entries {
 		if entry.Status == PrequeueStatusReady && !entry.ExpiresAt.After(deadline) {
-			result = append(result, entry)
+			result = append(result, copyPrequeueEntryForRead(entry))
 		}
 	}
 	return result

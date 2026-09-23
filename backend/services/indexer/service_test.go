@@ -56,6 +56,20 @@ func TestSearchTorznabRateLimitSkipsProviderAndAllowsFallback(t *testing.T) {
 	}
 }
 
+func TestSearchTorznabRejectsJSONAPIResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"current":"v1","deprecated":[]}`))
+	}))
+	defer server.Close()
+
+	svc := &Service{httpc: server.Client(), providerBreaker: providerbreaker.New()}
+	_, err := svc.searchTorznab(context.Background(), config.IndexerConfig{Name: "Newznab", URL: server.URL}, SearchOptions{Query: "test"})
+	if err == nil || !strings.Contains(err.Error(), "Newznab API endpoint") {
+		t.Fatalf("searchTorznab error = %v, want actionable invalid-feed error", err)
+	}
+}
+
 func TestSearchTorznabReleasedEpisodeFallsBackToSeasonAfterEmptyExactSearch(t *testing.T) {
 	var queries []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

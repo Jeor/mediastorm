@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"novastream/config"
 	"novastream/internal/httpheaders"
 )
 
@@ -47,6 +48,19 @@ func TestAdminIndexerSearchRequest(t *testing.T) {
 	}
 }
 
+func TestIndexerSearchDiagnosticRejectsJSONAPIResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"current":"v1","deprecated":[]}`))
+	}))
+	defer server.Close()
+
+	result := (&AdminUIHandler{}).runIndexerSearchDiagnostic(t.Context(), config.IndexerConfig{Name: "Newznab", URL: server.URL}, "test", 2)
+	if result.Success || !strings.Contains(result.Error, "Newznab API endpoint") {
+		t.Fatalf("diagnostic result = %+v, want actionable invalid-feed error", result)
+	}
+}
+
 func TestAdminIndexerErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -56,6 +70,9 @@ func TestAdminIndexerErrors(t *testing.T) {
 		{"cloudflare", 403, `<!DOCTYPE html><title>Attention Required! | Cloudflare</title>`, "Cloudflare blocked the indexer request"},
 		{"api key", 200, `<error code="100" description="Incorrect user credentials"/>`, "Incorrect user credentials"},
 		{"other forbidden", 403, `Access denied`, "HTTP 403: Access denied"},
+		{"json api root", 200, `{"current":"v1","deprecated":[]}`, "Newznab API endpoint"},
+		{"html login", 200, `<html><body>Sign in</body></html>`, "Newznab API endpoint"},
+		{"empty rss", 200, `<rss></rss>`, "Newznab API endpoint"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(tc.status); w.Write([]byte(tc.body)) }))

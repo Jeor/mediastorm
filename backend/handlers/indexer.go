@@ -481,6 +481,13 @@ func classifySearchError(err error) (int, map[string]interface{}) {
 			"message": "Search timed out. If using Aiostreams, consider increasing the indexer timeout in Settings.",
 		}
 	}
+	if strings.Contains(errMsg, "did not return a Newznab RSS feed") {
+		return http.StatusBadGateway, map[string]interface{}{
+			"error":   errMsg,
+			"code":    "INVALID_INDEXER_FEED",
+			"message": "The indexer returned an invalid search response. Check that its URL points to the Newznab API endpoint.",
+		}
+	}
 
 	return http.StatusBadGateway, map[string]interface{}{
 		"error":   errMsg,

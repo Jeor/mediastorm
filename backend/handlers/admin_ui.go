@@ -4706,13 +4706,23 @@ func (h *AdminUIHandler) TestIndexer(w http.ResponseWriter, r *http.Request) {
 	// newznab/torznab indexers report failures (bad API key, exhausted request
 	// limit, etc.) with a 200 status and an <error> body. Surface those as a
 	// failed test instead of a misleading "reachable and responding".
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Failed to read indexer response: " + err.Error()})
+		return
+	}
 	if msg, isErr := parseNewznabError(body); isErr {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   msg,
 		})
+		return
+	}
+	if _, err := parseNewznabFeed(body); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
 		return
 	}
 
@@ -4751,9 +4761,18 @@ type SearchDiagnosticsResponse struct {
 }
 
 type diagnosticsRSSFeed struct {
-	Channel struct {
+	XMLName xml.Name `xml:"rss"`
+	Channel *struct {
 		Items []struct{} `xml:"item"`
 	} `xml:"channel"`
+}
+
+func parseNewznabFeed(body []byte) (diagnosticsRSSFeed, error) {
+	var feed diagnosticsRSSFeed
+	if err := xml.Unmarshal(body, &feed); err != nil || feed.Channel == nil {
+		return feed, fmt.Errorf("Indexer did not return a Newznab RSS feed; check that its URL points to the Newznab API endpoint")
+	}
+	return feed, nil
 }
 
 // newznabErrorResponse models the error element that newznab/torznab indexers
@@ -4946,9 +4965,9 @@ func (h *AdminUIHandler) runIndexerSearchDiagnostic(ctx context.Context, idx con
 		return result
 	}
 
-	var feed diagnosticsRSSFeed
-	if err := xml.Unmarshal(body, &feed); err != nil {
-		result.Error = "decode response: " + err.Error()
+	feed, err := parseNewznabFeed(body)
+	if err != nil {
+		result.Error = err.Error()
 		result.DurationMS = time.Since(startedAt).Milliseconds()
 		return result
 	}

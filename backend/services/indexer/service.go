@@ -4389,7 +4389,8 @@ func shouldUseDebrid(mode config.StreamingServiceMode) bool {
 }
 
 type rssFeed struct {
-	Channel struct {
+	XMLName xml.Name `xml:"rss"`
+	Channel *struct {
 		Items []rssItem `xml:"item"`
 	} `xml:"channel"`
 }
@@ -4535,13 +4536,11 @@ func (s *Service) searchTorznab(ctx context.Context, idx config.IndexerConfig, o
 
 	var feed rssFeed
 	if err := xml.Unmarshal(sanitized, &feed); err != nil {
-		// Log a snippet of the problematic XML for debugging
-		snippet := sanitized
-		if len(snippet) > 500 {
-			snippet = snippet[:500]
-		}
-		log.Printf("[indexer/torznab] XML parse error from %s: %v\nXML snippet: %s", idx.Name, err, string(snippet))
-		return nil, fmt.Errorf("decode torznab feed: %w", err)
+		log.Printf("[indexer/newznab] invalid RSS feed from %s: %v", idx.Name, err)
+		return nil, fmt.Errorf("indexer %s did not return a Newznab RSS feed; check that its URL points to the Newznab API endpoint: %w", idx.Name, err)
+	}
+	if feed.Channel == nil {
+		return nil, fmt.Errorf("indexer %s did not return a Newznab RSS feed; check that its URL points to the Newznab API endpoint", idx.Name)
 	}
 
 	results := make([]models.NZBResult, 0, len(feed.Channel.Items))

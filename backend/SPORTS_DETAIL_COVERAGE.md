@@ -41,3 +41,19 @@ Reduced regression fixtures retain only fields needed by the tested contracts. T
 5. Investigate live F1, richer cycling and other premium data only after cost, credentials, redistribution and reliability are confirmed. No paid provider is enabled by this change.
 
 Every sport must pass: verified provider samples for scheduled/live/final states (or an explicit limited schedule-only contract), stable IDs, timezone boundaries, zero-vs-missing tests, mobile long-text checks, TV focus/scroll checks, spoiler checks and source-failure recovery. Unsupported modules stay hidden; no synthetic stats in production.
+
+### Basketball tracking expansion (2026-09-21)
+
+NBA, WNBA, NCAA men and NCAA women now normalize optional `basketballShots` and
+`winProbability` from ESPN summary play-by-play. Probabilities join by exact play ID;
+shooter identities/headshots join to the same team's boxscore. Invalid coordinates,
+unknown teams, unlinked probabilities and free throws are not plotted as field goals.
+Coordinates retain ESPN's attacking-rim frame: x across the 50-foot court, y from the
+rim. Clients must not treat them as broadcast-direction coordinates.
+
+Validated source samples: NBA 401766128, WNBA 401736394, NCAA men 401746082,
+NCAA women 401746075. Availability varies per event. No estimated values are generated
+when provider data is absent. Live score history requires complete opening coverage,
+chronological plays and agreement with the current header scores. WNBA player stats
+and 10-minute-quarter score history are included. Existing final-history validation
+remains in place. `go test ./services/sports` passes with recorded fixtures.

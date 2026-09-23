@@ -20,9 +20,11 @@ type teamPlayPoint struct {
 	} `json:"team"`
 }
 type teamDetailPlay struct {
-	Wallclock   string   `json:"wallclock"`
-	StatYardage *float64 `json:"statYardage"`
-	Coordinate  *struct {
+	ShootingPlay    bool     `json:"shootingPlay"`
+	PointsAttempted int      `json:"pointsAttempted"`
+	Wallclock       string   `json:"wallclock"`
+	StatYardage     *float64 `json:"statYardage"`
+	Coordinate      *struct {
 		X *float64 `json:"x"`
 		Y *float64 `json:"y"`
 	} `json:"coordinate"`
@@ -80,6 +82,10 @@ type teamDetailDrive struct {
 	Plays []teamDetailPlay `json:"plays"`
 }
 type teamSportSummary struct {
+	WinProbability []struct {
+		Home   *float64 `json:"homeWinPercentage"`
+		PlayID string   `json:"playId"`
+	} `json:"winprobability"`
 	Rosters   []teamContextRoster  `json:"rosters"`
 	Standings teamContextStandings `json:"standings"`
 	Header    struct {
@@ -293,6 +299,9 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 	d.PlayerStats = normalizePlayerGameStats(game, p.Boxscore.Players)
 	d.PlayerStats = append(d.PlayerStats, normalizeSoccerPlayerStats(game, p.Rosters)...)
 	d.ScoreHistory = normalizeScoreHistory(game, p)
+	if family == "nba" {
+		normalizeBasketballTracking(game, p, d)
+	}
 	seen := map[string]bool{}
 	for i := len(plays) - 1; i >= 0 && len(d.Plays) < 200; i-- {
 		play := plays[i]

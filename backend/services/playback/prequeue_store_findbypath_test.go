@@ -15,13 +15,11 @@ func TestFindReadyByStreamPathMatchesNormalizedPath(t *testing.T) {
 	}
 
 	older, _ := store.CreateScoped("t1", "Older", "u1", "movie", 2020, nil, "details", "")
-	older, _ = store.Get(older.ID)
-	wire(older)
+	store.Update(older.ID, wire)
 	time.Sleep(2 * time.Millisecond)
 
 	entry, _ := store.CreateScoped("t1", "Newer", "u1", "movie", 2020, nil, "details", "")
-	entry, _ = store.Get(entry.ID)
-	wire(entry)
+	store.Update(entry.ID, wire)
 
 	// Lookup with a *different* but normalized form of the same path (what the
 	// HLS start handler sees after it strips the /webdav prefix).
@@ -37,15 +35,18 @@ func TestFindReadyByStreamPathMatchesNormalizedPath(t *testing.T) {
 func TestFindReadyByStreamPathSkipsNonReady(t *testing.T) {
 	store := NewPrequeueStore(3 * time.Hour)
 	entry, _ := store.CreateScoped("t1", "Queued", "u1", "movie", 2020, nil, "details", "")
-	entry, _ = store.Get(entry.ID)
-	entry.StreamPath = "/webdav/usenet/abc/file.mkv"
+	store.Update(entry.ID, func(e *PrequeueEntry) {
+		e.StreamPath = "/webdav/usenet/abc/file.mkv"
+	})
 
 	if _, ok := store.FindReadyByStreamPath("usenet/abc/file.mkv"); ok {
 		t.Fatalf("queued entry must not be returned")
 	}
 
-	entry.Status = PrequeueStatusReady
-	entry.StreamPath = "file.mkv" // no usenet prefix at all
+	store.Update(entry.ID, func(e *PrequeueEntry) {
+		e.Status = PrequeueStatusReady
+		e.StreamPath = "file.mkv" // no usenet prefix at all
+	})
 	got, ok := store.FindReadyByStreamPath("file.mkv")
 	if !ok || got.ID != entry.ID {
 		t.Fatalf("expected exact-match ready entry, got %v ok=%v", got, ok)

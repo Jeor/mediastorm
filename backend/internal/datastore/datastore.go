@@ -121,6 +121,9 @@ func (ds *DataStore) LibraryAccess() LibraryAccessRepository {
 	return &pgLibraryAccessRepo{pool: ds.pool}
 }
 func (ds *DataStore) Recordings() RecordingRepository { return &pgRecordingRepo{pool: ds.pool} }
+func (ds *DataStore) RecordingRules() RecordingRuleRepository {
+	return &pgRecordingRepo{pool: ds.pool}
+}
 func (ds *DataStore) Notifications() NotificationRepository {
 	return &pgNotificationRepo{pool: ds.pool}
 }
@@ -189,6 +192,9 @@ func (t *Tx) LocalMedia() LocalMediaRepository       { return &pgLocalMediaRepo{
 func (t *Tx) RemoteMedia() RemoteMediaRepository     { return &pgRemoteMediaRepo{pool: t.tx} }
 func (t *Tx) LibraryAccess() LibraryAccessRepository { return &pgLibraryAccessRepo{pool: t.tx} }
 func (t *Tx) Recordings() RecordingRepository        { return &pgRecordingRepo{pool: t.tx} }
+func (t *Tx) RecordingRules() RecordingRuleRepository {
+	return &pgRecordingRepo{pool: t.tx}
+}
 func (t *Tx) Notifications() NotificationRepository {
 	return &pgNotificationRepo{pool: t.tx}
 }

@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -27,6 +28,7 @@ import (
 	"novastream/internal/netproxy"
 	"novastream/internal/requestsecurity"
 	"novastream/models"
+	"novastream/services/recordings"
 )
 
 const (
@@ -2118,6 +2120,29 @@ func (h *LiveHandler) FetchFilteredChannelsForRequest(r *http.Request) ([]LiveCh
 	}
 
 	return allChannels, nil
+}
+
+// RecordingChannels resolves the complete visible channel list for a profile.
+func (h *LiveHandler) RecordingChannels(ctx context.Context, profileID string) ([]recordings.Channel, error) {
+	query := url.Values{}
+	query.Set("profileId", profileID)
+	request := httptest.NewRequest(http.MethodGet, "/api/live/channels?"+query.Encode(), nil).WithContext(ctx)
+	response := httptest.NewRecorder()
+	h.GetChannels(response, request)
+	if response.Code < http.StatusOK || response.Code >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("load profile Live TV channels: %s", strings.TrimSpace(response.Body.String()))
+	}
+	var payload LiveChannelsResponse
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("decode profile Live TV channels: %w", err)
+	}
+	channels := make([]recordings.Channel, 0, len(payload.Channels))
+	for _, channel := range payload.Channels {
+		channels = append(channels, recordings.Channel{
+			ID: channel.ID, TvgID: channel.TvgID, Name: channel.Name, SourceURL: channel.URL,
+		})
+	}
+	return channels, nil
 }
 
 // GetChannels returns parsed and filtered channels from the configured playlist.

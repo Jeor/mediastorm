@@ -34,13 +34,48 @@ type recordingService interface {
 	Delete(id string) error
 }
 
+type recordingRuleService interface {
+	GetRule(id string) (*models.RecordingRule, error)
+	ListRules(userID string, includeAll bool) ([]models.RecordingRule, error)
+	CreateRule(rule models.RecordingRule) (models.RecordingRule, error)
+	UpdateRule(id string, update models.UpdateRecordingRuleRequest) (models.RecordingRule, error)
+	DeleteRule(id string) error
+}
+
+type recordingUserSettingsService interface {
+	Get(userID string) (*models.UserSettings, error)
+	Update(userID string, settings models.UserSettings) error
+}
+
 type RecordingsHandler struct {
-	service recordingService
-	users   recordingUsersProvider
+	service      recordingService
+	rules        recordingRuleService
+	users        recordingUsersProvider
+	userSettings recordingUserSettingsService
 }
 
 func NewRecordingsHandler(service recordingService, users recordingUsersProvider) *RecordingsHandler {
 	return &RecordingsHandler{service: service, users: users}
+}
+
+func (h *RecordingsHandler) SetRuleService(service recordingRuleService) { h.rules = service }
+
+func (h *RecordingsHandler) SetUserSettingsService(service recordingUserSettingsService) {
+	h.userSettings = service
+}
+
+type createRecordingPayload struct {
+	ProfileID            string `json:"profileId"`
+	ChannelID            string `json:"channelId"`
+	TvgID                string `json:"tvgId"`
+	ChannelName          string `json:"channelName"`
+	Title                string `json:"title"`
+	Description          string `json:"description"`
+	SourceURL            string `json:"sourceUrl"`
+	Start                string `json:"start"`
+	Stop                 string `json:"stop"`
+	PaddingBeforeSeconds *int   `json:"paddingBeforeSeconds,omitempty"`
+	PaddingAfterSeconds  *int   `json:"paddingAfterSeconds,omitempty"`
 }
 
 func (h *RecordingsHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +95,12 @@ func (h *RecordingsHandler) List(w http.ResponseWriter, r *http.Request) {
 		filter.UserID = profileID
 	} else if userID := strings.TrimSpace(r.URL.Query().Get("userId")); userID != "" {
 		filter.UserID = userID
+		filter.IncludeAll = false
+	} else if profileID := strings.TrimSpace(r.URL.Query().Get("profileId")); profileID != "" {
+		if !h.requireExistingProfile(w, profileID) {
+			return
+		}
+		filter.UserID = profileID
 		filter.IncludeAll = false
 	}
 	recordingsList, err := h.service.List(filter)
@@ -103,17 +144,33 @@ func (h *RecordingsHandler) CreateEPG(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "recordings service unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	var req models.CreateEPGRecordingRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var payload createRecordingPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	profileID := payload.ProfileID
 	if !auth.IsMaster(r) {
-		profileID, ok := h.requireProfileOwnership(w, r, req.ProfileID)
+		var ok bool
+		profileID, ok = h.requireProfileOwnership(w, r, profileID)
 		if !ok {
 			return
 		}
-		req.ProfileID = profileID
+	} else if !h.requireExistingProfile(w, profileID) {
+		return
+	}
+	before, after := h.defaultRecordingPadding(profileID)
+	if payload.PaddingBeforeSeconds != nil {
+		before = *payload.PaddingBeforeSeconds
+	}
+	if payload.PaddingAfterSeconds != nil {
+		after = *payload.PaddingAfterSeconds
+	}
+	req := models.CreateEPGRecordingRequest{
+		ProfileID: profileID, ChannelID: payload.ChannelID, TvgID: payload.TvgID,
+		ChannelName: payload.ChannelName, Title: payload.Title, Description: payload.Description,
+		SourceURL: payload.SourceURL, Start: payload.Start, Stop: payload.Stop,
+		PaddingBeforeSeconds: before, PaddingAfterSeconds: after,
 	}
 	recording, err := h.service.CreateFromEPG(req)
 	if err != nil {
@@ -130,17 +187,33 @@ func (h *RecordingsHandler) CreateTimeBlock(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "recordings service unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	var req models.CreateTimeBlockRecordingRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var payload createRecordingPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	profileID := payload.ProfileID
 	if !auth.IsMaster(r) {
-		profileID, ok := h.requireProfileOwnership(w, r, req.ProfileID)
+		var ok bool
+		profileID, ok = h.requireProfileOwnership(w, r, profileID)
 		if !ok {
 			return
 		}
-		req.ProfileID = profileID
+	} else if !h.requireExistingProfile(w, profileID) {
+		return
+	}
+	before, after := h.defaultRecordingPadding(profileID)
+	if payload.PaddingBeforeSeconds != nil {
+		before = *payload.PaddingBeforeSeconds
+	}
+	if payload.PaddingAfterSeconds != nil {
+		after = *payload.PaddingAfterSeconds
+	}
+	req := models.CreateTimeBlockRecordingRequest{
+		ProfileID: profileID, ChannelID: payload.ChannelID, TvgID: payload.TvgID,
+		ChannelName: payload.ChannelName, Title: payload.Title, Description: payload.Description,
+		SourceURL: payload.SourceURL, Start: payload.Start, Stop: payload.Stop,
+		PaddingBeforeSeconds: before, PaddingAfterSeconds: after,
 	}
 	recording, err := h.service.CreateTimeBlock(req)
 	if err != nil {
@@ -461,6 +534,207 @@ func (h *RecordingsHandler) profileNameForProfile(profileID string) string {
 
 func (h *RecordingsHandler) Options(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *RecordingsHandler) ListRules(w http.ResponseWriter, r *http.Request) {
+	if h.rules == nil {
+		http.Error(w, "recording rules unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	profileID, ok := h.requestProfile(w, r, r.URL.Query().Get("profileId"))
+	if !ok {
+		return
+	}
+	rules, err := h.rules.ListRules(profileID, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rules == nil {
+		rules = []models.RecordingRule{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"rules": rules})
+}
+
+func (h *RecordingsHandler) CreateRule(w http.ResponseWriter, r *http.Request) {
+	if h.rules == nil {
+		http.Error(w, "recording rules unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var payload models.CreateRecordingRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	profileID, ok := h.requestProfile(w, r, payload.ProfileID)
+	if !ok {
+		return
+	}
+	before, after := h.defaultRecordingPadding(profileID)
+	if payload.PaddingBeforeSeconds != nil {
+		before = *payload.PaddingBeforeSeconds
+	}
+	if payload.PaddingAfterSeconds != nil {
+		after = *payload.PaddingAfterSeconds
+	}
+	rule, err := h.rules.CreateRule(models.RecordingRule{
+		UserID: profileID, MatchType: payload.MatchType, Pattern: payload.Pattern,
+		ChannelID: payload.ChannelID, TvgID: payload.TvgID, ChannelName: payload.ChannelName,
+		AllChannels: payload.AllChannels, PaddingBeforeSeconds: before, PaddingAfterSeconds: after,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(rule)
+}
+
+func (h *RecordingsHandler) UpdateRule(w http.ResponseWriter, r *http.Request) {
+	if h.rules == nil {
+		http.Error(w, "recording rules unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	rule, ok := h.authorizedRule(w, r)
+	if !ok {
+		return
+	}
+	var update models.UpdateRecordingRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(update.ProfileID) != "" && update.ProfileID != rule.UserID {
+		http.Error(w, "recording rule profile does not match", http.StatusBadRequest)
+		return
+	}
+	updated, err := h.rules.UpdateRule(rule.ID, update)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(updated)
+}
+
+func (h *RecordingsHandler) DeleteRule(w http.ResponseWriter, r *http.Request) {
+	if h.rules == nil {
+		http.Error(w, "recording rules unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	rule, ok := h.authorizedRule(w, r)
+	if !ok {
+		return
+	}
+	if err := h.rules.DeleteRule(rule.ID); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *RecordingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	profileID, ok := h.requestProfile(w, r, r.URL.Query().Get("profileId"))
+	if !ok {
+		return
+	}
+	before, after := h.defaultRecordingPadding(profileID)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(models.RecordingSettings{
+		PaddingBeforeSeconds: models.IntPtr(before), PaddingAfterSeconds: models.IntPtr(after),
+	})
+}
+
+func (h *RecordingsHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	if h.userSettings == nil {
+		http.Error(w, "recording settings unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var update models.UpdateRecordingSettingsRequest
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	profileID, ok := h.requestProfile(w, r, update.ProfileID)
+	if !ok {
+		return
+	}
+	if update.PaddingBeforeSeconds < 0 || update.PaddingBeforeSeconds > 3600 || update.PaddingAfterSeconds < 0 || update.PaddingAfterSeconds > 3600 {
+		http.Error(w, "recording buffers must be between 0 and 60 minutes", http.StatusBadRequest)
+		return
+	}
+	settings := models.DefaultUserSettings()
+	if current, err := h.userSettings.Get(profileID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if current != nil {
+		settings = *current
+	}
+	settings.Recordings = models.RecordingSettings{
+		PaddingBeforeSeconds: models.IntPtr(update.PaddingBeforeSeconds),
+		PaddingAfterSeconds:  models.IntPtr(update.PaddingAfterSeconds),
+	}
+	if err := h.userSettings.Update(profileID, settings); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(settings.Recordings)
+}
+
+func (h *RecordingsHandler) authorizedRule(w http.ResponseWriter, r *http.Request) (*models.RecordingRule, bool) {
+	rule, err := h.rules.GetRule(strings.TrimSpace(mux.Vars(r)["ruleID"]))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return nil, false
+	}
+	if rule == nil {
+		http.Error(w, "recording rule not found", http.StatusNotFound)
+		return nil, false
+	}
+	if _, ok := h.requestProfile(w, r, rule.UserID); !ok {
+		return nil, false
+	}
+	return rule, true
+}
+
+func (h *RecordingsHandler) requestProfile(w http.ResponseWriter, r *http.Request, rawProfileID string) (string, bool) {
+	if !auth.IsMaster(r) {
+		return h.requireProfileOwnership(w, r, rawProfileID)
+	}
+	if !h.requireExistingProfile(w, rawProfileID) {
+		return "", false
+	}
+	return strings.TrimSpace(rawProfileID), true
+}
+
+func (h *RecordingsHandler) requireExistingProfile(w http.ResponseWriter, rawProfileID string) bool {
+	profileID := strings.TrimSpace(rawProfileID)
+	if profileID == "" {
+		http.Error(w, "profileId is required", http.StatusBadRequest)
+		return false
+	}
+	if h.users == nil || !h.users.Exists(profileID) {
+		http.Error(w, "profile not found", http.StatusNotFound)
+		return false
+	}
+	return true
+}
+
+func (h *RecordingsHandler) defaultRecordingPadding(profileID string) (int, int) {
+	defaults := models.DefaultUserSettings().Recordings
+	before := models.IntVal(defaults.PaddingBeforeSeconds, 300)
+	after := models.IntVal(defaults.PaddingAfterSeconds, 300)
+	if h.userSettings == nil {
+		return before, after
+	}
+	settings, err := h.userSettings.Get(profileID)
+	if err != nil || settings == nil {
+		return before, after
+	}
+	return models.IntVal(settings.Recordings.PaddingBeforeSeconds, before), models.IntVal(settings.Recordings.PaddingAfterSeconds, after)
 }
 
 func (h *RecordingsHandler) requireProfileOwnership(w http.ResponseWriter, r *http.Request, rawProfileID string) (string, bool) {

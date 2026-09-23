@@ -63,6 +63,7 @@ type UserSettings struct {
 	Network           NetworkSettings        `json:"network"`
 	Ranking           *UserRankingSettings   `json:"ranking,omitempty"`
 	Calendar          CalendarSettings       `json:"calendar"`
+	Recordings        RecordingSettings      `json:"recordings,omitempty"`
 }
 
 // MetadataSettings contains per-profile metadata presentation preferences.
@@ -621,6 +622,7 @@ func DefaultHomeShelfConfigs() []ShelfConfig {
 		{ID: "recently-watched", Name: "Recently Watched", Enabled: false, Order: 14, Limit: 20, ActivityWindowDays: 14, MaxItemsPerProfile: 3},
 		{ID: "dashboard", Name: "Dashboard", Enabled: false, Order: 15},
 		{ID: "permanent-prequeue", Name: "Permanent Prequeue", Enabled: false, Order: 16},
+		{ID: "set-aside", Name: "Set Aside", Enabled: false, Order: 17},
 	}
 }
 
@@ -972,6 +974,34 @@ func EnsureDefaultHomeShelves(shelves []ShelfConfig) ([]ShelfConfig, bool) {
 		changed = true
 	}
 
+	if !hasShelf("set-aside") {
+		insertOrder := -1
+		for _, shelf := range nextShelves {
+			if shelf.ID == "permanent-prequeue" {
+				insertOrder = shelf.Order + 1
+				break
+			}
+			if shelf.Order > insertOrder {
+				insertOrder = shelf.Order + 1
+			}
+		}
+		if insertOrder < 0 {
+			insertOrder = 0
+		}
+		for i := range nextShelves {
+			if nextShelves[i].Order >= insertOrder {
+				nextShelves[i].Order++
+			}
+		}
+		nextShelves = append(nextShelves, ShelfConfig{
+			ID:      "set-aside",
+			Name:    "Set Aside",
+			Enabled: false,
+			Order:   insertOrder,
+		})
+		changed = true
+	}
+
 	if !hasShelf("watch-something") {
 		insertOrder := 2
 		for _, shelf := range nextShelves {
@@ -1144,6 +1174,10 @@ func DefaultUserSettings() UserSettings {
 			HiddenChannels:     []string{},
 			FavoriteChannels:   []string{},
 			SelectedCategories: []string{},
+		},
+		Recordings: RecordingSettings{
+			PaddingBeforeSeconds: IntPtr(300),
+			PaddingAfterSeconds:  IntPtr(300),
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                              []string{"watchProgress"},

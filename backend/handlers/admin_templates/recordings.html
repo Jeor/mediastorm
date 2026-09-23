@@ -12,15 +12,67 @@
 </div>
 
 <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding-bottom: 0.25rem;">
+        <div class="form-group" style="max-width: 360px;">
+            <label class="form-label" for="recordingProfile">Profile</label>
+            <select id="recordingProfile" class="form-input"></select>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2>Recording defaults</h2>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Default padding for new EPG and manual recordings. Rules can use their own padding.</p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: end;">
+            <div class="form-group">
+                <label class="form-label" for="defaultPadBefore">Before (minutes)</label>
+                <input id="defaultPadBefore" type="number" class="form-input" value="5" min="0" max="60" step="1">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="defaultPadAfter">After (minutes)</label>
+                <input id="defaultPadAfter" type="number" class="form-input" value="5" min="0" max="60" step="1">
+            </div>
+            <button class="btn btn-primary" onclick="saveRecordingSettings()">Save defaults</button>
+            <span id="recordingSettingsMessage" class="text-muted"></span>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2>Add regex recording rule</h2>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Record EPG programs on any channel when the title matches your regular expression.</p>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end;">
+            <div class="form-group" style="flex: 1; min-width: 260px;">
+                <label class="form-label" for="recordingRegexPattern">Title expression</label>
+                <input id="recordingRegexPattern" class="form-input" placeholder="(News|Weather).*" autocomplete="off" spellcheck="false">
+            </div>
+            <button class="btn btn-primary" onclick="createRegexRecordingRule()">Create rule</button>
+        </div>
+        <p id="recordingRuleMessage" class="text-muted" style="margin-top: 0.75rem;"></p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2>Recurring recordings</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div id="recordingRulesList" style="padding: 1rem; color: var(--text-muted);">Loading rules...</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-header">
         <h2>Schedule Recording</h2>
     </div>
     <div class="card-body">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <div class="form-group">
-                <label class="form-label">Profile</label>
-                <select id="recordingProfile" class="form-input"></select>
-            </div>
             <div class="form-group">
                 <label class="form-label">Channel</label>
                 <select id="recordingChannel" class="form-input"></select>
@@ -91,6 +143,14 @@ function pageApiBase() {
     return basePath + '/api/live/recordings';
 }
 
+function recordingRulesApiBase() {
+    return basePath + '/api/live/recording-rules';
+}
+
+function recordingSettingsApiBase() {
+    return basePath + '/api/live/recording-settings';
+}
+
 function formatDateForInput(date) {
     const pad = (v) => String(v).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -137,6 +197,158 @@ async function loadChannels() {
         `<option value="${escapeHtml(channel.id)}">${escapeHtml(channel.name)}</option>`
     ).join('');
     resetManualTimeDefaults();
+}
+
+async function loadRecordingSettings() {
+    const profileId = document.getElementById('recordingProfile').value;
+    const response = await fetch(`${recordingSettingsApiBase()}?profileId=${encodeURIComponent(profileId)}`);
+    if (!response.ok) throw new Error('Failed to load recording defaults');
+    const settings = await response.json();
+    const before = Number(settings.paddingBeforeSeconds ?? 300);
+    const after = Number(settings.paddingAfterSeconds ?? 300);
+    document.getElementById('defaultPadBefore').value = String(Math.round(before / 60));
+    document.getElementById('defaultPadAfter').value = String(Math.round(after / 60));
+    document.getElementById('recordingPadBefore').value = String(before);
+    document.getElementById('recordingPadAfter').value = String(after);
+}
+
+async function saveRecordingSettings() {
+    const profileId = document.getElementById('recordingProfile').value;
+    const before = Number(document.getElementById('defaultPadBefore').value);
+    const after = Number(document.getElementById('defaultPadAfter').value);
+    const message = document.getElementById('recordingSettingsMessage');
+    if (!Number.isInteger(before) || !Number.isInteger(after) || before < 0 || after < 0 || before > 60 || after > 60) {
+        message.textContent = 'Enter whole minutes from 0 to 60.';
+        message.style.color = 'var(--danger)';
+        return;
+    }
+    try {
+        const response = await fetch(recordingSettingsApiBase(), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileId, paddingBeforeSeconds: before * 60, paddingAfterSeconds: after * 60 }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || 'Failed to save recording defaults');
+        document.getElementById('recordingPadBefore').value = String(before * 60);
+        document.getElementById('recordingPadAfter').value = String(after * 60);
+        message.textContent = 'Recording defaults saved.';
+        message.style.color = 'var(--text-muted)';
+    } catch (err) {
+        message.textContent = err.message || 'Failed to save recording defaults';
+        message.style.color = 'var(--danger)';
+    }
+}
+
+async function createRegexRecordingRule() {
+    const profileId = document.getElementById('recordingProfile').value;
+    const pattern = document.getElementById('recordingRegexPattern').value.trim();
+    const message = document.getElementById('recordingRuleMessage');
+    if (!pattern) {
+        message.textContent = 'Enter a regular expression for EPG titles.';
+        message.style.color = 'var(--danger)';
+        return;
+    }
+    try {
+        const response = await fetch(recordingRulesApiBase(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileId, matchType: 'regex', pattern, allChannels: true }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || 'Failed to create recording rule');
+        document.getElementById('recordingRegexPattern').value = '';
+        message.textContent = 'Regex rule created.';
+        message.style.color = 'var(--text-muted)';
+        await loadRecordingRules();
+        await loadRecordings();
+    } catch (err) {
+        message.textContent = err.message || 'Failed to create recording rule';
+        message.style.color = 'var(--danger)';
+    }
+}
+
+async function loadRecordingRules() {
+    const profileId = document.getElementById('recordingProfile').value;
+    const response = await fetch(`${recordingRulesApiBase()}?profileId=${encodeURIComponent(profileId)}`);
+    if (!response.ok) throw new Error('Failed to load recording rules');
+    const data = await response.json();
+    renderRecordingRules(data.rules || []);
+}
+
+function renderRecordingRules(rules) {
+    const container = document.getElementById('recordingRulesList');
+    if (!rules.length) {
+        container.innerHTML = '<div style="color: var(--text-muted);">No recurring recording rules yet. Use the Live TV long-press menu to record a program every time it airs.</div>';
+        return;
+    }
+    container.innerHTML = rules.map((rule) => `
+        <div data-rule-id="${escapeHtml(rule.id)}" style="padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <div style="min-width: 220px; flex: 1;">
+                <div style="font-weight: 600; overflow-wrap: anywhere;">${escapeHtml(rule.pattern)}</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">${rule.matchType === 'regex' ? 'Regex' : 'Program title'} · ${escapeHtml(rule.allChannels ? 'All channels' : rule.channelName || 'Selected channel')}</div>
+            </div>
+            <label style="display: flex; gap: 0.4rem; align-items: center;">
+                <input data-rule-enabled type="checkbox" ${rule.enabled ? 'checked' : ''}> Enabled
+            </label>
+            <label class="text-muted">Before <input data-rule-before type="number" min="0" max="60" step="1" value="${Math.round(Number(rule.paddingBeforeSeconds || 0) / 60)}" style="width: 4.5rem;" aria-label="Buffer before in minutes"> min</label>
+            <label class="text-muted">After <input data-rule-after type="number" min="0" max="60" step="1" value="${Math.round(Number(rule.paddingAfterSeconds || 0) / 60)}" style="width: 4.5rem;" aria-label="Buffer after in minutes"> min</label>
+            <button data-rule-save class="btn btn-secondary btn-sm">Save</button>
+            <button data-rule-delete class="btn btn-danger btn-sm">Delete</button>
+        </div>
+    `).join('');
+    container.querySelectorAll('[data-rule-id]').forEach((row) => {
+        const id = row.getAttribute('data-rule-id');
+        row.querySelector('[data-rule-enabled]').addEventListener('change', (event) => updateRecordingRule(id, { enabled: event.target.checked }).catch((err) => setRecordingRuleMessage(err.message || 'Failed to update recording rule.', true)));
+        row.querySelector('[data-rule-save]').addEventListener('click', () => saveRecordingRule(row));
+        row.querySelector('[data-rule-delete]').addEventListener('click', () => deleteRecordingRule(id));
+    });
+}
+
+async function updateRecordingRule(id, changes) {
+    const profileId = document.getElementById('recordingProfile').value;
+    const response = await fetch(`${recordingRulesApiBase()}/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId, ...changes }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.error || 'Failed to update recording rule');
+    await Promise.all([loadRecordingRules(), loadRecordings()]);
+}
+
+async function saveRecordingRule(row) {
+    const id = row.getAttribute('data-rule-id');
+    const before = Number(row.querySelector('[data-rule-before]').value);
+    const after = Number(row.querySelector('[data-rule-after]').value);
+    if (!Number.isInteger(before) || !Number.isInteger(after) || before < 0 || after < 0 || before > 60 || after > 60) {
+        setRecordingRuleMessage('Rule buffers must be whole minutes from 0 to 60.', true);
+        return;
+    }
+    try {
+        await updateRecordingRule(id, { paddingBeforeSeconds: before * 60, paddingAfterSeconds: after * 60 });
+        setRecordingRuleMessage('Recording rule saved.', false);
+    } catch (err) {
+        setRecordingRuleMessage(err.message || 'Failed to save recording rule.', true);
+    }
+}
+
+async function deleteRecordingRule(id) {
+    if (!confirm('Delete this recurring recording rule?')) return;
+    try {
+        const response = await fetch(`${recordingRulesApiBase()}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete recording rule');
+        await loadRecordingRules();
+        await loadRecordings();
+    } catch (err) {
+        setRecordingRuleMessage(err.message || 'Failed to delete recording rule.', true);
+    }
+}
+
+function setRecordingRuleMessage(text, isError) {
+    const message = document.getElementById('recordingRuleMessage');
+    message.textContent = text;
+    message.style.color = isError ? 'var(--danger)' : 'var(--text-muted)';
 }
 
 function getSelectedChannel() {
@@ -336,9 +548,12 @@ function renderRecordings(recordings) {
     }
     container.innerHTML = recordings.map((recording) => {
         const canCancel = ['pending', 'starting', 'running'].includes(recording.status);
-        const canDelete = !['starting', 'running'].includes(recording.status);
+        const canDelete = !['starting', 'running'].includes(recording.status) && !(recording.ruleId && recording.status === 'pending');
         const canPlay = ['completed', 'running', 'cancelled', 'failed'].includes(recording.status) && !!recording.outputPath;
         const playLabel = recording.status === 'running' ? 'Play In Progress' : 'Play';
+        const visibleError = recording.error && recording.error !== 'recording rule paused' && !recording.error.startsWith('cancelled because the recording rule')
+            ? recording.error
+            : '';
         return `
             <div style="padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 1rem; align-items: center;">
                 <div style="min-width: 0;">
@@ -346,7 +561,7 @@ function renderRecordings(recordings) {
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
                         ${escapeHtml(recording.channelName || '')} · ${escapeHtml(recording.status)} · ${new Date(recording.startAt).toLocaleString()}
                     </div>
-                    ${recording.error ? `<div style="font-size: 0.8rem; color: var(--danger); margin-top: 0.25rem;">${escapeHtml(recording.error)}</div>` : ''}
+                    ${visibleError ? `<div style="font-size: 0.8rem; color: var(--danger); margin-top: 0.25rem;">${escapeHtml(visibleError)}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     ${canPlay ? `<a class="btn btn-primary btn-sm" href="${streamRecordingURL(recording.id)}" target="_blank" rel="noreferrer">${playLabel}</a>` : ''}
@@ -366,10 +581,14 @@ function escapeHtml(text) {
 }
 
 document.getElementById('recordingProfile').addEventListener('change', async () => {
-    await loadChannels();
-    epgPrograms = [];
-    renderEPGPrograms();
-    await loadRecordings();
+    try {
+        await loadChannels();
+        epgPrograms = [];
+        renderEPGPrograms();
+        await Promise.all([loadRecordingSettings(), loadRecordingRules(), loadRecordings()]);
+    } catch (err) {
+        setScheduleMessage(err.message || 'Failed to load profile recordings.', true);
+    }
 });
 
 document.getElementById('recordingChannel').addEventListener('change', () => {
@@ -379,8 +598,11 @@ document.getElementById('recordingChannel').addEventListener('change', () => {
 });
 
 initProfiles();
-loadChannels().then(loadRecordings).catch((err) => {
+loadChannels().then(async () => {
+    await Promise.all([loadRecordingSettings(), loadRecordingRules(), loadRecordings()]);
+}).catch((err) => {
     document.getElementById('recordingsList').textContent = err.message || 'Failed to load recordings';
+    document.getElementById('recordingRulesList').textContent = err.message || 'Failed to load recording rules';
     setScheduleMessage(err.message || 'Failed to load recordings', true);
 });
 

@@ -1241,13 +1241,15 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 	// pagination. Lite display rows are not authoritative release metadata.
 	// Build options — filtering + pagination handled inside the service
 	serviceLimit, serviceOffset := limit, offset
-	if query.RequiresIndex() {
+	requiresFullList := query.RequiresFullList()
+	if requiresFullList {
 		// Query the complete enriched list so filtering and sorting happen before
 		// pagination. GetCustomList caches this full-list representation.
 		serviceLimit, serviceOffset = 0, 0
 	}
 	opts := metadatapkg.CustomListOptions{
 		DeferArtwork:         strings.EqualFold(r.URL.Query().Get("deferArtwork"), "true"),
+		DeferEnrichment:      strings.EqualFold(r.URL.Query().Get("deferEnrichment"), "true") && !requiresFullList,
 		Limit:                serviceLimit,
 		Offset:               serviceOffset,
 		HideUnreleased:       hideUnreleased,
@@ -1292,11 +1294,11 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 	enrichTrendingRatings(items, service)
 	genres := displayListGenres(items)
 	alphabet := displayListAlphabetBuckets(items, query)
-	if query.Active() {
+	if requiresFullList {
 		items = query.Apply(items)
 		filteredTotal = len(items)
 	}
-	if query.RequiresIndex() {
+	if requiresFullList {
 		items = paginateTrendingItems(items, offset, limit)
 	}
 

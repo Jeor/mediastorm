@@ -125,10 +125,17 @@ func (q displayListQueryOptions) RequiresIndex() bool {
 	return q.Active() || q.IncludeFacets
 }
 
-func (q displayListQueryOptions) Active() bool {
+// RequiresFullList reports whether filtering or sorting needs to see the whole
+// list before pagination. Facets and per-item watch counts can be computed for
+// the requested page without blocking the first page on every list item.
+func (q displayListQueryOptions) RequiresFullList() bool {
 	return q.Title != "" || (q.MediaType != "" && q.MediaType != "all") ||
 		(q.WatchStatus != "" && q.WatchStatus != "all") || len(q.Genres) > 0 ||
-		(q.SortBy != "" && q.SortBy != "default") || q.Alphabet != "" || q.IncludeUnwatchedCounts
+		(q.SortBy != "" && q.SortBy != "default") || q.Alphabet != ""
+}
+
+func (q displayListQueryOptions) Active() bool {
+	return q.RequiresFullList() || q.IncludeUnwatchedCounts
 }
 
 func (q displayListQueryOptions) Apply(items []models.TrendingItem) []models.TrendingItem {

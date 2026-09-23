@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"novastream/handlers"
+	"novastream/internal/auth"
 	"novastream/models"
 	"novastream/services/accounts"
 	"novastream/services/sessions"
@@ -232,6 +234,36 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d", rec.Code)
+	}
+}
+
+func TestVerifyPassword(t *testing.T) {
+	handler, accountsSvc, _ := setupAuthHandler(t)
+	account, ok := accountsSvc.GetByUsername("admin")
+	if !ok {
+		t.Fatal("admin account not found")
+	}
+
+	for _, tc := range []struct {
+		name       string
+		password   string
+		wantStatus int
+	}{
+		{name: "valid", password: testMasterPassword, wantStatus: http.StatusOK},
+		{name: "invalid", password: "wrong-password", wantStatus: http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, _ := json.Marshal(handlers.VerifyPasswordRequest{Password: tc.password})
+			req := httptest.NewRequest(http.MethodPost, "/api/auth/verify-password", bytes.NewReader(body))
+			req = req.WithContext(context.WithValue(req.Context(), auth.ContextKeyAccountID, account.ID))
+			rec := httptest.NewRecorder()
+
+			handler.VerifyPassword(rec, req)
+
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d; body=%s", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+		})
 	}
 }
 

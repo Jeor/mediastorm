@@ -12,6 +12,12 @@ func TestKnownAnthologyEpisodeFiltering(t *testing.T) {
 		season, episode        int
 		keep                   bool
 	}{
+		{"provider title", "tmdb:tv:299939", "Monster.2022.S04E01.2160p.WEB", 1, 1, true},
+		{"provider pack", "tmdb:tv:299939", "Monster.2022.S04.COMPLETE.2160p.WEB", 1, 1, true},
+		{"provider wrong season", "tmdb:tv:299939", "Monster.2022.S01E01.2160p.WEB", 1, 1, false},
+		{"provider wrong episode", "tmdb:tv:299939", "Monster.2022.S04E02.2160p.WEB", 1, 1, false},
+		{"provider wrong year", "tmdb:tv:299939", "Monster.2004.S04E01.2160p.WEB", 1, 1, false},
+		{"provider unrelated identity", "tmdb:tv:999", "Monster.2022.S04E01.2160p.WEB", 1, 1, false},
 		{"TMDB numbering", "tmdb:tv:299939", "Monster.The.Lizzie.Borden.Story.S01E01.1080p.WEB", 1, 1, true},
 		{"anthology numbering", "tmdb:tv:299939", "Monster.The.Lizzie.Borden.Story.S04E01.1080p.WEB", 1, 1, true},
 		{"last verified episode", "tmdb:tv:299939", "Monster.The.Lizzie.Borden.Story.S04E08.1080p.WEB", 1, 8, true},

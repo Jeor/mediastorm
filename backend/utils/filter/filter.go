@@ -137,6 +137,7 @@ type Options struct {
 	ExpectedYear        int
 	ExpectedCountry     string      // Original production country; normalized before comparison
 	EpisodeAirYear      int         // Year the target episode aired (allows results tagged with this year)
+	SeasonPremiereYear  int         // Premiere year of the requested season only.
 	IsMovie             bool        // true for movies, false for TV shows
 	MaxSizeMovieGB      float64     // Maximum size in GB for movies (0 = no limit)
 	MaxSizeEpisodeGB    float64     // Maximum size in GB for episodes (0 = no limit)
@@ -372,14 +373,25 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			result.Attributes = make(map[string]string)
 		}
 
+		// Revalidate these context-dependent year exceptions on every filtering pass.
+		delete(result.Attributes, "episodeSeasonYearMatch")
+		delete(result.Attributes, "episodeMappedYearMatch")
+
 		// Log parsed info for first few results
 		if i < 5 {
 			log.Printf("[filter] Parsed result[%d]: Title=%q -> ParsedTitle=%q, Year=%d, Seasons=%v, Episodes=%v, Complete=%v",
 				i, result.Title, parsed.Title, parsed.Year, parsed.Seasons, parsed.Episodes, parsed.Complete)
 		}
 
+		// A provider title alias is valid only within its verified season.
+		mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
+		mappedRelease := known && !opts.IsMovie && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
+		releaseTitles := candidateTitles
+		if mappedRelease {
+			releaseTitles = append(append([]string(nil), candidateTitles...), mapped.ReleaseTitle)
+		}
 		// Check title similarity
-		titleSim, matchedTitle := bestTitleSimilarityForMedia(candidateTitles, parsed.Title, opts.IsMovie, result.Title)
+		titleSim, matchedTitle := bestTitleSimilarityForMedia(releaseTitles, parsed.Title, opts.IsMovie, result.Title)
 		if i < 5 {
 			ref := opts.ExpectedTitle
 			if matchedTitle != "" {
@@ -494,8 +506,6 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
 			// Episodes and packs of the known anthology season use provider
 			// numbering. Other seasons and multi-season packs stay unchanged.
-			mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
-			mappedRelease := known && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
 			if mappedRelease {
 				episodeOpts.TargetSeason = mapped.Season
 				episodeOpts.TargetEpisode = mapped.Episode
@@ -530,8 +540,10 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				// Also accept if the parsed year matches the episode's air year (±1)
 				// This handles shows where S02 airs years after the series premiere
 				episodeYearMatch := opts.EpisodeAirYear > 0 && abs(opts.EpisodeAirYear-parsedYear) <= MaxYearDifference
+				seasonYearMatch := !opts.IsMovie && opts.TargetSeason > 0 && opts.SeasonPremiereYear > 0 && abs(opts.SeasonPremiereYear-parsedYear) <= MaxYearDifference
 				formulaOneSeasonYearMatch := hasFormulaOneEvent && opts.TargetSeason > 1900 && parsedYear == opts.TargetSeason
-				if yearDiff > MaxYearDifference && !episodeYearMatch && !formulaOneSeasonYearMatch {
+				mappedYearMatch := mappedRelease && mapped.Year > 0 && parsedYear == mapped.Year
+				if yearDiff > MaxYearDifference && !episodeYearMatch && !seasonYearMatch && !formulaOneSeasonYearMatch && !mappedYearMatch {
 					reason := fmt.Sprintf("year difference %d > %d (expected: %d, got: %d)", yearDiff, MaxYearDifference, opts.ExpectedYear, parsedYear)
 					log.Printf("[filter] Rejecting %q: %s, episodeAirYear: %d",
 						result.Title, reason, opts.EpisodeAirYear)
@@ -550,10 +562,16 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				// A confirmed year is especially valuable for a targeted episode
 				// search when a different series year also survives filtering. Preserve
 				// the parsed year so ranking can make that decision over the complete
-				// passed result set. An episode's air year remains valid, but is not a
-				// match for the series premiere year.
+				// passed result set. Preserve accepted season and mapped years as
+				// valid alternatives so ranking does not mistake them for reboots.
 				if !opts.IsMovie && (opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0 || opts.TargetAirDate != "") {
 					result.Attributes["episodeReleaseYear"] = strconv.Itoa(parsedYear)
+					if seasonYearMatch {
+						result.Attributes["episodeSeasonYearMatch"] = "true"
+					}
+					if mappedYearMatch {
+						result.Attributes["episodeMappedYearMatch"] = "true"
+					}
 					if seriesYearMatch {
 						result.Attributes["episodeYearMatch"] = "true"
 					} else if episodeYearMatch {

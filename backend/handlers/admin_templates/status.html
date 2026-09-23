@@ -1160,7 +1160,7 @@ body.numbers-station-open {
                 <strong id="dashboardUpdateLatest">—</strong>
             </span>
         </div>
-        <p class="dashboard-update-instruction">Update through Docker.</p>
+        <p class="dashboard-update-instruction">Windows: extract the new package and run Start-MediaStorm.cmd. Docker: update the image and restart.</p>
     </div>
     <span class="status-badge warning">Available</span>
     <button class="dashboard-update-dismiss" type="button" aria-label="Dismiss backend update notification" title="Dismiss" onclick="dismissDashboardUpdateBanner()">
@@ -1747,8 +1747,8 @@ body.numbers-station-open {
                     <tr>
                         <td>Live TV Playlist</td>
                         <td>
-                            {{if or .Settings.Live.PlaylistURL (and (eq .Settings.Live.Mode "xtream") .Settings.Live.XtreamHost .Settings.Live.XtreamUsername)}}
-                            <span class="status-badge online"><span class="status-dot"></span> {{if eq .Settings.Live.Mode "xtream"}}Xtream{{else}}M3U{{end}} Configured</span>
+                            {{with liveTVConfigurationLabel .Settings.Live}}
+                            <span class="status-badge online"><span class="status-dot"></span> {{.}}</span>
                             {{else}}
                             <span class="status-badge offline"><span class="status-dot"></span> Not Set</span>
                             {{end}}

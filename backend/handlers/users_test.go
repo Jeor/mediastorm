@@ -13,6 +13,7 @@ import (
 	"novastream/handlers"
 	"novastream/internal/auth"
 	"novastream/models"
+	"novastream/services/accounts"
 	"novastream/services/users"
 
 	"github.com/gorilla/mux"
@@ -23,6 +24,7 @@ type fakeUsersService struct {
 	listForAccountUsers []models.User
 	createUser          models.User
 	createErr           error
+	createCalls         int
 	belongsTo           bool
 	getUser             models.User
 	getOK               bool
@@ -72,6 +74,29 @@ type fakeUsersService struct {
 	removeAllowedErr    error
 }
 
+type fakeAccountPasswordVerifier struct {
+	account models.Account
+	authErr error
+}
+
+func (f *fakeAccountPasswordVerifier) Get(id string) (models.Account, bool) {
+	return f.account, f.account.ID == id
+}
+
+func (f *fakeAccountPasswordVerifier) Authenticate(username, password string) (models.Account, error) {
+	if f.authErr != nil {
+		return models.Account{}, f.authErr
+	}
+	if username != f.account.Username || password != "correct-password" {
+		return models.Account{}, accounts.ErrInvalidCredentials
+	}
+	return f.account, nil
+}
+
+func verifiedAccount() *fakeAccountPasswordVerifier {
+	return &fakeAccountPasswordVerifier{account: models.Account{ID: "acct-1", Username: "owner"}}
+}
+
 func (f *fakeUsersService) List() []models.User { return nil }
 func (f *fakeUsersService) ListForAccount(accountID string) []models.User {
 	return f.listForAccountUsers
@@ -80,6 +105,7 @@ func (f *fakeUsersService) Create(name string) (models.User, error) {
 	return f.createUser, f.createErr
 }
 func (f *fakeUsersService) CreateForAccount(accountID, name string) (models.User, error) {
+	f.createCalls++
 	return f.createUser, f.createErr
 }
 func (f *fakeUsersService) BelongsToAccount(profileID, accountID string) bool {
@@ -205,9 +231,9 @@ func TestUsersHandler_List(t *testing.T) {
 func TestUsersHandler_Create_Success(t *testing.T) {
 	expected := models.User{ID: "u2", Name: "Bob"}
 	svc := &fakeUsersService{createUser: expected}
-	h := handlers.NewUsersHandler(svc)
+	h := handlers.NewUsersHandler(svc, verifiedAccount())
 
-	body := map[string]string{"name": "Bob"}
+	body := map[string]string{"name": "Bob", "password": "correct-password"}
 	r := usersRequest(http.MethodPost, "/api/users/u1/profiles", body, nil, "acct-1", false)
 	w := httptest.NewRecorder()
 	h.Create(w, r)
@@ -219,15 +245,32 @@ func TestUsersHandler_Create_Success(t *testing.T) {
 
 func TestUsersHandler_Create_EmptyName(t *testing.T) {
 	svc := &fakeUsersService{createErr: users.ErrNameRequired}
-	h := handlers.NewUsersHandler(svc)
+	h := handlers.NewUsersHandler(svc, verifiedAccount())
 
-	body := map[string]string{"name": ""}
+	body := map[string]string{"name": "", "password": "correct-password"}
 	r := usersRequest(http.MethodPost, "/api/users/u1/profiles", body, nil, "acct-1", false)
 	w := httptest.NewRecorder()
 	h.Create(w, r)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUsersHandler_Create_InvalidPassword(t *testing.T) {
+	svc := &fakeUsersService{createUser: models.User{ID: "u2", Name: "Bob"}}
+	h := handlers.NewUsersHandler(svc, verifiedAccount())
+
+	body := map[string]string{"name": "Bob", "password": "wrong-password"}
+	r := usersRequest(http.MethodPost, "/api/users", body, nil, "acct-1", false)
+	w := httptest.NewRecorder()
+	h.Create(w, r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+	if svc.createCalls != 0 {
+		t.Fatalf("CreateForAccount calls = %d, want 0", svc.createCalls)
 	}
 }
 

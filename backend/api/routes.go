@@ -140,6 +140,9 @@ func Register(
 	homepageAPIKey string,
 	latencyAdmin *handlers.PlaybackLatencyAdmin,
 ) {
+	if videoHandler != nil && liveHandler != nil {
+		videoHandler.SetLiveChannelProvider(liveHandler)
+	}
 	api := r.PathPrefix("/api").Subrouter()
 
 	// Add CORS middleware to API subrouter
@@ -149,6 +152,8 @@ func Register(
 	// Rate limiters for auth endpoints
 	loginLimiter := NewIPRateLimiter(rate.Every(12*time.Second), 5)     // 5/min per IP
 	defaultPwLimiter := NewIPRateLimiter(rate.Every(6*time.Second), 10) // 10/min per IP
+	profileCreateLimiter := NewIPRateLimiter(rate.Every(12*time.Second), 5)
+	passwordVerifyLimiter := NewIPRateLimiter(rate.Every(12*time.Second), 5)
 
 	// Rate limiters for resource-intensive endpoints (spawn FFmpeg processes)
 	probeLimiter := NewIPRateLimiter(rate.Every(6*time.Second), 10)    // 10/min per IP
@@ -202,6 +207,8 @@ func Register(
 	// Logout requires a valid session to prevent unauthenticated session revocation
 	protected.HandleFunc("/auth/logout", authHandler.Logout).Methods(http.MethodPost)
 	protected.HandleFunc("/auth/logout", authHandler.Options).Methods(http.MethodOptions)
+	protected.HandleFunc("/auth/verify-password", RateLimitHandlerFunc(passwordVerifyLimiter, authHandler.VerifyPassword)).Methods(http.MethodPost)
+	protected.HandleFunc("/auth/verify-password", authHandler.Options).Methods(http.MethodOptions)
 
 	if remoteAccessHandler != nil {
 		api.HandleFunc("/remote-access/invites/resolve", remoteAccessHandler.ResolveInvite).Methods(http.MethodPost)
@@ -452,6 +459,15 @@ func Register(
 	protected.HandleFunc("/live/usage", videoHandler.GetLiveUsage).Methods(http.MethodGet)
 	protected.HandleFunc("/live/usage", handleOptions).Methods(http.MethodOptions)
 	if recordingsHandler != nil {
+		protected.HandleFunc("/live/recording-rules", recordingsHandler.ListRules).Methods(http.MethodGet)
+		protected.HandleFunc("/live/recording-rules", recordingsHandler.CreateRule).Methods(http.MethodPost)
+		protected.HandleFunc("/live/recording-rules", recordingsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/live/recording-rules/{ruleID}", recordingsHandler.UpdateRule).Methods(http.MethodPut)
+		protected.HandleFunc("/live/recording-rules/{ruleID}", recordingsHandler.DeleteRule).Methods(http.MethodDelete)
+		protected.HandleFunc("/live/recording-rules/{ruleID}", recordingsHandler.Options).Methods(http.MethodOptions)
+		protected.HandleFunc("/live/recording-settings", recordingsHandler.GetSettings).Methods(http.MethodGet)
+		protected.HandleFunc("/live/recording-settings", recordingsHandler.UpdateSettings).Methods(http.MethodPut)
+		protected.HandleFunc("/live/recording-settings", recordingsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/live/recordings", recordingsHandler.List).Methods(http.MethodGet)
 		protected.HandleFunc("/live/recordings", recordingsHandler.Options).Methods(http.MethodOptions)
 		protected.HandleFunc("/live/recordings/epg", recordingsHandler.CreateEPG).Methods(http.MethodPost)
@@ -730,7 +746,7 @@ func Register(
 
 	// User profile routes (with ownership validation)
 	profileProtected.HandleFunc("", usersHandler.List).Methods(http.MethodGet)
-	profileProtected.HandleFunc("", usersHandler.Create).Methods(http.MethodPost)
+	profileProtected.HandleFunc("", RateLimitHandlerFunc(profileCreateLimiter, usersHandler.Create)).Methods(http.MethodPost)
 	profileProtected.HandleFunc("", usersHandler.Options).Methods(http.MethodOptions)
 	profileProtected.HandleFunc("/{userID}", usersHandler.Rename).Methods(http.MethodPatch)
 	profileProtected.HandleFunc("/{userID}", usersHandler.Delete).Methods(http.MethodDelete)

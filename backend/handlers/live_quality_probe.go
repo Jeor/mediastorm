@@ -43,6 +43,47 @@ type liveQualityResult struct {
 	CheckedAt time.Time          `json:"checkedAt"`
 }
 
+func (h *VideoHandler) requireKnownLiveQualityChannel(w http.ResponseWriter, r *http.Request, req liveQualityRequest) bool {
+	if h.liveChannels == nil {
+		http.Error(w, "Live channel catalog unavailable", http.StatusServiceUnavailable)
+		return false
+	}
+	request := r.Clone(r.Context())
+	request.URL = cloneURL(r.URL)
+	query := request.URL.Query()
+	if profileID := strings.TrimSpace(req.ProfileID); profileID != "" {
+		query.Set("profileId", profileID)
+	}
+	if sourceID := strings.TrimSpace(req.SourceID); sourceID != "" {
+		query.Set("sourceId", sourceID)
+	}
+	request.URL.RawQuery = query.Encode()
+	channels, err := h.liveChannels.FetchFilteredChannelsForRequest(request)
+	if err != nil {
+		http.Error(w, "Unable to verify live channel", http.StatusBadGateway)
+		return false
+	}
+	wantedURL := strings.TrimSpace(req.URL)
+	wantedSource := strings.TrimSpace(req.SourceID)
+	wantedChannel := strings.TrimSpace(req.ChannelID)
+	for _, channel := range channels {
+		channelIDMatches := wantedChannel != "" && (wantedChannel == channel.ID || wantedChannel == channel.PlaybackID)
+		if channelIDMatches && wantedSource == channel.SourceID && wantedURL == strings.TrimSpace(channel.URL) {
+			return true
+		}
+	}
+	http.Error(w, "Live channel not found", http.StatusNotFound)
+	return false
+}
+
+func cloneURL(source *url.URL) *url.URL {
+	if source == nil {
+		return &url.URL{}
+	}
+	cloned := *source
+	return &cloned
+}
+
 // ProbeLiveQuality never creates a playback/transcode session. Cancelling the HTTP
 // request cancels addon resolution and kills ffprobe, releasing the provider connection.
 func (h *VideoHandler) ProbeLiveQuality(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +102,9 @@ func (h *VideoHandler) ProbeLiveQuality(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "profile not found", http.StatusNotFound)
 			return
 		}
+	}
+	if !h.requireKnownLiveQualityChannel(w, r, req) {
+		return
 	}
 	if !h.requireAllowedExternalPath(w, r, req.URL) {
 		return

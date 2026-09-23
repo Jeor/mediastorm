@@ -305,6 +305,67 @@ func TestStartScanCompletesAndPersistsSummary(t *testing.T) {
 	}
 }
 
+func TestMultipleLibraryRootsKeepSameNamedFilesDistinct(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	for _, root := range []string{first, second} {
+		if err := os.WriteFile(filepath.Join(root, "Same.Movie.2024.mkv"), []byte("video"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	repo := &fakeLocalMediaRepo{library: &models.LocalMediaLibrary{
+		ID: "multi", Name: "Movies", Type: models.LocalMediaLibraryTypeMovie,
+		RootPath: first, RootPaths: []string{first, second}, CreatedAt: now, UpdatedAt: now,
+	}, items: make(map[string]*models.LocalMediaItem)}
+	service := &Service{repo: repo, scans: make(map[string]scanState)}
+	for i := 0; i < 2; i++ {
+		summary, err := service.RunScan(context.Background(), "multi")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if summary.Discovered != 2 || len(repo.items) != 2 {
+			t.Fatalf("scan %d: discovered %d, stored %d", i, summary.Discovered, len(repo.items))
+		}
+	}
+	updated, err := service.UpdateLibrary(context.Background(), "multi", models.LocalMediaLibraryCreateInput{
+		Name: "Movies", Type: models.LocalMediaLibraryTypeMovie, RootPaths: []string{second, first},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.RootPath != first {
+		t.Fatalf("primary root changed to %q", updated.RootPath)
+	}
+	if _, err := service.RunScan(context.Background(), "multi"); err != nil {
+		t.Fatal(err)
+	}
+	if len(repo.items) != 2 {
+		t.Fatalf("items after reordering roots = %d", len(repo.items))
+	}
+	if _, ok := repo.items["Same.Movie.2024.mkv"]; !ok {
+		t.Fatal("original root item path changed")
+	}
+	for _, item := range repo.items {
+		if !pathWithinLibraryRoots(*repo.library, item.FilePath) {
+			t.Fatalf("item outside roots: %s", item.FilePath)
+		}
+	}
+}
+
+func TestMultipleLibraryRootsRejectOverlap(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "child")
+	if err := os.Mkdir(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, _, err := validateLocalMediaLibraryInput(models.LocalMediaLibraryCreateInput{
+		Name: "Movies", Type: models.LocalMediaLibraryTypeMovie, RootPaths: []string{root, child},
+	})
+	if err == nil {
+		t.Fatal("expected overlapping roots to be rejected")
+	}
+}
+
 func TestStartScanAcceptsBackgroundScanWithoutBlocking(t *testing.T) {
 	root := t.TempDir()
 	filePath := root + "/Movie.Title.2024.mkv"

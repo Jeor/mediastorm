@@ -63,6 +63,7 @@ type UserSettings struct {
 	Network           NetworkSettings        `json:"network"`
 	Ranking           *UserRankingSettings   `json:"ranking,omitempty"`
 	Calendar          CalendarSettings       `json:"calendar"`
+	Recordings        RecordingSettings      `json:"recordings,omitempty"`
 }
 
 // MetadataSettings contains per-profile metadata presentation preferences.
@@ -508,27 +509,29 @@ type PlaybackSettings struct {
 
 // ShelfConfig represents a configurable home screen shelf.
 type ShelfConfig struct {
-	ID                     string                 `json:"id"`                               // Unique identifier (e.g., "continue-watching", "watchlist", "trending-movies")
-	Name                   string                 `json:"name"`                             // Display name
-	Enabled                bool                   `json:"enabled"`                          // Whether the shelf is visible
-	Order                  int                    `json:"order"`                            // Sort order (lower numbers appear first)
-	Type                   string                 `json:"type,omitempty"`                   // "builtin" (default), "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "genre", "decade", "collection-hub", or "library"
-	LibraryID              string                 `json:"libraryId,omitempty"`              // Configured media library selected by a "library" shelf
-	ListURL                string                 `json:"listUrl,omitempty"`                // MDBList URL for custom lists (e.g., https://mdblist.com/lists/username/list-name/json)
-	AddonManifestURL       string                 `json:"addonManifestUrl,omitempty"`       // Stremio add-on manifest URL selected by a "stremio" shelf
-	AddonCatalogType       string                 `json:"addonCatalogType,omitempty"`       // Stremio catalog media type ("movie" or "series")
-	AddonCatalogID         string                 `json:"addonCatalogId,omitempty"`         // Stremio catalog ID from the add-on manifest
-	AddonName              string                 `json:"addonName,omitempty"`              // Stremio add-on name captured during manifest ingestion
-	TMDBSourceType         string                 `json:"tmdbSourceType,omitempty"`         // TMDB source builder type
-	TMDBSourceID           string                 `json:"tmdbSourceId,omitempty"`           // Numeric TMDB list/company/network/collection/person ID
-	TMDBSourceName         string                 `json:"tmdbSourceName,omitempty"`         // Resolved source name shown by the shelf editor
-	TMDBMediaType          string                 `json:"tmdbMediaType,omitempty"`          // "movie", "tv", or "all"
-	TMDBDiscoverQuery      string                 `json:"tmdbDiscoverQuery,omitempty"`      // URL-encoded custom filters shared by every TMDB source type
-	StreamingServices      []StreamingServiceLink `json:"streamingServices,omitempty"`      // Service cards for the built-in Streaming Services shelf
-	CollectionItems        []CollectionHubLink    `json:"collectionItems,omitempty"`        // Shelf cards for collection hub shelves
-	TraktAccountID         string                 `json:"traktAccountId,omitempty"`         // Trakt account ID, or "__all__" for master-account global watchlists
-	TraktListType          string                 `json:"traktListType,omitempty"`          // "watchlist" or "custom"
-	TraktListID            string                 `json:"traktListId,omitempty"`            // Trakt custom list slug/ID when traktListType == "custom"
+	ID                     string                 `json:"id"`                          // Unique identifier (e.g., "continue-watching", "watchlist", "trending-movies")
+	Name                   string                 `json:"name"`                        // Display name
+	Enabled                bool                   `json:"enabled"`                     // Whether the shelf is visible
+	Order                  int                    `json:"order"`                       // Sort order (lower numbers appear first)
+	Type                   string                 `json:"type,omitempty"`              // "builtin" (default), "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "genre", "decade", "collection-hub", or "library"
+	LibraryID              string                 `json:"libraryId,omitempty"`         // Configured media library selected by a "library" shelf
+	ListURL                string                 `json:"listUrl,omitempty"`           // MDBList URL for custom lists (e.g., https://mdblist.com/lists/username/list-name/json)
+	AddonManifestURL       string                 `json:"addonManifestUrl,omitempty"`  // Stremio add-on manifest URL selected by a "stremio" shelf
+	AddonCatalogType       string                 `json:"addonCatalogType,omitempty"`  // Stremio catalog media type ("movie" or "series")
+	AddonCatalogID         string                 `json:"addonCatalogId,omitempty"`    // Stremio catalog ID from the add-on manifest
+	AddonName              string                 `json:"addonName,omitempty"`         // Stremio add-on name captured during manifest ingestion
+	TMDBSourceType         string                 `json:"tmdbSourceType,omitempty"`    // TMDB source builder type
+	TMDBSourceID           string                 `json:"tmdbSourceId,omitempty"`      // Numeric TMDB list/company/network/collection/person ID
+	TMDBSourceName         string                 `json:"tmdbSourceName,omitempty"`    // Resolved source name shown by the shelf editor
+	TMDBMediaType          string                 `json:"tmdbMediaType,omitempty"`     // "movie", "tv", or "all"
+	TMDBDiscoverQuery      string                 `json:"tmdbDiscoverQuery,omitempty"` // URL-encoded custom filters shared by every TMDB source type
+	StreamingServices      []StreamingServiceLink `json:"streamingServices,omitempty"` // Service cards for the built-in Streaming Services shelf
+	CollectionItems        []CollectionHubLink    `json:"collectionItems,omitempty"`   // Shelf cards for collection hub shelves
+	TraktAccountID         string                 `json:"traktAccountId,omitempty"`    // Trakt account ID, or "__all__" for master-account global watchlists
+	TraktListType          string                 `json:"traktListType,omitempty"`     // "watchlist" or "custom"
+	TraktListID            string                 `json:"traktListId,omitempty"`       // Trakt custom list slug/ID when traktListType == "custom"
+	PublicMetaDBAccountID  string                 `json:"publicMetaDBAccountId,omitempty"`
+	PublicMetaDBListID     string                 `json:"publicMetaDBListId,omitempty"`
 	SimklAccountID         string                 `json:"simklAccountId,omitempty"`         // Simkl account ID
 	SimklListType          string                 `json:"simklListType,omitempty"`          // Simkl status bucket: "plantowatch", "watching", "completed", "hold", or "dropped"
 	SimklMediaType         string                 `json:"simklMediaType,omitempty"`         // Simkl media bucket: "movies", "shows", or "anime"
@@ -619,6 +622,7 @@ func DefaultHomeShelfConfigs() []ShelfConfig {
 		{ID: "recently-watched", Name: "Recently Watched", Enabled: false, Order: 14, Limit: 20, ActivityWindowDays: 14, MaxItemsPerProfile: 3},
 		{ID: "dashboard", Name: "Dashboard", Enabled: false, Order: 15},
 		{ID: "permanent-prequeue", Name: "Permanent Prequeue", Enabled: false, Order: 16},
+		{ID: "set-aside", Name: "Set Aside", Enabled: false, Order: 17},
 	}
 }
 
@@ -970,6 +974,34 @@ func EnsureDefaultHomeShelves(shelves []ShelfConfig) ([]ShelfConfig, bool) {
 		changed = true
 	}
 
+	if !hasShelf("set-aside") {
+		insertOrder := -1
+		for _, shelf := range nextShelves {
+			if shelf.ID == "permanent-prequeue" {
+				insertOrder = shelf.Order + 1
+				break
+			}
+			if shelf.Order > insertOrder {
+				insertOrder = shelf.Order + 1
+			}
+		}
+		if insertOrder < 0 {
+			insertOrder = 0
+		}
+		for i := range nextShelves {
+			if nextShelves[i].Order >= insertOrder {
+				nextShelves[i].Order++
+			}
+		}
+		nextShelves = append(nextShelves, ShelfConfig{
+			ID:      "set-aside",
+			Name:    "Set Aside",
+			Enabled: false,
+			Order:   insertOrder,
+		})
+		changed = true
+	}
+
 	if !hasShelf("watch-something") {
 		insertOrder := 2
 		for _, shelf := range nextShelves {
@@ -1142,6 +1174,10 @@ func DefaultUserSettings() UserSettings {
 			HiddenChannels:     []string{},
 			FavoriteChannels:   []string{},
 			SelectedCategories: []string{},
+		},
+		Recordings: RecordingSettings{
+			PaddingBeforeSeconds: IntPtr(300),
+			PaddingAfterSeconds:  IntPtr(300),
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                              []string{"watchProgress"},

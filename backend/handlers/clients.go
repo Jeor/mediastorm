@@ -588,7 +588,7 @@ func (h *ClientsHandler) PatchFrontendSetting(w http.ResponseWriter, r *http.Req
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	patch, err := decodeFrontendSettingPatch(json.NewDecoder(r.Body), h.configManager)
+	patch, err := decodeClientFrontendSettingPatch(json.NewDecoder(r.Body), h.configManager)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return

@@ -712,7 +712,7 @@ func TestPlaybackNotificationsAreEdgeTriggered(t *testing.T) {
 	}
 }
 
-func TestPlaybackNotificationsExcludeLiveTV(t *testing.T) {
+func TestPlaybackNotificationsExcludeLiveTVAndRecordings(t *testing.T) {
 	received := make(chan string, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
@@ -746,10 +746,17 @@ func TestPlaybackNotificationsExcludeLiveTV(t *testing.T) {
 			Duration:  100,
 		}, 50)
 	}
+	service.HandlePlaybackUpdate("profile", models.PlaybackProgressUpdate{
+		MediaType:  "movie",
+		ItemID:     "recording-item",
+		SourcePath: "recording:recording-id/recording.ts",
+		MovieName:  "Recorded Programme",
+		Duration:   100,
+	}, 50)
 
 	select {
 	case event := <-received:
-		t.Fatalf("live TV playback emitted %q notification", event)
+		t.Fatalf("excluded playback emitted %q notification", event)
 	case <-time.After(100 * time.Millisecond):
 	}
 
@@ -757,10 +764,10 @@ func TestPlaybackNotificationsExcludeLiveTV(t *testing.T) {
 	sessionCount := len(service.sessions)
 	service.sessionMu.Unlock()
 	if sessionCount != 0 {
-		t.Fatalf("live TV playback created %d notification sessions", sessionCount)
+		t.Fatalf("excluded playback created %d notification sessions", sessionCount)
 	}
 	if len(repo.progress) != 0 {
-		t.Fatalf("live TV playback persisted %d progress notifications", len(repo.progress))
+		t.Fatalf("excluded playback persisted %d progress notifications", len(repo.progress))
 	}
 }
 

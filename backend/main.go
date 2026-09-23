@@ -416,7 +416,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialise users: %v", err)
 	}
-	usersHandler := handlers.NewUsersHandler(userService)
+	usersHandler := handlers.NewUsersHandler(userService, accountsService)
 	var sessionsService *sessions.Service
 	if store != nil {
 		sessionsService, err = sessions.NewServiceWithStore(store, 0)
@@ -762,6 +762,7 @@ func main() {
 	var recordingsService *recordings.Service
 	if store != nil {
 		recordingsService = recordings.NewService(store.Recordings(), settings.Transmux.FFmpegPath, filepath.Join(settings.Cache.Directory, "recordings"))
+		recordingsService.SetRuleRepository(store.RecordingRules())
 	}
 	var recordingsStreamProvider streaming.Provider
 	if recordingsService != nil {
@@ -901,6 +902,19 @@ func main() {
 	epgService := epg.NewService(settings.Cache.Directory, cfgManager)
 	epgHandler := handlers.NewEPGHandler(epgService, cfgManager, userSettingsService)
 	liveHandler.SetEPGService(epgService)
+	if recordingsService != nil {
+		recordingsService.SetRuleProviders(epgService, liveHandler, func(profileID string) time.Duration {
+			currentSettings, err := cfgManager.Load()
+			if err != nil {
+				return 0
+			}
+			offset := currentSettings.Live.EPG.TimeOffsetMinutes
+			if profileSettings, err := userSettingsService.Get(profileID); err == nil && profileSettings != nil && profileSettings.LiveTV.EPG != nil && profileSettings.LiveTV.EPG.TimeOffsetMinutes != nil {
+				offset = *profileSettings.LiveTV.EPG.TimeOffsetMinutes
+			}
+			return time.Duration(offset) * time.Minute
+		})
+	}
 	settingsHandler.SetEPGService(epgService)                     // Enable auto-refresh when new EPG sources are added
 	settingsHandler.SetUserSettingsService(userSettingsService)   // Enable stripping redundant overrides
 	settingsHandler.SetClientsLister(clientsService)              // Enable client→profile mapping
@@ -965,7 +979,14 @@ func main() {
 	settingsHandler.SetPrequeueStore(prequeueHandler.GetStore()) // Clear prequeue when ShowParsedBadges changes
 	prerollHandler := handlers.NewPrerollHandler(settings.Cache.Directory)
 
-	recordingsHandler := handlers.NewRecordingsHandler(recordingsService, userService)
+	var recordingsHandler *handlers.RecordingsHandler
+	if recordingsService != nil {
+		recordingsHandler = handlers.NewRecordingsHandler(recordingsService, userService)
+		recordingsHandler.SetRuleService(recordingsService)
+	} else {
+		recordingsHandler = handlers.NewRecordingsHandler(nil, userService)
+	}
+	recordingsHandler.SetUserSettingsService(userSettingsService)
 
 	// Shareable playback links: capture current stream + tracks, mint a
 	// short-lived stream-scoped session on open. Persisted to Postgres so links
@@ -1276,6 +1297,7 @@ func main() {
 	r.HandleFunc("/admin/api/discover/new", adminUIHandler.RequireAuth(metadataHandler.DiscoverNew)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/lists/custom", adminUIHandler.RequireAuth(metadataHandler.CustomList)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/lists/trakt", adminUIHandler.RequireAuth(metadataHandler.TraktList)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/lists/publicmetadb", adminUIHandler.RequireAuth(metadataHandler.PublicMetaDBList)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/lists/simkl", adminUIHandler.RequireAuth(metadataHandler.SimklList)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/lists/letterboxd", adminUIHandler.RequireAuth(metadataHandler.LetterboxdList)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/lists/letterboxd/sources", adminUIHandler.RequireAuth(metadataHandler.LetterboxdSources)).Methods(http.MethodGet)
@@ -1304,6 +1326,12 @@ func main() {
 	r.HandleFunc("/admin/api/live/epg/schedule", adminUIHandler.RequireAuth(epgHandler.GetSchedule)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/live/epg/schedule/batch", adminUIHandler.RequireAuth(epgHandler.GetScheduleMultiple)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/live/recordings", adminUIHandler.RequireAuth(recordingsHandler.List)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/live/recording-rules", adminUIHandler.RequireAuth(recordingsHandler.ListRules)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/live/recording-rules", adminUIHandler.RequireAuth(recordingsHandler.CreateRule)).Methods(http.MethodPost)
+	r.HandleFunc("/admin/api/live/recording-rules/{ruleID}", adminUIHandler.RequireAuth(recordingsHandler.UpdateRule)).Methods(http.MethodPut)
+	r.HandleFunc("/admin/api/live/recording-rules/{ruleID}", adminUIHandler.RequireAuth(recordingsHandler.DeleteRule)).Methods(http.MethodDelete)
+	r.HandleFunc("/admin/api/live/recording-settings", adminUIHandler.RequireAuth(recordingsHandler.GetSettings)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/live/recording-settings", adminUIHandler.RequireAuth(recordingsHandler.UpdateSettings)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/api/live/recordings/epg", adminUIHandler.RequireAuth(recordingsHandler.CreateEPG)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/live/recordings/time-block", adminUIHandler.RequireAuth(recordingsHandler.CreateTimeBlock)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/live/recordings/{recordingID}", adminUIHandler.RequireAuth(recordingsHandler.Get)).Methods(http.MethodGet)
@@ -1428,6 +1456,10 @@ func main() {
 	r.HandleFunc("/admin/api/mdblist/accounts", adminUIHandler.RequireAuth(adminUIHandler.CreateMDBListAccount)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/mdblist/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.UpdateMDBListAccount)).Methods(http.MethodPatch)
 	r.HandleFunc("/admin/api/mdblist/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.DeleteMDBListAccount)).Methods(http.MethodDelete)
+	r.HandleFunc("/admin/api/publicmetadb/accounts", adminUIHandler.RequireAuth(adminUIHandler.ListPublicMetaDBAccounts)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/publicmetadb/accounts", adminUIHandler.RequireAuth(adminUIHandler.CreatePublicMetaDBAccount)).Methods(http.MethodPost)
+	r.HandleFunc("/admin/api/publicmetadb/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.DeletePublicMetaDBAccount)).Methods(http.MethodDelete)
+	r.HandleFunc("/admin/api/publicmetadb/accounts/{accountID}/lists", adminUIHandler.RequireAuth(adminUIHandler.PublicMetaDBLists)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/simkl/accounts", adminUIHandler.RequireAuth(adminUIHandler.GetSimklAccounts)).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/simkl/accounts", adminUIHandler.RequireAuth(adminUIHandler.CreateSimklAccount)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/simkl/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.UpdateSimklAccount)).Methods(http.MethodPatch)
@@ -1587,6 +1619,12 @@ func main() {
 	r.HandleFunc("/account/api/live/epg/schedule", adminUIHandler.RequireAuth(epgHandler.GetSchedule)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/live/epg/schedule/batch", adminUIHandler.RequireAuth(epgHandler.GetScheduleMultiple)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/live/recordings", adminUIHandler.RequireAuth(recordingsHandler.List)).Methods(http.MethodGet)
+	r.HandleFunc("/account/api/live/recording-rules", adminUIHandler.RequireAuth(recordingsHandler.ListRules)).Methods(http.MethodGet)
+	r.HandleFunc("/account/api/live/recording-rules", adminUIHandler.RequireAuth(recordingsHandler.CreateRule)).Methods(http.MethodPost)
+	r.HandleFunc("/account/api/live/recording-rules/{ruleID}", adminUIHandler.RequireAuth(recordingsHandler.UpdateRule)).Methods(http.MethodPut)
+	r.HandleFunc("/account/api/live/recording-rules/{ruleID}", adminUIHandler.RequireAuth(recordingsHandler.DeleteRule)).Methods(http.MethodDelete)
+	r.HandleFunc("/account/api/live/recording-settings", adminUIHandler.RequireAuth(recordingsHandler.GetSettings)).Methods(http.MethodGet)
+	r.HandleFunc("/account/api/live/recording-settings", adminUIHandler.RequireAuth(recordingsHandler.UpdateSettings)).Methods(http.MethodPut)
 	r.HandleFunc("/account/api/live/recordings/epg", adminUIHandler.RequireAuth(recordingsHandler.CreateEPG)).Methods(http.MethodPost)
 	r.HandleFunc("/account/api/live/recordings/time-block", adminUIHandler.RequireAuth(recordingsHandler.CreateTimeBlock)).Methods(http.MethodPost)
 	r.HandleFunc("/account/api/live/recordings/{recordingID}", adminUIHandler.RequireAuth(recordingsHandler.Get)).Methods(http.MethodGet)
@@ -1669,6 +1707,10 @@ func main() {
 	r.HandleFunc("/account/api/mdblist/accounts", adminUIHandler.RequireAuth(adminUIHandler.CreateMDBListAccount)).Methods(http.MethodPost)
 	r.HandleFunc("/account/api/mdblist/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.UpdateMDBListAccount)).Methods(http.MethodPatch)
 	r.HandleFunc("/account/api/mdblist/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.DeleteMDBListAccount)).Methods(http.MethodDelete)
+	r.HandleFunc("/account/api/publicmetadb/accounts", adminUIHandler.RequireAuth(adminUIHandler.ListPublicMetaDBAccounts)).Methods(http.MethodGet)
+	r.HandleFunc("/account/api/publicmetadb/accounts", adminUIHandler.RequireAuth(adminUIHandler.CreatePublicMetaDBAccount)).Methods(http.MethodPost)
+	r.HandleFunc("/account/api/publicmetadb/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.DeletePublicMetaDBAccount)).Methods(http.MethodDelete)
+	r.HandleFunc("/account/api/publicmetadb/accounts/{accountID}/lists", adminUIHandler.RequireAuth(adminUIHandler.PublicMetaDBLists)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/simkl/accounts", adminUIHandler.RequireAuth(adminUIHandler.GetSimklAccounts)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/simkl/accounts", adminUIHandler.RequireAuth(adminUIHandler.CreateSimklAccount)).Methods(http.MethodPost)
 	r.HandleFunc("/account/api/simkl/accounts/{accountID}", adminUIHandler.RequireAuth(adminUIHandler.UpdateSimklAccount)).Methods(http.MethodPatch)
@@ -1699,6 +1741,7 @@ func main() {
 	r.HandleFunc("/account/api/discover/new", adminUIHandler.RequireAuth(metadataHandler.DiscoverNew)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/lists/custom", adminUIHandler.RequireAuth(metadataHandler.CustomList)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/lists/trakt", adminUIHandler.RequireAuth(metadataHandler.TraktList)).Methods(http.MethodGet)
+	r.HandleFunc("/account/api/lists/publicmetadb", adminUIHandler.RequireAuth(metadataHandler.PublicMetaDBList)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/lists/simkl", adminUIHandler.RequireAuth(metadataHandler.SimklList)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/lists/letterboxd", adminUIHandler.RequireAuth(metadataHandler.LetterboxdList)).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/lists/letterboxd/sources", adminUIHandler.RequireAuth(metadataHandler.LetterboxdSources)).Methods(http.MethodGet)

@@ -15,6 +15,15 @@ import (
 	"time"
 )
 
+type staticLiveChannelProvider struct {
+	channels []LiveChannel
+	err      error
+}
+
+func (p staticLiveChannelProvider) FetchFilteredChannelsForRequest(*http.Request) ([]LiveChannel, error) {
+	return p.channels, p.err
+}
+
 func TestLiveQualitySummaryChoosesHighestVideoAndPreservesAudio(t *testing.T) {
 	result := summarizeLiveQuality(ffprobeOutput{Format: ffprobeFormat{FormatName: "hls", BitRate: "999999999"}, Streams: []ffprobeStream{
 		{CodecType: "video", Width: 960, Height: 540, CodecName: "h264", AvgFrameRate: "30000/1001"},
@@ -81,7 +90,9 @@ func TestLiveQualityIPTVAddonAndAdaptiveMedia(t *testing.T) {
 		{"adaptive-hls", "/master.m3u8", nil, 720, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			body, _ := json.Marshal(liveQualityRequest{URL: server.URL + tc.path, StreamIndex: tc.index})
+			streamURL := server.URL + tc.path
+			h.SetLiveChannelProvider(staticLiveChannelProvider{channels: []LiveChannel{{ID: tc.name, SourceID: "fixture", URL: streamURL}}})
+			body, _ := json.Marshal(liveQualityRequest{URL: streamURL, SourceID: "fixture", ChannelID: tc.name, StreamIndex: tc.index})
 			req := httptest.NewRequest(http.MethodPost, "/video/live/quality", strings.NewReader(string(body)))
 			rec := httptest.NewRecorder()
 			h.ProbeLiveQuality(rec, req)
@@ -164,9 +175,27 @@ func TestLiveQualityRejectsNonHTTPAndRedactsProbeErrors(t *testing.T) {
 	defer server.Close()
 	h.ffprobePath = script
 	h.SetConfigManager(fakeLiveUsageConfigProvider{settings: config.Settings{Live: config.LiveSettings{PlaylistURL: server.URL}}})
+	h.SetLiveChannelProvider(staticLiveChannelProvider{channels: []LiveChannel{{ID: "fixture", SourceID: "fixture", URL: server.URL}}})
 	rec = httptest.NewRecorder()
-	h.ProbeLiveQuality(rec, httptest.NewRequest("POST", "/video/live/quality", strings.NewReader(fmt.Sprintf(`{"url":%q}`, server.URL))))
+	h.ProbeLiveQuality(rec, httptest.NewRequest("POST", "/video/live/quality", strings.NewReader(fmt.Sprintf(`{"url":%q,"sourceId":"fixture","channelId":"fixture"}`, server.URL))))
 	if rec.Code != 502 || strings.Contains(rec.Body.String(), "secret") {
 		t.Fatalf("unsafe response: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestLiveQualityRequiresBackendIssuedChannelIdentity(t *testing.T) {
+	h := NewVideoHandlerWithProvider(false, "", "/bin/false", t.TempDir(), nil)
+	h.SetLiveChannelProvider(staticLiveChannelProvider{channels: []LiveChannel{{ID: "known", SourceID: "source", URL: "https://provider.example/known.ts"}}})
+
+	for _, body := range []string{
+		`{"url":"https://attacker.example/redirect.m3u8","sourceId":"source","channelId":"known"}`,
+		`{"url":"https://provider.example/known.ts","sourceId":"source","channelId":"other"}`,
+		`{"url":"https://provider.example/known.ts","sourceId":"other","channelId":"known"}`,
+	} {
+		rec := httptest.NewRecorder()
+		h.ProbeLiveQuality(rec, httptest.NewRequest(http.MethodPost, "/video/live/quality", strings.NewReader(body)))
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d, want %d for %s", rec.Code, http.StatusNotFound, body)
+		}
 	}
 }

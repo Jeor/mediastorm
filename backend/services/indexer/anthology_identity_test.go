@@ -54,14 +54,15 @@ func TestAnthologySeasonFourResultsSurviveScoring(t *testing.T) {
 	settings := config.DefaultSettings()
 	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
 	settings.Display.BypassFilteringForAIOStreamsOnly = false
+	settings.Filtering.HDRDVPolicy = config.HDRDVPolicy(models.HDRDVPolicyIncludeHDRDV)
 	if err := cfg.Save(settings); err != nil {
 		t.Fatal(err)
 	}
 	provider := &countingDebridSearchService{results: []models.NZBResult{
-		{Title: "Monster.The.Lizzie.Borden.Story.S04E01.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
+		{Title: "Monster.2022.S04E01.2160p.DV.H265.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
 		{Title: "Monster.The.Lizzie.Borden.Story.S01E01.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
 		{Title: "Monster.The.Lizzie.Borden.Story.S04E02.1080p.WEB.mkv", ServiceType: models.ServiceTypeDebrid},
-		{Title: "Monster.The.Lizzie.Borden.Story.S04.1080p.Rus.ColdFilm", ServiceType: models.ServiceTypeDebrid},
+		{Title: "Monster.2022.S04.2160p.DV.H265.WEB", ServiceType: models.ServiceTypeDebrid},
 	}}
 	svc := NewService(cfg, nil, provider)
 	results, err := svc.SearchWithScoring(t.Context(), SearchOptions{TitleID: "tmdb:tv:299939", Query: "Monster: The Lizzie Borden Story S01E01", MediaType: "series", Year: 2026, IncludeFiltered: true})

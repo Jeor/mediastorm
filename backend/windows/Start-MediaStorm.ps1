@@ -1,5 +1,7 @@
 param(
-    [switch]$SmokeTest
+    [switch]$SmokeTest,
+    [switch]$RecoverMaster,
+    [string]$RecoverUsername
 )
 
 $ErrorActionPreference = 'Stop'
@@ -122,6 +124,21 @@ try {
     $env:STRMR_SCRIPTS_DIR = Join-Path $PackageRoot 'app\scripts'
     $env:MEDIASTORM_IROH_DIRECT_DIR = Join-Path $PackageRoot 'bin'
     $env:PATH = ((Join-Path $PackageRoot 'bin'), $PostgresBin, $env:PATH) -join ';'
+
+    if ($RecoverMaster -or $RecoverUsername) {
+        if ($RecoverMaster -and $RecoverUsername) {
+            throw 'Choose either -RecoverMaster or -RecoverUsername.'
+        }
+        $RecoveryArgs = @('recover-account')
+        if ($RecoverMaster) {
+            $RecoveryArgs += '-master'
+        } else {
+            $RecoveryArgs += @('-username', $RecoverUsername)
+        }
+        $RecoveryArgs += '-generate'
+        Invoke-Checked $BackendPath $RecoveryArgs
+        return
+    }
 
     $BackendStdout = Join-Path $LogDir 'backend-stdout.log'
     $BackendStderr = Join-Path $LogDir 'backend-stderr.log'

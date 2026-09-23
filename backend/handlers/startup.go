@@ -1037,6 +1037,8 @@ func isStartupFetchableCustomShelf(shelf models.ShelfConfig) bool {
 			(strings.TrimSpace(shelf.TMDBSourceType) != "" && strings.TrimSpace(shelf.TMDBSourceID) != "")
 	case "trakt":
 		return strings.TrimSpace(shelf.TraktAccountID) != "" && strings.TrimSpace(shelf.TraktListType) != ""
+	case "publicmetadb":
+		return strings.TrimSpace(shelf.PublicMetaDBAccountID) != "" && strings.TrimSpace(shelf.PublicMetaDBListID) != ""
 	case "simkl":
 		return strings.TrimSpace(shelf.SimklAccountID) != "" && strings.TrimSpace(shelf.SimklMediaType) != ""
 	case "letterboxd":
@@ -1101,6 +1103,10 @@ func startupDisplayListQueryForShelf(shelf models.ShelfConfig, homeShelfLimit in
 		if strings.TrimSpace(shelf.TraktListID) != "" {
 			query.Set("listId", strings.TrimSpace(shelf.TraktListID))
 		}
+	case "publicmetadb":
+		query.Set("source", "publicmetadb-list")
+		query.Set("accountId", strings.TrimSpace(shelf.PublicMetaDBAccountID))
+		query.Set("listId", strings.TrimSpace(shelf.PublicMetaDBListID))
 	case "simkl":
 		query.Set("source", "simkl-list")
 		query.Set("accountId", strings.TrimSpace(shelf.SimklAccountID))
@@ -1247,6 +1253,8 @@ func homeShelfSourceKey(shelf models.ShelfConfig) string {
 		return fmt.Sprintf("tmdb:%s:%s:%s:%s:%s", shelf.TMDBSourceType, shelf.TMDBSourceID, shelf.TMDBMediaType, shelf.Sort, shelf.TMDBDiscoverQuery)
 	case "trakt":
 		return fmt.Sprintf("trakt:%s:%s:%s", shelf.TraktAccountID, shelf.TraktListType, shelf.TraktListID)
+	case "publicmetadb":
+		return fmt.Sprintf("publicmetadb:%s:%s", shelf.PublicMetaDBAccountID, shelf.PublicMetaDBListID)
 	case "simkl":
 		return fmt.Sprintf("simkl:%s:%s:%s", shelf.SimklAccountID, shelf.SimklMediaType, shelf.SimklListType)
 	case "letterboxd":

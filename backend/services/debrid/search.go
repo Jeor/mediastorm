@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"novastream/config"
+	"novastream/internal/mediaidentity"
 	"novastream/internal/requestsecurity"
 	"novastream/models"
 	"novastream/utils/filter"
@@ -61,6 +62,7 @@ type SearchOptions struct {
 	IsDaily               bool                        // True for daily shows (talk shows, news) - enables date-based matching
 	TargetAirDate         string                      // For daily shows: air date in YYYY-MM-DD format
 	EpisodeAirYear        int                         // Year the target episode aired (for year filter tolerance)
+	SeasonPremiereYear    int                         // Premiere year of the requested season only.
 	EpisodeReleased       bool                        // True only when metadata confirms the target episode has aired
 	SkipFilter            bool                        // When true, skip result filtering (used by SearchTest)
 }
@@ -153,6 +155,13 @@ func buildScrapersFromSettings(settings config.Settings) []Scraper {
 			passthroughFormat := scraperCfg.Config["passthroughFormat"] == "true"
 			log.Printf("[debrid] Initializing AIOStreams scraper: %s at %s (passthrough=%v)", scraperCfg.Name, requestsecurity.URLForLog(scraperCfg.URL), passthroughFormat)
 			scrapers = append(scrapers, NewAIOStreamsScraper(scraperCfg.URL, scraperCfg.Name, passthroughFormat, httpClient))
+		case directStremioType:
+			if scraperCfg.URL == "" {
+				log.Printf("[debrid] Skipping direct Stremio scraper %s: missing URL", scraperCfg.Name)
+				continue
+			}
+			log.Printf("[debrid] Initializing direct Stremio scraper: %s at %s", scraperCfg.Name, requestsecurity.URLForLog(scraperCfg.URL))
+			scrapers = append(scrapers, NewDirectStremioScraper(scraperCfg.URL, scraperCfg.Name, httpClient))
 		case "nyaa":
 			baseURL := scraperCfg.URL
 			if baseURL == "" {
@@ -502,10 +511,13 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 
 	log.Printf("[debrid] Search called with Query=%q, IMDBID=%q, MediaType=%q, Year=%d, UserID=%q", opts.Query, opts.IMDBID, opts.MediaType, opts.Year, opts.UserID)
 
+	if parsed.MediaType == MediaTypeSeries && !opts.IsAnime {
+		mediaidentity.DiscoverSeason(ctx, settings.Metadata.TMDBAPIKey, opts.TitleID, opts.IMDBID, parsed.Season)
+	}
+
 	// If no IMDB ID provided, try to resolve it via metadata service (TVDB fallback)
 	imdbID := opts.IMDBID
-	_, hasAnthologyMapping := anthologyStreamIdentity(opts.TitleID, imdbID, parsed)
-	if imdbID == "" && !hasAnthologyMapping && s.imdbResolver != nil && parsed.Title != "" {
+	if imdbID == "" && s.imdbResolver != nil && parsed.Title != "" {
 		resolvedID := s.imdbResolver.ResolveIMDBID(ctx, parsed.Title, string(parsed.MediaType), parsed.Year)
 		if resolvedID != "" {
 			log.Printf("[debrid] Resolved IMDB ID via fallback: %s for %q", resolvedID, parsed.Title)
@@ -548,19 +560,26 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 		if scraper == nil {
 			continue
 		}
-		scraperCount++
-		wg.Add(1)
-		go func(sc Scraper) {
-			defer wg.Done()
-			start := time.Now()
-			results, err := sc.Search(ctx, req)
-			resultsChan <- scraperResult{
-				name:    sc.Name(),
-				results: results,
-				err:     err,
-				elapsed: time.Since(start),
-			}
-		}(scraper)
+		imdbBased := false
+		switch scraper.(type) {
+		case *AIOStreamsScraper, *TorrentioScraper, *DirectStremioScraper:
+			imdbBased = true
+		}
+		for _, providerReq := range mappedSearchRequests(req, imdbBased) {
+			scraperCount++
+			wg.Add(1)
+			go func(sc Scraper, providerReq SearchRequest) {
+				defer wg.Done()
+				start := time.Now()
+				results, err := sc.Search(ctx, providerReq)
+				resultsChan <- scraperResult{
+					name:    sc.Name(),
+					results: results,
+					err:     err,
+					elapsed: time.Since(start),
+				}
+			}(scraper, providerReq)
+		}
 	}
 
 	// Wait for all scrapers to complete, then close channel
@@ -654,6 +673,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 			ExpectedTitle:         expectedTitle,
 			ExpectedYear:          parsed.Year,
 			EpisodeAirYear:        opts.EpisodeAirYear,
+			SeasonPremiereYear:    opts.SeasonPremiereYear,
 			MediaType:             parsed.MediaType,
 			MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 			MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),
@@ -705,7 +725,7 @@ func hasActiveDirectStreamScrapers(scrapers []config.TorrentScraperConfig) bool 
 			continue
 		}
 		switch strings.ToLower(strings.TrimSpace(scraper.Type)) {
-		case "aiostreams", "comet", "mediafusion", "internetarchive":
+		case "aiostreams", directStremioType, "comet", "mediafusion", "internetarchive":
 			return true
 		}
 	}

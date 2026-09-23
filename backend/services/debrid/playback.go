@@ -65,6 +65,17 @@ func (s *PlaybackService) Resolve(ctx context.Context, candidate models.NZBResul
 	// Check if this is a pre-resolved stream (e.g., from AIOStreams)
 	// Pre-resolved streams already have a direct playback URL, but we need to verify they're cached
 	if candidate.Attributes["preresolved"] == "true" {
+		if candidate.Attributes["scraper"] == directStremioType {
+			settings, err := s.cfg.Load()
+			if err != nil {
+				return nil, fmt.Errorf("load settings for direct Stremio refresh: %w", err)
+			}
+			settings = config.FilterSettingsForProfile(settings, strings.TrimSpace(candidate.Attributes["profileId"]))
+			candidate, err = refreshDirectStremioCandidate(ctx, settings, candidate)
+			if err != nil {
+				return nil, err
+			}
+		}
 		streamURL := strings.TrimSpace(candidate.Attributes["stream_url"])
 		if streamURL == "" {
 			// Fallback: check TorrentURL field (where we stored the stream URL in the scraper)

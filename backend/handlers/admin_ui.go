@@ -739,16 +739,16 @@ var SettingsSchema = map[string]interface{}{
 	},
 	"torrentScrapers": map[string]interface{}{
 		"label":       "Torrent & Streaming Sources",
-		"description": "Configure search addons used for debrid and direct playback discovery. Some sources return torrent candidates (Torrentio, Jackett, Zilean, Nyaa), while others may return ready-to-play direct stream URLs (AIOStreams, Comet, MediaFusion, Internet Archive). Streaming mode still controls whether playback uses Usenet, Debrid, or Hybrid resolution.",
+		"description": "Configure search addons used for debrid and direct playback discovery. Some sources return torrent candidates (Torrentio, Jackett, Zilean, Nyaa), while others may return ready-to-play direct stream URLs (AIOStreams, Direct Stremio, Comet, MediaFusion, Internet Archive). Streaming mode still controls whether playback uses Usenet, Debrid, or Hybrid resolution.",
 		"icon":        "magnet",
 		"group":       "providers",
 		"order":       1,
 		"is_array":    true,
 		"fields": map[string]interface{}{
 			"name":                     map[string]interface{}{"type": "text", "label": "Name", "description": "Scraper name", "order": 0},
-			"type":                     map[string]interface{}{"type": "select", "label": "Type", "options": []string{"torrentio", "prowlarr", "jackett", "zilean", "aiostreams", "nyaa", "comet", "mediafusion", "internetarchive"}, "description": "Source/addon type", "order": 1},
+			"type":                     map[string]interface{}{"type": "select", "label": "Type", "options": []string{"torrentio", "prowlarr", "jackett", "zilean", "aiostreams", "stremio-direct", "nyaa", "comet", "mediafusion", "internetarchive"}, "description": "Source/addon type", "order": 1},
 			"options":                  map[string]interface{}{"type": "text", "label": "Options", "description": `Torrentio URL path options, not a full addon URL. Use the <a href="https://torrentio.strem.fun/configure" target="_blank" rel="noopener noreferrer">Torrentio configurator</a>, then copy only the options segment before /stream (for example: sort=qualitysize|qualityfilter=480p,scr,cam).`, "showWhen": map[string]interface{}{"field": "type", "value": "torrentio"}, "order": 2, "placeholder": "sort=qualitysize|qualityfilter=480p,scr,cam"},
-			"url":                      map[string]interface{}{"type": "text", "label": "URL", "description": "API URL. For Prowlarr, use the Prowlarr base URL and the backend will add each enabled torrent indexer on save. For AIOStreams/Comet/MediaFusion, use the full Stremio addon URL. For Torrentio, this can replace https://torrentio.strem.fun. For Internet Archive, leave blank unless testing another archive.org-compatible host.", "showWhen": map[string]interface{}{"operator": "or", "conditions": []map[string]interface{}{{"field": "type", "value": "prowlarr"}, {"field": "type", "value": "jackett"}, {"field": "type", "value": "zilean"}, {"field": "type", "value": "aiostreams"}, {"field": "type", "value": "comet"}, {"field": "type", "value": "mediafusion"}, {"field": "type", "value": "internetarchive"}, {"field": "type", "value": "torrentio"}}}, "order": 3, "placeholder": "http://prowlarr:9696"},
+			"url":                      map[string]interface{}{"type": "text", "label": "URL", "description": "API URL. For Prowlarr, use the Prowlarr base URL and the backend will add each enabled torrent indexer on save. For AIOStreams, Direct Stremio, Comet, and MediaFusion, use the full Stremio addon manifest URL. Credential-bearing Direct Stremio URLs are write-only. For Torrentio, this can replace https://torrentio.strem.fun. For Internet Archive, leave blank unless testing another archive.org-compatible host.", "showWhen": map[string]interface{}{"operator": "or", "conditions": []map[string]interface{}{{"field": "type", "value": "prowlarr"}, {"field": "type", "value": "jackett"}, {"field": "type", "value": "zilean"}, {"field": "type", "value": "aiostreams"}, {"field": "type", "value": "stremio-direct"}, {"field": "type", "value": "comet"}, {"field": "type", "value": "mediafusion"}, {"field": "type", "value": "internetarchive"}, {"field": "type", "value": "torrentio"}}}, "order": 3, "placeholder": "https://addon.example/config/manifest.json"},
 			"apiKey":                   map[string]interface{}{"type": "password", "label": "API Key", "description": "Prowlarr or Jackett API key", "showWhen": map[string]interface{}{"operator": "or", "conditions": []map[string]interface{}{{"field": "type", "value": "prowlarr"}, {"field": "type", "value": "jackett"}}}, "order": 4},
 			"config.passthroughFormat": map[string]interface{}{"type": "boolean", "label": "Passthrough Format", "description": "Show AIOStreams' raw provider-formatted name and details in manual selection. This does not change MediaStorm filtering or result ordering.", "showWhen": map[string]interface{}{"field": "type", "value": "aiostreams"}, "order": 5},
 			"config.category":          map[string]interface{}{"type": "select", "label": "Category", "options": []string{"1_0", "1_2", "1_3", "1_4"}, "description": "Nyaa category (1_0=All Anime, 1_2=English-translated, 1_3=Non-English, 1_4=Raw)", "showWhen": map[string]interface{}{"field": "type", "value": "nyaa"}, "order": 6},
@@ -1815,7 +1815,8 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		"hasFiltering": func(f config.FilterSettings) bool {
 			return f.HDRDVPolicy != "" && f.HDRDVPolicy != config.HDRDVPolicyNoExclusion || f.MaxSizeMovieGB > 0 || len(f.FilterOutTerms) > 0
 		},
-		"join": strings.Join,
+		"liveTVConfigurationLabel": liveTVConfigurationLabel,
+		"join":                     strings.Join,
 		// brandingURL resolves an admin webui branding surface to a custom
 		// uploaded image (reusing the app branding slots) when one is present,
 		// otherwise falls back to the bundled static asset. The server base
@@ -1934,6 +1935,51 @@ func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, use
 		plexClient:            plex.NewClient(plex.GenerateClientID()),
 		traktClient:           trakt.NewClient("", ""), // Will be updated with credentials from settings
 		serverBasePath:        serverBasePath,
+	}
+}
+
+// liveTVConfigurationLabel describes the effective server-wide Live TV setup.
+// Resolve the same named-source and legacy fields as playback so the dashboard
+// cannot report "Not Set" for a configuration that Live TV is actively using.
+func liveTVConfigurationLabel(settings config.LiveSettings) string {
+	resolved := resolvedLiveSources(models.ResolvedLiveSource{
+		Mode:                settings.Mode,
+		PlaylistURL:         settings.PlaylistURL,
+		ManifestURL:         settings.ManifestURL,
+		ProxyURL:            settings.ProxyURL,
+		XtreamHost:          settings.XtreamHost,
+		XtreamUsername:      settings.XtreamUsername,
+		XtreamPassword:      settings.XtreamPassword,
+		StalkerPortalURL:    settings.StalkerPortalURL,
+		StalkerMAC:          settings.StalkerMAC,
+		StalkerSerialNumber: settings.StalkerSerialNumber,
+		StalkerDeviceID:     settings.StalkerDeviceID,
+		StalkerDeviceID2:    settings.StalkerDeviceID2,
+		StalkerSignature:    settings.StalkerSignature,
+		StalkerModel:        settings.StalkerModel,
+		PlaylistSources:     configPlaylistSourcesToModel(settings.PlaylistSources),
+		Sources:             configPlaylistSourcesToModel(settings.Sources),
+	})
+	if len(resolved) == 0 {
+		return ""
+	}
+
+	mode := resolved[0].Mode
+	for _, source := range resolved[1:] {
+		if source.Mode != mode {
+			return "Live TV Configured"
+		}
+	}
+
+	switch mode {
+	case "xtream":
+		return "Xtream Configured"
+	case "stremio":
+		return "Stremio Configured"
+	case "stalker":
+		return "Stalker Configured"
+	default:
+		return "M3U Configured"
 	}
 }
 
@@ -5041,6 +5087,8 @@ func (h *AdminUIHandler) TestScraper(w http.ResponseWriter, r *http.Request) {
 		h.testZileanScraper(w, req)
 	case "aiostreams":
 		h.testAIOStreamsScraper(w, req)
+	case "stremio-direct":
+		h.testDirectStremioScraper(w, req)
 	case "nyaa":
 		h.testNyaaScraper(w)
 	case "comet":
@@ -5054,6 +5102,33 @@ func (h *AdminUIHandler) TestScraper(w http.ResponseWriter, r *http.Request) {
 	default:
 		h.testTorrentioScraper(w, req.Options, req.URL)
 	}
+}
+
+func (h *AdminUIHandler) testDirectStremioScraper(w http.ResponseWriter, req TestScraperRequest) {
+	if strings.TrimSpace(req.URL) == "" {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Stremio addon manifest URL is required"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	scraper := debrid.NewDirectStremioScraper(req.URL, req.Name, &http.Client{Timeout: 30 * time.Second})
+	results, err := scraper.Search(ctx, debrid.SearchRequest{
+		IMDBID:     "tt0133093",
+		MaxResults: 3,
+		Parsed: debrid.ParsedQuery{
+			Title:     "The Matrix",
+			MediaType: debrid.MediaTypeMovie,
+		},
+	})
+	if err != nil {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": fmt.Sprintf("Direct Stremio test failed: %v", err)})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Direct Stremio source is working (%d playable streams)", len(results)),
+		"count":   len(results),
+	})
 }
 
 func (h *AdminUIHandler) testInternetArchiveScraper(w http.ResponseWriter, req TestScraperRequest) {

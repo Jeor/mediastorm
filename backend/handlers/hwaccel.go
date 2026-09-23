@@ -23,7 +23,7 @@ const (
 	HWVideoToolbox HWAccelKind = "videotoolbox"
 )
 
-// vaapiDefaultDevice is the render node used for VAAPI/QSV when one exists.
+// vaapiDefaultDevice is the render node used for VAAPI and Linux QSV.
 // In Docker this requires `--device /dev/dri` (or equivalent) to be passed
 // through; if the node is absent we fall back to CPU.
 const vaapiDefaultDevice = "/dev/dri/renderD128"
@@ -34,7 +34,7 @@ const vaapiDefaultDevice = "/dev/dri/renderD128"
 type HWAccelCaps struct {
 	// Encode is the chosen H.264 encode backend (HWNone => CPU libx264).
 	Encode HWAccelKind
-	// EncodeDevice is the render node for VAAPI/QSV (empty otherwise).
+	// EncodeDevice is the Linux render node for VAAPI/QSV (empty on Windows QSV).
 	EncodeDevice string
 	// Tonemap is the verified HDR/DV -> SDR tone-mapping implementation:
 	//   "libplacebo" — GPU (Vulkan); the only path that correctly applies the
@@ -422,7 +422,18 @@ func hwEncoderUsable(ffmpegPath string, kind HWAccelKind, encoders map[string]bo
 	}
 
 	switch kind {
-	case HWVAAPI, HWQSV:
+	case HWVAAPI:
+		if runtime.GOOS != "linux" {
+			return "", false, "VAAPI requires a Linux render device"
+		}
+		fallthrough
+	case HWQSV:
+		if kind == HWQSV && runtime.GOOS == "windows" {
+			break // FFmpeg discovers the Windows QSV device through its native runtime.
+		}
+		if kind == HWQSV && runtime.GOOS != "linux" {
+			return "", false, "QSV device discovery is unsupported on this operating system"
+		}
 		// Require the render node to exist before even attempting the probe.
 		if _, err := os.Stat(vaapiDefaultDevice); err != nil {
 			return "", false, fmt.Sprintf("render device %s unavailable: %v", vaapiDefaultDevice, err)
@@ -437,11 +448,11 @@ func hwEncoderUsable(ffmpegPath string, kind HWAccelKind, encoders map[string]bo
 			"-f", "lavfi", "-i", "color=c=black:s=128x128:d=0.1",
 			"-vf", "format=nv12,hwupload", "-c:v", encoder)
 	case HWQSV:
-		args = append(args, "-init_hw_device", "qsv=hw:"+device, "-filter_hw_device", "hw",
-			"-f", "lavfi", "-i", "color=c=black:s=128x128:d=0.1",
+		args = append(args, "-init_hw_device", qsvDeviceInitArg(device), "-filter_hw_device", "hw",
+			"-f", "lavfi", "-i", "color=c=black:s=1280x720:d=0.1",
 			"-vf", "format=nv12,hwupload=extra_hw_frames=16,format=qsv", "-c:v", encoder)
 	default:
-		args = append(args, "-f", "lavfi", "-i", "color=c=black:s=128x128:d=0.1",
+		args = append(args, "-f", "lavfi", "-i", "color=c=black:s=1280x720:d=0.1",
 			"-c:v", encoder)
 	}
 	args = append(args, "-frames:v", "1", "-f", "null", "-")
@@ -456,6 +467,13 @@ func hwEncoderUsable(ffmpegPath string, kind HWAccelKind, encoders map[string]bo
 		return "", false, fmt.Sprintf("test encode failed: %v; output=%q", err, compactProbeOutput(string(output)))
 	}
 	return device, true, "test encode passed"
+}
+
+func qsvDeviceInitArg(device string) string {
+	if device == "" {
+		return "qsv=hw"
+	}
+	return "qsv=hw:" + device
 }
 
 const maxProbeOutputLogBytes = 2048
@@ -672,7 +690,7 @@ func buildVideoEncodePlanWithLimits(
 		}
 	case HWQSV:
 		plan.HardwareEncode = true
-		plan.GlobalArgs = append(plan.GlobalArgs, "-init_hw_device", "qsv=hw:"+caps.EncodeDevice, "-filter_hw_device", "hw")
+		plan.GlobalArgs = append(plan.GlobalArgs, "-init_hw_device", qsvDeviceInitArg(caps.EncodeDevice), "-filter_hw_device", "hw")
 		filters = append(filters, "format=nv12", "hwupload=extra_hw_frames=64", "format=qsv")
 		plan.EncoderArgs = []string{
 			"-c:v", "h264_qsv",

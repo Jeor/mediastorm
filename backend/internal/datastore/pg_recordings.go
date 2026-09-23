@@ -18,7 +18,7 @@ type pgRecordingRepo struct {
 
 func (r *pgRecordingRepo) Get(ctx context.Context, id string) (*models.Recording, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, user_id, type, status, channel_id, tvg_id, channel_name, title, description,
+		SELECT id, user_id, COALESCE(rule_id, ''), schedule_key, type, status, channel_id, tvg_id, channel_name, title, description,
 		       source_url, start_at, end_at, padding_before_seconds, padding_after_seconds,
 		       output_path, output_size_bytes, actual_start_at, actual_end_at, error, created_at, updated_at
 		FROM recordings WHERE id = $1`, id)
@@ -46,7 +46,7 @@ func (r *pgRecordingRepo) List(ctx context.Context, filter models.RecordingListF
 	}
 
 	query := `
-		SELECT id, user_id, type, status, channel_id, tvg_id, channel_name, title, description,
+		SELECT id, user_id, COALESCE(rule_id, ''), schedule_key, type, status, channel_id, tvg_id, channel_name, title, description,
 		       source_url, start_at, end_at, padding_before_seconds, padding_after_seconds,
 		       output_path, output_size_bytes, actual_start_at, actual_end_at, error, created_at, updated_at
 		FROM recordings`
@@ -79,15 +79,15 @@ func (r *pgRecordingRepo) List(ctx context.Context, filter models.RecordingListF
 func (r *pgRecordingRepo) Create(ctx context.Context, recording *models.Recording) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO recordings (
-			id, user_id, type, status, channel_id, tvg_id, channel_name, title, description, source_url,
+			id, user_id, rule_id, schedule_key, type, status, channel_id, tvg_id, channel_name, title, description, source_url,
 			start_at, end_at, padding_before_seconds, padding_after_seconds,
 			output_path, output_size_bytes, actual_start_at, actual_end_at, error, created_at, updated_at
 		) VALUES (
-			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-			$11,$12,$13,$14,
-			$15,$16,$17,$18,$19,$20,$21
+			$1,$2,NULLIF($3, ''),$4,$5,$6,$7,$8,$9,$10,$11,$12,
+			$13,$14,$15,$16,
+			$17,$18,$19,$20,$21,$22,$23
 		)`,
-		recording.ID, recording.UserID, string(recording.Type), string(recording.Status), recording.ChannelID, recording.TvgID,
+		recording.ID, recording.UserID, strings.TrimSpace(recording.RuleID), recording.ScheduleKey, string(recording.Type), string(recording.Status), recording.ChannelID, recording.TvgID,
 		recording.ChannelName, recording.Title, recording.Description, recording.SourceURL,
 		recording.StartAt, recording.EndAt, recording.PaddingBeforeSeconds, recording.PaddingAfterSeconds,
 		recording.OutputPath, recording.OutputSizeBytes, recording.ActualStartAt, recording.ActualEndAt, recording.Error,
@@ -168,6 +168,8 @@ func scanRecording(row interface {
 	err := row.Scan(
 		&recording.ID,
 		&recording.UserID,
+		&recording.RuleID,
+		&recording.ScheduleKey,
 		&typ,
 		&status,
 		&recording.ChannelID,
@@ -197,4 +199,189 @@ func scanRecording(row interface {
 	recording.Type = models.RecordingType(typ)
 	recording.Status = models.RecordingStatus(status)
 	return &recording, nil
+}
+
+func (r *pgRecordingRepo) GetRule(ctx context.Context, id string) (*models.RecordingRule, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, user_id, match_type, pattern, channel_id, tvg_id, channel_name, all_channels, enabled,
+		       padding_before_seconds, padding_after_seconds, created_at, updated_at
+		FROM recording_rules WHERE id = $1`, id)
+	return scanRecordingRule(row)
+}
+
+func (r *pgRecordingRepo) ListRules(ctx context.Context, userID string, includeAll, enabledOnly bool) ([]models.RecordingRule, error) {
+	args := []any{}
+	clauses := []string{}
+	if !includeAll {
+		args = append(args, strings.TrimSpace(userID))
+		clauses = append(clauses, fmt.Sprintf("user_id = $%d", len(args)))
+	}
+	if enabledOnly {
+		clauses = append(clauses, "enabled = TRUE")
+	}
+	query := `
+		SELECT id, user_id, match_type, pattern, channel_id, tvg_id, channel_name, all_channels, enabled,
+		       padding_before_seconds, padding_after_seconds, created_at, updated_at
+		FROM recording_rules`
+	if len(clauses) > 0 {
+		query += " WHERE " + strings.Join(clauses, " AND ")
+	}
+	query += " ORDER BY created_at DESC"
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list recording rules: %w", err)
+	}
+	defer rows.Close()
+
+	var rules []models.RecordingRule
+	for rows.Next() {
+		rule, err := scanRecordingRule(rows)
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, *rule)
+	}
+	return rules, rows.Err()
+}
+
+func (r *pgRecordingRepo) CreateRule(ctx context.Context, rule *models.RecordingRule) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO recording_rules (
+			id, user_id, match_type, pattern, channel_id, tvg_id, channel_name, all_channels, enabled,
+			padding_before_seconds, padding_after_seconds, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+		rule.ID, rule.UserID, string(rule.MatchType), rule.Pattern, rule.ChannelID, rule.TvgID, rule.ChannelName,
+		rule.AllChannels, rule.Enabled, rule.PaddingBeforeSeconds, rule.PaddingAfterSeconds, rule.CreatedAt, rule.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("create recording rule: %w", err)
+	}
+	return nil
+}
+
+func (r *pgRecordingRepo) UpdateRule(ctx context.Context, rule *models.RecordingRule) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE recording_rules
+		SET pattern = $2,
+		    enabled = $3,
+	    padding_before_seconds = $4,
+	    padding_after_seconds = $5,
+	    updated_at = $6
+		WHERE id = $1`,
+		rule.ID, rule.Pattern, rule.Enabled, rule.PaddingBeforeSeconds, rule.PaddingAfterSeconds, rule.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("update recording rule: %w", err)
+	}
+	return nil
+}
+
+func (r *pgRecordingRepo) DeleteRule(ctx context.Context, id string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM recording_rules WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete recording rule: %w", err)
+	}
+	return nil
+}
+
+func (r *pgRecordingRepo) CancelPendingRuleRecordings(ctx context.Context, ruleID string, now time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE recordings
+		SET status = 'cancelled',
+		    error = 'cancelled because the recording rule was deleted',
+		    actual_end_at = $2,
+		    updated_at = $2
+		WHERE rule_id = $1 AND status = 'pending'`, ruleID, now)
+	if err != nil {
+		return fmt.Errorf("cancel pending rule recordings: %w", err)
+	}
+	return nil
+}
+
+func (r *pgRecordingRepo) PausePendingRuleRecordings(ctx context.Context, ruleID string, now time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE recordings
+		SET status = 'cancelled',
+		    error = 'recording rule paused',
+		    actual_end_at = $2,
+		    updated_at = $2
+		WHERE rule_id = $1 AND status = 'pending'`, ruleID, now)
+	if err != nil {
+		return fmt.Errorf("pause pending rule recordings: %w", err)
+	}
+	return nil
+}
+
+func (r *pgRecordingRepo) UpdatePendingRuleRecordingBuffers(ctx context.Context, ruleID string, before, after int) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE recordings
+		SET padding_before_seconds = $2,
+		    padding_after_seconds = $3,
+		    updated_at = now()
+		WHERE rule_id = $1 AND status = 'pending'`, ruleID, before, after)
+	if err != nil {
+		return fmt.Errorf("update pending rule recording buffers: %w", err)
+	}
+	return nil
+}
+
+func (r *pgRecordingRepo) CreateScheduledRecordingIfAbsent(ctx context.Context, recording *models.Recording) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `
+		INSERT INTO recordings (
+			id, user_id, rule_id, schedule_key, type, status, channel_id, tvg_id, channel_name, title, description, source_url,
+			start_at, end_at, padding_before_seconds, padding_after_seconds,
+			output_path, output_size_bytes, actual_start_at, actual_end_at, error, created_at, updated_at
+		) VALUES (
+			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+			$13,$14,$15,$16,
+			$17,$18,$19,$20,$21,$22,$23
+		) ON CONFLICT (rule_id, schedule_key) WHERE rule_id IS NOT NULL DO UPDATE
+		SET title = EXCLUDED.title,
+		    description = EXCLUDED.description,
+		    source_url = EXCLUDED.source_url,
+		    end_at = EXCLUDED.end_at,
+		    padding_before_seconds = EXCLUDED.padding_before_seconds,
+		    padding_after_seconds = EXCLUDED.padding_after_seconds,
+		    status = 'pending',
+		    error = '',
+		    actual_end_at = NULL,
+		    updated_at = EXCLUDED.updated_at
+		WHERE recordings.status = 'pending'
+		   OR (recordings.status = 'cancelled' AND recordings.error = 'recording rule paused')`,
+		recording.ID, recording.UserID, recording.RuleID, recording.ScheduleKey, string(recording.Type), string(recording.Status),
+		recording.ChannelID, recording.TvgID, recording.ChannelName, recording.Title, recording.Description, recording.SourceURL,
+		recording.StartAt, recording.EndAt, recording.PaddingBeforeSeconds, recording.PaddingAfterSeconds,
+		recording.OutputPath, recording.OutputSizeBytes, recording.ActualStartAt, recording.ActualEndAt, recording.Error,
+		recording.CreatedAt, recording.UpdatedAt)
+	if err != nil {
+		return false, fmt.Errorf("create scheduled recording: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+func scanRecordingRule(row interface {
+	Scan(dest ...any) error
+}) (*models.RecordingRule, error) {
+	var rule models.RecordingRule
+	var matchType string
+	if err := row.Scan(
+		&rule.ID,
+		&rule.UserID,
+		&matchType,
+		&rule.Pattern,
+		&rule.ChannelID,
+		&rule.TvgID,
+		&rule.ChannelName,
+		&rule.AllChannels,
+		&rule.Enabled,
+		&rule.PaddingBeforeSeconds,
+		&rule.PaddingAfterSeconds,
+		&rule.CreatedAt,
+		&rule.UpdatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("scan recording rule: %w", err)
+	}
+	rule.MatchType = models.RecordingRuleMatchType(matchType)
+	return &rule, nil
 }

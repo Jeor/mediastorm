@@ -290,7 +290,7 @@
             workingLine = workingLine.substring(timeMatch[1].length).trim();
         }
 
-        const bracketLevelMatch = workingLine.match(/^\[([A-Z]+)\]/);
+        const bracketLevelMatch = workingLine.match(/^\[(INFO|ERROR|WARN|DEBUG|FATAL|LOG)\s*\]/i);
         const levelMatch = workingLine.match(/^(?:level=)?(INFO|ERROR|WARN|DEBUG|FATAL|LOG)/i);
         if (bracketLevelMatch) {
             result.level = bracketLevelMatch[1].toUpperCase();

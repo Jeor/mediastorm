@@ -376,6 +376,18 @@ type RecordingRepository interface {
 	MarkStaleActiveAsFailed(ctx context.Context, now time.Time) (int64, error)
 }
 
+type RecordingRuleRepository interface {
+	GetRule(ctx context.Context, id string) (*models.RecordingRule, error)
+	ListRules(ctx context.Context, userID string, includeAll, enabledOnly bool) ([]models.RecordingRule, error)
+	CreateRule(ctx context.Context, rule *models.RecordingRule) error
+	UpdateRule(ctx context.Context, rule *models.RecordingRule) error
+	DeleteRule(ctx context.Context, id string) error
+	CancelPendingRuleRecordings(ctx context.Context, ruleID string, now time.Time) error
+	PausePendingRuleRecordings(ctx context.Context, ruleID string, now time.Time) error
+	UpdatePendingRuleRecordingBuffers(ctx context.Context, ruleID string, before, after int) error
+	CreateScheduledRecordingIfAbsent(ctx context.Context, recording *models.Recording) (bool, error)
+}
+
 // SportsLinksRepository manages the "Manage Team Channels" feature's persisted state:
 // team identities and the Live TV channels linked to them (primary + backups). Global/
 // shared, not per-user - see the sports feature plan for why.

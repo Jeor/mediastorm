@@ -8337,6 +8337,7 @@ type HistoryChecker interface {
 // CustomListOptions configures filtering and pagination for GetCustomList.
 type CustomListOptions struct {
 	DeferArtwork         bool // use cached artwork for the initial response
+	DeferEnrichment      bool // return stable list rows before metadata is hydrated
 	Limit                int
 	Offset               int
 	HideUnreleased       bool
@@ -8483,7 +8484,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	}
 	key := cacheKey("tmdb", "images", "v10", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
-	if ok, _ := s.cache.get(key, &cached); ok {
+	if ok, _ := s.cache.get(key, &cached); ok && (cached.Logo != nil || cached.LogoSelectionVersion >= 1) {
 		return &cached, nil
 	}
 	if shelfArtworkDeferred(ctx) {
@@ -8491,7 +8492,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	}
 	value, err := s.singleflightCachedFetch(ctx, key, func() (any, error) {
 		var cached tmdbImagesResult
-		if ok, _ := s.cache.get(key, &cached); ok {
+		if ok, _ := s.cache.get(key, &cached); ok && (cached.Logo != nil || cached.LogoSelectionVersion >= 1) {
 			return &cached, nil
 		}
 		result, err := s.tmdb.fetchImages(ctx, mediaType, tmdbID)
@@ -10002,7 +10003,9 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			if opts.Lite {
+			if opts.DeferEnrichment {
+				results[idx] = buildLiteCustomListItem(it)
+			} else if opts.Lite {
 				results[idx] = s.enrichLiteCustomListItem(ctx, it)
 			} else {
 				results[idx] = s.enrichCustomListItem(ctx, it, liteMovieEnrichment)
@@ -10016,7 +10019,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 	s.enrichShelfArtworkForLoad(ctx, results, customListArtworkLimit(opts), opts.DeferArtwork)
 
 	// Only cache full-list results when no filtering was applied
-	if !opts.HideWatched && !filterReleases && opts.Offset == 0 &&
+	if !opts.DeferEnrichment && !opts.HideWatched && !filterReleases && opts.Offset == 0 &&
 		(opts.Limit == 0 || opts.Limit >= unfilteredTotal) && len(results) > 0 {
 		_ = s.cache.set(cacheID, results)
 		log.Printf("[metadata] cached %d enriched items for custom list: %s", len(results), listURL)

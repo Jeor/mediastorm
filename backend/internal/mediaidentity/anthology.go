@@ -2,20 +2,63 @@ package mediaidentity
 
 import "strings"
 
-// AnthologyEpisode identifies the same episode in the provider's anthology.
+// AnthologyEpisode is the provider identity of a catalog episode. ReleaseTitle
+// and Year apply only together with these coordinates, never as global aliases.
 type AnthologyEpisode struct {
 	IMDBID             string
+	TVDBID             int64
+	ReleaseTitle       string
+	Year               int
 	Season             int
 	Episode            int
 	SeasonEpisodeCount int
 }
 
-// KnownAnthologyEpisode is an exact allowlist, never a title/year heuristic.
-// Verified 2026-09-19: TMDB 299939 S01E01-E08 have the same external TVDB
-// episode IDs as Cinemeta tt13207736 S04E01-E08 (11934436, 11963721–11963727).
+// EpisodeCoordinate supports exceptions within an otherwise season-wide map.
+type EpisodeCoordinate struct{ Season, Episode int }
+
+// SeriesCrossMapping describes a verified catalog-to-provider relationship.
+// Discovered mappings and manual fallbacks share the same search/filter logic.
+type SeriesCrossMapping struct {
+	TitleID          string
+	CatalogSeason    int
+	FirstEpisode     int
+	EpisodeCount     int
+	Provider         AnthologyEpisode
+	EpisodeOverrides map[int]EpisodeCoordinate
+}
+
+// Verified 2026-09-19 against TMDB episode external IDs and Cinemeta:
+// TVDB episodes 11934436, 11963721–11963727 are identical across both orders.
+var seriesCrossMappings = []SeriesCrossMapping{{
+	TitleID: "tmdb:tv:299939", CatalogSeason: 1, FirstEpisode: 1, EpisodeCount: 8,
+	Provider: AnthologyEpisode{IMDBID: "tt13207736", TVDBID: 389492, ReleaseTitle: "Monster", Year: 2022, Season: 4, Episode: 1, SeasonEpisodeCount: 8},
+}}
+
+// KnownAnthologyEpisode performs only an in-memory exact-identity lookup.
 func KnownAnthologyEpisode(titleID string, season, episode int) (AnthologyEpisode, bool) {
-	if strings.TrimSpace(titleID) != "tmdb:tv:299939" || season != 1 || episode < 1 || episode > 8 {
-		return AnthologyEpisode{}, false
+	if mapped, ok := discoveries.lookup(strings.TrimSpace(titleID), season, episode); ok {
+		discoveries.logSelection(titleID, season, episode, mapped, "wikidata")
+		return mapped, true
 	}
-	return AnthologyEpisode{IMDBID: "tt13207736", Season: 4, Episode: episode, SeasonEpisodeCount: 8}, true
+	mapped, ok := lookupCrossMapping(seriesCrossMappings, titleID, season, episode)
+	if ok {
+		discoveries.logSelection(titleID, season, episode, mapped, "manual_fallback")
+	}
+	return mapped, ok
+}
+
+func lookupCrossMapping(mappings []SeriesCrossMapping, titleID string, season, episode int) (AnthologyEpisode, bool) {
+	for _, m := range mappings {
+		if strings.TrimSpace(titleID) != m.TitleID || season != m.CatalogSeason || episode < m.FirstEpisode || episode >= m.FirstEpisode+m.EpisodeCount {
+			continue
+		}
+		mapped := m.Provider
+		mapped.Episode += episode - m.FirstEpisode
+		if override, ok := m.EpisodeOverrides[episode]; ok {
+			mapped.Season, mapped.Episode = override.Season, override.Episode
+		}
+		return mapped, true
+	}
+	return AnthologyEpisode{}, false
 }

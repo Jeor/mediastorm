@@ -8484,7 +8484,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	}
 	key := cacheKey("tmdb", "images", "v10", s.client.language, mediaType, fmt.Sprintf("%d", tmdbID))
 	var cached tmdbImagesResult
-	if ok, _ := s.cache.get(key, &cached); ok {
+	if ok, _ := s.cache.get(key, &cached); ok && (cached.Logo != nil || cached.LogoSelectionVersion >= 1) {
 		return &cached, nil
 	}
 	if shelfArtworkDeferred(ctx) {
@@ -8492,7 +8492,7 @@ func (s *Service) cachedFetchImages(ctx context.Context, mediaType string, tmdbI
 	}
 	value, err := s.singleflightCachedFetch(ctx, key, func() (any, error) {
 		var cached tmdbImagesResult
-		if ok, _ := s.cache.get(key, &cached); ok {
+		if ok, _ := s.cache.get(key, &cached); ok && (cached.Logo != nil || cached.LogoSelectionVersion >= 1) {
 			return &cached, nil
 		}
 		result, err := s.tmdb.fetchImages(ctx, mediaType, tmdbID)

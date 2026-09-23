@@ -113,7 +113,7 @@ func TestSeriesDetailsLiteUsesTMDBWhenTVDBIsUnconfigured(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}
 	cache := newFileCache(t.TempDir(), 24)
-	if err := cache.set(cacheKey("tmdb", "images", "v10", "eng", "series", "82728"), tmdbImagesResult{}); err != nil {
+	if err := cache.set(cacheKey("tmdb", "images", "v10", "eng", "series", "82728"), tmdbImagesResult{LogoSelectionVersion: 1}); err != nil {
 		t.Fatalf("seed images cache: %v", err)
 	}
 	svc := &Service{
@@ -148,6 +148,29 @@ func TestSeriesDetailsLiteUsesTMDBWhenTVDBIsUnconfigured(t *testing.T) {
 	}
 	if got := tvdbCalls.Load(); got != 0 {
 		t.Fatalf("TVDB calls = %d, want 0", got)
+	}
+}
+
+func TestCachedFetchImagesRefreshesOldEmptyLogoOnce(t *testing.T) {
+	cache := newFileCache(t.TempDir(), 24)
+	key := cacheKey("tmdb", "images", "v10", "en", "movie", "42")
+	if err := cache.set(key, tmdbImagesResult{}); err != nil {
+		t.Fatalf("seed old images cache: %v", err)
+	}
+	var requests atomic.Int32
+	tmdbHTTP := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requests.Add(1)
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Body: io.NopCloser(strings.NewReader(`{"logos":[],"posters":[],"backdrops":[]}`)), Header: make(http.Header)}, nil
+	})}
+	svc := &Service{client: newTVDBClient("", "en", tmdbHTTP, 24), tmdb: newTMDBClient("tmdb-key", "en", tmdbHTTP, cache), cache: cache}
+	for range 2 {
+		images, err := svc.cachedFetchImages(context.Background(), "movie", 42)
+		if err != nil || images == nil || images.LogoSelectionVersion != 1 {
+			t.Fatalf("cachedFetchImages = %#v, %v", images, err)
+		}
+	}
+	if got := requests.Load(); got != 1 {
+		t.Fatalf("TMDB requests = %d, want 1", got)
 	}
 }
 

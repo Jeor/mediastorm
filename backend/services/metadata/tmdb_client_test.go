@@ -501,14 +501,14 @@ func TestFetchImages_LogoLanguagePreference(t *testing.T) {
 			description:   "No-language logo should be selected; foreign logos filtered out",
 		},
 		{
-			name: "english user: only foreign logos returns nil (Lucas the Spider case)",
+			name: "english user: only foreign logos uses highest-voted artwork",
 			logos: []tmdbImageItem{
 				{FilePath: "/pt_logo.png", ISO6391: "pt", VoteAverage: 5.0},
 				{FilePath: "/es_logo.png", ISO6391: "es", VoteAverage: 3.0},
 			},
 			preferredLang: "en",
-			wantPath:      "",
-			description:   "Foreign-only logos should be skipped for English users",
+			wantPath:      "/pt_logo.png",
+			description:   "Foreign-only logos provide a final artwork fallback",
 		},
 		{
 			name: "portuguese user: portuguese preferred over english",
@@ -569,13 +569,13 @@ func TestFetchImages_LogoLanguagePreference(t *testing.T) {
 			description:   "User's language should win even with lowest vote average",
 		},
 		{
-			name: "single foreign logo returns nil for english user",
+			name: "single foreign logo is used for english user",
 			logos: []tmdbImageItem{
 				{FilePath: "/ja_logo.png", ISO6391: "ja", VoteAverage: 8.0},
 			},
 			preferredLang: "en",
-			wantPath:      "",
-			description:   "A non-English/non-preferred logo should be skipped",
+			wantPath:      "/ja_logo.png",
+			description:   "A non-English/non-preferred logo is better than an empty hero",
 		},
 		{
 			name: "no-language fallback when no preferred or english",
@@ -596,6 +596,27 @@ func TestFetchImages_LogoLanguagePreference(t *testing.T) {
 				t.Errorf("selected %q, want %q\n  %s", got, tc.wantPath, tc.description)
 			}
 		})
+	}
+}
+
+func TestCorrectKnownLogoLanguages(t *testing.T) {
+	logos := []tmdbImageItem{
+		{FilePath: "/3cVzXee30ZNDuWvB7r96OmfT3sO.png", ISO6391: "eo"},
+		{FilePath: "/other.png", ISO6391: "eo"},
+	}
+	correctKnownLogoLanguages("movie", 1607127, logos)
+	if logos[0].ISO6391 != "en" || logos[1].ISO6391 != "eo" {
+		t.Fatalf("unexpected corrected languages: %#v", logos)
+	}
+	selected, ok := selectLogoCandidate(logos, "en", func(tmdbImageItem) bool { return false })
+	if !ok || selected.FilePath != logos[0].FilePath {
+		t.Fatalf("selected logo = %#v, want verified English wordmark", selected)
+	}
+
+	otherTitle := []tmdbImageItem{{FilePath: logos[0].FilePath, ISO6391: "eo"}}
+	correctKnownLogoLanguages("movie", 1, otherTitle)
+	if otherTitle[0].ISO6391 != "eo" {
+		t.Fatalf("changed an unrelated title's logo language: %#v", otherTitle)
 	}
 }
 

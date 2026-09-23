@@ -82,6 +82,30 @@ func (r *fakeRecordingRepo) MarkStaleActiveAsFailed(_ context.Context, _ time.Ti
 	return 0, nil
 }
 
+func TestCompileRecordingRegexCaseSensitivity(t *testing.T) {
+	tests := []struct {
+		pattern string
+		title   string
+		want    bool
+	}{
+		{pattern: "road", title: "Road Wars", want: true},
+		{pattern: "road", title: "Offroad Odyssey", want: true},
+		{pattern: "(?-i)road", title: "Road Wars", want: false},
+		{pattern: "(?-i)Road", title: "Road Wars", want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pattern+"/"+tt.title, func(t *testing.T) {
+			compiled, err := compileRecordingRegex(tt.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := compiled.MatchString(tt.title); got != tt.want {
+				t.Fatalf("pattern %q matching %q = %t, want %t", tt.pattern, tt.title, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStartRecordingRetriesTransientFailure(t *testing.T) {
 	t.Setenv("ATTEMPT_FILE", filepath.Join(t.TempDir(), "attempts.txt"))
 	script := writeFakeFFmpeg(t, `#!/bin/sh

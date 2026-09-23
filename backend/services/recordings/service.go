@@ -392,7 +392,7 @@ func (s *Service) CreateRule(rule models.RecordingRule) (models.RecordingRule, e
 		}
 		rule.AllChannels = false
 	case models.RecordingRuleMatchRegex:
-		if _, err := regexp.Compile(rule.Pattern); err != nil {
+		if _, err := compileRecordingRegex(rule.Pattern); err != nil {
 			return models.RecordingRule{}, fmt.Errorf("invalid regular expression: %w", err)
 		}
 		if !rule.AllChannels && rule.TvgID == "" {
@@ -568,7 +568,7 @@ func (s *Service) expandEnabledRules() {
 		for _, rule := range profileRules {
 			var compiled *regexp.Regexp
 			if rule.MatchType == models.RecordingRuleMatchRegex {
-				compiled, err = regexp.Compile(rule.Pattern)
+				compiled, err = compileRecordingRegex(rule.Pattern)
 				if err != nil {
 					log.Printf("[recordings] skipping invalid stored regex rule=%s: %v", rule.ID, err)
 					continue
@@ -621,6 +621,12 @@ func ruleMatchesChannel(rule models.RecordingRule, channel Channel) bool {
 	}
 	return (rule.ChannelID != "" && strings.EqualFold(rule.ChannelID, channel.ID)) ||
 		(rule.TvgID != "" && strings.EqualFold(rule.TvgID, channel.TvgID))
+}
+
+func compileRecordingRegex(pattern string) (*regexp.Regexp, error) {
+	// EPG capitalization varies by provider. An explicit (?-i) in the pattern
+	// still lets the user request case-sensitive matching.
+	return regexp.Compile("(?i)" + pattern)
 }
 
 func matchesRecordingRule(rule models.RecordingRule, compiled *regexp.Regexp, title string) bool {

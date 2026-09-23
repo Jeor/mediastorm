@@ -63,15 +63,20 @@ type CyclingStage struct {
 	GeneralClassificationLabel string              `json:"generalClassificationLabel,omitempty"`
 }
 type CyclingRace struct {
-	RaceKind  string          `json:"raceKind"`
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Category  string          `json:"category"`
-	StartDate string          `json:"startDate,omitempty"`
-	EndDate   string          `json:"endDate,omitempty"`
-	Stages    []CyclingStage  `json:"stages"`
-	Source    cyclingEvidence `json:"source"`
-	SourceURL string          `json:"sourceUrl"`
+	CalendarOnly   bool            `json:"calendarOnly,omitempty"`
+	Country        string          `json:"country,omitempty"`
+	Classification string          `json:"classification,omitempty"`
+	ScheduleOnly   bool            `json:"scheduleOnly,omitempty"`
+	RestDays       []string        `json:"restDays,omitempty"`
+	RaceKind       string          `json:"raceKind"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Category       string          `json:"category"`
+	StartDate      string          `json:"startDate,omitempty"`
+	EndDate        string          `json:"endDate,omitempty"`
+	Stages         []CyclingStage  `json:"stages"`
+	Source         cyclingEvidence `json:"source"`
+	SourceURL      string          `json:"sourceUrl"`
 }
 type CyclingCoverage struct {
 	ID    string `json:"id"`
@@ -103,6 +108,8 @@ var cyclingCompetitions = []cyclingCompetition{
 	{"fleche-wallonne", "La Flèche Wallonne", "men", "racecenter.la-fleche-wallonne.be", true},
 	{"fleche-wallonne-femmes", "La Flèche Wallonne Femmes", "women", "racecenter.la-fleche-wallonne-femmes.be", true},
 	{"giro", "Giro d’Italia", "men", "www.giroditalia.it", false},
+	{"cro-race", "CRO Race", "men", "crorace.com", false},
+	{"road-worlds", "UCI Road World Championships", "unknown", "www.montreal2026.org", false},
 }
 
 type cyclingBoardCache struct {
@@ -115,11 +122,12 @@ type cyclingStageCache struct {
 	expires time.Time
 }
 type cyclingCache struct {
-	mu       sync.Mutex
-	detailMu sync.Mutex
-	boards   map[string]cyclingBoardCache
-	stages   map[string]cyclingStageCache
-	guides   map[string]cyclingGuideCache
+	subscription cyclingSubscriptionCache
+	mu           sync.Mutex
+	detailMu     sync.Mutex
+	boards       map[string]cyclingBoardCache
+	stages       map[string]cyclingStageCache
+	guides       map[string]cyclingGuideCache
 }
 
 type asoStage struct {
@@ -222,6 +230,12 @@ func normalizeCyclingSchedule(raw []asoStage, c cyclingCompetition, year int, no
 	return race
 }
 func cyclingLeagueID(id string) string {
+	if id == "cro-race" {
+		return "cro:cro-race"
+	}
+	if id == "road-worlds" {
+		return "uci:road-worlds"
+	}
 	if id == "giro" {
 		return "rcs:" + id
 	}
@@ -267,11 +281,33 @@ func (s *Service) GetCycling(ctx context.Context) CyclingFeed {
 	boards := make([]cyclingBoardCache, len(competitions))
 	var workers sync.WaitGroup
 	slots := make(chan struct{}, 4)
+	var subscription cyclingSubscriptionCache
+	if len(competitions) > 0 {
+		workers.Add(1)
+		slots <- struct{}{}
+		go func() {
+			defer workers.Done()
+			defer func() { <-slots }()
+			subscription = s.cyclingSubscription(requestCtx, year, now)
+		}()
+	}
 	for i, c := range competitions {
 		key := fmt.Sprintf("%s:%d", c.id, year)
 		old, exists := cache.boards[key]
 		boards[i] = old
 		if exists && now.Before(old.expires) {
+			continue
+		}
+		// Local, verified calendars must not wait behind remote provider timeouts.
+		if c.id == "cro-race" || c.id == "road-worlds" {
+			race, err := publishedCyclingRace(c.id, year, now)
+			if err == nil {
+				old = cyclingBoardCache{race: race, expires: now.Add(5 * time.Minute)}
+			} else {
+				old.stale = true
+				old.expires = now.Add(30 * time.Second)
+			}
+			boards[i] = old
 			continue
 		}
 		workers.Add(1)
@@ -333,6 +369,10 @@ func (s *Service) GetCycling(ctx context.Context) CyclingFeed {
 			feed.Data = append(feed.Data, old.race)
 		}
 		feed.Coverage = append(feed.Coverage, CyclingCoverage{ID: c.id, Name: c.name, State: state})
+	}
+	if len(competitions) > 0 {
+		cache.subscription = subscription
+		mergeCyclingSubscription(&feed, subscription, competitions, year)
 	}
 	if len(feed.Data) == 0 {
 		feed.State = "unavailable"
@@ -492,6 +532,15 @@ func (s *Service) GetCyclingStage(ctx context.Context, raceID string, year, numb
 	if year != time.Now().UTC().Year() || number < 1 || number > 40 {
 		return CyclingStage{}, fmt.Errorf("unsupported cycling date or stage")
 	}
+	// Resolve calendar-only entries from the trusted board before organizer lookup.
+	if number == 1 {
+		for _, race := range s.GetCycling(ctx).Data {
+			parts := strings.Split(race.ID, ":")
+			if len(parts) == 3 && parts[1] == raceID && race.CalendarOnly && len(race.Stages) > 0 {
+				return race.Stages[0], nil
+			}
+		}
+	}
 	var c cyclingCompetition
 	for _, candidate := range cyclingCompetitions {
 		if candidate.id == raceID {
@@ -502,11 +551,7 @@ func (s *Service) GetCyclingStage(ctx context.Context, raceID string, year, numb
 		return CyclingStage{}, fmt.Errorf("unsupported cycling race")
 	}
 	board := s.GetCycling(ctx)
-	prefix := "aso"
-	if raceID == "giro" {
-		prefix = "rcs"
-	}
-	id := fmt.Sprintf("%s:%s:%d:%d", prefix, raceID, year, number)
+	id := fmt.Sprintf("%s:%d:%d", cyclingLeagueID(raceID), year, number)
 	var stage CyclingStage
 	for _, race := range board.Data {
 		for _, candidate := range race.Stages {
@@ -517,6 +562,9 @@ func (s *Service) GetCyclingStage(ctx context.Context, raceID string, year, numb
 	}
 	if stage.ID == "" {
 		return stage, fmt.Errorf("stage not found")
+	}
+	if raceID == "cro-race" || raceID == "road-worlds" {
+		return stage, nil
 	}
 	cache := &s.cycling
 	cache.detailMu.Lock()

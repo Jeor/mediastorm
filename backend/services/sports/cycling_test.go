@@ -91,6 +91,7 @@ func TestCyclingDurationsAndDateOnly(t *testing.T) {
 func TestCyclingBoardFailureIsolationAndBackoff(t *testing.T) {
 	now := time.Now()
 	s := NewService(t.TempDir())
+	s.SetEnabledLeagueIDs(networkCyclingIDs())
 	s.cycling.boards = map[string]cyclingBoardCache{}
 	key := fmt.Sprintf("tour:%d", now.Year())
 	s.cycling.boards[key] = cyclingBoardCache{race: CyclingRace{ID: "saved", Source: cyclingSource(now.Add(-time.Hour), 0)}}
@@ -101,7 +102,7 @@ func TestCyclingBoardFailureIsolationAndBackoff(t *testing.T) {
 	})}
 	feed := s.GetCycling(context.Background())
 	s.GetCycling(context.Background())
-	if feed.State != "stale" || len(feed.Data) != 1 || feed.Data[0].ID != "saved" || calls.Load() != int32(len(cyclingCompetitions)) {
+	if feed.State != "stale" || len(feed.Data) != 1 || feed.Data[0].ID != "saved" || calls.Load() != int32(len(networkCyclingIDs())+1) {
 		t.Fatal("lost last good race or repeated failures", feed, calls.Load())
 	}
 	if feed.Coverage[0].State != "stale" || feed.Coverage[1].State != "unavailable" {
@@ -150,6 +151,7 @@ func TestCyclingExpansionCapturedSources(t *testing.T) {
 
 func TestCyclingBoardParallelBudgetAndProviderLimit(t *testing.T) {
 	s := NewService(t.TempDir())
+	s.SetEnabledLeagueIDs(networkCyclingIDs())
 	var active, maximum atomic.Int32
 	s.client = &http.Client{Transport: detailTransport(func(r *http.Request) (*http.Response, error) {
 		n := active.Add(1)
@@ -167,7 +169,17 @@ func TestCyclingBoardParallelBudgetAndProviderLimit(t *testing.T) {
 	defer cancel()
 	start := time.Now()
 	feed := s.GetCycling(ctx)
-	if time.Since(start) > time.Second || maximum.Load() < 2 || maximum.Load() > 4 || len(feed.Coverage) != len(cyclingCompetitions) || feed.State != "unavailable" {
+	if time.Since(start) > time.Second || maximum.Load() < 2 || maximum.Load() > 4 || len(feed.Coverage) != len(networkCyclingIDs())+1 || feed.State != "unavailable" {
 		t.Fatalf("lost deadline/concurrency/failure isolation: max=%d, feed=%+v", maximum.Load(), feed)
 	}
+}
+
+func networkCyclingIDs() []string {
+	ids := []string{}
+	for _, c := range cyclingCompetitions {
+		if c.id != "cro-race" && c.id != "road-worlds" {
+			ids = append(ids, cyclingLeagueID(c.id))
+		}
+	}
+	return ids
 }

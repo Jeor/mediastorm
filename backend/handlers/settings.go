@@ -450,7 +450,6 @@ func (h *SettingsHandler) ServeWebIcon(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		if localPath, pathErr := h.brandingImagePath(settings, brandingSlots["web-icon"]); pathErr == nil {
 			w.Header().Set("Cache-Control", "no-cache, max-age=0, must-revalidate")
-			w.Header().Set("Content-Type", "image/png")
 			http.ServeFile(w, r, localPath)
 			return
 		}
@@ -472,7 +471,6 @@ func (h *SettingsHandler) ServeAppleTouchIcon(w http.ResponseWriter, r *http.Req
 	if err == nil {
 		if localPath, pathErr := h.brandingImagePath(settings, brandingSlots["web-icon"]); pathErr == nil {
 			w.Header().Set("Cache-Control", "no-cache, max-age=0, must-revalidate")
-			w.Header().Set("Content-Type", "image/png")
 			http.ServeFile(w, r, localPath)
 			return
 		}
@@ -595,6 +593,9 @@ func redactSettings(s *config.Settings) {
 	// Torrent scrapers (Prowlarr/Jackett)
 	for i := range s.TorrentScrapers {
 		mask(&s.TorrentScrapers[i].APIKey)
+		if strings.EqualFold(strings.TrimSpace(s.TorrentScrapers[i].Type), "stremio-direct") {
+			mask(&s.TorrentScrapers[i].URL)
+		}
 	}
 
 	// Metadata API keys
@@ -625,6 +626,9 @@ func redactSettings(s *config.Settings) {
 	mask(&s.MDBList.APIKey)
 	for i := range s.MDBList.Accounts {
 		mask(&s.MDBList.Accounts[i].APIKey)
+	}
+	for i := range s.PublicMetaDB.Accounts {
+		mask(&s.PublicMetaDB.Accounts[i].APIKey)
 	}
 
 	// Trakt (legacy fields + account-level tokens)
@@ -760,6 +764,9 @@ func preserveRedactedFields(incoming *config.Settings, existing *config.Settings
 	for i := range incoming.TorrentScrapers {
 		if i < len(existing.TorrentScrapers) {
 			restore(&incoming.TorrentScrapers[i].APIKey, existing.TorrentScrapers[i].APIKey)
+			if strings.EqualFold(strings.TrimSpace(incoming.TorrentScrapers[i].Type), "stremio-direct") {
+				restore(&incoming.TorrentScrapers[i].URL, existing.TorrentScrapers[i].URL)
+			}
 		}
 	}
 
@@ -794,6 +801,14 @@ func preserveRedactedFields(incoming *config.Settings, existing *config.Settings
 	for i := range incoming.MDBList.Accounts {
 		if i < len(existing.MDBList.Accounts) {
 			restore(&incoming.MDBList.Accounts[i].APIKey, existing.MDBList.Accounts[i].APIKey)
+		}
+	}
+	for i := range incoming.PublicMetaDB.Accounts {
+		for _, old := range existing.PublicMetaDB.Accounts {
+			if incoming.PublicMetaDB.Accounts[i].ID == old.ID {
+				restore(&incoming.PublicMetaDB.Accounts[i].APIKey, old.APIKey)
+				break
+			}
 		}
 	}
 

@@ -424,7 +424,14 @@
                 <button type="button" class="modal-close" onclick="closeRecoveryModal()" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <p>If you cannot sign in, reset the password from the backend container. Most installs use Docker Compose and the default service name <strong>mediastorm</strong>.</p>
+                <p>If you cannot sign in, stop MediaStorm and run the recovery command for your installation.</p>
+
+                <div>
+                    <h4>Windows package</h4>
+                    <p>Open Command Prompt in the extracted MediaStorm folder.</p>
+                    <div class="command-block">Start-MediaStorm.cmd -RecoverMaster</div>
+                    <div class="command-block">Start-MediaStorm.cmd -RecoverUsername alice</div>
+                </div>
 
                 <div>
                     <h4>Docker Compose</h4>

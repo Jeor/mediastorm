@@ -429,13 +429,14 @@ type tmdbImagesResponse struct {
 
 // tmdbImagesResult contains logo plus clean/text variants for posters and backdrops.
 type tmdbImagesResult struct {
-	Logo             *models.Image
-	TextlessPoster   *models.Image
-	TextPoster       *models.Image // Best poster with title text (has language tag)
-	Posters          []models.Image
-	TextlessBackdrop *models.Image
-	TextBackdrop     *models.Image // Best backdrop with language tag when available
-	Backdrops        []models.Image
+	LogoSelectionVersion int
+	Logo                 *models.Image
+	TextlessPoster       *models.Image
+	TextPoster           *models.Image // Best poster with title text (has language tag)
+	Posters              []models.Image
+	TextlessBackdrop     *models.Image
+	TextBackdrop         *models.Image // Best backdrop with language tag when available
+	Backdrops            []models.Image
 }
 
 // fetchImages retrieves logo and textless poster for a movie or TV show from TMDB
@@ -465,11 +466,13 @@ func (c *tmdbClient) fetchImages(ctx context.Context, mediaType string, tmdbID i
 		return nil, fmt.Errorf("tmdb images for %s/%d failed: %w", apiMediaType, tmdbID, err)
 	}
 
-	result := &tmdbImagesResult{}
+	result := &tmdbImagesResult{LogoSelectionVersion: 1}
 
 	// Find best logo: prefer user's language, then English, then no-language.
-	// Skip logos in other languages to avoid showing translated text.
+	// If none exists, use the best available logo rather than leaving the hero
+	// without any artwork. It may be translated, so mark it as a fallback.
 	if len(payload.Logos) > 0 {
+		correctKnownLogoLanguages(apiMediaType, tmdbID, payload.Logos)
 		if selectedLogo, ok := c.selectLogoCandidate(ctx, payload.Logos, preferredLang); ok {
 			result.Logo = buildTMDBImage(selectedLogo.FilePath, tmdbLogoSize, "logo")
 			if result.Logo != nil {
@@ -576,6 +579,20 @@ func (c *tmdbClient) fetchImages(ctx context.Context, mediaType string, tmdbID i
 	return result, nil
 }
 
+// TMDB currently labels this English One Last Shot wordmark as Esperanto.
+// Keep the correction tied to the image path so this wordmark wins over
+// translated logos when there is no correctly tagged English candidate.
+func correctKnownLogoLanguages(mediaType string, tmdbID int64, logos []tmdbImageItem) {
+	if mediaType != "movie" || tmdbID != 1607127 {
+		return
+	}
+	for i := range logos {
+		if logos[i].FilePath == "/3cVzXee30ZNDuWvB7r96OmfT3sO.png" && logos[i].ISO6391 == "eo" {
+			logos[i].ISO6391 = "en"
+		}
+	}
+}
+
 func rankAlternatePosters(items []tmdbImageItem, primary *models.Image, preferredLang string) []models.Image {
 	const maxAlternatePosters = 7
 	primaryKey := ""
@@ -635,6 +652,9 @@ func selectLogoCandidate(logos []tmdbImageItem, preferredLang string, isWhiteOnl
 		if logoLanguageRank(l, preferredLang) >= 0 {
 			usable = append(usable, l)
 		}
+	}
+	if len(usable) == 0 {
+		usable = append(usable, logos...)
 	}
 	if len(usable) == 0 {
 		return tmdbImageItem{}, false

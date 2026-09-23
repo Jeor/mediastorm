@@ -349,7 +349,8 @@ func (h *SportsHandler) GetGameStreams(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"missing game id"}`, http.StatusBadRequest)
 		return
 	}
-	game, ok := h.service.GetGame(id)
+	kind, parentID := streamEventQuery(r)
+	game, ok := h.streamEvent(r.Context(), id, kind, parentID)
 	if !ok {
 		http.Error(w, `{"error":"game not found"}`, http.StatusNotFound)
 		return
@@ -463,6 +464,7 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 	}
 
 	matches := make([]models.SportsStreamMatch, 0)
+channelLoop:
 	for _, channel := range channels {
 		channelLifecycle := sportsLifecycle(channel.Name)
 		if channelLifecycle == "" {
@@ -482,13 +484,13 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 			}
 		} else {
 			if game.EventKind != "" && game.EventKind != "matchup" {
-				evidence = scoreSportsEventTitle(channel.Name, game.Title)
+				evidence = scoreWatchEvent(channel.Name, game)
 			} else {
 				evidence = scoreMatchupText(channel.Name, home, away)
 			}
 			var alternate sportsEvidence
 			if game.EventKind != "" && game.EventKind != "matchup" {
-				alternate = scoreSportsEventTitle(channel.TvgName, game.Title)
+				alternate = scoreWatchEvent(channel.TvgName, game)
 			} else {
 				alternate = scoreMatchupText(channel.TvgName, home, away)
 			}
@@ -498,6 +500,9 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 		}
 
 		if now, ok := nowByID[strings.ToLower(channel.TvgID)]; ok {
+			if now.Current != nil && conflictingWatchSegment(now.Current.Title, game) {
+				continue channelLoop
+			}
 			for _, program := range []*models.EPGProgram{now.Current, now.Next} {
 				if program == nil {
 					continue
@@ -505,14 +510,14 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 				if hasNonLiveSportsLabel(program.Title) || hasNonLiveSportsLabel(program.Description) {
 					continue
 				}
-				programEvidence := scoreMatchupText(program.Title, home, away)
+				programEvidence := scoreSportsProgramMatchup(program.Title, home, away)
 				if game.EventKind != "" && game.EventKind != "matchup" {
-					programEvidence = scoreSportsEventTitle(program.Title, game.Title)
+					programEvidence = scoreWatchEvent(program.Title, game)
 				}
 				fromDescription := false
-				descriptionEvidence := scoreMatchupText(program.Description, home, away)
+				descriptionEvidence := scoreSportsProgramMatchup(program.Description, home, away)
 				if game.EventKind != "" && game.EventKind != "matchup" {
-					descriptionEvidence = scoreSportsEventTitle(program.Description, game.Title)
+					descriptionEvidence = scoreWatchEvent(program.Description, game)
 				}
 				if descriptionEvidence.score > programEvidence.score {
 					programEvidence = descriptionEvidence
@@ -568,6 +573,9 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 			continue
 		}
 		score := roundSportsConfidence(evidence.score)
+		if game.EventKind == "race-session" || game.EventKind == "cycling-stage" {
+			score = math.Min(score, 0.84)
+		}
 		matches = append(matches, models.SportsStreamMatch{
 			ChannelID: channel.ID, ChannelName: channel.Name, ChannelURL: channel.URL,
 			ChannelLogo: channel.Logo, ChannelTvgID: channel.TvgID, SourceID: channel.SourceID,

@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 
+	"novastream/config"
 	"novastream/models"
 )
 
@@ -108,5 +111,30 @@ func TestClientSettingPathRejectsProfileOnlySettings(t *testing.T) {
 	}
 	if got, ok := clientSettingPath("animeFiltering.animePreferredLanguage"); !ok || got != "animePreferredLanguage" {
 		t.Fatalf("anime clientSettingPath() = %q, %v", got, ok)
+	}
+	if got, ok := clientSettingPath(experimentalNativeTrailerPlayerTVPath); !ok || got != "experimentalNativeTrailerPlayerTV" {
+		t.Fatalf("experimental trailer clientSettingPath() = %q, %v", got, ok)
+	}
+}
+
+func TestExperimentalNativeTrailerPlayerIsDeviceOnly(t *testing.T) {
+	manager := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	body := []byte(`{"path":"playback.experimentalNativeTrailerPlayerTV","value":true}`)
+
+	patch, err := decodeClientFrontendSettingPatch(json.NewDecoder(bytes.NewReader(body)), manager)
+	if err != nil {
+		t.Fatalf("device experiment patch rejected: %v", err)
+	}
+	if patch.Path != experimentalNativeTrailerPlayerTVPath {
+		t.Fatalf("patch path = %q", patch.Path)
+	}
+
+	if _, err := decodeFrontendSettingPatch(json.NewDecoder(bytes.NewReader(body)), manager); err == nil {
+		t.Fatal("profile patch unexpectedly accepted the device-only experiment")
+	}
+
+	invalid := []byte(`{"path":"playback.experimentalNativeTrailerPlayerTV","value":"yes"}`)
+	if _, err := decodeClientFrontendSettingPatch(json.NewDecoder(bytes.NewReader(invalid)), manager); err == nil {
+		t.Fatal("non-boolean device experiment value was accepted")
 	}
 }

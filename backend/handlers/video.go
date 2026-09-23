@@ -36,6 +36,7 @@ import (
 	"novastream/internal/liveusage"
 	"novastream/internal/netproxy"
 	"novastream/internal/requestsecurity"
+	"novastream/internal/streamheaders"
 	"novastream/internal/ytdlp"
 	"novastream/models"
 	"novastream/services/credits"
@@ -154,6 +155,7 @@ type VideoHandler struct {
 	userSettingsSvc   UserSettingsProvider
 	clientSettingsSvc ClientSettingsProvider
 	configManager     ConfigProvider
+	liveChannels      LiveChannelProvider
 
 	// Metadata response cache for /video/metadata endpoint
 	// Prevents repeated ffprobe calls during playback
@@ -190,6 +192,13 @@ type VideoHandler struct {
 	// disabled globally (no manager exists) and a DLNA renderer forces the path.
 	dlnaCapsOnce sync.Once
 	dlnaCaps     HWAccelCaps
+}
+
+// LiveChannelProvider resolves the profile-filtered channels that the backend
+// has issued to clients. Quality probes must be bound to one of these channels
+// instead of accepting an arbitrary authenticated URL.
+type LiveChannelProvider interface {
+	FetchFilteredChannelsForRequest(r *http.Request) ([]LiveChannel, error)
 }
 
 const (
@@ -716,6 +725,10 @@ func (h *VideoHandler) SetConfigManager(cfgManager ConfigProvider) {
 	if h.hlsManager != nil {
 		h.hlsManager.SetConfigManager(cfgManager)
 	}
+}
+
+func (h *VideoHandler) SetLiveChannelProvider(provider LiveChannelProvider) {
+	h.liveChannels = provider
 }
 
 // SetClientSettingsService sets the client settings service for per-device policy checks
@@ -2203,7 +2216,8 @@ func (h *VideoHandler) runFFProbeFromProvider(ctx context.Context, cleanPath str
 	// If so, probe it directly without going through the provider
 	if strings.HasPrefix(cleanPath, "http://") || strings.HasPrefix(cleanPath, "https://") {
 		videoTracef("[video] ffprobe using external URL directly: %s", cleanPath)
-		meta, err := h.runFFProbe(ctx, cleanPath, nil)
+		probeURL, requestHeaders := streamheaders.Extract(cleanPath)
+		meta, err := h.runFFProbeWithHeaders(ctx, probeURL, nil, requestHeaders)
 		if err != nil {
 			return nil, fmt.Errorf("ffprobe external URL failed: %w", err)
 		}
@@ -2626,14 +2640,16 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 
 	if isExternalURL {
 		videoTracef("[video] ProbeVideo: detected external URL, probing directly: %s", cleanPath)
+		probeURL, requestHeaders := streamheaders.Extract(cleanPath)
 
 		// For external URLs, try to get file size via HEAD request
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		headReq, err := http.NewRequestWithContext(ctx, http.MethodHead, cleanPath, nil)
+		headReq, err := http.NewRequestWithContext(ctx, http.MethodHead, probeURL, nil)
 		if err == nil {
 			headReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+			streamheaders.Apply(headReq.Header, requestHeaders)
 			h.applyExternalUsenetWebDAVAuth(headReq)
 			headResp, headErr := http.DefaultClient.Do(headReq)
 			if headErr == nil {
@@ -2647,7 +2663,7 @@ func (h *VideoHandler) ProbeVideo(w http.ResponseWriter, r *http.Request) {
 		// Probe directly with ffprobe
 		var meta *ffprobeOutput
 		if h.ffprobePath != "" {
-			if m, err := h.runFFProbe(r.Context(), cleanPath, nil); err == nil && m != nil {
+			if m, err := h.runFFProbeWithHeaders(r.Context(), probeURL, nil, requestHeaders); err == nil && m != nil {
 				meta = m
 			} else if err != nil {
 				videoTracef("[video] ProbeVideo: ffprobe external URL failed: %v", err)
@@ -3471,6 +3487,10 @@ func shouldIncludeEmptyMoov(plan audioPlan) bool {
 }
 
 func (h *VideoHandler) runFFProbe(ctx context.Context, inputSpecifier string, reader io.Reader) (*ffprobeOutput, error) {
+	return h.runFFProbeWithHeaders(ctx, inputSpecifier, reader, nil)
+}
+
+func (h *VideoHandler) runFFProbeWithHeaders(ctx context.Context, inputSpecifier string, reader io.Reader, requestHeaders map[string]string) (*ffprobeOutput, error) {
 	if h.ffprobePath == "" {
 		return nil, errors.New("ffprobe not configured")
 	}
@@ -3495,7 +3515,11 @@ func (h *VideoHandler) runFFProbe(ctx context.Context, inputSpecifier string, re
 		"-show_format",
 	}
 	if reader == nil {
-		if header := h.externalUsenetWebDAVAuthHeader(inputSpecifier); header != "" {
+		header := streamheaders.FFmpegValue(requestHeaders)
+		if authHeader := h.externalUsenetWebDAVAuthHeader(inputSpecifier); authHeader != "" {
+			header += authHeader
+		}
+		if header != "" {
 			args = append(args, "-headers", header)
 		}
 	}
@@ -6443,6 +6467,7 @@ func (h *VideoHandler) videoFullToUnifiedProbe(result *VideoFullResult) *Unified
 // It supports range requests for seeking and passes through the response from the remote server.
 func (h *VideoHandler) proxyExternalURL(w http.ResponseWriter, r *http.Request, externalURL string) (bool, error) {
 	videoTracef("[video] proxying external URL")
+	externalURL, requestHeaders := streamheaders.Extract(externalURL)
 
 	// Handle URLs with unencoded query parameters (e.g., "?name=The Devil's Plan")
 	// Split URL into base and query, properly encode the query parameters
@@ -6622,6 +6647,7 @@ func (h *VideoHandler) proxyExternalURL(w http.ResponseWriter, r *http.Request, 
 		proxyReq.Header.Set("User-Agent", "VLC/3.0.18 LibVLC/3.0.18")
 		proxyReq.Header.Set("Accept", "*/*")
 		proxyReq.Header.Set("Accept-Encoding", "identity")
+		streamheaders.Apply(proxyReq.Header, requestHeaders)
 		if legacyHasAuth {
 			proxyReq.SetBasicAuth(legacyUsername, legacyPassword)
 		} else {

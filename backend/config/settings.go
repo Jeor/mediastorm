@@ -40,6 +40,7 @@ type Settings struct {
 	Display         DisplaySettings         `json:"display"`
 	Subtitles       SubtitleSettings        `json:"subtitles"`
 	MDBList         MDBListSettings         `json:"mdblist"`
+	PublicMetaDB    PublicMetaDBSettings    `json:"publicMetaDB,omitempty"`
 	Trakt           TraktSettings           `json:"trakt,omitempty"`
 	Simkl           SimklSettings           `json:"simkl,omitempty"`
 	Scrob           ScrobSettings           `json:"scrob,omitempty"`
@@ -79,7 +80,7 @@ type SportsSearchScope struct {
 
 // defaultEnabledLeagueIDs is duplicated (not imported) from services/sports.defaultLeagueIDs
 // to avoid a config -> services/sports import cycle; keep the two lists in sync.
-var defaultEnabledLeagueIDs = []string{"pga", "boxing", "cricket-8048", "nfl", "college-football", "nba", "mens-college-basketball", "womens-college-basketball", "wnba", "mlb", "nhl", "soccer-fifa.world", "soccer-fifa.wwc", "soccer-eng.1", "soccer-eng.2", "soccer-esp.1", "soccer-ger.1", "soccer-ita.1", "soccer-fra.1", "soccer-usa.1", "soccer-usa.nwsl", "soccer-usa.nwsl.cup", "soccer-uefa.champions", "soccer-uefa.europa", "soccer-uefa.europa.conf", "soccer-mex.1", "soccer-ned.1", "soccer-por.1", "ufc", "atp", "wta", "f1", "nascar", "motogp", "indycar", "rugby-180659", "rugby-164205", "rugby-267979", "rugby-242041", "rugby-270559", "rugby-league-3", "aso:tour", "aso:vuelta", "aso:tour-femmes", "aso:paris-nice", "aso:vuelta-femenina", "aso:paris-roubaix", "aso:paris-roubaix-femmes", "aso:liege-bastogne-liege", "aso:liege-bastogne-liege-femmes", "aso:fleche-wallonne", "aso:fleche-wallonne-femmes", "rcs:giro"}
+var defaultEnabledLeagueIDs = []string{"pga", "boxing", "cricket-8048", "nfl", "college-football", "nba", "mens-college-basketball", "womens-college-basketball", "wnba", "mlb", "nhl", "soccer-fifa.world", "soccer-fifa.wwc", "soccer-eng.1", "soccer-eng.2", "soccer-esp.1", "soccer-ger.1", "soccer-ita.1", "soccer-fra.1", "soccer-usa.1", "soccer-usa.nwsl", "soccer-usa.nwsl.cup", "soccer-uefa.champions", "soccer-uefa.europa", "soccer-uefa.europa.conf", "soccer-mex.1", "soccer-ned.1", "soccer-por.1", "ufc", "atp", "wta", "f1", "nascar", "motogp", "indycar", "rugby-180659", "rugby-164205", "rugby-267979", "rugby-242041", "rugby-270559", "rugby-league-3", "aso:tour", "aso:vuelta", "aso:tour-femmes", "aso:paris-nice", "aso:vuelta-femenina", "aso:paris-roubaix", "aso:paris-roubaix-femmes", "aso:liege-bastogne-liege", "aso:liege-bastogne-liege-femmes", "aso:fleche-wallonne", "aso:fleche-wallonne-femmes", "rcs:giro", "cro:cro-race", "uci:road-worlds"}
 
 // Normalize backfills nil fields so every caller of Settings.Sports (not just the sports
 // HTTP handlers, which previously did this ad hoc inline) sees a consistent, non-nil shape -
@@ -245,9 +246,9 @@ type IndexerConfig struct {
 }
 
 type TorrentScraperConfig struct {
-	Name            string            `json:"name"`    // "Torrentio", "Prowlarr", "Jackett", "Zilean", "AIOStreams", "Nyaa", "Comet", "MediaFusion", "Internet Archive"
-	Type            string            `json:"type"`    // "torrentio", "prowlarr", "jackett", "zilean", "aiostreams", "nyaa", "comet", "mediafusion", "internetarchive"
-	URL             string            `json:"url"`     // For Prowlarr/Jackett/Zilean/AIOStreams/Nyaa/Comet/MediaFusion/Internet Archive (full URL with config token if needed)
+	Name            string            `json:"name"`    // "Torrentio", "Prowlarr", "Jackett", "Zilean", "AIOStreams", "PenguPlay", "Nyaa", "Comet", "MediaFusion", "Internet Archive"
+	Type            string            `json:"type"`    // "torrentio", "prowlarr", "jackett", "zilean", "aiostreams", "stremio-direct", "nyaa", "comet", "mediafusion", "internetarchive"
+	URL             string            `json:"url"`     // For Prowlarr/Jackett/Zilean/Stremio addons/Nyaa/Internet Archive (full URL with config token if needed)
 	APIKey          string            `json:"apiKey"`  // For Prowlarr/Jackett
 	Options         string            `json:"options"` // For Torrentio: URL path options (e.g., "sort=qualitysize|qualityfilter=480p,scr,cam")
 	Enabled         bool              `json:"enabled"`
@@ -754,27 +755,29 @@ func (ls *LiveSettings) GetEffectivePlaylistURL() string {
 
 // ShelfConfig represents a configurable home screen shelf.
 type ShelfConfig struct {
-	ID                     string                 `json:"id"`                               // Unique identifier (e.g., "continue-watching", "watchlist", "trending-movies")
-	Name                   string                 `json:"name"`                             // Display name
-	Enabled                bool                   `json:"enabled"`                          // Whether the shelf is visible
-	Order                  int                    `json:"order"`                            // Sort order (lower numbers appear first)
-	Type                   string                 `json:"type,omitempty"`                   // "builtin" (default), "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "genre", "decade", "collection-hub", or "library"
-	LibraryID              string                 `json:"libraryId,omitempty"`              // Configured media library selected by a "library" shelf
-	ListURL                string                 `json:"listUrl,omitempty"`                // MDBList URL for custom lists (e.g., https://mdblist.com/lists/username/list-name/json)
-	AddonManifestURL       string                 `json:"addonManifestUrl,omitempty"`       // Stremio add-on manifest URL selected by a "stremio" shelf
-	AddonCatalogType       string                 `json:"addonCatalogType,omitempty"`       // Stremio catalog media type ("movie" or "series")
-	AddonCatalogID         string                 `json:"addonCatalogId,omitempty"`         // Stremio catalog ID from the add-on manifest
-	AddonName              string                 `json:"addonName,omitempty"`              // Stremio add-on name captured during manifest ingestion
-	TMDBSourceType         string                 `json:"tmdbSourceType,omitempty"`         // TMDB source builder type (public-list, production-company, network, movie-collection, person-credits, director-credits, custom-discover)
-	TMDBSourceID           string                 `json:"tmdbSourceId,omitempty"`           // Numeric TMDB list/company/network/collection/person ID
-	TMDBSourceName         string                 `json:"tmdbSourceName,omitempty"`         // Resolved source name shown by the shelf editor
-	TMDBMediaType          string                 `json:"tmdbMediaType,omitempty"`          // "movie", "tv", or "all"
-	TMDBDiscoverQuery      string                 `json:"tmdbDiscoverQuery,omitempty"`      // URL-encoded custom filters shared by every TMDB source type
-	StreamingServices      []StreamingServiceLink `json:"streamingServices,omitempty"`      // Service cards for the built-in Streaming Services shelf
-	CollectionItems        []CollectionHubLink    `json:"collectionItems,omitempty"`        // Shelf cards for collection hub shelves
-	TraktAccountID         string                 `json:"traktAccountId,omitempty"`         // Trakt account ID, or "__all__" for master-account global watchlists
-	TraktListType          string                 `json:"traktListType,omitempty"`          // "watchlist" or "custom"
-	TraktListID            string                 `json:"traktListId,omitempty"`            // Trakt custom list slug/ID when traktListType == "custom"
+	ID                     string                 `json:"id"`                          // Unique identifier (e.g., "continue-watching", "watchlist", "trending-movies")
+	Name                   string                 `json:"name"`                        // Display name
+	Enabled                bool                   `json:"enabled"`                     // Whether the shelf is visible
+	Order                  int                    `json:"order"`                       // Sort order (lower numbers appear first)
+	Type                   string                 `json:"type,omitempty"`              // "builtin" (default), "mdblist", "stremio", "tmdb", "trakt", "simkl", "letterboxd", "genre", "decade", "collection-hub", or "library"
+	LibraryID              string                 `json:"libraryId,omitempty"`         // Configured media library selected by a "library" shelf
+	ListURL                string                 `json:"listUrl,omitempty"`           // MDBList URL for custom lists (e.g., https://mdblist.com/lists/username/list-name/json)
+	AddonManifestURL       string                 `json:"addonManifestUrl,omitempty"`  // Stremio add-on manifest URL selected by a "stremio" shelf
+	AddonCatalogType       string                 `json:"addonCatalogType,omitempty"`  // Stremio catalog media type ("movie" or "series")
+	AddonCatalogID         string                 `json:"addonCatalogId,omitempty"`    // Stremio catalog ID from the add-on manifest
+	AddonName              string                 `json:"addonName,omitempty"`         // Stremio add-on name captured during manifest ingestion
+	TMDBSourceType         string                 `json:"tmdbSourceType,omitempty"`    // TMDB source builder type (public-list, production-company, network, movie-collection, person-credits, director-credits, custom-discover)
+	TMDBSourceID           string                 `json:"tmdbSourceId,omitempty"`      // Numeric TMDB list/company/network/collection/person ID
+	TMDBSourceName         string                 `json:"tmdbSourceName,omitempty"`    // Resolved source name shown by the shelf editor
+	TMDBMediaType          string                 `json:"tmdbMediaType,omitempty"`     // "movie", "tv", or "all"
+	TMDBDiscoverQuery      string                 `json:"tmdbDiscoverQuery,omitempty"` // URL-encoded custom filters shared by every TMDB source type
+	StreamingServices      []StreamingServiceLink `json:"streamingServices,omitempty"` // Service cards for the built-in Streaming Services shelf
+	CollectionItems        []CollectionHubLink    `json:"collectionItems,omitempty"`   // Shelf cards for collection hub shelves
+	TraktAccountID         string                 `json:"traktAccountId,omitempty"`    // Trakt account ID, or "__all__" for master-account global watchlists
+	TraktListType          string                 `json:"traktListType,omitempty"`     // "watchlist" or "custom"
+	TraktListID            string                 `json:"traktListId,omitempty"`       // Trakt custom list slug/ID when traktListType == "custom"
+	PublicMetaDBAccountID  string                 `json:"publicMetaDBAccountId,omitempty"`
+	PublicMetaDBListID     string                 `json:"publicMetaDBListId,omitempty"`
 	SimklAccountID         string                 `json:"simklAccountId,omitempty"`         // Simkl account ID
 	SimklListType          string                 `json:"simklListType,omitempty"`          // Simkl status bucket: "plantowatch", "watching", "completed", "hold", or "dropped"
 	SimklMediaType         string                 `json:"simklMediaType,omitempty"`         // Simkl media bucket: "movies", "shows", or "anime"
@@ -889,6 +892,7 @@ func DefaultHomeShelfConfigs() []ShelfConfig {
 		{ID: "popular-on-server", Name: "Popular on This Server", Enabled: false, Order: 13, Limit: 20, ActivityWindowDays: 90, MinimumProfiles: 2},
 		{ID: "recently-watched", Name: "Recently Watched", Enabled: false, Order: 14, Limit: 20, ActivityWindowDays: 14, MaxItemsPerProfile: 3},
 		{ID: "permanent-prequeue", Name: "Permanent Prequeue", Enabled: false, Order: 15},
+		{ID: "set-aside", Name: "Set Aside", Enabled: false, Order: 16},
 	}
 }
 
@@ -1244,6 +1248,34 @@ func EnsureDefaultHomeShelves(shelves []ShelfConfig) ([]ShelfConfig, bool) {
 		changed = true
 	}
 
+	if !hasShelf("set-aside") {
+		insertOrder := -1
+		for _, shelf := range nextShelves {
+			if shelf.ID == "permanent-prequeue" {
+				insertOrder = shelf.Order + 1
+				break
+			}
+			if shelf.Order > insertOrder {
+				insertOrder = shelf.Order + 1
+			}
+		}
+		if insertOrder < 0 {
+			insertOrder = 0
+		}
+		for i := range nextShelves {
+			if nextShelves[i].Order >= insertOrder {
+				nextShelves[i].Order++
+			}
+		}
+		nextShelves = append(nextShelves, ShelfConfig{
+			ID:      "set-aside",
+			Name:    "Set Aside",
+			Enabled: false,
+			Order:   insertOrder,
+		})
+		changed = true
+	}
+
 	if !hasShelf("watch-something") {
 		insertOrder := 2
 		for _, shelf := range nextShelves {
@@ -1519,6 +1551,27 @@ type MDBListAccount struct {
 	Name           string `json:"name"`                     // Display name
 	APIKey         string `json:"apiKey"`                   // MDBList API key
 	OwnerAccountID string `json:"ownerAccountId,omitempty"` // Login account that owns this integration
+}
+
+// PublicMetaDBAccount keeps API credentials on the server, outside shelf data.
+type PublicMetaDBAccount struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	APIKey         string `json:"apiKey"`
+	OwnerAccountID string `json:"ownerAccountId,omitempty"`
+}
+
+type PublicMetaDBSettings struct {
+	Accounts []PublicMetaDBAccount `json:"accounts,omitempty"`
+}
+
+func (s PublicMetaDBSettings) GetAccountByID(id string) *PublicMetaDBAccount {
+	for i := range s.Accounts {
+		if s.Accounts[i].ID == id {
+			return &s.Accounts[i]
+		}
+	}
+	return nil
 }
 
 // MDBListSettings defines MDBList integration for aggregated ratings and scrobbling.
@@ -2616,6 +2669,7 @@ func (m *Manager) Load() (Settings, error) {
 			{Name: "Real Debrid", Provider: "realdebrid"},
 			{Name: "Torbox", Provider: "torbox"},
 			{Name: "AllDebrid", Provider: "alldebrid"},
+			{Name: "Debrid-Link", Provider: "debridlink"},
 			{Name: "Premiumize", Provider: "premiumize"},
 		}
 	}

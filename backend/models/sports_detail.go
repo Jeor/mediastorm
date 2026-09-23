@@ -5,13 +5,15 @@ import "time"
 // SportsGameDetail is additive to the legacy game response. Empty data never
 // implies a zero statistic; capability flags describe verified available panels.
 type SportsGameDetail struct {
-	FighterProfiles []SportsPlayerGameStats `json:"fighterProfiles,omitempty"`
-	Shots           []SportsHockeyShot      `json:"shots,omitempty"`
-	Leaderboard     []SportsGolfEntry       `json:"leaderboard,omitempty"`
-	Innings         []SportsCricketInnings  `json:"innings,omitempty"`
-	CoverageNote    string                  `json:"coverageNote,omitempty"`
-	Pregame         *SportsPregame          `json:"pregame,omitempty"`
-	PlayerStats     []SportsPlayerGameStats `json:"playerStats,omitempty"`
+	BasketballShots []SportsBasketballShot      `json:"basketballShots,omitempty"`
+	WinProbability  []SportsWinProbabilityPoint `json:"winProbability,omitempty"`
+	FighterProfiles []SportsPlayerGameStats     `json:"fighterProfiles,omitempty"`
+	Shots           []SportsHockeyShot          `json:"shots,omitempty"`
+	Leaderboard     []SportsGolfEntry           `json:"leaderboard,omitempty"`
+	Innings         []SportsCricketInnings      `json:"innings,omitempty"`
+	CoverageNote    string                      `json:"coverageNote,omitempty"`
+	Pregame         *SportsPregame              `json:"pregame,omitempty"`
+	PlayerStats     []SportsPlayerGameStats     `json:"playerStats,omitempty"`
 	// TournamentContext is the literal soccer provider season/round label, not inferred progression.
 	TournamentContext string                   `json:"tournamentContext,omitempty"`
 	ScoreHistory      *SportsScoreHistory      `json:"scoreHistory,omitempty"`
@@ -38,6 +40,7 @@ type SportsPlayParticipant struct {
 	Name string `json:"name"`
 }
 type SportsPlayerGameStats struct {
+	Jersey      string                  `json:"jersey,omitempty"`
 	HeadshotURL string                  `json:"headshotUrl,omitempty"`
 	ID          string                  `json:"id"`
 	TeamID      string                  `json:"teamId"`
@@ -127,16 +130,25 @@ type SportsStandingRow struct {
 
 // Coordinates orient the away end at 0 and the home end at 100 for consistent comparison.
 type SportsFootballPlay struct {
-	ID          string   `json:"id"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Clock       string   `json:"clock"`
-	Period      string   `json:"period"`
-	Start       *float64 `json:"start,omitempty"`
-	End         *float64 `json:"end,omitempty"`
-	Scoring     bool     `json:"scoring"`
+	TypeID           string   `json:"typeId,omitempty"`
+	Wallclock        string   `json:"wallclock,omitempty"`
+	Down             *int     `json:"down,omitempty"`
+	Distance         *float64 `json:"distance,omitempty"`
+	Yards            *float64 `json:"yards,omitempty"`
+	PossessionTeamID string   `json:"possessionTeamId,omitempty"`
+	ID               string   `json:"id"`
+	Type             string   `json:"type"`
+	Description      string   `json:"description"`
+	Clock            string   `json:"clock"`
+	Period           string   `json:"period"`
+	Start            *float64 `json:"start,omitempty"`
+	End              *float64 `json:"end,omitempty"`
+	Scoring          bool     `json:"scoring"`
 }
 type SportsFootballDrive struct {
+	PlayCount   *int                 `json:"playCount,omitempty"`
+	Yards       *float64             `json:"yards,omitempty"`
+	Elapsed     string               `json:"elapsed,omitempty"`
 	StartKnown  *bool                `json:"startKnown,omitempty"`
 	EndKnown    *bool                `json:"endKnown,omitempty"`
 	Plays       []SportsFootballPlay `json:"plays,omitempty"`
@@ -207,4 +219,30 @@ type SportsHockeyShot struct {
 	Period      string  `json:"period"`
 	Clock       string  `json:"clock"`
 	Description string  `json:"description"`
+}
+
+// Basketball coordinates are feet across the court (x) and from the attacking rim (y).
+// They describe a normalized attacking basket, never inferred broadcast direction.
+type SportsBasketballShot struct {
+	Jersey      string  `json:"jersey,omitempty"`
+	ID          string  `json:"id"`
+	TeamID      string  `json:"teamId"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	Made        bool    `json:"made"`
+	Points      int     `json:"points"`
+	Period      int     `json:"period"`
+	PeriodLabel string  `json:"periodLabel"`
+	Clock       string  `json:"clock"`
+	Description string  `json:"description"`
+	AthleteID   string  `json:"athleteId,omitempty"`
+	PlayerName  string  `json:"playerName,omitempty"`
+	HeadshotURL string  `json:"headshotUrl,omitempty"`
+}
+type SportsWinProbabilityPoint struct {
+	PlayID      string  `json:"playId"`
+	Period      int     `json:"period"`
+	PeriodLabel string  `json:"periodLabel"`
+	Clock       string  `json:"clock"`
+	Home        float64 `json:"home"`
 }

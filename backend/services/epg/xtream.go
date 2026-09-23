@@ -312,8 +312,8 @@ func doXtreamRequestWithUserAgents(request *http.Request, client *http.Client, u
 		attempt.Header.Set("User-Agent", userAgent)
 		response, err := client.Do(attempt)
 		if err != nil {
-			lastErr = err
-			log.Printf("[epg] Xtream request failed with UA %q: %v", userAgent, err)
+			lastErr = fmt.Errorf("HTTP transport failed (%T)", err)
+			log.Printf("[epg] Xtream request failed with UA %q errorType=%T", userAgent, err)
 			continue
 		}
 		if response.StatusCode >= http.StatusBadRequest {

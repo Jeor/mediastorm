@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"novastream/internal/requestsecurity"
+	"novastream/internal/streamheaders"
 	"novastream/models"
 	"novastream/services/streaming"
 )
@@ -253,6 +254,7 @@ func (m *HLSManager) probeAllMetadata(ctx context.Context, path string) (*Unifie
 // probeAllMetadataFromURL probes all metadata directly from an external URL
 func (m *HLSManager) probeAllMetadataFromURL(ctx context.Context, url string) (*UnifiedProbeResult, error) {
 	log.Printf("[hls] probing all metadata from external URL (unified probe)")
+	probeURL, _ := streamheaders.Extract(url)
 
 	probeCtx, probeCancel := context.WithTimeout(ctx, 60*time.Second)
 	defer probeCancel()
@@ -265,7 +267,7 @@ func (m *HLSManager) probeAllMetadataFromURL(ctx context.Context, url string) (*
 		"-print_format", "json",
 		"-show_format",
 		"-show_streams",
-		"-i", url,
+		"-i", probeURL,
 	}
 	args = append(m.externalFFmpegHeaders(url), args...)
 

@@ -1,0 +1,590 @@
+{
+  "header": {
+    "competitions": [
+      {
+        "competitors": [
+          {
+            "id": "289204",
+            "homeAway": "home",
+            "score": "46",
+            "winner": true
+          },
+          {
+            "id": "289203",
+            "homeAway": "away",
+            "score": "10",
+            "winner": false
+          }
+        ],
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          }
+        }
+      }
+    ],
+    "id": "604756"
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "289203"
+        },
+        "statistics": [
+          {
+            "name": "general",
+            "displayName": "General",
+            "shortDisplayName": "General",
+            "abbreviation": "gen",
+            "summary": "",
+            "stats": [
+              {
+                "name": "cleanBreaks",
+                "displayName": "Clean Breaks",
+                "shortDisplayName": "CB",
+                "description": "Clean Breaks",
+                "abbreviation": "CB",
+                "type": "cleanBreaks",
+                "value": 3.0,
+                "displayValue": "3"
+              },
+              {
+                "name": "conversionGoals",
+                "displayName": "Conversion Goals",
+                "shortDisplayName": "CG",
+                "description": "Conversion Goals",
+                "abbreviation": "CG",
+                "type": "conversionGoals",
+                "value": 1.0,
+                "displayValue": "1"
+              },
+              {
+                "name": "kicks",
+                "displayName": "Kicks",
+                "shortDisplayName": "Kicks",
+                "description": "",
+                "abbreviation": "K",
+                "type": "kicks",
+                "value": 15.0,
+                "displayValue": "15"
+              },
+              {
+                "name": "lineoutsWon",
+                "displayName": "Lineouts Won",
+                "shortDisplayName": "LW",
+                "description": "Lineouts Won",
+                "abbreviation": "LW",
+                "type": "lineoutsWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "lineoutWonSteal",
+                "displayName": "Lineout Won Steal",
+                "shortDisplayName": "LWS",
+                "description": "Lineout Won Steal",
+                "abbreviation": "LWS",
+                "type": "lineoutWonSteal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "maulsTotal",
+                "displayName": "Mauls Total",
+                "shortDisplayName": "MT",
+                "description": "Mauls Total",
+                "abbreviation": "MT",
+                "type": "maulsTotal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "maulsWon",
+                "displayName": "Mauls Won",
+                "shortDisplayName": "MW",
+                "description": "Mauls Won",
+                "abbreviation": "MW",
+                "type": "maulsWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "metres",
+                "displayName": "Meters Run",
+                "shortDisplayName": "MR",
+                "description": "Meters Run",
+                "abbreviation": "MR",
+                "type": "metres",
+                "value": 1101.0,
+                "displayValue": "1101"
+              },
+              {
+                "name": "missedTackles",
+                "displayName": "Missed Tackles",
+                "shortDisplayName": "MT",
+                "description": "Missed Tackles",
+                "abbreviation": "MT",
+                "type": "missedTackles",
+                "value": 48.0,
+                "displayValue": "48"
+              },
+              {
+                "name": "offload",
+                "displayName": "Offload",
+                "shortDisplayName": "O",
+                "description": "Offload",
+                "abbreviation": "O",
+                "type": "offload",
+                "value": 10.0,
+                "displayValue": "10"
+              },
+              {
+                "name": "passes",
+                "displayName": "Passes",
+                "shortDisplayName": "P",
+                "description": "Passes",
+                "abbreviation": "P",
+                "type": "passes",
+                "value": 236.0,
+                "displayValue": "236"
+              },
+              {
+                "name": "penaltiesConceded",
+                "displayName": "Penalties Conceded",
+                "shortDisplayName": "PC",
+                "description": "Penalties Conceded",
+                "abbreviation": "PC",
+                "type": "penaltiesConceded",
+                "value": 4.0,
+                "displayValue": "4"
+              },
+              {
+                "name": "penaltyGoals",
+                "displayName": "Penalty Goals",
+                "shortDisplayName": "PG",
+                "description": "Penalty Goals",
+                "abbreviation": "PG",
+                "type": "penaltyGoals",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "possession",
+                "displayName": "Possession",
+                "shortDisplayName": "P",
+                "description": "Possession",
+                "abbreviation": "P",
+                "type": "possession",
+                "value": 0.0,
+                "displayValue": "0.000"
+              },
+              {
+                "name": "redCards",
+                "displayName": "Red Cards",
+                "shortDisplayName": "RC",
+                "description": "Red Cards",
+                "abbreviation": "RC",
+                "type": "redCards",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "rucksTotal",
+                "displayName": "Rucks Total",
+                "shortDisplayName": "RT",
+                "description": "Rucks Total",
+                "abbreviation": "RT",
+                "type": "rucksTotal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "rucksWon",
+                "displayName": "Rucks Won",
+                "shortDisplayName": "RW",
+                "description": "Rucks Won",
+                "abbreviation": "RW",
+                "type": "rucksWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "runs",
+                "displayName": "Runs",
+                "shortDisplayName": "R",
+                "description": "Runs",
+                "abbreviation": "R",
+                "type": "runs",
+                "value": 180.0,
+                "displayValue": "180"
+              },
+              {
+                "name": "scrumsTotal",
+                "displayName": "Scrums Total",
+                "shortDisplayName": "ST",
+                "description": "Scrums Total",
+                "abbreviation": "ST",
+                "type": "scrumsTotal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "scrumsWon",
+                "displayName": "Scrums Won",
+                "shortDisplayName": "SW",
+                "description": "Scrums Won",
+                "abbreviation": "SW",
+                "type": "scrumsWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "tackles",
+                "displayName": "Tackles",
+                "shortDisplayName": "T",
+                "description": "Tackles",
+                "abbreviation": "T",
+                "type": "tackles",
+                "value": 338.0,
+                "displayValue": "338"
+              },
+              {
+                "name": "territory",
+                "displayName": "Territory",
+                "shortDisplayName": "T",
+                "description": "Territory",
+                "abbreviation": "T",
+                "type": "territory",
+                "value": 0.0,
+                "displayValue": "0.000"
+              },
+              {
+                "name": "totalLineouts",
+                "displayName": "Total Lineouts",
+                "shortDisplayName": "TL",
+                "description": "Total Lineouts",
+                "abbreviation": "TL",
+                "type": "totalLineouts",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "tries",
+                "displayName": "Tries",
+                "shortDisplayName": "T",
+                "description": "Tries",
+                "abbreviation": "T",
+                "type": "tries",
+                "value": 2.0,
+                "displayValue": "2"
+              },
+              {
+                "name": "turnoverKnockOn",
+                "displayName": "Turnover Knock On",
+                "shortDisplayName": "TKO",
+                "description": "Turnover Knock On",
+                "abbreviation": "TKO",
+                "type": "turnoverKnockOn",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "yellowCards",
+                "displayName": "Yellow Cards",
+                "shortDisplayName": "YC",
+                "description": "Yellow Cards",
+                "abbreviation": "YC",
+                "type": "yellowCards",
+                "value": 0.0,
+                "displayValue": "0"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "289204"
+        },
+        "statistics": [
+          {
+            "name": "general",
+            "displayName": "General",
+            "shortDisplayName": "General",
+            "abbreviation": "gen",
+            "summary": "",
+            "stats": [
+              {
+                "name": "cleanBreaks",
+                "displayName": "Clean Breaks",
+                "shortDisplayName": "CB",
+                "description": "Clean Breaks",
+                "abbreviation": "CB",
+                "type": "cleanBreaks",
+                "value": 9.0,
+                "displayValue": "9"
+              },
+              {
+                "name": "conversionGoals",
+                "displayName": "Conversion Goals",
+                "shortDisplayName": "CG",
+                "description": "Conversion Goals",
+                "abbreviation": "CG",
+                "type": "conversionGoals",
+                "value": 7.0,
+                "displayValue": "7"
+              },
+              {
+                "name": "kicks",
+                "displayName": "Kicks",
+                "shortDisplayName": "Kicks",
+                "description": "",
+                "abbreviation": "K",
+                "type": "kicks",
+                "value": 16.0,
+                "displayValue": "16"
+              },
+              {
+                "name": "lineoutsWon",
+                "displayName": "Lineouts Won",
+                "shortDisplayName": "LW",
+                "description": "Lineouts Won",
+                "abbreviation": "LW",
+                "type": "lineoutsWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "lineoutWonSteal",
+                "displayName": "Lineout Won Steal",
+                "shortDisplayName": "LWS",
+                "description": "Lineout Won Steal",
+                "abbreviation": "LWS",
+                "type": "lineoutWonSteal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "maulsTotal",
+                "displayName": "Mauls Total",
+                "shortDisplayName": "MT",
+                "description": "Mauls Total",
+                "abbreviation": "MT",
+                "type": "maulsTotal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "maulsWon",
+                "displayName": "Mauls Won",
+                "shortDisplayName": "MW",
+                "description": "Mauls Won",
+                "abbreviation": "MW",
+                "type": "maulsWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "metres",
+                "displayName": "Meters Run",
+                "shortDisplayName": "MR",
+                "description": "Meters Run",
+                "abbreviation": "MR",
+                "type": "metres",
+                "value": 1352.0,
+                "displayValue": "1352"
+              },
+              {
+                "name": "missedTackles",
+                "displayName": "Missed Tackles",
+                "shortDisplayName": "MT",
+                "description": "Missed Tackles",
+                "abbreviation": "MT",
+                "type": "missedTackles",
+                "value": 20.0,
+                "displayValue": "20"
+              },
+              {
+                "name": "offload",
+                "displayName": "Offload",
+                "shortDisplayName": "O",
+                "description": "Offload",
+                "abbreviation": "O",
+                "type": "offload",
+                "value": 9.0,
+                "displayValue": "9"
+              },
+              {
+                "name": "passes",
+                "displayName": "Passes",
+                "shortDisplayName": "P",
+                "description": "Passes",
+                "abbreviation": "P",
+                "type": "passes",
+                "value": 228.0,
+                "displayValue": "228"
+              },
+              {
+                "name": "penaltiesConceded",
+                "displayName": "Penalties Conceded",
+                "shortDisplayName": "PC",
+                "description": "Penalties Conceded",
+                "abbreviation": "PC",
+                "type": "penaltiesConceded",
+                "value": 3.0,
+                "displayValue": "3"
+              },
+              {
+                "name": "penaltyGoals",
+                "displayName": "Penalty Goals",
+                "shortDisplayName": "PG",
+                "description": "Penalty Goals",
+                "abbreviation": "PG",
+                "type": "penaltyGoals",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "possession",
+                "displayName": "Possession",
+                "shortDisplayName": "P",
+                "description": "Possession",
+                "abbreviation": "P",
+                "type": "possession",
+                "value": 0.0,
+                "displayValue": "0.000"
+              },
+              {
+                "name": "redCards",
+                "displayName": "Red Cards",
+                "shortDisplayName": "RC",
+                "description": "Red Cards",
+                "abbreviation": "RC",
+                "type": "redCards",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "rucksTotal",
+                "displayName": "Rucks Total",
+                "shortDisplayName": "RT",
+                "description": "Rucks Total",
+                "abbreviation": "RT",
+                "type": "rucksTotal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "rucksWon",
+                "displayName": "Rucks Won",
+                "shortDisplayName": "RW",
+                "description": "Rucks Won",
+                "abbreviation": "RW",
+                "type": "rucksWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "runs",
+                "displayName": "Runs",
+                "shortDisplayName": "R",
+                "description": "Runs",
+                "abbreviation": "R",
+                "type": "runs",
+                "value": 184.0,
+                "displayValue": "184"
+              },
+              {
+                "name": "scrumsTotal",
+                "displayName": "Scrums Total",
+                "shortDisplayName": "ST",
+                "description": "Scrums Total",
+                "abbreviation": "ST",
+                "type": "scrumsTotal",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "scrumsWon",
+                "displayName": "Scrums Won",
+                "shortDisplayName": "SW",
+                "description": "Scrums Won",
+                "abbreviation": "SW",
+                "type": "scrumsWon",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "tackles",
+                "displayName": "Tackles",
+                "shortDisplayName": "T",
+                "description": "Tackles",
+                "abbreviation": "T",
+                "type": "tackles",
+                "value": 314.0,
+                "displayValue": "314"
+              },
+              {
+                "name": "territory",
+                "displayName": "Territory",
+                "shortDisplayName": "T",
+                "description": "Territory",
+                "abbreviation": "T",
+                "type": "territory",
+                "value": 0.0,
+                "displayValue": "0.000"
+              },
+              {
+                "name": "totalLineouts",
+                "displayName": "Total Lineouts",
+                "shortDisplayName": "TL",
+                "description": "Total Lineouts",
+                "abbreviation": "TL",
+                "type": "totalLineouts",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "tries",
+                "displayName": "Tries",
+                "shortDisplayName": "T",
+                "description": "Tries",
+                "abbreviation": "T",
+                "type": "tries",
+                "value": 8.0,
+                "displayValue": "8"
+              },
+              {
+                "name": "turnoverKnockOn",
+                "displayName": "Turnover Knock On",
+                "shortDisplayName": "TKO",
+                "description": "Turnover Knock On",
+                "abbreviation": "TKO",
+                "type": "turnoverKnockOn",
+                "value": 0.0,
+                "displayValue": "0"
+              },
+              {
+                "name": "yellowCards",
+                "displayName": "Yellow Cards",
+                "shortDisplayName": "YC",
+                "description": "Yellow Cards",
+                "abbreviation": "YC",
+                "type": "yellowCards",
+                "value": 0.0,
+                "displayValue": "0"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

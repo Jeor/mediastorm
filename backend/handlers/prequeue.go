@@ -1726,6 +1726,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	var isAnime bool
 	var targetAirDate string
 	var episodeAirYear int
+	var seasonPremiereYear int
 	var episodeReleased bool
 	var countryCode string
 	var tvdbID int64
@@ -1738,6 +1739,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		isAnime = seriesMeta.IsAnime
 		targetAirDate = seriesMeta.TargetAirDate
 		episodeAirYear = seriesMeta.EpisodeAirYear
+		seasonPremiereYear = seriesMeta.SeasonPremiereYear
 		episodeReleased = seriesMeta.EpisodeReleased
 		countryCode = seriesMeta.CountryCode
 		tvdbID = seriesMeta.TVDBID
@@ -1795,6 +1797,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// Use the same search path as the regular search UI: wait for all sources
 	// (debrid + usenet), combine, rank, and return a single ordered list.
 	searchOpts := indexer.SearchOptions{
+		TitleID:            titleID,
 		Query:              query,
 		MaxResults:         50,
 		MediaType:          mediaType,
@@ -1811,6 +1814,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		IsAnime:            isAnime,
 		TargetAirDate:      targetAirDate,
 		EpisodeAirYear:     episodeAirYear,
+		SeasonPremiereYear: seasonPremiereYear,
 		EpisodeReleased:    episodeReleased,
 		// Concurrent resolution derives its bulk-attempt buckets from the
 		// effective Result Order. The indexer remains the source of truth for
@@ -3421,6 +3425,7 @@ func logPrequeueCandidateList(scoredResults []models.ScoredNZBResult, source str
 // returned slice is also the complete ordered migration candidate list.
 func combinedPrequeueSearchOptions(opts indexer.SearchOptions) indexer.SearchOptions {
 	return indexer.SearchOptions{
+		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            opts.Categories,
 		IMDBID:                opts.IMDBID,
@@ -3439,6 +3444,7 @@ func combinedPrequeueSearchOptions(opts indexer.SearchOptions) indexer.SearchOpt
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		EpisodeReleased:       opts.EpisodeReleased,
 		IncludeFiltered:       true,
 	}
@@ -4025,17 +4031,18 @@ func padNumber(n int) string {
 
 // SeriesMetadataResult holds series-specific metadata needed for search and file matching
 type SeriesMetadataResult struct {
-	EpisodeResolver *filter.SeriesEpisodeResolver
-	TargetEpisode   *models.EpisodeReference
-	IsDaily         bool   // True for daily shows (talk shows, news) that use date-based naming
-	TargetAirDate   string // Air date from TVDB in YYYY-MM-DD format
-	EpisodeAirYear  int    // Year the target episode aired, used to allow later-season year tags
-	EpisodeReleased bool   // True only when metadata confirms the target episode has aired
-	IsAnime         bool   // True for anime content - requires waiting for Nyaa scraper
-	Year            int    // Series premiere year from metadata (used when frontend doesn't provide it)
-	IMDBID          string // Resolved IMDb ID used by ID-aware search providers
-	TVDBID          int64  // Resolved TVDB ID used by structured Newznab TV searches
-	CountryCode     string // Original production country used to disambiguate regional remakes
+	EpisodeResolver    *filter.SeriesEpisodeResolver
+	TargetEpisode      *models.EpisodeReference
+	IsDaily            bool   // True for daily shows (talk shows, news) that use date-based naming
+	TargetAirDate      string // Air date from TVDB in YYYY-MM-DD format
+	EpisodeAirYear     int    // Year the target episode aired, used to allow later-season year tags
+	SeasonPremiereYear int    // Premiere year of the requested season only.
+	EpisodeReleased    bool   // True only when metadata confirms the target episode has aired
+	IsAnime            bool   // True for anime content - requires waiting for Nyaa scraper
+	Year               int    // Series premiere year from metadata (used when frontend doesn't provide it)
+	IMDBID             string // Resolved IMDb ID used by ID-aware search providers
+	TVDBID             int64  // Resolved TVDB ID used by structured Newznab TV searches
+	CountryCode        string // Original production country used to disambiguate regional remakes
 }
 
 // createEpisodeResolverAndLookupAbsoluteEp fetches series metadata, creates an episode resolver,
@@ -4193,6 +4200,10 @@ func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.C
 			updatedEpisode.AbsoluteEpisodeNumber = targetEpisode.AbsoluteEpisodeNumber
 		}
 		result.TargetEpisode = updatedEpisode
+	}
+
+	if result.TargetEpisode != nil {
+		result.SeasonPremiereYear = models.SeriesSeasonPremiereYear(details.Seasons, result.TargetEpisode.SeasonNumber)
 	}
 
 	// Set the air date for daily show matching

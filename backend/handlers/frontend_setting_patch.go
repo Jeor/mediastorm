@@ -21,6 +21,8 @@ type frontendSettingState struct {
 	OverriddenPaths []string `json:"overriddenPaths"`
 }
 
+const experimentalNativeTrailerPlayerTVPath = "playback.experimentalNativeTrailerPlayerTV"
+
 func frontendEditablePaths(manager *config.Manager) ([]string, error) {
 	if manager == nil {
 		return nil, errors.New("settings configuration is unavailable")
@@ -33,6 +35,18 @@ func frontendEditablePaths(manager *config.Manager) ([]string, error) {
 }
 
 func decodeFrontendSettingPatch(decoder *json.Decoder, manager *config.Manager) (frontendSettingPatch, error) {
+	return decodeFrontendSettingPatchWithDeviceExperiments(decoder, manager, false)
+}
+
+func decodeClientFrontendSettingPatch(decoder *json.Decoder, manager *config.Manager) (frontendSettingPatch, error) {
+	return decodeFrontendSettingPatchWithDeviceExperiments(decoder, manager, true)
+}
+
+func decodeFrontendSettingPatchWithDeviceExperiments(
+	decoder *json.Decoder,
+	manager *config.Manager,
+	allowDeviceExperiments bool,
+) (frontendSettingPatch, error) {
 	var patch frontendSettingPatch
 	if err := decoder.Decode(&patch); err != nil {
 		return patch, errors.New("invalid request body")
@@ -52,14 +66,20 @@ func decodeFrontendSettingPatch(decoder *json.Decoder, manager *config.Manager) 
 			break
 		}
 	}
-	if !allowed {
+	isDeviceExperiment := allowDeviceExperiments && patch.Path == experimentalNativeTrailerPlayerTVPath
+	if !allowed && !isDeviceExperiment {
 		return patch, fmt.Errorf("setting %q is not available for frontend editing", patch.Path)
 	}
 	if !patch.Reset {
 		if len(bytes.TrimSpace(patch.Value)) == 0 || bytes.Equal(bytes.TrimSpace(patch.Value), []byte("null")) {
 			return patch, errors.New("setting value is required")
 		}
-		if err := validateUserEditableSettingValue(patch.Path, patch.Value); err != nil {
+		if isDeviceExperiment {
+			var value bool
+			if err := json.Unmarshal(patch.Value, &value); err != nil {
+				return patch, errors.New("experimental native trailer player must be true or false")
+			}
+		} else if err := validateUserEditableSettingValue(patch.Path, patch.Value); err != nil {
 			return patch, err
 		}
 	}

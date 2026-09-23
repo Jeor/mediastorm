@@ -22,6 +22,7 @@ func TestRedactSettings(t *testing.T) {
 		},
 		TorrentScrapers: []config.TorrentScraperConfig{
 			{Name: "jackett", APIKey: "scraper-key"},
+			{Name: "PenguPlay", Type: "stremio-direct", URL: "https://addon.example/secret/manifest.json"},
 		},
 		Metadata: config.MetadataSettings{
 			TVDBAPIKey:   "tvdb-key",
@@ -72,6 +73,9 @@ func TestRedactSettings(t *testing.T) {
 	}
 	if s.TorrentScrapers[0].APIKey != redacted {
 		t.Errorf("TorrentScraper APIKey not redacted: %q", s.TorrentScrapers[0].APIKey)
+	}
+	if s.TorrentScrapers[1].URL != redacted {
+		t.Errorf("Direct Stremio URL not redacted: %q", s.TorrentScrapers[1].URL)
 	}
 	if s.Metadata.TVDBAPIKey != redacted {
 		t.Errorf("TVDBAPIKey not redacted: %q", s.Metadata.TVDBAPIKey)
@@ -151,6 +155,9 @@ func TestPreserveRedactedFields_RestoresRealCredentials(t *testing.T) {
 		Indexers: []config.IndexerConfig{
 			{Name: "nzb", APIKey: "real-indexer-key"},
 		},
+		TorrentScrapers: []config.TorrentScraperConfig{
+			{Name: "PenguPlay", Type: "stremio-direct", URL: "https://addon.example/secret/manifest.json"},
+		},
 		MDBList: config.MDBListSettings{
 			APIKey: "real-mdblist-key",
 		},
@@ -190,6 +197,9 @@ func TestPreserveRedactedFields_RestoresRealCredentials(t *testing.T) {
 		},
 		Indexers: []config.IndexerConfig{
 			{Name: "nzb", APIKey: redactedPlaceholder},
+		},
+		TorrentScrapers: []config.TorrentScraperConfig{
+			{Name: "PenguPlay", Type: "stremio-direct", URL: redactedPlaceholder},
 		},
 		MDBList: config.MDBListSettings{
 			APIKey: redactedPlaceholder,
@@ -234,6 +244,9 @@ func TestPreserveRedactedFields_RestoresRealCredentials(t *testing.T) {
 	}
 	if incoming.Indexers[0].APIKey != "real-indexer-key" {
 		t.Errorf("Indexer APIKey not restored: got %q", incoming.Indexers[0].APIKey)
+	}
+	if incoming.TorrentScrapers[0].URL != "https://addon.example/secret/manifest.json" {
+		t.Errorf("Direct Stremio URL not restored: got %q", incoming.TorrentScrapers[0].URL)
 	}
 	if incoming.MDBList.APIKey != "real-mdblist-key" {
 		t.Errorf("MDBList APIKey not restored: got %q", incoming.MDBList.APIKey)

@@ -2713,7 +2713,7 @@
     providerTableSectionKeys.add('liveTV.sources');
     const settingsSectionDescriptions = {
         indexers: 'Configure indexers and search providers',
-        debridProviders: 'Real-Debrid, TorBox, AllDebrid, Premiumize, Torrin',
+        debridProviders: 'Real-Debrid, TorBox, AllDebrid, Debrid-Link, Premiumize, Torrin',
         torrentScrapers: 'Torrent indexers and streaming providers',
         'live.sources': 'IPTV and live television sources',
         'liveTV.sources': 'IPTV and live television sources',
@@ -6829,6 +6829,23 @@
         return value;
     }
 
+    function liveCategorySourceIndex(sectionPath) {
+        const match = /^(live|liveTV)\.sources\.(\d+)$/.exec(sectionPath);
+        if (!match) return null;
+        const index = Number(match[2]);
+        if (match[1] !== 'liveTV' || !selectedUserId || hasProfileLiveSourceOverride()) return index;
+
+        // The backend removes global sources unavailable to this profile before
+        // assigning source indexes. Match that filtered list when inheriting it.
+        const sources = getValue('liveTV.sources') || [];
+        const allowedForProfile = source => {
+            const allowed = source?.allowedProfiles || [];
+            return allowed.length === 0 || allowed.some(id => String(id).trim().toLowerCase() === selectedUserId.trim().toLowerCase());
+        };
+        if (!allowedForProfile(sources[index])) return -1;
+        return sources.slice(0, index).filter(allowedForProfile).length;
+    }
+
     async function openMultiselectModal(sectionPath, fieldKey, endpoint, label, optionsFrom, ordered) {
         multiselectState.basePath = sectionPath;
         multiselectState.fieldKey = fieldKey;
@@ -6896,8 +6913,14 @@
                 }));
             renderMultiselectOptions();
         } else if (endpoint) {
+            const params = new URLSearchParams();
+            if (endpoint === '/live/categories') {
+                const sourceIndex = liveCategorySourceIndex(sectionPath);
+                if (sourceIndex !== null) params.set('sourceIndex', String(sourceIndex));
+                if (selectedUserId && sectionPath.startsWith('liveTV.')) params.set('profileId', selectedUserId);
+            }
+            const apiUrl = basePath + '/api' + endpoint + (params.size ? '?' + params.toString() : '');
             try {
-                const apiUrl = basePath + '/api' + endpoint;  // basePath is the global admin path ("/admin")
                 const response = await fetch(apiUrl, { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to fetch options: ' + response.status);
                 const data = await response.json();
@@ -8529,6 +8552,8 @@
         if (normalizeOptionalString(profileShelf.traktAccountId) && normalizeOptionalString(profileShelf.traktAccountId) !== normalizeOptionalString(globalShelf.traktAccountId)) return false;
         if (normalizeOptionalString(profileShelf.traktListType) && normalizeOptionalString(profileShelf.traktListType) !== normalizeOptionalString(globalShelf.traktListType)) return false;
         if (normalizeOptionalString(profileShelf.traktListId) && normalizeOptionalString(profileShelf.traktListId) !== normalizeOptionalString(globalShelf.traktListId)) return false;
+        if (normalizeOptionalString(profileShelf.publicMetaDBAccountId) && normalizeOptionalString(profileShelf.publicMetaDBAccountId) !== normalizeOptionalString(globalShelf.publicMetaDBAccountId)) return false;
+        if (normalizeOptionalString(profileShelf.publicMetaDBListId) && normalizeOptionalString(profileShelf.publicMetaDBListId) !== normalizeOptionalString(globalShelf.publicMetaDBListId)) return false;
         if (normalizeOptionalString(profileShelf.simklAccountId) && normalizeOptionalString(profileShelf.simklAccountId) !== normalizeOptionalString(globalShelf.simklAccountId)) return false;
         if (normalizeOptionalString(profileShelf.simklMediaType) && normalizeOptionalString(profileShelf.simklMediaType) !== normalizeOptionalString(globalShelf.simklMediaType)) return false;
         if (normalizeOptionalString(profileShelf.simklListType) && normalizeOptionalString(profileShelf.simklListType) !== normalizeOptionalString(globalShelf.simklListType)) return false;
@@ -9572,7 +9597,7 @@
             const isSharedActivity = s.id === 'popular-on-server' || s.id === 'recently-watched';
             const isCollectionHub = s.type === 'collection-hub';
             const isLibrary = s.type === 'library' || s.type === 'local-library';
-            const isCustom = !!s.listUrl || isLibrary || s.type === 'mdblist' || s.type === 'stremio' || s.type === 'tmdb' || s.type === 'trakt' || s.type === 'simkl' || s.type === 'letterboxd' || s.type === 'genre' || s.type === 'decade' || isCollectionHub || (s.id && (s.id.startsWith('mdblist-') || s.id.startsWith('stremio-') || s.id.startsWith('tmdb-') || s.id.startsWith('streaming-service-') || s.id.startsWith('trakt-') || s.id.startsWith('simkl-') || s.id.startsWith('letterboxd-') || s.id.startsWith('genre-') || s.id.startsWith('decade-') || s.id.startsWith('collection-hub-')));
+            const isCustom = !!s.listUrl || isLibrary || s.type === 'mdblist' || s.type === 'stremio' || s.type === 'tmdb' || s.type === 'trakt' || s.type === 'publicmetadb' || s.type === 'simkl' || s.type === 'letterboxd' || s.type === 'genre' || s.type === 'decade' || isCollectionHub || (s.id && (s.id.startsWith('mdblist-') || s.id.startsWith('stremio-') || s.id.startsWith('tmdb-') || s.id.startsWith('streaming-service-') || s.id.startsWith('trakt-') || s.id.startsWith('publicmetadb-') || s.id.startsWith('simkl-') || s.id.startsWith('letterboxd-') || s.id.startsWith('genre-') || s.id.startsWith('decade-') || s.id.startsWith('collection-hub-')));
             const typeLabel = isRecentlyAired ? '<span class="shelf-type-badge">Calendar</span>' : (isCustom ? '<span class="shelf-type-badge">'+getShelfTypeLabel(s.type)+'</span>' : '');
             const filterBadge = (isCustom && s.hideUnreleased) ? '<span class="shelf-filter-badge" title="Hide Unreleased enabled">🎬</span>' : '';
             const sourceBadge = isRecentlyAired
@@ -9731,6 +9756,7 @@
                         '<option value="stremio">Stremio Add-on</option>'+
                         '<option value="tmdb">TMDB</option>'+
                         '<option value="trakt">Trakt</option>'+
+                        '<option value="publicmetadb">PublicMetaDB</option>'+
                         '<option value="simkl">Simkl</option>'+
                         '<option value="letterboxd">Letterboxd</option>'+
                         '<option value="library">Media Library</option>'+
@@ -9816,6 +9842,17 @@
                 '<div class="form-group" id="traktListGroup" style="display:none;">'+
                     '<label class="form-label" for="newShelfTraktList" style="font-size:12px;margin-bottom:4px;">Custom List</label>'+
                     '<select id="newShelfTraktList" onchange="onTraktShelfSourceChange()"></select>'+
+                '</div>'+
+                '<div class="form-group" id="publicMetaDBGroup" style="display:none;flex:1 0 100%;">'+
+                    '<label class="form-label" for="newShelfPublicMetaDBAccount">PublicMetaDB Account</label>'+
+                    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+                        '<select id="newShelfPublicMetaDBAccount" onchange="loadPublicMetaDBLists()" style="flex:1;"></select>'+
+                        '<button type="button" class="btn btn-secondary" onclick="connectPublicMetaDB()">Connect API Key</button>'+
+                        '<button type="button" class="btn btn-secondary" onclick="disconnectPublicMetaDB()">Disconnect</button>'+
+                    '</div>'+
+                    '<input type="password" id="newShelfPublicMetaDBKey" autocomplete="off" placeholder="Paste API key to connect a new account" style="margin-top:8px;width:100%;">'+
+                    '<label class="form-label" for="newShelfPublicMetaDBList">List</label>'+
+                    '<select id="newShelfPublicMetaDBList" onchange="onPublicMetaDBListChange()"></select>'+
                 '</div>'+
                 // Simkl fields (shown when type=simkl)
                 '<div class="form-group" id="simklAccountGroup" style="display:none;">'+
@@ -10039,6 +10076,7 @@
     function getShelfTypeLabel(type) {
         switch (type) {
             case 'mdblist': return 'MDBList';
+            case 'publicmetadb': return 'PublicMetaDB';
             case 'stremio': return 'Stremio Add-on';
             case 'tmdb': return 'TMDB';
             case 'trakt': return 'Trakt';
@@ -10774,6 +10812,7 @@
         const isTMDB = type === 'tmdb';
         const isStreaming = type === 'streaming-service';
         const isTrakt = type === 'trakt';
+        const isPublicMetaDB = type === 'publicmetadb';
         const isSimkl = type === 'simkl';
         const isLetterboxd = type === 'letterboxd';
         const isGenre = type === 'genre';
@@ -10794,6 +10833,8 @@
         document.getElementById('traktAccountGroup').style.display = isTrakt ? '' : 'none';
         document.getElementById('traktListTypeGroup').style.display = isTrakt ? '' : 'none';
         document.getElementById('traktListGroup').style.display = 'none';
+        document.getElementById('publicMetaDBGroup').style.display = isPublicMetaDB ? '' : 'none';
+        if (isPublicMetaDB) loadPublicMetaDBAccounts();
         document.getElementById('simklAccountGroup').style.display = isSimkl ? '' : 'none';
         document.getElementById('simklMediaTypeGroup').style.display = isSimkl ? '' : 'none';
         document.getElementById('simklListTypeGroup').style.display = isSimkl ? '' : 'none';
@@ -10810,10 +10851,10 @@
         document.getElementById('newShelfNameGroup').style.display = (isStremio || isBuiltInActivity) ? 'none' : '';
         document.getElementById('newShelfLimitGroup').style.display = isBuiltInActivity ? 'none' : '';
         document.getElementById('newShelfHideUnreleasedGroup').style.display = isBuiltInActivity ? 'none' : '';
-        document.getElementById('mdblistUrlGroup').style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary) ? 'none' : '';
+        document.getElementById('mdblistUrlGroup').style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isPublicMetaDB || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary) ? 'none' : '';
         const hint = document.getElementById('shelfFormHint');
         if (hint) {
-            hint.style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary) ? 'none' : '';
+            hint.style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isPublicMetaDB || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary) ? 'none' : '';
         }
         if (!isLetterboxd) {
             const urlHint = document.getElementById('letterboxdUrlHint');
@@ -10874,6 +10915,104 @@
         if (mediaType === 'movies') name += ' Movies';
         else if (mediaType === 'shows') name += ' Shows';
         document.getElementById('newShelfName').value = name;
+    }
+
+    async function loadPublicMetaDBAccounts(selectedId) {
+        const select = document.getElementById('newShelfPublicMetaDBAccount');
+        if (!select) return;
+        try {
+            const response = await fetch(basePath + '/api/publicmetadb/accounts');
+            if (!response.ok) throw new Error('Accounts unavailable');
+            const accounts = await response.json();
+            const previous = selectedId || select.value;
+            select.replaceChildren();
+            for (const account of accounts) select.add(new Option(account.name, account.id));
+            if (previous && accounts.some(account => account.id === previous)) select.value = previous;
+            await loadPublicMetaDBLists();
+        } catch (error) { showToast(error.message, 'error'); }
+    }
+
+    async function loadPublicMetaDBLists(selectedId) {
+        const accountId = document.getElementById('newShelfPublicMetaDBAccount')?.value;
+        const select = document.getElementById('newShelfPublicMetaDBList');
+        if (!select) return;
+        select.replaceChildren();
+        if (!accountId) return;
+        try {
+            const response = await fetch(`${basePath}/api/publicmetadb/accounts/${encodeURIComponent(accountId)}/lists`);
+            if (!response.ok) throw new Error('Lists unavailable');
+            const data = await response.json();
+            for (const list of data.lists || []) select.add(new Option(`${list.name} (${list.type})`, list.id));
+            if (selectedId) select.value = selectedId;
+            onPublicMetaDBListChange();
+        } catch (error) { showToast(error.message, 'error'); }
+    }
+
+    function onPublicMetaDBListChange() {
+        const select = document.getElementById('newShelfPublicMetaDBList');
+        const name = document.getElementById('newShelfName');
+        if (select?.value && name) name.value = select.selectedOptions[0].textContent.replace(/ \((custom|watchlist)\)$/, '');
+    }
+
+    async function connectPublicMetaDB() {
+        const input = document.getElementById('newShelfPublicMetaDBKey');
+        const apiKey = input?.value?.trim();
+        if (!apiKey) { alert('Paste a PublicMetaDB API key'); return; }
+        try {
+            const response = await fetch(basePath + '/api/publicmetadb/accounts', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'PublicMetaDB', apiKey }),
+            });
+            if (!response.ok) throw new Error('Could not validate PublicMetaDB API key');
+            const account = await response.json();
+            input.value = '';
+            if (!currentSettings.publicMetaDB) currentSettings.publicMetaDB = { accounts: [] };
+            if (!Array.isArray(currentSettings.publicMetaDB.accounts)) currentSettings.publicMetaDB.accounts = [];
+            currentSettings.publicMetaDB.accounts.push({ id: account.id, name: account.name, apiKey: '••••••••' });
+            await loadPublicMetaDBAccounts(account.id);
+        } catch (error) { showToast(error.message, 'error'); }
+    }
+
+    async function disconnectPublicMetaDB() {
+        const id = document.getElementById('newShelfPublicMetaDBAccount')?.value;
+        if (!id || !confirm('Disconnect this PublicMetaDB account? Existing shelves using it will stop loading.')) return;
+        try {
+            const response = await fetch(`${basePath}/api/publicmetadb/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Could not disconnect account');
+            if (Array.isArray(currentSettings.publicMetaDB?.accounts)) {
+                currentSettings.publicMetaDB.accounts = currentSettings.publicMetaDB.accounts.filter(account => account.id !== id);
+            }
+            await loadPublicMetaDBAccounts();
+        } catch (error) { showToast(error.message, 'error'); }
+    }
+
+    async function loadEditPublicMetaDBAccounts(selectedAccountId, selectedListId) {
+        const select = document.getElementById('editShelfPublicMetaDBAccount');
+        if (!select) return;
+        try {
+            const response = await fetch(basePath + '/api/publicmetadb/accounts');
+            if (!response.ok) throw new Error('Accounts unavailable');
+            const accounts = await response.json();
+            select.replaceChildren();
+            for (const account of accounts) select.add(new Option(account.name, account.id));
+            select.value = selectedAccountId;
+            await loadEditPublicMetaDBLists(selectedListId);
+        } catch (error) { showToast(error.message, 'error'); }
+    }
+
+    async function loadEditPublicMetaDBLists(selectedListId) {
+        const accountId = document.getElementById('editShelfPublicMetaDBAccount')?.value;
+        const select = document.getElementById('editShelfPublicMetaDBList');
+        if (!select) return;
+        select.replaceChildren();
+        if (!accountId) return;
+        try {
+            const response = await fetch(`${basePath}/api/publicmetadb/accounts/${encodeURIComponent(accountId)}/lists`);
+            if (!response.ok) throw new Error('Lists unavailable');
+            const data = await response.json();
+            for (const list of data.lists || []) select.add(new Option(`${list.name} (${list.type})`, list.id));
+            if (selectedListId) select.value = selectedListId;
+        } catch (error) { showToast(error.message, 'error'); }
     }
 
     async function onTraktShelfSourceChange() {
@@ -11124,6 +11263,17 @@
             nameInput.value = '';
             if (limitInput) limitInput.value = '0';
             if (hideUnreleasedInput) hideUnreleasedInput.checked = false;
+            onShelfTypeChange();
+        } else if (shelfType === 'publicmetadb') {
+            const accountId = document.getElementById('newShelfPublicMetaDBAccount')?.value;
+            const listId = document.getElementById('newShelfPublicMetaDBList')?.value;
+            if (!accountId || !listId) { alert('Connect a PublicMetaDB account and select a list'); return; }
+            const name = nameInput?.value?.trim() || document.getElementById('newShelfPublicMetaDBList').selectedOptions[0].textContent;
+            shelves.push({ id: `publicmetadb-${accountId}-${listId}-${Date.now()}`, name, enabled: true,
+                order: Math.max(...shelves.map(s => s.order || 0), -1) + 1, type: 'publicmetadb',
+                publicMetaDBAccountId: accountId, publicMetaDBListId: listId, limit, hideUnreleased });
+            if (typeSelect) typeSelect.value = 'mdblist';
+            nameInput.value = '';
             onShelfTypeChange();
         } else if (shelfType === 'trakt') {
             const accountId = document.getElementById('newShelfTraktAccount')?.value?.trim();
@@ -12055,6 +12205,7 @@
         const isStremioShelf = shelf.type === 'stremio';
         const isTMDBShelf = shelf.type === 'tmdb';
         const isTraktShelf = shelf.type === 'trakt';
+        const isPublicMetaDBShelf = shelf.type === 'publicmetadb';
         const isSimklShelf = shelf.type === 'simkl';
         const isLetterboxdShelf = shelf.type === 'letterboxd';
         const isGenreShelf = shelf.type === 'genre';
@@ -12192,6 +12343,12 @@
                         <select id="editShelfLibrary" class="form-input">${mediaLibraryOptions}</select>
                     </div>
         `;
+        } else if (isPublicMetaDBShelf) {
+            traktSourceFields = `
+                <label class="form-label" for="editShelfPublicMetaDBAccount">PublicMetaDB Account</label>
+                <select id="editShelfPublicMetaDBAccount" class="form-input" onchange="loadEditPublicMetaDBLists()"></select>
+                <label class="form-label" for="editShelfPublicMetaDBList">List</label>
+                <select id="editShelfPublicMetaDBList" class="form-input"></select>`;
         } else if (isTraktShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
@@ -12325,6 +12482,9 @@
         if (isTraktShelf) {
             onEditTraktShelfSourceChange(shelf.traktListId || '');
         }
+        if (isPublicMetaDBShelf) {
+            loadEditPublicMetaDBAccounts(shelf.publicMetaDBAccountId, shelf.publicMetaDBListId);
+        }
         if (isTMDBShelf) {
             onTMDBSourceTypeChange('editShelf', true);
         }
@@ -12423,6 +12583,12 @@
             shelf.tmdbMediaType = document.getElementById('editShelfTmdbMediaType')?.value || 'movie';
             shelf.tmdbDiscoverQuery = readTMDBCustomFilters('editShelf');
             shelf.sort = readTMDBSort('editShelf');
+        } else if (shelf.type === 'publicmetadb') {
+            const accountId = document.getElementById('editShelfPublicMetaDBAccount')?.value;
+            const listId = document.getElementById('editShelfPublicMetaDBList')?.value;
+            if (!accountId || !listId) { alert('Select a PublicMetaDB account and list'); return; }
+            shelf.publicMetaDBAccountId = accountId;
+            shelf.publicMetaDBListId = listId;
         } else if (shelf.type === 'trakt') {
             const accountId = document.getElementById('editShelfTraktAccount')?.value?.trim();
             const listType = document.getElementById('editShelfTraktListType')?.value?.trim() || 'watchlist';

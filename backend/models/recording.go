@@ -23,6 +23,7 @@ const (
 type Recording struct {
 	ID                   string          `json:"id"`
 	UserID               string          `json:"userId"`
+	RuleID               string          `json:"ruleId,omitempty"`
 	Type                 RecordingType   `json:"type"`
 	Status               RecordingStatus `json:"status"`
 	ChannelID            string          `json:"channelId"`
@@ -42,6 +43,60 @@ type Recording struct {
 	Error                string          `json:"error,omitempty"`
 	CreatedAt            time.Time       `json:"createdAt"`
 	UpdatedAt            time.Time       `json:"updatedAt"`
+	ScheduleKey          string          `json:"-"`
+}
+
+type RecordingRuleMatchType string
+
+const (
+	RecordingRuleMatchTitle RecordingRuleMatchType = "title"
+	RecordingRuleMatchRegex RecordingRuleMatchType = "regex"
+)
+
+type RecordingRule struct {
+	ID                   string                 `json:"id"`
+	UserID               string                 `json:"userId"`
+	MatchType            RecordingRuleMatchType `json:"matchType"`
+	Pattern              string                 `json:"pattern"`
+	ChannelID            string                 `json:"channelId,omitempty"`
+	TvgID                string                 `json:"tvgId,omitempty"`
+	ChannelName          string                 `json:"channelName,omitempty"`
+	AllChannels          bool                   `json:"allChannels"`
+	Enabled              bool                   `json:"enabled"`
+	PaddingBeforeSeconds int                    `json:"paddingBeforeSeconds"`
+	PaddingAfterSeconds  int                    `json:"paddingAfterSeconds"`
+	CreatedAt            time.Time              `json:"createdAt"`
+	UpdatedAt            time.Time              `json:"updatedAt"`
+}
+
+type CreateRecordingRuleRequest struct {
+	ProfileID            string                 `json:"profileId"`
+	MatchType            RecordingRuleMatchType `json:"matchType"`
+	Pattern              string                 `json:"pattern"`
+	ChannelID            string                 `json:"channelId,omitempty"`
+	TvgID                string                 `json:"tvgId,omitempty"`
+	ChannelName          string                 `json:"channelName,omitempty"`
+	AllChannels          bool                   `json:"allChannels"`
+	PaddingBeforeSeconds *int                   `json:"paddingBeforeSeconds,omitempty"`
+	PaddingAfterSeconds  *int                   `json:"paddingAfterSeconds,omitempty"`
+}
+
+type UpdateRecordingRuleRequest struct {
+	ProfileID            string `json:"profileId"`
+	Enabled              *bool  `json:"enabled,omitempty"`
+	PaddingBeforeSeconds *int   `json:"paddingBeforeSeconds,omitempty"`
+	PaddingAfterSeconds  *int   `json:"paddingAfterSeconds,omitempty"`
+}
+
+type RecordingSettings struct {
+	PaddingBeforeSeconds *int `json:"paddingBeforeSeconds,omitempty"`
+	PaddingAfterSeconds  *int `json:"paddingAfterSeconds,omitempty"`
+}
+
+type UpdateRecordingSettingsRequest struct {
+	ProfileID            string `json:"profileId"`
+	PaddingBeforeSeconds int    `json:"paddingBeforeSeconds"`
+	PaddingAfterSeconds  int    `json:"paddingAfterSeconds"`
 }
 
 type RecordingListFilter struct {

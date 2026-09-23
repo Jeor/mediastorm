@@ -122,6 +122,7 @@ type Service struct {
 	// read. Not persisted — purely in-memory live state.
 	activePlaybackProgress map[string]map[string]models.PlaybackProgress // userID -> mediaKey -> progress
 	metadataService        MetadataService
+	airtimeClient          *tvmazeAirtimeClient
 	traktScrobbler         TraktScrobbler
 	traktRTScrobbler       TraktRealTimeScrobbler
 	metadataCache          map[string]*cachedSeriesMetadata // seriesID -> metadata (full details)
@@ -1509,6 +1510,9 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 
 				// Find next unwatched episode
 				nextEpisode = s.findNextUnwatchedEpisode(seriesDetails, mostRecentEpisode, episodes)
+				if onlyInProgress && seriesDetails != nil {
+					s.enrichContinueWatchingAirtime(ctx, seriesDetails.Title, mostRecentEpisode.ExternalIDs, nextEpisode)
+				}
 				if nextEpisode == nil && onlyInProgress {
 					// No next episode available and only in-progress requested, skip this series
 					return
@@ -2230,6 +2234,7 @@ func (s *Service) findNextUnwatchedEpisode(
 				utc := calendar.ParseAirDateTime(ep.details.AiredDate, seriesDetails.Title.AirsTime, seriesDetails.Title.AirsTimezone)
 				if !utc.IsZero() {
 					ref.AirDateTimeUTC = utc.Format(time.RFC3339)
+					ref.AirTimeEstimated = seriesDetails.Title.AirsTime == "" || seriesDetails.Title.AirsTimezone == "" || utc.Format("15:04:05") == "23:59:59"
 				}
 			}
 

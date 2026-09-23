@@ -17,6 +17,7 @@ import (
 
 	"novastream/config"
 	"novastream/internal/mediaresolve"
+	"novastream/internal/streamheaders"
 	"novastream/internal/torboxrate"
 	"novastream/models"
 	"novastream/utils"
@@ -526,6 +527,7 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 		if streamURL == "" {
 			streamURL = result.Link
 		}
+		requestURL, requestHeaders := streamheaders.Extract(streamURL)
 		preResolvedCacheKey := preResolvedHealthCacheKey(result)
 		if rawName := strings.TrimSpace(result.Attributes["raw_name"]); rawName != "" {
 			log.Printf("[debrid-health] pre-resolved raw display: title=%q raw_name=%q raw_title=%q tracker=%q scraper=%q",
@@ -562,15 +564,16 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 			defer headCancel()
 
 			// Encode URL properly (handles spaces and special characters)
-			encodedStreamURL, encErr := utils.EncodeURLWithSpaces(streamURL)
+			encodedStreamURL, encErr := utils.EncodeURLWithSpaces(requestURL)
 			if encErr != nil {
 				log.Printf("[debrid-health] failed to encode stream URL: %v", encErr)
-				encodedStreamURL = streamURL // Fall back to original
+				encodedStreamURL = requestURL // Fall back without private fragment metadata
 			}
 
 			headReq, err := http.NewRequestWithContext(headCtx, http.MethodHead, encodedStreamURL, nil)
 			if err == nil {
 				headReq.Header.Set("User-Agent", "Mozilla/5.0 (compatible; mediastorm/1.0)")
+				streamheaders.Apply(headReq.Header, requestHeaders)
 				if resp, err := http.DefaultClient.Do(headReq); err == nil {
 					contentLength := resp.ContentLength
 					contentType := resp.Header.Get("Content-Type")
@@ -600,12 +603,12 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 							ErrorMessage: "stream returned 404 (not found)",
 						}, nil
 					}
-					// 405 = Method Not Allowed means HEAD isn't supported but GET may work fine
-					// Fall through to ffprobe check instead of treating as uncached
-					// Don't check content-length for 405 - it's the error body size, not the file size
-					if resp.StatusCode == http.StatusMethodNotAllowed {
-						log.Printf("[debrid-health] pre-resolved stream %s: HEAD not supported (405), falling through to ffprobe", result.Title)
-						placeholder, getStatus, getFinalURL, probeErr := probePreResolvedPlaceholderRedirect(ctx, encodedStreamURL, healthCheckTimeout)
+					// Some direct media hosts reject HEAD with 403 or 405 while serving
+					// ranged GET requests normally. Verify a small range before rejecting
+					// the stream; don't treat the HEAD error body's size as media size.
+					if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusMethodNotAllowed {
+						log.Printf("[debrid-health] pre-resolved stream %s: HEAD returned %d, trying ranged GET", result.Title, resp.StatusCode)
+						placeholder, getStatus, getFinalURL, probeErr := probePreResolvedPlaceholderRedirect(ctx, encodedStreamURL, requestHeaders, healthCheckTimeout)
 						if probeErr != nil {
 							log.Printf("[debrid-health] placeholder redirect probe failed for pre-resolved stream %s: %v", result.Title, probeErr)
 						} else {
@@ -632,7 +635,7 @@ func (s *HealthService) checkHealth(ctx context.Context, result models.NZBResult
 						}
 					} else if resp.StatusCode >= 500 && isInternetArchiveDirectStream(result, streamURL) {
 						log.Printf("[debrid-health] pre-resolved Internet Archive stream %s returned HEAD HTTP %d - trying ranged GET fallback", result.Title, resp.StatusCode)
-						if ok, status, contentLength, contentType := probePreResolvedRange(ctx, encodedStreamURL); ok {
+						if ok, status, contentLength, contentType := probePreResolvedRange(ctx, encodedStreamURL, requestHeaders); ok {
 							log.Printf("[debrid-health] pre-resolved Internet Archive stream %s verified by ranged GET: status=%d content-length=%d content-type=%q", result.Title, status, contentLength, contentType)
 							return &DebridHealthCheck{
 								Healthy:  true,
@@ -945,7 +948,7 @@ func isInternetArchiveDirectStream(result models.NZBResult, streamURL string) bo
 	return host == "archive.org" || strings.HasSuffix(host, ".archive.org")
 }
 
-func probePreResolvedRange(ctx context.Context, streamURL string) (ok bool, status int, contentLength int64, contentType string) {
+func probePreResolvedRange(ctx context.Context, streamURL string, requestHeaders map[string]string) (ok bool, status int, contentLength int64, contentType string) {
 	rangeCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
@@ -954,6 +957,7 @@ func probePreResolvedRange(ctx context.Context, streamURL string) (ok bool, stat
 		return false, 0, 0, ""
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; mediastorm/1.0)")
+	streamheaders.Apply(req.Header, requestHeaders)
 	req.Header.Set("Range", "bytes=0-1023")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -982,7 +986,7 @@ func probePreResolvedRange(ctx context.Context, streamURL string) (ok bool, stat
 	return true, resp.StatusCode, contentLength, contentType
 }
 
-func probePreResolvedPlaceholderRedirect(ctx context.Context, streamURL string, timeout time.Duration) (placeholder bool, status int, finalURL string, err error) {
+func probePreResolvedPlaceholderRedirect(ctx context.Context, streamURL string, requestHeaders map[string]string, timeout time.Duration) (placeholder bool, status int, finalURL string, err error) {
 	probeCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -991,6 +995,7 @@ func probePreResolvedPlaceholderRedirect(ctx context.Context, streamURL string, 
 		return false, 0, "", err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; mediastorm/1.0)")
+	streamheaders.Apply(req.Header, requestHeaders)
 	req.Header.Set("Range", "bytes=0-4095")
 	req.Header.Set("Accept-Encoding", "identity")
 
@@ -1657,20 +1662,24 @@ func (s *HealthService) probeAllTracksWithTimeout(ctx context.Context, streamURL
 	probeCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	probeURL, requestHeaders := streamheaders.Extract(streamURL)
 	args := []string{
 		"-v", "error",
 		"-print_format", "json",
 		"-show_streams",
 		"-analyzeduration", "10000000", // 10 seconds
 		"-probesize", "10000000", // 10MB
-		streamURL,
 	}
+	if headerValue := streamheaders.FFmpegValue(requestHeaders); headerValue != "" {
+		args = append(args, "-headers", headerValue)
+	}
+	args = append(args, probeURL)
 
 	var stdout, stderr bytes.Buffer
-	isTorboxDownload := torboxrate.IsDownloadURL(streamURL)
+	isTorboxDownload := torboxrate.IsDownloadURL(probeURL)
 	for attempt := 0; ; attempt++ {
 		if isTorboxDownload {
-			if err := torboxrate.Downloads.Wait(probeCtx, streamURL); err != nil {
+			if err := torboxrate.Downloads.Wait(probeCtx, probeURL); err != nil {
 				return nil, fmt.Errorf("ffprobe cooldown wait: %w", err)
 			}
 		}
@@ -1689,7 +1698,7 @@ func (s *HealthService) probeAllTracksWithTimeout(ctx context.Context, streamURL
 		if !isTorboxDownload || (!strings.Contains(probeError, "429") && !strings.Contains(probeError, "too many requests")) {
 			return nil, fmt.Errorf("ffprobe failed: %w (stderr: %s)", err, stderr.String())
 		}
-		delay := torboxrate.Downloads.Record(streamURL, "", stderr.Bytes())
+		delay := torboxrate.Downloads.Record(probeURL, "", stderr.Bytes())
 		if attempt >= 1 {
 			return nil, fmt.Errorf("ffprobe failed after TorBox rate-limit retry: %w (stderr: %s)", err, stderr.String())
 		}

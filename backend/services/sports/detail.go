@@ -272,6 +272,10 @@ func (s *Service) EnrichGame(ctx context.Context, game models.SportsGame) models
 		sport = "rugby"
 		slug = strings.TrimPrefix(game.League, "rugby-")
 	}
+	if strings.HasPrefix(game.League, "rugby-league-") {
+		sport = "rugby-league"
+		slug = strings.TrimPrefix(game.League, "rugby-league-")
+	}
 	if sport == "" {
 		return game
 	}

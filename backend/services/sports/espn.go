@@ -164,6 +164,12 @@ func scoreboardMLBSituation(raw *espnScoreboardSituation, inning string) *models
 }
 
 type espnCompetition struct {
+	Round struct {
+		DisplayName string `json:"displayName"`
+	} `json:"round"`
+	Type struct {
+		Text string `json:"text"`
+	} `json:"type"`
 	Details []struct {
 		Type struct {
 			Text string `json:"text"`

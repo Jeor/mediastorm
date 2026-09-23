@@ -11,6 +11,8 @@ import (
 )
 
 type teamPlayPoint struct {
+	Down           *int     `json:"down"`
+	Distance       *float64 `json:"distance"`
 	PossessionText string   `json:"possessionText"`
 	YardsToEndzone *float64 `json:"yardsToEndzone"`
 	Team           struct {
@@ -18,7 +20,11 @@ type teamPlayPoint struct {
 	} `json:"team"`
 }
 type teamDetailPlay struct {
-	Coordinate *struct {
+	ShootingPlay    bool     `json:"shootingPlay"`
+	PointsAttempted int      `json:"pointsAttempted"`
+	Wallclock       string   `json:"wallclock"`
+	StatYardage     *float64 `json:"statYardage"`
+	Coordinate      *struct {
 		X *float64 `json:"x"`
 		Y *float64 `json:"y"`
 	} `json:"coordinate"`
@@ -42,6 +48,7 @@ type teamDetailPlay struct {
 	Scoring   bool     `json:"scoringPlay"`
 	Type      struct {
 		Text string `json:"text"`
+		ID   string `json:"id"`
 	} `json:"type"`
 	Period struct {
 		Number       int    `json:"number"`
@@ -58,6 +65,11 @@ type teamDrivePoint struct {
 	} `json:"period"`
 }
 type teamDetailDrive struct {
+	OffensivePlays *int     `json:"offensivePlays"`
+	Yards          *float64 `json:"yards"`
+	TimeElapsed    struct {
+		DisplayValue string `json:"displayValue"`
+	} `json:"timeElapsed"`
 	ID   string `json:"id"`
 	Team struct {
 		ID string `json:"id"`
@@ -70,6 +82,10 @@ type teamDetailDrive struct {
 	Plays []teamDetailPlay `json:"plays"`
 }
 type teamSportSummary struct {
+	WinProbability []struct {
+		Home   *float64 `json:"homeWinPercentage"`
+		PlayID string   `json:"playId"`
+	} `json:"winprobability"`
 	Rosters   []teamContextRoster  `json:"rosters"`
 	Standings teamContextStandings `json:"standings"`
 	Header    struct {
@@ -268,6 +284,9 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 	if strings.HasPrefix(game.League, "rugby-") && !strings.HasPrefix(game.League, "rugby-league-") {
 		family = "rugby"
 	}
+	if strings.HasPrefix(game.League, "rugby-league-") {
+		family = "rugby-league"
+	}
 	if family == "nfl" {
 		plays = nil
 		for _, drive := range p.Drives.Previous {
@@ -280,6 +299,9 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 	d.PlayerStats = normalizePlayerGameStats(game, p.Boxscore.Players)
 	d.PlayerStats = append(d.PlayerStats, normalizeSoccerPlayerStats(game, p.Rosters)...)
 	d.ScoreHistory = normalizeScoreHistory(game, p)
+	if family == "nba" {
+		normalizeBasketballTracking(game, p, d)
+	}
 	seen := map[string]bool{}
 	for i := len(plays) - 1; i >= 0 && len(d.Plays) < 200; i-- {
 		play := plays[i]
@@ -315,11 +337,12 @@ func normalizeTeamDetail(game models.SportsGame, p teamSportSummary, now time.Ti
 		stats[team.Team.ID] = values
 	}
 	fields := map[string][][2]string{
-		"rugby":  {{"possession", "Possession %"}, {"territory", "Territory %"}, {"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"metres", "Meters run"}, {"penaltiesConceded", "Penalties conceded"}, {"lineoutsWon", "Lineouts won"}, {"scrumsWon", "Scrums won"}},
-		"soccer": {{"possessionPct", "Possession %"}, {"totalShots", "Shots"}, {"shotsOnTarget", "Shots on target"}, {"wonCorners", "Corners"}, {"foulsCommitted", "Fouls"}, {"yellowCards", "Yellow cards"}, {"redCards", "Red cards"}, {"saves", "Saves"}, {"offsides", "Offsides"}},
-		"nfl":    {{"totalYards", "Total yards"}, {"netPassingYards", "Passing yards"}, {"rushingYards", "Rushing yards"}, {"firstDowns", "First downs"}, {"thirdDownEff", "Third downs"}, {"fourthDownEff", "Fourth downs"}, {"turnovers", "Turnovers"}, {"totalPenaltiesYards", "Penalties–yards"}, {"possessionTime", "Time of possession"}},
-		"nba":    {{"fieldGoalsMade-fieldGoalsAttempted", "Field goals"}, {"fieldGoalPct", "Field goal %"}, {"threePointFieldGoalsMade-threePointFieldGoalsAttempted", "Three-pointers"}, {"freeThrowsMade-freeThrowsAttempted", "Free throws"}, {"totalRebounds", "Rebounds"}, {"assists", "Assists"}, {"steals", "Steals"}, {"blocks", "Blocks"}, {"totalTurnovers", "Turnovers"}, {"pointsInPaint", "Points in paint"}},
-		"nhl":    {{"shotsTotal", "Shots on goal"}, {"hits", "Hits"}, {"blockedShots", "Blocked shots"}, {"faceoffPercent", "Faceoff win %"}, {"powerPlayGoals", "Power-play goals"}, {"powerPlayOpportunities", "Power-play chances"}, {"penaltyMinutes", "Penalty minutes"}, {"giveaways", "Giveaways"}, {"takeaways", "Takeaways"}},
+		"rugby-league": {{"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"missedTackles", "Missed tackles"}, {"metres", "Meters run"}, {"cleanBreaks", "Clean breaks"}, {"offload", "Offloads"}, {"penaltiesConceded", "Penalties conceded"}},
+		"rugby":        {{"possession", "Possession %"}, {"territory", "Territory %"}, {"tries", "Tries"}, {"conversionGoals", "Conversions"}, {"tackles", "Tackles"}, {"metres", "Meters run"}, {"penaltiesConceded", "Penalties conceded"}, {"lineoutsWon", "Lineouts won"}, {"scrumsWon", "Scrums won"}},
+		"soccer":       {{"possessionPct", "Possession %"}, {"totalShots", "Shots"}, {"shotsOnTarget", "Shots on target"}, {"wonCorners", "Corners"}, {"foulsCommitted", "Fouls"}, {"yellowCards", "Yellow cards"}, {"redCards", "Red cards"}, {"saves", "Saves"}, {"offsides", "Offsides"}, {"totalPasses", "Passes"}, {"passPct", "Pass accuracy %"}, {"totalCrosses", "Crosses"}, {"crossPct", "Cross accuracy %"}, {"totalTackles", "Tackles"}, {"interceptions", "Interceptions"}, {"blockedShots", "Blocked shots"}, {"totalClearance", "Clearances"}},
+		"nfl":          {{"totalYards", "Total yards"}, {"netPassingYards", "Passing yards"}, {"rushingYards", "Rushing yards"}, {"firstDowns", "First downs"}, {"thirdDownEff", "Third downs"}, {"fourthDownEff", "Fourth downs"}, {"turnovers", "Turnovers"}, {"totalPenaltiesYards", "Penalties–yards"}, {"possessionTime", "Time of possession"}},
+		"nba":          {{"fieldGoalsMade-fieldGoalsAttempted", "Field goals"}, {"fieldGoalPct", "Field goal %"}, {"threePointFieldGoalsMade-threePointFieldGoalsAttempted", "Three-pointers"}, {"freeThrowsMade-freeThrowsAttempted", "Free throws"}, {"totalRebounds", "Rebounds"}, {"assists", "Assists"}, {"steals", "Steals"}, {"blocks", "Blocks"}, {"totalTurnovers", "Turnovers"}, {"pointsInPaint", "Points in paint"}},
+		"nhl":          {{"shotsTotal", "Shots on goal"}, {"hits", "Hits"}, {"blockedShots", "Blocked shots"}, {"faceoffPercent", "Faceoff win %"}, {"powerPlayGoals", "Power-play goals"}, {"powerPlayOpportunities", "Power-play chances"}, {"penaltyMinutes", "Penalty minutes"}, {"giveaways", "Giveaways"}, {"takeaways", "Takeaways"}},
 	}[family]
 	for _, field := range fields {
 		a, h := stats[game.AwayTeam.ID][field[0]], stats[game.HomeTeam.ID][field[0]]
@@ -412,14 +435,14 @@ func normalizeFootballDrives(game models.SportsGame, p teamSportSummary) []model
 			return
 		}
 		seen[drive.ID] = true
-		row := models.SportsFootballDrive{ID: drive.ID, TeamID: drive.Team.ID, Start: start, End: end, StartKnown: &okStart, EndKnown: &okEnd, StartLabel: drive.Start.Text, EndLabel: drive.End.Text, Period: teamPeriodLabel(game.League, drive.Start.Period.Number), Result: drive.Result, Description: drive.Description, Current: current}
+		row := models.SportsFootballDrive{PlayCount: drive.OffensivePlays, Yards: drive.Yards, Elapsed: drive.TimeElapsed.DisplayValue, ID: drive.ID, TeamID: drive.Team.ID, Start: start, End: end, StartKnown: &okStart, EndKnown: &okEnd, StartLabel: drive.Start.Text, EndLabel: drive.End.Text, Period: teamPeriodLabel(game.League, drive.Start.Period.Number), Result: drive.Result, Description: drive.Description, Current: current}
 		seenPlays := map[string]bool{}
 		for _, play := range drive.Plays {
 			if play.ID == "" || seenPlays[play.ID] {
 				continue
 			}
 			seenPlays[play.ID] = true
-			row.Plays = append(row.Plays, models.SportsFootballPlay{ID: play.ID, Type: play.Type.Text, Description: play.Text, Clock: play.Clock.DisplayValue, Period: teamPeriodLabel(game.League, play.Period.Number), Start: footballPlayPoint(play.Start, game), End: footballPlayPoint(play.End, game), Scoring: play.Scoring})
+			row.Plays = append(row.Plays, models.SportsFootballPlay{TypeID: play.Type.ID, Wallclock: play.Wallclock, Down: play.Start.Down, Distance: play.Start.Distance, Yards: play.StatYardage, PossessionTeamID: play.Start.Team.ID, ID: play.ID, Type: play.Type.Text, Description: play.Text, Clock: play.Clock.DisplayValue, Period: teamPeriodLabel(game.League, play.Period.Number), Start: footballPlayPoint(play.Start, game), End: footballPlayPoint(play.End, game), Scoring: play.Scoring})
 		}
 		rows = append(rows, row)
 	}

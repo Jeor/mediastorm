@@ -180,7 +180,14 @@
                 <button type="button" class="recovery-modal-close" onclick="closeRecoveryModal()" aria-label="Close">&times;</button>
             </div>
             <div class="recovery-modal-body">
-                <p>If nobody in your household can sign in, reset the account password from the backend container. Most deployments use Docker Compose and the default service name <strong>mediastorm</strong>.</p>
+                <p>If nobody in your household can sign in, stop MediaStorm and run the recovery command for your installation.</p>
+
+                <div>
+                    <h4>Windows package</h4>
+                    <p>Open Command Prompt in the extracted MediaStorm folder.</p>
+                    <div class="recovery-command">Start-MediaStorm.cmd -RecoverMaster</div>
+                    <div class="recovery-command">Start-MediaStorm.cmd -RecoverUsername alice</div>
+                </div>
 
                 <div>
                     <h4>Recover the admin account</h4>

@@ -153,8 +153,30 @@ func (m *IrohHostManager) publishRendezvousRecord(ctx context.Context, code, inv
 		}
 		return fmt.Errorf("publish rendezvous record: %s", redactIrohLogLine(msg))
 	}
-	log.Printf("[remote-access][iroh] rendezvous published")
+	// The public DHT key is safe to log and lets device logs confirm both sides
+	// derived the same lookup target without exposing the connection code.
+	if key := rendezvousPublicKeyFromOutput(string(output)); key != "" {
+		log.Printf("[remote-access][iroh] rendezvous published key=%s", key)
+	} else {
+		log.Printf("[remote-access][iroh] rendezvous published")
+	}
 	return nil
+}
+
+func rendezvousPublicKeyFromOutput(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		key, ok := strings.CutPrefix(strings.TrimSpace(line), "publishing under ")
+		if !ok || key == "" {
+			continue
+		}
+		for _, c := range key {
+			if (c < 'a' || c > 'z') && (c < '0' || c > '9') {
+				return ""
+			}
+		}
+		return key
+	}
+	return ""
 }
 
 func (m *IrohHostManager) Ensure(ctx context.Context) (string, error) {

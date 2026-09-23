@@ -57,6 +57,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	categories := r.URL.Query()["cat"]
 	imdbID := strings.TrimSpace(r.URL.Query().Get("imdbId"))
+	titleID := strings.TrimSpace(r.URL.Query().Get("titleId"))
 	mediaType := strings.TrimSpace(r.URL.Query().Get("mediaType"))
 	query = normalizeDecoratedSeriesQuery(query, mediaType)
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
@@ -84,6 +85,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	var isAnime bool
 	var targetAirDate string
 	var episodeAirYear int
+	var seasonPremiereYear int
 	var episodeReleased bool
 	var absoluteEpisodeNumber int
 	var countryCode string
@@ -92,11 +94,15 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	if mediaType == "series" && h.MetadataSvc != nil {
 		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
 		if seriesMeta != nil {
+			if titleID == "" {
+				titleID = seriesMeta.TitleID
+			}
 			episodeResolver = seriesMeta.EpisodeResolver
 			isDaily = seriesMeta.IsDaily
 			isAnime = seriesMeta.IsAnime
 			targetAirDate = seriesMeta.TargetAirDate
 			episodeAirYear = seriesMeta.EpisodeAirYear
+			seasonPremiereYear = seriesMeta.SeasonPremiereYear
 			episodeReleased = seriesMeta.EpisodeReleased
 			absoluteEpisodeNumber = seriesMeta.AbsoluteEpisodeNumber
 			countryCode = seriesMeta.CountryCode
@@ -137,6 +143,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := indexer.SearchOptions{
+		TitleID:               titleID,
 		Query:                 query,
 		Categories:            categories,
 		MaxResults:            max,
@@ -154,6 +161,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 		IsAnime:               isAnime,
 		TargetAirDate:         targetAirDate,
 		EpisodeAirYear:        episodeAirYear,
+		SeasonPremiereYear:    seasonPremiereYear,
 		EpisodeReleased:       episodeReleased,
 		AbsoluteEpisodeNumber: absoluteEpisodeNumber,
 	}
@@ -270,6 +278,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	categories := r.URL.Query()["cat"]
 	imdbID := strings.TrimSpace(r.URL.Query().Get("imdbId"))
+	titleID := strings.TrimSpace(r.URL.Query().Get("titleId"))
 	mediaType := strings.TrimSpace(r.URL.Query().Get("mediaType"))
 	query = normalizeDecoratedSeriesQuery(query, mediaType)
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
@@ -297,6 +306,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	var isAnime bool
 	var targetAirDate string
 	var episodeAirYear int
+	var seasonPremiereYear int
 	var episodeReleased bool
 	var absoluteEpisodeNumber int
 	var countryCode string
@@ -305,11 +315,15 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	if mediaType == "series" && h.MetadataSvc != nil {
 		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
 		if seriesMeta != nil {
+			if titleID == "" {
+				titleID = seriesMeta.TitleID
+			}
 			episodeResolver = seriesMeta.EpisodeResolver
 			isDaily = seriesMeta.IsDaily
 			isAnime = seriesMeta.IsAnime
 			targetAirDate = seriesMeta.TargetAirDate
 			episodeAirYear = seriesMeta.EpisodeAirYear
+			seasonPremiereYear = seriesMeta.SeasonPremiereYear
 			episodeReleased = seriesMeta.EpisodeReleased
 			absoluteEpisodeNumber = seriesMeta.AbsoluteEpisodeNumber
 			countryCode = seriesMeta.CountryCode
@@ -339,6 +353,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := indexer.SearchOptions{
+		TitleID:               titleID,
 		Query:                 query,
 		Categories:            categories,
 		MaxResults:            max,
@@ -356,6 +371,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 		IsAnime:               isAnime,
 		TargetAirDate:         targetAirDate,
 		EpisodeAirYear:        episodeAirYear,
+		SeasonPremiereYear:    seasonPremiereYear,
 		EpisodeReleased:       episodeReleased,
 		AbsoluteEpisodeNumber: absoluteEpisodeNumber,
 		UseDownloadRanking:    useDownloadRanking,
@@ -475,12 +491,14 @@ func classifySearchError(err error) (int, map[string]interface{}) {
 
 // seriesSearchMetadata contains series metadata needed for search
 type seriesSearchMetadata struct {
+	TitleID               string
 	EpisodeResolver       *filter.SeriesEpisodeResolver
 	IsDaily               bool
 	IsAnime               bool
 	TargetAirDate         string // YYYY-MM-DD format for daily shows
 	Year                  int    // Series premiere year from metadata
 	EpisodeAirYear        int    // Year the target episode actually aired (may differ from series premiere year)
+	SeasonPremiereYear    int    // Premiere year of the requested season only.
 	EpisodeReleased       bool   // True only when metadata confirms the target episode has aired
 	AbsoluteEpisodeNumber int
 	CountryCode           string
@@ -524,6 +542,7 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 	}
 
 	result := &seriesSearchMetadata{
+		TitleID:     details.Title.ID,
 		IsDaily:     details.Title.IsDaily,
 		Year:        details.Title.Year,
 		CountryCode: details.Title.CountryCode,
@@ -531,6 +550,7 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 	}
 
 	result.IsAnime = isAnimeTitle(&details.Title)
+	result.SeasonPremiereYear = models.SeriesSeasonPremiereYear(details.Seasons, parsed.Season)
 
 	// Build season -> episode count map for episode resolver
 	seasonCounts := make(map[int]int)

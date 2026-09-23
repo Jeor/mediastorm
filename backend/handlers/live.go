@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -27,6 +28,7 @@ import (
 	"novastream/internal/netproxy"
 	"novastream/internal/requestsecurity"
 	"novastream/models"
+	"novastream/services/recordings"
 )
 
 const (
@@ -37,6 +39,8 @@ const (
 	liveStreamTimeout        = 30 * time.Minute
 	defaultCacheTTL          = 24 * time.Hour
 	defaultXtreamCacheTTL    = 30 * time.Minute
+	defaultXtreamFailureTTL  = 5 * time.Minute
+	xtreamCategoryTimeout    = 10 * time.Second
 	cacheDir                 = "cache/live"
 
 	// liveStreamUserAgent is sent on all upstream live stream requests. Some
@@ -55,6 +59,8 @@ const (
 // Xtream metadata API: the VLC UA used for stream playback first, then a
 // browser UA as a fallback for providers that whitelist only browsers.
 var xtreamUserAgents = []string{liveStreamUserAgent, liveBrowserUserAgent}
+
+var liveStreamRequestSequence uint64
 
 // LiveChannel represents a parsed channel from an M3U playlist.
 type LiveChannel struct {
@@ -322,8 +328,10 @@ type LiveEPGNowPlayingProvider interface {
 }
 
 type xtreamChannelsCacheEntry struct {
-	channels  []LiveChannel
-	expiresAt time.Time
+	channels   []LiveChannel
+	expiresAt  time.Time
+	retryAfter time.Time
+	lastErr    error
 }
 
 type xtreamChannelsFetch struct {
@@ -467,10 +475,17 @@ func (h *LiveHandler) FetchPlaylist(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
+	requestID := atomic.AddUint64(&liveStreamRequestSequence, 1)
+	requestStartedAt := time.Now()
+	requestTarget := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("target")))
+	requestSourceID := strings.TrimSpace(r.URL.Query().Get("liveSourceId"))
+	log.Printf("[live-request] id=%d start method=%s target=%q source=%q range=%q", requestID, r.Method, requestTarget, requestSourceID, r.Header.Get("Range"))
+
 	if r.Method == http.MethodHead {
 		w.Header().Set("Content-Type", "video/mp4")
 		w.Header().Set("Accept-Ranges", "none")
 		w.WriteHeader(http.StatusOK)
+		log.Printf("[live-request] id=%d end mode=head status=200 elapsed=%s", requestID, time.Since(requestStartedAt).Round(time.Millisecond))
 		return
 	}
 
@@ -485,9 +500,11 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 
 	targetURL, err := h.parseRemoteURL(r.Context(), r.URL.Query().Get("url"))
 	if err != nil {
+		log.Printf("[live-request] id=%d reject reason=invalid-url elapsed=%s", requestID, time.Since(requestStartedAt).Round(time.Millisecond))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	log.Printf("[live-request] id=%d resolved upstream=%s", requestID, requestsecurity.URLForLog(targetURL.String()))
 
 	ctx, cancel := context.WithTimeout(r.Context(), liveStreamTimeout)
 	defer cancel()
@@ -515,7 +532,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !isWebLiveStreamRequest(r) {
-		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL)
+		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL, requestID, requestStartedAt)
 		return
 	}
 
@@ -627,9 +644,11 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := cmd.Start(); err != nil {
+		log.Printf("[live-request] id=%d ffmpeg-start-failed error=%v elapsed=%s", requestID, err, time.Since(requestStartedAt).Round(time.Millisecond))
 		http.Error(w, "failed to start transmuxer", http.StatusBadGateway)
 		return
 	}
+	log.Printf("[live-request] id=%d ffmpeg-start pid=%d mode=transmux", requestID, cmd.Process.Pid)
 
 	// Capture the first chunk of ffmpeg stderr so failures are diagnosable; at
 	// loglevel warning this stays small. Drain the rest to avoid blocking.
@@ -655,10 +674,15 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	flusher, _ := w.(http.Flusher)
 	buf := make([]byte, 256*1024)
 	var total int64
+	endReason := "ffmpeg-eof"
+	defer func() {
+		log.Printf("[live-request] id=%d end mode=transmux reason=%s bytes=%d elapsed=%s", requestID, endReason, total, time.Since(requestStartedAt).Round(time.Millisecond))
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
+			endReason = "request-context-done"
 			_ = cmd.Process.Kill()
 			return
 		default:
@@ -667,6 +691,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		n, readErr := stdout.Read(buf)
 		if n > 0 {
 			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				endReason = "client-write-error"
 				_ = cmd.Process.Kill()
 				if !errors.Is(writeErr, context.Canceled) && !errors.Is(writeErr, io.EOF) && !isConnectionError(writeErr) {
 					log.Printf("[live] writer error for %q: %v", targetURL.String(), writeErr)
@@ -685,6 +710,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 			if errors.Is(readErr, io.EOF) {
 				break
 			}
+			endReason = "ffmpeg-read-error"
 			_ = cmd.Process.Kill()
 			log.Printf("[live] ffmpeg read error for %q: %v", targetURL.String(), readErr)
 			return
@@ -692,6 +718,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := cmd.Wait(); err != nil {
+		endReason = "ffmpeg-exit-error"
 		if !errors.Is(err, context.Canceled) && !strings.Contains(strings.ToLower(err.Error()), "broken pipe") {
 			<-stderrDone
 			detail := strings.TrimSpace(string(ffmpegStderr))
@@ -704,7 +731,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.Request, ctx context.Context, targetURL *url.URL, proxyURL string) {
+func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.Request, ctx context.Context, targetURL *url.URL, proxyURL string, requestID uint64, requestStartedAt time.Time) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 	if err != nil {
 		http.Error(w, "failed to prepare live stream", http.StatusInternalServerError)
@@ -714,6 +741,7 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 
 	resp, err := h.liveStreamHTTPClient(proxyURL).Do(req)
 	if err != nil {
+		log.Printf("[live-request] id=%d proxy-open-failed error=%v elapsed=%s", requestID, err, time.Since(requestStartedAt).Round(time.Millisecond))
 		log.Printf("[live] proxied stream request failed for %q via %q: %v", targetURL.String(), proxyURL, err)
 		http.Error(w, "failed to open proxied live stream", http.StatusBadGateway)
 		return
@@ -721,6 +749,7 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= http.StatusBadRequest {
+		log.Printf("[live-request] id=%d proxy-upstream-status status=%d elapsed=%s", requestID, resp.StatusCode, time.Since(requestStartedAt).Round(time.Millisecond))
 		log.Printf("[live] proxied stream returned status %d for %q via %q", resp.StatusCode, targetURL.String(), proxyURL)
 		http.Error(w, fmt.Sprintf("live stream returned status %d", resp.StatusCode), http.StatusBadGateway)
 		return
@@ -743,10 +772,15 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 
 	buf := make([]byte, 256*1024)
 	var total int64
+	endReason := "upstream-eof"
+	defer func() {
+		log.Printf("[live-request] id=%d end mode=direct-proxy reason=%s bytes=%d elapsed=%s", requestID, endReason, total, time.Since(requestStartedAt).Round(time.Millisecond))
+	}()
 	for {
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
 			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				endReason = "client-write-error"
 				if !errors.Is(writeErr, context.Canceled) && !errors.Is(writeErr, io.EOF) && !isConnectionError(writeErr) {
 					log.Printf("[live] proxied stream writer error for %q: %v", targetURL.String(), writeErr)
 				}
@@ -760,6 +794,9 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 			}
 		}
 		if readErr != nil {
+			if !errors.Is(readErr, io.EOF) {
+				endReason = "upstream-read-error"
+			}
 			if !errors.Is(readErr, io.EOF) && !errors.Is(readErr, context.Canceled) {
 				log.Printf("[live] proxied stream reader error for %q: %v", targetURL.String(), readErr)
 			}
@@ -1047,6 +1084,7 @@ func parseM3UPlaylist(contents string) []LiveChannel {
 
 type resolvedM3USource struct {
 	ID                  string
+	ConfigIndex         int
 	Name                string
 	Mode                string
 	PlaylistURL         string
@@ -1121,6 +1159,7 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 		}
 		sources = append(sources, resolvedM3USource{
 			ID:                  id,
+			ConfigIndex:         i,
 			Name:                name,
 			Mode:                mode,
 			PlaylistURL:         strings.TrimSpace(candidate.PlaylistURL),
@@ -1285,6 +1324,21 @@ func selectM3USources(sources []resolvedM3USource, sourceID string) []resolvedM3
 	for _, src := range sources {
 		if src.ID == sourceID {
 			return []resolvedM3USource{src}
+		}
+	}
+	return nil
+}
+
+// selectLiveSourceByConfigIndex preserves the settings list position even when
+// disabled or incomplete sources are omitted from the resolved source list.
+func selectLiveSourceByConfigIndex(sources []resolvedM3USource, rawIndex string) []resolvedM3USource {
+	index, err := strconv.Atoi(rawIndex)
+	if err != nil || index < 0 {
+		return nil
+	}
+	for _, source := range sources {
+		if source.ConfigIndex == index {
+			return []resolvedM3USource{source}
 		}
 	}
 	return nil
@@ -1738,6 +1792,10 @@ func (h *LiveHandler) WarmPlaylistCache(ctx context.Context) (int, error) {
 // The caller owns closing the returned body.
 func (h *LiveHandler) fetchXtreamWithUAFallback(ctx context.Context, client *http.Client, requestURL string) (*http.Response, string, error) {
 	var lastErr error
+	attemptClient := *client
+	if attemptClient.Timeout == 0 || attemptClient.Timeout > xtreamCategoryTimeout {
+		attemptClient.Timeout = xtreamCategoryTimeout
+	}
 	for _, ua := range xtreamUserAgents {
 		// Stop early if the caller's context is already done — retrying with a
 		// different UA won't help a cancelled/expired request.
@@ -1754,10 +1812,10 @@ func (h *LiveHandler) fetchXtreamWithUAFallback(ctx context.Context, client *htt
 		}
 		req.Header.Set("User-Agent", ua)
 
-		resp, err := client.Do(req)
+		resp, err := attemptClient.Do(req)
 		if err != nil {
-			lastErr = err
-			log.Printf("[live] Xtream request failed with UA %q: %v", ua, err)
+			lastErr = xtreamRequestError(err)
+			log.Printf("[live] Xtream request failed with UA %q: %v", ua, lastErr)
 			continue
 		}
 		if resp.StatusCode >= http.StatusBadRequest {
@@ -1774,6 +1832,15 @@ func (h *LiveHandler) fetchXtreamWithUAFallback(ctx context.Context, client *htt
 	return nil, "", lastErr
 }
 
+// net/http includes the full credential-bearing request URL in *url.Error.
+func xtreamRequestError(err error) error {
+	var requestErr *url.Error
+	if errors.As(err, &requestErr) {
+		return requestErr.Err
+	}
+	return err
+}
+
 // fetchXtreamChannels fetches live channels from the Xtream Codes API.
 func (h *LiveHandler) fetchXtreamChannels(ctx context.Context, host, username, password, proxyURL string) ([]LiveChannel, error) {
 	identity := host + "\x00" + username + "\x00" + password + "\x00" + proxyURL
@@ -1781,11 +1848,20 @@ func (h *LiveHandler) fetchXtreamChannels(ctx context.Context, host, username, p
 	cacheKey := hex.EncodeToString(keyBytes[:])
 
 	h.xtreamMu.Lock()
-	if cached, ok := h.xtreamCache[cacheKey]; ok && time.Now().Before(cached.expiresAt) {
+	cached, hasCache := h.xtreamCache[cacheKey]
+	if hasCache && time.Now().Before(cached.expiresAt) {
 		channels := cached.channels
 		h.xtreamMu.Unlock()
 		log.Printf("[live] serving %d Xtream channels from memory cache", len(channels))
 		return channels, nil
+	}
+	if hasCache && time.Now().Before(cached.retryAfter) {
+		h.xtreamMu.Unlock()
+		if !cached.expiresAt.IsZero() {
+			log.Printf("[live] serving %d stale Xtream channels during provider failure cooldown", len(cached.channels))
+			return cached.channels, nil
+		}
+		return nil, cached.lastErr
 	}
 	if inFlight, ok := h.xtreamInFlight[cacheKey]; ok {
 		h.xtreamMu.Unlock()
@@ -1808,14 +1884,25 @@ func (h *LiveHandler) fetchXtreamChannels(ctx context.Context, host, username, p
 	cancel()
 
 	h.xtreamMu.Lock()
-	inFlight.channels = channels
-	inFlight.err = err
 	if err == nil {
 		h.xtreamCache[cacheKey] = xtreamChannelsCacheEntry{
 			channels:  channels,
 			expiresAt: time.Now().Add(defaultXtreamCacheTTL),
 		}
+	} else {
+		cached := h.xtreamCache[cacheKey]
+		cached.retryAfter = time.Now().Add(defaultXtreamFailureTTL)
+		cached.lastErr = err
+		h.xtreamCache[cacheKey] = cached
+		if !cached.expiresAt.IsZero() {
+			channels, err = cached.channels, nil
+			log.Printf("[live] Xtream refresh failed; serving %d stale channels for %s", len(channels), defaultXtreamFailureTTL)
+		} else {
+			log.Printf("[live] Xtream refresh failed; suppressing retries for %s", defaultXtreamFailureTTL)
+		}
 	}
+	inFlight.channels = channels
+	inFlight.err = err
 	delete(h.xtreamInFlight, cacheKey)
 	close(inFlight.done)
 	h.xtreamMu.Unlock()
@@ -1868,7 +1955,7 @@ func (h *LiveHandler) fetchXtreamChannelsUncached(ctx context.Context, host, use
 
 	streamResp, err := client.Do(streamReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch streams: %w", err)
+		return nil, fmt.Errorf("failed to fetch streams: %w", xtreamRequestError(err))
 	}
 	defer streamResp.Body.Close()
 
@@ -2035,6 +2122,29 @@ func (h *LiveHandler) FetchFilteredChannelsForRequest(r *http.Request) ([]LiveCh
 	return allChannels, nil
 }
 
+// RecordingChannels resolves the complete visible channel list for a profile.
+func (h *LiveHandler) RecordingChannels(ctx context.Context, profileID string) ([]recordings.Channel, error) {
+	query := url.Values{}
+	query.Set("profileId", profileID)
+	request := httptest.NewRequest(http.MethodGet, "/api/live/channels?"+query.Encode(), nil).WithContext(ctx)
+	response := httptest.NewRecorder()
+	h.GetChannels(response, request)
+	if response.Code < http.StatusOK || response.Code >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("load profile Live TV channels: %s", strings.TrimSpace(response.Body.String()))
+	}
+	var payload LiveChannelsResponse
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("decode profile Live TV channels: %w", err)
+	}
+	channels := make([]recordings.Channel, 0, len(payload.Channels))
+	for _, channel := range payload.Channels {
+		channels = append(channels, recordings.Channel{
+			ID: channel.ID, TvgID: channel.TvgID, Name: channel.Name, SourceURL: channel.URL,
+		})
+	}
+	return channels, nil
+}
+
 // GetChannels returns parsed and filtered channels from the configured playlist.
 func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	requestStartedAt := time.Now()
@@ -2124,6 +2234,8 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 	)
 	includeSourceInID := len(sources) > 1
 	totalBeforeFilter := 0
+	successfulSources := 0
+	failedSources := 0
 	for _, liveSource := range selectedSources {
 		if request.FavoritesOnly && !liveSourceMayContainFavorites(liveSource.ID, request.FavoriteIDs, includeSourceInID) {
 			continue
@@ -2134,38 +2246,20 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 		}
 		var sourceChannels []LiveChannel
 		var availabilityChannels []LiveChannel
+		var sourceErr error
+		sourceErrorMessage := "failed to fetch channels"
 		if liveSource.Mode == "xtream" {
-			channels, err := h.fetchXtreamChannels(r.Context(), liveSource.XtreamHost, liveSource.XtreamUsername, liveSource.XtreamPassword, liveSource.ProxyURL)
-			if err != nil {
-				log.Printf("[live] GetChannels Xtream error for source %q: %v", liveSource.ID, err)
-				http.Error(w, `{"error":"failed to fetch channels"}`, http.StatusBadGateway)
-				return
-			}
-			sourceChannels = channels
+			sourceChannels, sourceErr = h.fetchXtreamChannels(r.Context(), liveSource.XtreamHost, liveSource.XtreamUsername, liveSource.XtreamPassword, liveSource.ProxyURL)
 		} else if liveSource.Mode == "stremio" {
-			channels, err := h.fetchStremioChannels(r.Context(), liveSource.ManifestURL, liveSource.ProxyURL)
-			if err != nil {
-				log.Printf("[live] GetChannels Stremio error for source %q: %v", liveSource.ID, err)
-				http.Error(w, `{"error":"failed to fetch channels"}`, http.StatusBadGateway)
-				return
-			}
-			sourceChannels = channels
+			sourceChannels, sourceErr = h.fetchStremioChannels(r.Context(), liveSource.ManifestURL, liveSource.ProxyURL)
 		} else if liveSource.Mode == "stalker" {
-			var channels []LiveChannel
-			var err error
 			if paginated && request.Filter == "" && !request.FavoritesOnly && len(selectedSources) == 1 {
-				channels, stalkerCategoryTotal, stalkerAvailableCategories, err = fetchStalkerCategoryChannels(
+				sourceChannels, stalkerCategoryTotal, stalkerAvailableCategories, sourceErr = fetchStalkerCategoryChannels(
 					r.Context(), stalkerConfigFromResolvedSource(liveSource), request.Categories, offset+limit,
 				)
 			} else {
-				channels, err = fetchStalkerChannels(r.Context(), stalkerConfigFromResolvedSource(liveSource))
+				sourceChannels, sourceErr = fetchStalkerChannels(r.Context(), stalkerConfigFromResolvedSource(liveSource))
 			}
-			if err != nil {
-				log.Printf("[live] GetChannels Stalker error for source %q: %v", liveSource.ID, err)
-				http.Error(w, `{"error":"failed to fetch channels"}`, http.StatusBadGateway)
-				return
-			}
-			sourceChannels = channels
 			if stalkerCategoryTotal >= 0 {
 				availabilityChannels = make([]LiveChannel, 0, len(stalkerAvailableCategories))
 				for _, category := range stalkerAvailableCategories {
@@ -2173,14 +2267,23 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		} else {
-			contents, err := h.fetchPlaylistContents(r.Context(), liveSource.PlaylistURL, liveSource.ProxyURL)
-			if err != nil {
-				log.Printf("[live] GetChannels error for source %q: %v", liveSource.ID, err)
-				http.Error(w, `{"error":"failed to fetch playlist"}`, http.StatusBadGateway)
+			var contents string
+			contents, sourceErr = h.fetchPlaylistContents(r.Context(), liveSource.PlaylistURL, liveSource.ProxyURL)
+			if sourceErr == nil {
+				sourceChannels = parseM3UPlaylist(contents)
+			}
+			sourceErrorMessage = "failed to fetch playlist"
+		}
+		if sourceErr != nil {
+			log.Printf("[live] GetChannels %s error for source %q: %v", liveSource.Mode, liveSource.ID, sourceErr)
+			failedSources++
+			if len(selectedSources) == 1 {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, sourceErrorMessage), http.StatusBadGateway)
 				return
 			}
-			sourceChannels = parseM3UPlaylist(contents)
+			continue
 		}
+		successfulSources++
 		if availabilityChannels == nil {
 			availabilityChannels = sourceChannels
 		}
@@ -2198,6 +2301,13 @@ func (h *LiveHandler) GetChannels(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		allChannels = append(allChannels, tagChannelsWithSource(selectedChannels, liveSource, includeSourceInID)...)
+	}
+	if successfulSources == 0 && failedSources > 0 {
+		http.Error(w, `{"error":"failed to fetch channels"}`, http.StatusBadGateway)
+		return
+	}
+	if failedSources > 0 {
+		log.Printf("[live] GetChannels returned available sources after %d of %d sources failed", failedSources, len(selectedSources))
 	}
 
 	filteredChannels := allChannels
@@ -2316,6 +2426,9 @@ func (h *LiveHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selectedSources := selectM3USources(sources, r.URL.Query().Get("sourceId"))
+	if _, hasIndex := r.URL.Query()["sourceIndex"]; hasIndex {
+		selectedSources = selectLiveSourceByConfigIndex(sources, r.URL.Query().Get("sourceIndex"))
+	}
 	if len(selectedSources) == 0 {
 		http.Error(w, `{"error":"unknown source"}`, http.StatusBadRequest)
 		return

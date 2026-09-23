@@ -3,6 +3,9 @@ package handlers
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -133,6 +136,27 @@ func TestBuildVideoEncodePlanQSVDeviceInit(t *testing.T) {
 	}
 	if !strings.Contains(joinArgs(plan.EncoderArgs), "h264_qsv") {
 		t.Fatalf("expected qsv encoder, got %v", plan.EncoderArgs)
+	}
+}
+
+func TestBuildVideoEncodePlanQSVWindowsDeviceInit(t *testing.T) {
+	plan := buildVideoEncodePlan(HWAccelCaps{Encode: HWQSV}, false)
+	if !strings.Contains(joinArgs(plan.GlobalArgs), "-init_hw_device qsv=hw -filter_hw_device hw") {
+		t.Fatalf("expected QSV device discovery without a Linux render path, got %v", plan.GlobalArgs)
+	}
+}
+
+func TestHWEncoderProbeUsesSupportedDimensions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell probe fixture is Unix-only")
+	}
+	probe := filepath.Join(t.TempDir(), "ffmpeg")
+	if err := os.WriteFile(probe, []byte("#!/bin/sh\ncase \"$*\" in *1280x720*) exit 0;; *) exit 1;; esac\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, ok, reason := hwEncoderUsable(probe, HWNVENC, map[string]bool{"h264_nvenc": true})
+	if !ok {
+		t.Fatalf("NVENC probe did not use supported dimensions: %s", reason)
 	}
 }
 

@@ -21,6 +21,9 @@ func TestValidateDebridURL(t *testing.T) {
 		{"torbox", "https://api.torbox.app/download/abc", false},
 		{"offcloud", "https://offcloud.com/api/download", false},
 
+		{"debrid-link seedbox", "https://seed20.debrid.link/dl/file", false},
+		{"debrid-link lookalike", "https://debrid.link.evil.com/dl/file", true},
+
 		// Blocked URLs (SSRF attempts)
 		{"localhost", "http://127.0.0.1:8080/admin", true},
 		{"internal", "http://192.168.1.1/secret", true},

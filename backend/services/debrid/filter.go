@@ -7,9 +7,11 @@ import (
 
 // FilterOptions contains the expected metadata for filtering results
 type FilterOptions struct {
+	TitleID             string
 	ExpectedTitle       string
 	ExpectedYear        int
 	EpisodeAirYear      int                // Year the target episode aired (for year filter tolerance)
+	SeasonPremiereYear  int                // Premiere year of the requested season only.
 	MediaType           MediaType          // movie or series
 	MaxSizeMovieGB      float64            // Maximum size in GB for movies (0 = no limit)
 	MaxSizeEpisodeGB    float64            // Maximum size in GB for episodes (0 = no limit)
@@ -33,9 +35,11 @@ type FilterOptions struct {
 // For all media types: filters by title similarity (90%+) and year (±1 year) when expected year is set
 func FilterResults(results []models.NZBResult, opts FilterOptions) []models.NZBResult {
 	filterOpts := filter.Options{
+		TitleID:               opts.TitleID,
 		ExpectedTitle:         opts.ExpectedTitle,
 		ExpectedYear:          opts.ExpectedYear,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		IsMovie:               opts.MediaType == MediaTypeMovie,
 		MaxSizeMovieGB:        opts.MaxSizeMovieGB,
 		MaxSizeEpisodeGB:      opts.MaxSizeEpisodeGB,

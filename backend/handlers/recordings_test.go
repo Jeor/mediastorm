@@ -143,6 +143,49 @@ func TestRecordingsHandlerTracksRunningRecordingStreamUsage(t *testing.T) {
 	}
 }
 
+func TestGrowingRecordingSupportsByteRangeSeek(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "recording.ts")
+	if err := os.WriteFile(path, []byte("abcdefghij"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	handler := NewRecordingsHandler(nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/stream", nil)
+	req.Header.Set("Range", "bytes=4-6")
+	rec := httptest.NewRecorder()
+	if err := handler.streamGrowingRecording(rec, req, "rec-1", path); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusPartialContent || rec.Body.String() != "efg" {
+		t.Fatalf("range response = %d %q, want 206 and efg", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Range"); got != "bytes 4-6/10" {
+		t.Fatalf("Content-Range = %q", got)
+	}
+	if got := rec.Header().Get("Accept-Ranges"); got != "bytes" {
+		t.Fatalf("Accept-Ranges = %q", got)
+	}
+}
+
+func TestCompletedRecordingSupportsByteRangeSeek(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "recording.ts")
+	if err := os.WriteFile(path, []byte("abcdefghij"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	service := &fakeRecordingService{recording: models.Recording{
+		ID: "rec-1", Status: models.RecordingStatusCompleted, OutputPath: path,
+	}}
+	handler := NewRecordingsHandler(service, nil)
+	ctx := context.WithValue(context.Background(), auth.ContextKeyIsMaster, true)
+	req := httptest.NewRequest(http.MethodGet, "/api/live/recordings/rec-1/stream", nil).WithContext(ctx)
+	req = mux.SetURLVars(req, map[string]string{"recordingID": "rec-1"})
+	req.Header.Set("Range", "bytes=4-6")
+	rec := httptest.NewRecorder()
+	handler.Stream(rec, req)
+	if rec.Code != http.StatusPartialContent || rec.Body.String() != "efg" {
+		t.Fatalf("range response = %d %q, want 206 and efg", rec.Code, rec.Body.String())
+	}
+}
+
 func TestRecordingsHandlerAddsProfileMetadataToStreamTrackingRequest(t *testing.T) {
 	users := &fakeRecordingUsersProvider{
 		users: []models.User{{ID: "profile-1", AccountID: "acct-1", Name: "Profile 1"}},

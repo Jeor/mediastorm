@@ -26,6 +26,7 @@ import (
 	"novastream/internal/apiusage"
 	"novastream/internal/dnscache"
 	"novastream/internal/httpheaders"
+	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/internal/providerbreaker"
 	"novastream/models"
@@ -943,7 +944,8 @@ func episodeYearWithinTolerance(candidate, expected int) bool {
 
 // applyEpisodeYearPriority activates series-year precedence only when an
 // explicit, conflicting year remains in the passed result set. A target
-// episode's air year is valid and must not be treated as a reboot conflict.
+// episode's air year, season premiere year, and verified mapped identity year
+// are valid and must not be treated as reboot conflicts.
 func applyEpisodeYearPriority(results []models.NZBResult, seriesYear, episodeAirYear int) {
 	for i := range results {
 		delete(results[i].Attributes, "episodeYearPriority")
@@ -954,6 +956,9 @@ func applyEpisodeYearPriority(results []models.NZBResult, seriesYear, episodeAir
 
 	hasConflict := false
 	for _, result := range results {
+		if result.Attributes["episodeSeasonYearMatch"] == "true" || result.Attributes["episodeMappedYearMatch"] == "true" {
+			continue
+		}
 		releaseYear, err := strconv.Atoi(result.Attributes["episodeReleaseYear"])
 		if err != nil || releaseYear <= 0 {
 			continue
@@ -1244,6 +1249,7 @@ func (s *Service) sortResultsByScore(results []models.NZBResult, scoringCtx Scor
 }
 
 type SearchOptions struct {
+	TitleID               string                        // Canonical selected title identity; independent of provider stream identity.
 	AdaptiveSummary       *models.AdaptiveSearchSummary // Optional request-owned output, populated before presentation limits.
 	Query                 string
 	Categories            []string
@@ -1264,6 +1270,7 @@ type SearchOptions struct {
 	IsDaily               bool                              // True for daily shows (talk shows, news) that use date-based naming
 	TargetAirDate         string                            // For daily shows: air date in YYYY-MM-DD format
 	EpisodeAirYear        int                               // Year the target episode aired (for year filter tolerance)
+	SeasonPremiereYear    int                               // Premiere year of the requested season only.
 	EpisodeReleased       bool                              // True only when metadata confirms the target episode has aired
 	IncludeFiltered       bool                              // When true, return filtered results alongside passed results
 	IncludeScoreBreakdown bool                              // When true, attach per-criterion scoring details (admin search tester)
@@ -1322,6 +1329,7 @@ type searchRankingSettings struct {
 }
 
 type searchCacheOptions struct {
+	TitleID               string
 	Query                 string
 	Categories            []string
 	MaxResults            int
@@ -1338,6 +1346,7 @@ type searchCacheOptions struct {
 	IsDaily               bool
 	TargetAirDate         string
 	EpisodeAirYear        int
+	SeasonPremiereYear    int // Premiere year of the requested season only.
 	EpisodeReleased       bool
 	IncludeFiltered       bool
 	SkipFilter            bool
@@ -1346,6 +1355,7 @@ type searchCacheOptions struct {
 
 func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 	return searchCacheOptions{
+		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            append([]string(nil), opts.Categories...),
 		MaxResults:            opts.MaxResults,
@@ -1362,6 +1372,7 @@ func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		EpisodeReleased:       opts.EpisodeReleased,
 		IncludeFiltered:       opts.IncludeFiltered,
 		SkipFilter:            opts.SkipFilter,
@@ -1539,6 +1550,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	// Get effective filtering settings (cascade: global -> profile -> client)
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, opts.AdaptiveThroughput, settings)
@@ -1645,9 +1657,10 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 			hasResolver := opts.EpisodeResolver != nil
 			log.Printf("[indexer] TIMING: debrid search starting (query=%q, hasEpisodeResolver=%v)", opts.Query, hasResolver)
 			debOpts := debrid.SearchOptions{
+				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
-				MaxResults:            sourceOpts.MaxResults,
+				MaxResults:            crossMappingSourceLimit(opts, sourceOpts.MaxResults),
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
@@ -1661,6 +1674,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 				IsDaily:               opts.IsDaily,
 				TargetAirDate:         opts.TargetAirDate,
 				EpisodeAirYear:        opts.EpisodeAirYear,
+				SeasonPremiereYear:    opts.SeasonPremiereYear,
 				EpisodeReleased:       opts.EpisodeReleased,
 				SkipFilter:            opts.SkipFilter,
 			}
@@ -1823,6 +1837,7 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	filterBundle, animeSettings, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, opts.AdaptiveThroughput, settings)
 	filterSettings := filterBundle.Default
@@ -2044,6 +2059,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 		return usenetOut, debridOut
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	includeUsenet := shouldUseUsenet(settings.Streaming.ServiceMode)
 	includeDebrid := shouldUseDebrid(settings.Streaming.ServiceMode)
@@ -2324,6 +2340,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		return out
 	}
 	debOpts := debrid.SearchOptions{
+		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            append([]string{}, opts.Categories...),
 		MaxResults:            0, // ranking is final-order; a source cap would truncate before filter/rank (non-split path uses 0)
@@ -2340,6 +2357,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		IsDaily:               opts.IsDaily,
 		TargetAirDate:         opts.TargetAirDate,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		EpisodeReleased:       opts.EpisodeReleased,
 		SkipFilter:            true,
 	}
@@ -2547,6 +2565,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 		return nil, fmt.Errorf("load settings: %w", err)
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	includeUsenet := shouldUseUsenet(settings.Streaming.ServiceMode)
 	includeDebrid := shouldUseDebrid(settings.Streaming.ServiceMode)
@@ -2661,9 +2680,10 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				return
 			}
 			debOpts := debrid.SearchOptions{
+				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
-				MaxResults:            opts.MaxResults,
+				MaxResults:            crossMappingSourceLimit(opts, opts.MaxResults),
 				IMDBID:                opts.IMDBID,
 				MediaType:             opts.MediaType,
 				Year:                  opts.Year,
@@ -2677,6 +2697,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				IsDaily:               opts.IsDaily,
 				TargetAirDate:         opts.TargetAirDate,
 				EpisodeAirYear:        opts.EpisodeAirYear,
+				SeasonPremiereYear:    opts.SeasonPremiereYear,
 				EpisodeReleased:       opts.EpisodeReleased,
 				SkipFilter:            opts.SkipFilter,
 			}
@@ -2767,8 +2788,7 @@ func (s *Service) fetchUsenetResultsAllQueries(ctx context.Context, settings con
 
 	// Single query — no parallelization overhead
 	if len(validQueries) == 1 {
-		queryOpts := opts
-		queryOpts.Query = validQueries[0]
+		queryOpts := mappedQueryOptions(opts, validQueries[0])
 		return s.fetchUsenetResults(ctx, settings, queryOpts)
 	}
 
@@ -2783,8 +2803,7 @@ func (s *Service) fetchUsenetResultsAllQueries(ctx context.Context, settings con
 	resultsChan := make(chan searchResult, len(validQueries))
 	for _, query := range validQueries {
 		go func(q string) {
-			queryOpts := opts
-			queryOpts.Query = q
+			queryOpts := mappedQueryOptions(opts, q)
 			results, err := s.fetchUsenetResults(ctx, settings, queryOpts)
 			resultsChan <- searchResult{results: results, err: err}
 		}(query)
@@ -2846,10 +2865,12 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 	}
 
 	return filter.Options{
+		TitleID:               opts.TitleID,
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
 		ExpectedCountry:       opts.CountryCode,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		IsMovie:               isMovie,
 		MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 		MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),
@@ -2905,6 +2926,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		return debridOut, usenetOut
 	}
 	settings = config.FilterSettingsForProfile(settings, opts.UserID)
+	s.discoverCrossMapping(ctx, settings, opts)
 
 	filterBundle, animeSettings2, filterOverrides := s.getEffectiveFilterBundle(opts.UserID, opts.ClientID, opts.AdaptiveThroughput, settings)
 	filterSettings := filterBundle.Default
@@ -2984,9 +3006,10 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		log.Printf("[indexer] TIMING: split debrid search starting (query=%q)", opts.Query)
 
 		debOpts := debrid.SearchOptions{
+			TitleID:               opts.TitleID,
 			Query:                 opts.Query,
 			Categories:            append([]string{}, opts.Categories...),
-			MaxResults:            opts.MaxResults,
+			MaxResults:            crossMappingSourceLimit(opts, opts.MaxResults),
 			IMDBID:                opts.IMDBID,
 			MediaType:             opts.MediaType,
 			Year:                  opts.Year,
@@ -3000,6 +3023,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 			IsDaily:               opts.IsDaily,
 			TargetAirDate:         opts.TargetAirDate,
 			EpisodeAirYear:        opts.EpisodeAirYear,
+			SeasonPremiereYear:    opts.SeasonPremiereYear,
 			EpisodeReleased:       opts.EpisodeReleased,
 		}
 
@@ -3537,8 +3561,14 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 		addQuery(eventQuery)
 	}
 
-	// Add the original query
+	// Add both catalog and explicitly mapped provider queries.
 	addQuery(opts.Query)
+	if parsed.MediaType == debrid.MediaTypeSeries {
+		if mapped, ok := mediaidentity.KnownAnthologyEpisode(opts.TitleID, parsed.Season, parsed.Episode); ok {
+			addQuery(fmt.Sprintf("%s S%02dE%02d", mapped.ReleaseTitle, mapped.Season, mapped.Episode))
+			addQuery(fmt.Sprintf("%s S%02d", mapped.ReleaseTitle, mapped.Season))
+		}
+	}
 
 	// Add S##E## variants (for non-daily shows, or as fallback for daily shows)
 	addVariants := func(title string) {
@@ -4046,8 +4076,7 @@ func (s *Service) searchUsenetWithFilter(ctx context.Context, settings config.Se
 	// Launch all searches in parallel
 	for idx, query := range validQueries {
 		go func(priority int, q string) {
-			queryOpts := opts
-			queryOpts.Query = q
+			queryOpts := mappedQueryOptions(opts, q)
 
 			if priority > 0 {
 				log.Printf("[indexer/usenet] parallel search with alternate query: %q", q)
@@ -4175,8 +4204,7 @@ func (s *Service) searchUsenet(ctx context.Context, settings config.Settings, op
 
 // searchUsenetSingleWithFilter performs a single usenet search with explicit filter settings
 func (s *Service) searchUsenetSingleWithFilter(ctx context.Context, settings config.Settings, opts SearchOptions, baseParsed debrid.ParsedQuery, alternateTitles []string, query string, filterSettings models.FilterSettings) ([]models.NZBResult, error) {
-	queryOpts := opts
-	queryOpts.Query = query
+	queryOpts := mappedQueryOptions(opts, query)
 
 	allResults, err := s.fetchUsenetResults(ctx, settings, queryOpts)
 	if err != nil {
@@ -4188,14 +4216,13 @@ func (s *Service) searchUsenetSingleWithFilter(ctx context.Context, settings con
 	}
 
 	parsedForQuery := debrid.ParseQuery(query)
-	filtered := s.applyUsenetFilteringWithSettings(allResults, queryOpts, baseParsed, parsedForQuery, alternateTitles, filterSettings)
+	filtered := s.applyUsenetFilteringWithSettings(allResults, opts, baseParsed, parsedForQuery, alternateTitles, filterSettings)
 	return filtered, nil
 }
 
 // searchUsenetSingle performs a single usenet search (non-parallel path)
 func (s *Service) searchUsenetSingle(ctx context.Context, settings config.Settings, opts SearchOptions, baseParsed debrid.ParsedQuery, alternateTitles []string, query string) ([]models.NZBResult, error) {
-	queryOpts := opts
-	queryOpts.Query = query
+	queryOpts := mappedQueryOptions(opts, query)
 
 	allResults, err := s.fetchUsenetResults(ctx, settings, queryOpts)
 	if err != nil {
@@ -4207,7 +4234,7 @@ func (s *Service) searchUsenetSingle(ctx context.Context, settings config.Settin
 	}
 
 	parsedForQuery := debrid.ParseQuery(query)
-	filtered := s.applyUsenetFiltering(allResults, settings, queryOpts, baseParsed, parsedForQuery, alternateTitles)
+	filtered := s.applyUsenetFiltering(allResults, settings, opts, baseParsed, parsedForQuery, alternateTitles)
 	return filtered, nil
 }
 
@@ -4301,10 +4328,12 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 	}
 
 	filterOpts := filter.Options{
+		TitleID:               opts.TitleID,
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
 		ExpectedCountry:       opts.CountryCode,
 		EpisodeAirYear:        opts.EpisodeAirYear,
+		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		IsMovie:               isMovie,
 		MaxSizeMovieGB:        models.FloatVal(filterSettings.MaxSizeMovieGB, 0),
 		MaxSizeEpisodeGB:      models.FloatVal(filterSettings.MaxSizeEpisodeGB, 0),

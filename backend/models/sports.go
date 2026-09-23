@@ -32,6 +32,7 @@ const (
 
 // SportsGame represents a single scheduled, live, or completed game.
 type SportsGame struct {
+	EventContext      string                   `json:"eventContext,omitempty"`
 	EndTime           time.Time                `json:"endTime,omitempty"`
 	FootballSituation *SportsFootballSituation `json:"footballSituation,omitempty"`
 	LiveSituation     *SportsMLBSituation      `json:"liveSituation,omitempty"`

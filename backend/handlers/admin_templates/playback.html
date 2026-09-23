@@ -1673,7 +1673,14 @@
         });
         if (!response.ok) {
             const text = await response.text();
-            throw new Error(text || `HTTP ${response.status}`);
+            let message = text;
+            try {
+                const payload = JSON.parse(text);
+                message = payload.message || payload.error?.message || payload.error || text;
+            } catch (_) {
+                // Keep non-JSON upstream errors readable.
+            }
+            throw new Error(typeof message === 'string' && message ? message : `HTTP ${response.status}`);
         }
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) return null;
@@ -2493,7 +2500,8 @@
             await loadIptvNowPlaying();
         } catch (error) {
             iptvChannelsLoaded = false;
-            container.innerHTML = `<div class="empty-inline">Could not load IPTV channels: ${escapeHtml(error.message)}</div>`;
+            const missingSource = String(error.message).includes('No Live TV source is configured');
+            container.innerHTML = `<div class="empty-inline">Could not load IPTV channels: ${escapeHtml(error.message)}${missingSource ? ' <a href="{{.BasePath}}/settings">Open settings</a> or choose another profile.' : ''}</div>`;
         }
     }
 

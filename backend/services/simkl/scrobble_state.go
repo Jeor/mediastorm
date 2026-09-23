@@ -237,13 +237,15 @@ func BuildScrobbleRequest(update models.PlaybackProgressUpdate, percentWatched f
 			IDs:   ids,
 		}
 	} else if update.MediaType == "episode" {
-		req.Show = &Show{
-			Title: update.SeriesName,
-			IDs:   seriesIDToIDs(update.SeriesID, update.ExternalIDs),
+		showIDs, season, episode := EpisodeIdentity(seriesIDToIDs(update.SeriesID, update.ExternalIDs), update.SeasonNumber, update.EpisodeNumber)
+		title := update.SeriesName
+		if season != update.SeasonNumber {
+			title = "" // The catalog title belongs to the split series.
 		}
+		req.Show = &Show{Title: title, IDs: showIDs}
 		req.Episode = &Episode{
-			Season: update.SeasonNumber,
-			Number: update.EpisodeNumber,
+			Season: season,
+			Number: episode,
 		}
 	}
 	return req

@@ -190,6 +190,9 @@ func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
 	case "trakt-list":
 		h.delegateMetadata(w, r, source, h.MetadataHandler.TraktList, displayListQuery(r, userID, nil))
 		return
+	case "publicmetadb-list":
+		h.delegateMetadata(w, r, source, h.MetadataHandler.PublicMetaDBList, displayListQuery(r, userID, nil))
+		return
 	case "simkl-list":
 		h.delegateMetadata(w, r, source, h.MetadataHandler.SimklList, displayListQuery(r, userID, nil))
 		return
@@ -234,7 +237,9 @@ func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
 		items = h.HiddenItemsService.FilterHiddenWatchlistItems(userID, items)
 	}
 	h.enrich(userID, items, r)
-	if h.MetadataHandler != nil {
+	// Personal watchlists retain explicitly saved titles regardless of release
+	// status. Discovery and other lists still follow release visibility settings.
+	if source != "watchlist" && h.MetadataHandler != nil {
 		policy := resolveUnreleasedVisibilityPolicy(
 			h.MetadataHandler.CfgManager,
 			h.MetadataHandler.UserSettings,

@@ -101,6 +101,8 @@ var LeagueCatalog = []League{
 	{ID: "aso:fleche-wallonne", Name: "La Flèche Wallonne", Sport: "cycling", Category: "cycling", EventKind: "race"},
 	{ID: "aso:fleche-wallonne-femmes", Name: "La Flèche Wallonne Femmes", Sport: "cycling", Category: "cycling", EventKind: "race"},
 	{ID: "rcs:giro", Name: "Giro d’Italia", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "cro:cro-race", Name: "CRO Race", Sport: "cycling", Category: "cycling", EventKind: "race"},
+	{ID: "uci:road-worlds", Name: "UCI Road World Championships", Sport: "cycling", Category: "cycling", EventKind: "race"},
 }
 
 // Every supported league is enabled by default. Saved configuration can select a subset.

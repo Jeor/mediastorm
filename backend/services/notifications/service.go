@@ -355,7 +355,7 @@ func (s *Service) NotifySystem(ctx context.Context, eventType string) error {
 
 // HandlePlaybackUpdate converts player heartbeats into edge-triggered watch events.
 func (s *Service) HandlePlaybackUpdate(userID string, update models.PlaybackProgressUpdate, percent float64) {
-	if isLivePlaybackNotification(update) {
+	if isNonNotifiablePlayback(update) {
 		return
 	}
 	key := userID + "\x00" + update.MediaType + "\x00" + update.ItemID
@@ -465,7 +465,10 @@ func (s *Service) HandlePlaybackUpdate(userID string, update models.PlaybackProg
 	}
 }
 
-func isLivePlaybackNotification(update models.PlaybackProgressUpdate) bool {
+func isNonNotifiablePlayback(update models.PlaybackProgressUpdate) bool {
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(update.SourcePath)), "recording:") {
+		return true
+	}
 	switch strings.ToLower(strings.TrimSpace(update.MediaType)) {
 	case "live", "livetv", "live-tv", "channel", "channels":
 		return true

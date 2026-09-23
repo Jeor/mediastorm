@@ -553,6 +553,12 @@ func (s *Service) buildInternalPlaybackResolution(cfg config.Settings, candidate
 		needsScan = true
 		log.Printf("[playback] cached media file conflicts with target episode; rescanning directory: file=%q directory=%q", storagePath, scanPath)
 	}
+	if s.metadataSvc != nil && needsScan && path.Clean(scanPath) == "/" {
+		// The WebDAV root contains files from every imported NZB. Searching it
+		// for a matching SxxExx can silently substitute an unrelated show's
+		// episode (for example, Monster S01E07 with The Studio S01E07).
+		return nil, fmt.Errorf("refusing to select media from shared WebDAV root for %q", strings.TrimSpace(candidate.Title))
+	}
 	if s.metadataSvc != nil && needsScan {
 		log.Printf("[playback] scanning storage directory for media files: %q", scanPath)
 		hints := buildSelectionHintsFromCandidate(candidate, scanPath)
@@ -587,6 +593,14 @@ func (s *Service) buildInternalPlaybackResolution(cfg config.Settings, candidate
 }
 
 func resolvedFileConflictsWithTargetEpisode(filePath string, candidate models.NZBResult) bool {
+	// Indexers can use different season numbering than the metadata catalog
+	// (Monster is indexed as S04 while the catalog exposes it as S01). If the
+	// resolved file has an explicit code, compare against the selected release's
+	// source-specific episode code instead of the catalog numbering.
+	if releaseEpisode, ok := mediaresolve.ExtractEpisodeCode(candidate.Title); ok {
+		return !mediaresolve.CandidateMatchesEpisode(filePath, releaseEpisode)
+	}
+
 	hints := buildSelectionHintsFromCandidate(candidate, path.Dir(filePath))
 	if hints.TargetSeason <= 0 || hints.TargetEpisode <= 0 {
 		return false

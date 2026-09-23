@@ -17,7 +17,7 @@ type pgLocalMediaRepo struct {
 
 func (r *pgLocalMediaRepo) ListLibraries(ctx context.Context) ([]models.LocalMediaLibrary, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, name, library_type, root_path, filter_out_terms, min_file_size_bytes, created_at, updated_at,
+		SELECT id, name, library_type, root_path, root_paths, filter_out_terms, min_file_size_bytes, created_at, updated_at,
 		       last_scan_started_at, last_scan_finished_at, last_scan_status, last_scan_error,
 		       last_scan_discovered, last_scan_total, last_scan_matched, last_scan_low_confidence
 		FROM local_media_libraries
@@ -40,7 +40,7 @@ func (r *pgLocalMediaRepo) ListLibraries(ctx context.Context) ([]models.LocalMed
 
 func (r *pgLocalMediaRepo) GetLibrary(ctx context.Context, id string) (*models.LocalMediaLibrary, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, name, library_type, root_path, filter_out_terms, min_file_size_bytes, created_at, updated_at,
+		SELECT id, name, library_type, root_path, root_paths, filter_out_terms, min_file_size_bytes, created_at, updated_at,
 		       last_scan_started_at, last_scan_finished_at, last_scan_status, last_scan_error,
 		       last_scan_discovered, last_scan_total, last_scan_matched, last_scan_low_confidence
 		FROM local_media_libraries
@@ -57,13 +57,14 @@ func (r *pgLocalMediaRepo) GetLibrary(ctx context.Context, id string) (*models.L
 
 func (r *pgLocalMediaRepo) CreateLibrary(ctx context.Context, library *models.LocalMediaLibrary) error {
 	filterOutTermsJSON, _ := json.Marshal(normalizeLocalMediaFilterOutTerms(library.FilterOutTerms))
+	rootPathsJSON, _ := json.Marshal(library.RootPaths)
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO local_media_libraries (
-			id, name, library_type, root_path, filter_out_terms, min_file_size_bytes, created_at, updated_at,
+			id, name, library_type, root_path, root_paths, filter_out_terms, min_file_size_bytes, created_at, updated_at,
 			last_scan_started_at, last_scan_finished_at, last_scan_status, last_scan_error,
 			last_scan_discovered, last_scan_total, last_scan_matched, last_scan_low_confidence
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-		library.ID, library.Name, library.Type, library.RootPath, filterOutTermsJSON, library.MinFileSizeBytes, library.CreatedAt, library.UpdatedAt,
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+		library.ID, library.Name, library.Type, library.RootPath, rootPathsJSON, filterOutTermsJSON, library.MinFileSizeBytes, library.CreatedAt, library.UpdatedAt,
 		library.LastScanStartedAt, library.LastScanFinishedAt, library.LastScanStatus, library.LastScanError,
 		library.LastScanDiscovered, library.LastScanTotal, library.LastScanMatched, library.LastScanLowConf,
 	)
@@ -75,14 +76,15 @@ func (r *pgLocalMediaRepo) CreateLibrary(ctx context.Context, library *models.Lo
 
 func (r *pgLocalMediaRepo) UpdateLibrary(ctx context.Context, library *models.LocalMediaLibrary) error {
 	filterOutTermsJSON, _ := json.Marshal(normalizeLocalMediaFilterOutTerms(library.FilterOutTerms))
+	rootPathsJSON, _ := json.Marshal(library.RootPaths)
 	_, err := r.pool.Exec(ctx, `
 		UPDATE local_media_libraries
-		SET name = $2, library_type = $3, root_path = $4, filter_out_terms = $5, min_file_size_bytes = $6, updated_at = $7,
-		    last_scan_started_at = $8, last_scan_finished_at = $9, last_scan_status = $10,
-		    last_scan_error = $11, last_scan_discovered = $12, last_scan_total = $13, last_scan_matched = $14,
-		    last_scan_low_confidence = $15
+		SET name = $2, library_type = $3, root_path = $4, root_paths = $5, filter_out_terms = $6, min_file_size_bytes = $7, updated_at = $8,
+		    last_scan_started_at = $9, last_scan_finished_at = $10, last_scan_status = $11,
+		    last_scan_error = $12, last_scan_discovered = $13, last_scan_total = $14, last_scan_matched = $15,
+		    last_scan_low_confidence = $16
 		WHERE id = $1`,
-		library.ID, library.Name, library.Type, library.RootPath, filterOutTermsJSON, library.MinFileSizeBytes, library.UpdatedAt,
+		library.ID, library.Name, library.Type, library.RootPath, rootPathsJSON, filterOutTermsJSON, library.MinFileSizeBytes, library.UpdatedAt,
 		library.LastScanStartedAt, library.LastScanFinishedAt, library.LastScanStatus,
 		library.LastScanError, library.LastScanDiscovered, library.LastScanTotal, library.LastScanMatched, library.LastScanLowConf,
 	)
@@ -97,12 +99,19 @@ func scanLocalMediaLibrary(scanner interface {
 }) (*models.LocalMediaLibrary, error) {
 	var library models.LocalMediaLibrary
 	var filterOutTermsJSON []byte
+	var rootPathsJSON []byte
 	if err := scanner.Scan(
-		&library.ID, &library.Name, &library.Type, &library.RootPath, &filterOutTermsJSON, &library.MinFileSizeBytes, &library.CreatedAt, &library.UpdatedAt,
+		&library.ID, &library.Name, &library.Type, &library.RootPath, &rootPathsJSON, &filterOutTermsJSON, &library.MinFileSizeBytes, &library.CreatedAt, &library.UpdatedAt,
 		&library.LastScanStartedAt, &library.LastScanFinishedAt, &library.LastScanStatus, &library.LastScanError,
 		&library.LastScanDiscovered, &library.LastScanTotal, &library.LastScanMatched, &library.LastScanLowConf,
 	); err != nil {
 		return nil, err
+	}
+	if err := json.Unmarshal(rootPathsJSON, &library.RootPaths); err != nil {
+		return nil, fmt.Errorf("decode local media root paths: %w", err)
+	}
+	if len(library.RootPaths) == 0 {
+		library.RootPaths = []string{library.RootPath}
 	}
 	if len(filterOutTermsJSON) > 0 {
 		if err := json.Unmarshal(filterOutTermsJSON, &library.FilterOutTerms); err != nil {

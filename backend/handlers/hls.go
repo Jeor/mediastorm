@@ -30,6 +30,7 @@ import (
 	"novastream/internal/dnscache"
 	"novastream/internal/netproxy"
 	"novastream/internal/requestsecurity"
+	"novastream/internal/streamheaders"
 	"novastream/models"
 	"novastream/services/debrid"
 	"novastream/services/streaming"
@@ -131,20 +132,23 @@ type throttledReader struct {
 // with throttling support. It allows FFmpeg to use HTTP Range requests for
 // seeking while we control the download speed.
 type throttlingProxy struct {
-	targetURL string
-	session   *HLSSession
-	applyAuth func(*http.Request)
-	server    *http.Server
-	port      int
+	targetURL      string
+	requestHeaders map[string]string
+	session        *HLSSession
+	applyAuth      func(*http.Request)
+	server         *http.Server
+	port           int
 }
 
 // newThrottlingProxy creates a new throttling proxy for the given URL.
 // Returns the proxy and the local URL that FFmpeg should use.
 func newThrottlingProxy(targetURL string, session *HLSSession, applyAuth func(*http.Request)) (*throttlingProxy, string, error) {
+	targetURL, requestHeaders := streamheaders.Extract(targetURL)
 	proxy := &throttlingProxy{
-		targetURL: targetURL,
-		session:   session,
-		applyAuth: applyAuth,
+		targetURL:      targetURL,
+		requestHeaders: requestHeaders,
+		session:        session,
+		applyAuth:      applyAuth,
 	}
 
 	// Find a free port
@@ -253,6 +257,7 @@ func (p *throttlingProxy) applyRequestAuth(req *http.Request) {
 	if req == nil {
 		return
 	}
+	streamheaders.Apply(req.Header, p.requestHeaders)
 	if parsedURL, parseErr := url.Parse(p.targetURL); parseErr == nil && parsedURL.User != nil {
 		password, _ := parsedURL.User.Password()
 		req.SetBasicAuth(parsedURL.User.Username(), password)
@@ -1566,6 +1571,7 @@ func (m *HLSManager) applyExternalUsenetWebDAVAuth(req *http.Request) {
 }
 
 func (m *HLSManager) externalFFmpegHeaders(rawURL string) []string {
+	rawURL, requestHeaders := streamheaders.Extract(rawURL)
 	parsedURL, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsedURL == nil {
 		return nil
@@ -1579,11 +1585,14 @@ func (m *HLSManager) externalFFmpegHeaders(rawURL string) []string {
 		m.applyExternalUsenetWebDAVAuth(req)
 	}
 
-	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" {
+	headerValue := streamheaders.FFmpegValue(requestHeaders)
+	if authHeader := req.Header.Get("Authorization"); authHeader != "" {
+		headerValue += "Authorization: " + authHeader + "\r\n"
+	}
+	if headerValue == "" {
 		return nil
 	}
-	return []string{"-headers", "Authorization: " + authHeader + "\r\n"}
+	return []string{"-headers", headerValue}
 }
 
 // ConfigureLocalWebDAVAccess allows the manager to build direct URLs against the local WebDAV server.
@@ -1643,6 +1652,7 @@ func generateSessionID() string {
 // resolution during probing and FFmpeg input, which can cause timeouts.
 func (m *HLSManager) resolveExternalURL(ctx context.Context, externalURL string) (string, error) {
 	videoTracef("[hls] resolving external URL")
+	requestURL, requestHeaders := streamheaders.Extract(externalURL)
 
 	// Create a request-scoped client that follows redirects while sharing the
 	// CDN transport and DNS cache.
@@ -1656,7 +1666,7 @@ func (m *HLSManager) resolveExternalURL(ctx context.Context, externalURL string)
 	}
 
 	// Encode URL properly (handles spaces and special characters)
-	encodedURL, err := utils.EncodeURLWithSpaces(externalURL)
+	encodedURL, err := utils.EncodeURLWithSpaces(requestURL)
 	if err != nil {
 		return "", fmt.Errorf("encode URL: %w", err)
 	}
@@ -1667,6 +1677,7 @@ func (m *HLSManager) resolveExternalURL(ctx context.Context, externalURL string)
 		return "", fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("User-Agent", "VLC/3.0.18 LibVLC/3.0.18")
+	streamheaders.Apply(req.Header, requestHeaders)
 	m.applyExternalUsenetWebDAVAuth(req)
 
 	resp, err := client.Do(req)
@@ -1681,9 +1692,9 @@ func (m *HLSManager) resolveExternalURL(ctx context.Context, externalURL string)
 
 	// If HEAD succeeded, check for redirects
 	if resp.StatusCode < 400 {
-		if resolvedURL != externalURL {
+		if resolvedURL != requestURL {
 			videoTracef("[hls] resolved external URL via HEAD")
-			return resolvedURL, nil
+			return streamheaders.Attach(resolvedURL, requestHeaders), nil
 		}
 		videoTracef("[hls] external URL has no redirects (HEAD)")
 		return externalURL, nil
@@ -1698,6 +1709,7 @@ func (m *HLSManager) resolveExternalURL(ctx context.Context, externalURL string)
 		return "", fmt.Errorf("create GET request: %w", err)
 	}
 	req.Header.Set("User-Agent", "VLC/3.0.18 LibVLC/3.0.18")
+	streamheaders.Apply(req.Header, requestHeaders)
 	req.Header.Set("Range", "bytes=0-0") // Request only 1 byte
 	m.applyExternalUsenetWebDAVAuth(req)
 
@@ -1716,9 +1728,9 @@ func (m *HLSManager) resolveExternalURL(ctx context.Context, externalURL string)
 	}
 
 	// If we followed redirects, use the final URL
-	if resolvedURL != externalURL {
+	if resolvedURL != requestURL {
 		videoTracef("[hls] resolved external URL via GET")
-		return resolvedURL, nil
+		return streamheaders.Attach(resolvedURL, requestHeaders), nil
 	}
 
 	// No redirects, use the original URL

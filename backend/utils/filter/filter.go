@@ -13,7 +13,6 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 
-	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/models"
 	"novastream/utils/parsett"
@@ -132,7 +131,8 @@ func (r *SeriesEpisodeResolver) GetEpisodesForSeasons(seasons []int) int {
 
 // Options contains the expected metadata for filtering results
 type Options struct {
-	TitleID             string // Selected title identity for verified anthology episode aliases.
+	Numbering           *models.EpisodeNumbering `json:"numbering,omitempty"`
+	TitleID             string                   // Selected title identity for verified anthology episode aliases.
 	ExpectedTitle       string
 	ExpectedYear        int
 	ExpectedCountry     string      // Original production country; normalized before comparison
@@ -369,9 +369,25 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		}
 
 		// Ensure attributes map is initialized early (needed for year match tagging)
-		if result.Attributes == nil {
-			result.Attributes = make(map[string]string)
+		attributes := make(map[string]string, len(result.Attributes)+8)
+		for key, value := range result.Attributes {
+			attributes[key] = value
 		}
+		result.Attributes = attributes
+		if attributes["mappedCatalogEpisode"] != "" {
+			attributes["targetSeason"] = strconv.Itoa(opts.TargetSeason)
+			attributes["targetEpisode"] = strconv.Itoa(opts.TargetEpisode)
+			attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", opts.TargetSeason, opts.TargetEpisode)
+			delete(attributes, "absoluteEpisodeNumber")
+			delete(attributes, "targetAbsoluteEpisode")
+			if opts.TargetAbsoluteEpisode > 0 {
+				attributes["absoluteEpisodeNumber"] = strconv.Itoa(opts.TargetAbsoluteEpisode)
+			}
+		}
+		delete(attributes, "mappedCatalogEpisode")
+		delete(attributes, "mappedCatalogNumbering")
+		delete(attributes, "episodeMappingSource")
+		delete(attributes, "episodeSelectionAliases")
 
 		// Revalidate these context-dependent year exceptions on every filtering pass.
 		delete(result.Attributes, "episodeSeasonYearMatch")
@@ -384,8 +400,10 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		}
 
 		// A provider title alias is valid only within its verified season.
-		mapped, known := mediaidentity.KnownAnthologyEpisode(opts.TitleID, opts.TargetSeason, opts.TargetEpisode)
-		mappedRelease := known && !opts.IsMovie && !opts.IsAnime && len(parsed.Seasons) == 1 && parsed.Seasons[0] == mapped.Season
+		mapped, mappedRelease := releaseMappingForResult(opts, parsed)
+		if mapped.ReleaseTitle == "" {
+			mapped.ReleaseTitle = opts.ExpectedTitle
+		}
 		releaseTitles := candidateTitles
 		if mappedRelease {
 			releaseTitles = append(append([]string(nil), candidateTitles...), mapped.ReleaseTitle)
@@ -509,7 +527,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			if mappedRelease {
 				episodeOpts.TargetSeason = mapped.Season
 				episodeOpts.TargetEpisode = mapped.Episode
-				episodeOpts.TargetAbsoluteEpisode = 0
+				episodeOpts.TargetAbsoluteEpisode = mapped.AbsoluteEpisode
 				episodeOpts.EpisodeResolver = NewSeriesEpisodeResolver(map[int]int{mapped.Season: mapped.SeasonEpisodeCount})
 			}
 			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, episodeOpts); rejected {
@@ -525,6 +543,12 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				result.Attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", mapped.Season, mapped.Episode)
 				delete(result.Attributes, "absoluteEpisodeNumber")
 				delete(result.Attributes, "targetAbsoluteEpisode")
+				result.Attributes["mappedCatalogNumbering"] = models.EpisodeNumberingKey(opts.Numbering)
+				result.Attributes["mappedCatalogEpisode"] = fmt.Sprintf("S%02dE%02d", opts.TargetSeason, opts.TargetEpisode)
+				result.Attributes["episodeMappingSource"] = mapped.Source
+				if mapped.AbsoluteEpisode > 0 {
+					result.Attributes["absoluteEpisodeNumber"] = strconv.Itoa(mapped.AbsoluteEpisode)
+				}
 			}
 		}
 
@@ -715,6 +739,8 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		if parsed.Group != "" {
 			result.Attributes["group"] = parsed.Group
 		}
+
+		bindPackEpisodeAliases(&result, opts, parsed)
 
 		// Result passed all filters
 		detailed = append(detailed, FilteredResult{

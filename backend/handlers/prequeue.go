@@ -1010,6 +1010,7 @@ func (h *PrequeueHandler) Prequeue(w http.ResponseWriter, r *http.Request) {
 		// If episode was explicitly provided, use it
 		if req.SeasonNumber >= 0 && req.EpisodeNumber > 0 {
 			targetEpisode = &models.EpisodeReference{
+				Numbering:             req.Numbering,
 				SeasonNumber:          req.SeasonNumber,
 				EpisodeNumber:         req.EpisodeNumber,
 				AbsoluteEpisodeNumber: req.AbsoluteEpisodeNumber,
@@ -1820,6 +1821,9 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 		// effective Result Order. The indexer remains the source of truth for
 		// those lexicographic criterion values.
 		IncludeScoreBreakdown: true,
+	}
+	if targetEpisode != nil {
+		searchOpts.Numbering = targetEpisode.Numbering
 	}
 	// Pass absolute episode number for anime matching (if available)
 	if targetEpisode != nil && targetEpisode.AbsoluteEpisodeNumber > 0 {
@@ -3111,6 +3115,14 @@ func (h *PrequeueHandler) resolveCandidates(ctx context.Context, prequeueID stri
 				parsedEp, hasEpisode := mediaresolve.ParseAbsoluteEpisodeNumber(result.Title)
 				if hasEpisode {
 					episodeCode := mediaresolve.EpisodeCode{Season: opts.targetEpisode.SeasonNumber, Episode: opts.targetEpisode.EpisodeNumber}
+					if result.Attributes["mappedCatalogEpisode"] == fmt.Sprintf("S%02dE%02d", episodeCode.Season, episodeCode.Episode) && result.Attributes["mappedCatalogNumbering"] == models.EpisodeNumberingKey(opts.targetEpisode.Numbering) {
+						if season, err := strconv.Atoi(result.Attributes["targetSeason"]); err == nil && season > 0 {
+							episodeCode.Season = season
+						}
+						if episode, err := strconv.Atoi(result.Attributes["targetEpisode"]); err == nil && episode > 0 {
+							episodeCode.Episode = episode
+						}
+					}
 					matchesSXXEXX := mediaresolve.CandidateMatchesEpisode(result.Title, episodeCode)
 					if !matchesSXXEXX && parsedEp != opts.targetEpisode.AbsoluteEpisodeNumber {
 						log.Printf("[prequeue] Skipping result [%d] - episode %d doesn't match target (S%02dE%02d/abs:%d): %s",
@@ -3939,6 +3951,16 @@ func annotateResultEpisode(result *models.NZBResult, episode *models.EpisodeRefe
 		attributes[key] = value
 	}
 	result.Attributes = attributes
+	// Filtering has already bound a verified source numbering system to this
+	// catalog episode. Preserve it through both normal and deferred batches.
+	catalogCode := fmt.Sprintf("S%02dE%02d", episode.SeasonNumber, episode.EpisodeNumber)
+	if attributes["mappedCatalogEpisode"] == catalogCode && attributes["mappedCatalogNumbering"] == models.EpisodeNumberingKey(episode.Numbering) {
+		return
+	}
+	delete(attributes, "mappedCatalogEpisode")
+	delete(attributes, "mappedCatalogNumbering")
+	delete(attributes, "episodeMappingSource")
+	delete(attributes, "episodeSelectionAliases")
 
 	if episode.SeasonNumber > 0 {
 		attributes["targetSeason"] = strconv.Itoa(episode.SeasonNumber)
@@ -4049,6 +4071,7 @@ type SeriesMetadataResult struct {
 // and looks up the absolute episode number for the target episode if not already set.
 // Returns the episode resolver and an updated targetEpisode (with AbsoluteEpisodeNumber set if found).
 func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.Context, titleID, titleName string, year int, imdbID string, targetEpisode *models.EpisodeReference) *SeriesMetadataResult {
+	hasExplicitNumbering := targetEpisode != nil && targetEpisode.Numbering != nil
 	result := &SeriesMetadataResult{
 		TargetEpisode: targetEpisode,
 	}
@@ -4065,6 +4088,9 @@ func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.C
 		IMDBID:  imdbID,
 	}
 
+	if targetEpisode != nil && targetEpisode.Numbering != nil {
+		query.SeasonType = targetEpisode.Numbering.Ordering
+	}
 	// Fetch series details from metadata service
 	details, err := h.metadataSvc.SeriesDetails(ctx, query)
 	if err != nil {
@@ -4098,6 +4124,16 @@ func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.C
 			details.Title.Name, details.Title.Genres, details.Title.OriginalName, details.Title.Language, details.Title.AirsTimezone)
 	}
 
+	// Never hydrate coordinates from a different provider/order after fallback.
+	if targetEpisode != nil {
+		if targetEpisode.Numbering != nil && !models.SameEpisodeNumbering(targetEpisode.Numbering, details.Numbering) {
+			return result
+		}
+		copy := *targetEpisode
+		copy.Numbering = details.Numbering
+		targetEpisode = &copy
+		result.TargetEpisode = targetEpisode
+	}
 	if len(details.Seasons) == 0 {
 		log.Printf("[prequeue] No season data available for episode resolver")
 		return result
@@ -4144,7 +4180,7 @@ func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.C
 		}
 	}
 
-	if targetEpisode != nil && foundCanonicalEpisode == nil && targetEpisode.AbsoluteEpisodeNumber == 0 && targetEpisode.EpisodeNumber > 0 {
+	if !hasExplicitNumbering && targetEpisode != nil && foundCanonicalEpisode == nil && targetEpisode.AbsoluteEpisodeNumber == 0 && targetEpisode.EpisodeNumber > 0 {
 		for _, season := range details.Seasons {
 			for _, ep := range season.Episodes {
 				if ep.AbsoluteEpisodeNumber == targetEpisode.EpisodeNumber {
@@ -4185,6 +4221,7 @@ func (h *PrequeueHandler) createEpisodeResolverAndLookupAbsoluteEp(ctx context.C
 		}
 		// Create a copy to avoid modifying the original
 		updatedEpisode := &models.EpisodeReference{
+			Numbering:             details.Numbering,
 			SeasonNumber:          foundCanonicalEpisode.SeasonNumber,
 			EpisodeNumber:         foundCanonicalEpisode.EpisodeNumber,
 			AbsoluteEpisodeNumber: foundAbsoluteEp,

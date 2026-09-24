@@ -58,6 +58,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	categories := r.URL.Query()["cat"]
 	imdbID := strings.TrimSpace(r.URL.Query().Get("imdbId"))
 	titleID := strings.TrimSpace(r.URL.Query().Get("titleId"))
+	numbering := requestEpisodeNumbering(r)
 	mediaType := strings.TrimSpace(r.URL.Query().Get("mediaType"))
 	query = normalizeDecoratedSeriesQuery(query, mediaType)
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
@@ -92,11 +93,12 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	var tvdbID int64
 	var alternateTitles []string
 	if mediaType == "series" && h.MetadataSvc != nil {
-		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
+		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID, seriesNumberingContext{TitleID: titleID, Numbering: numbering})
 		if seriesMeta != nil {
 			if titleID == "" {
 				titleID = seriesMeta.TitleID
 			}
+			numbering = seriesMeta.Numbering
 			episodeResolver = seriesMeta.EpisodeResolver
 			isDaily = seriesMeta.IsDaily
 			isAnime = seriesMeta.IsAnime
@@ -143,6 +145,7 @@ func (h *IndexerHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := indexer.SearchOptions{
+		Numbering:             numbering,
 		TitleID:               titleID,
 		Query:                 query,
 		Categories:            categories,
@@ -279,6 +282,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	categories := r.URL.Query()["cat"]
 	imdbID := strings.TrimSpace(r.URL.Query().Get("imdbId"))
 	titleID := strings.TrimSpace(r.URL.Query().Get("titleId"))
+	numbering := requestEpisodeNumbering(r)
 	mediaType := strings.TrimSpace(r.URL.Query().Get("mediaType"))
 	query = normalizeDecoratedSeriesQuery(query, mediaType)
 	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
@@ -313,11 +317,12 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	var tvdbID int64
 	var alternateTitles []string
 	if mediaType == "series" && h.MetadataSvc != nil {
-		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID)
+		seriesMeta := h.getSeriesSearchMetadata(r.Context(), query, year, imdbID, seriesNumberingContext{TitleID: titleID, Numbering: numbering})
 		if seriesMeta != nil {
 			if titleID == "" {
 				titleID = seriesMeta.TitleID
 			}
+			numbering = seriesMeta.Numbering
 			episodeResolver = seriesMeta.EpisodeResolver
 			isDaily = seriesMeta.IsDaily
 			isAnime = seriesMeta.IsAnime
@@ -353,6 +358,7 @@ func (h *IndexerHandler) SearchTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := indexer.SearchOptions{
+		Numbering:             numbering,
 		TitleID:               titleID,
 		Query:                 query,
 		Categories:            categories,
@@ -498,6 +504,7 @@ func classifySearchError(err error) (int, map[string]interface{}) {
 
 // seriesSearchMetadata contains series metadata needed for search
 type seriesSearchMetadata struct {
+	Numbering             *models.EpisodeNumbering
 	TitleID               string
 	EpisodeResolver       *filter.SeriesEpisodeResolver
 	IsDaily               bool
@@ -514,7 +521,7 @@ type seriesSearchMetadata struct {
 
 // getSeriesSearchMetadata fetches series metadata for search, including episode resolver
 // and daily show detection
-func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query string, year int, imdbID string) *seriesSearchMetadata {
+func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query string, year int, imdbID string, options ...seriesNumberingContext) *seriesSearchMetadata {
 	if h.MetadataSvc == nil {
 		return nil
 	}
@@ -536,6 +543,14 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 		IMDBID: imdbID,
 	}
 
+	var numbering *models.EpisodeNumbering
+	if len(options) > 0 {
+		metaQuery.TitleID = options[0].TitleID
+		numbering = options[0].Numbering
+	}
+	if numbering != nil {
+		metaQuery.SeasonType = numbering.Ordering
+	}
 	// Fetch series details from metadata service
 	details, err := h.MetadataSvc.SeriesDetails(ctx, metaQuery)
 	if err != nil {
@@ -549,6 +564,7 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 	}
 
 	result := &seriesSearchMetadata{
+		Numbering:   details.Numbering,
 		TitleID:     details.Title.ID,
 		IsDaily:     details.Title.IsDaily,
 		Year:        details.Title.Year,
@@ -557,6 +573,10 @@ func (h *IndexerHandler) getSeriesSearchMetadata(ctx context.Context, query stri
 	}
 
 	result.IsAnime = isAnimeTitle(&details.Title)
+	if numbering != nil && !models.SameEpisodeNumbering(numbering, details.Numbering) {
+		result.Numbering = numbering
+		return result
+	}
 	result.SeasonPremiereYear = models.SeriesSeasonPremiereYear(details.Seasons, parsed.Season)
 
 	// Build season -> episode count map for episode resolver
@@ -637,4 +657,17 @@ func (h *IndexerHandler) createEpisodeResolver(ctx context.Context, query string
 		return nil
 	}
 	return meta.EpisodeResolver
+}
+
+func requestEpisodeNumbering(r *http.Request) *models.EpisodeNumbering {
+	id := strings.TrimSpace(r.URL.Query().Get("episodeNumberingId"))
+	if id == "" {
+		return nil
+	}
+	return &models.EpisodeNumbering{SeriesID: id, Ordering: strings.ToLower(strings.TrimSpace(r.URL.Query().Get("episodeOrdering")))}
+}
+
+type seriesNumberingContext struct {
+	TitleID   string
+	Numbering *models.EpisodeNumbering
 }

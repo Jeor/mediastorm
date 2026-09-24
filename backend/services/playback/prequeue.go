@@ -52,15 +52,16 @@ type ScopedPrequeueWorkerFunc func(ctx context.Context, titleID, titleName, imdb
 
 // PrequeueRequest represents an incoming prequeue request
 type PrequeueRequest struct {
-	TitleID   string `json:"titleId"`
-	TitleName string `json:"titleName"` // The actual title name for search queries
-	MediaType string `json:"mediaType"` // "movie" or "series"
-	UserID    string `json:"userId"`
-	ClientID  string `json:"clientId,omitempty"` // Client device ID for per-client filtering
-	ImdbID    string `json:"imdbId,omitempty"`
-	TmdbID    string `json:"tmdbId,omitempty"` // External IDs used to canonicalize TitleID for prequeue reuse
-	TvdbID    string `json:"tvdbId,omitempty"`
-	Year      int    `json:"year,omitempty"`
+	Numbering *models.EpisodeNumbering `json:"numbering,omitempty"`
+	TitleID   string                   `json:"titleId"`
+	TitleName string                   `json:"titleName"` // The actual title name for search queries
+	MediaType string                   `json:"mediaType"` // "movie" or "series"
+	UserID    string                   `json:"userId"`
+	ClientID  string                   `json:"clientId,omitempty"` // Client device ID for per-client filtering
+	ImdbID    string                   `json:"imdbId,omitempty"`
+	TmdbID    string                   `json:"tmdbId,omitempty"` // External IDs used to canonicalize TitleID for prequeue reuse
+	TvdbID    string                   `json:"tvdbId,omitempty"`
+	Year      int                      `json:"year,omitempty"`
 	// For series: episode info (determined by backend based on watch history)
 	SeasonNumber          int     `json:"seasonNumber,omitempty"`
 	EpisodeNumber         int     `json:"episodeNumber,omitempty"`
@@ -1303,6 +1304,9 @@ func (s *PrequeueStore) ListExpiringBefore(deadline time.Time) []*PrequeueEntry 
 func EpisodeReferencesMatch(a, b *models.EpisodeReference) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
+	}
+	if !models.SameEpisodeNumbering(a.Numbering, b.Numbering) {
+		return false
 	}
 	if a.SeasonNumber == b.SeasonNumber && a.EpisodeNumber == b.EpisodeNumber {
 		return true

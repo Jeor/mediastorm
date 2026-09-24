@@ -611,7 +611,10 @@ func resolvedFileConflictsWithTargetEpisode(filePath string, candidate models.NZ
 	}) {
 		return false
 	}
-	if hints.AbsoluteEpisodeNumber > 0 && mediaresolve.CandidateMatchesAbsoluteEpisode(filePath, hints.AbsoluteEpisodeNumber) {
+	if mediaresolve.CandidateMatchesEpisodeAlias(filePath, hints.AlternateEpisodes) {
+		return false
+	}
+	if mediaresolve.CandidateMatchesSelectionAbsolute(filePath, hints) {
 		return false
 	}
 	return true
@@ -2291,6 +2294,8 @@ func buildSelectionHintsFromCandidate(candidate models.NZBResult, directory stri
 	}
 
 	if candidate.Attributes != nil {
+		hints.MappedSeason = candidate.Attributes["episodeMappingSource"] != ""
+		hints.AlternateEpisodes = mediaresolve.ReadEpisodeAliases(candidate.Attributes["episodeSelectionAliases"])
 		if code := strings.TrimSpace(candidate.Attributes["targetEpisodeCode"]); code != "" {
 			hints.TargetEpisodeCode = code
 		}

@@ -28,6 +28,8 @@ func buildSelectionHints(candidate models.NZBResult, directory string) mediareso
 		fmt.Printf("[selection-hints]   %s = %q\n", k, v)
 	}
 
+	hints.MappedSeason = attrs["episodeMappingSource"] != ""
+	hints.AlternateEpisodes = mediaresolve.ReadEpisodeAliases(attrs["episodeSelectionAliases"])
 	if code := strings.TrimSpace(attrs["targetEpisodeCode"]); code != "" {
 		hints.TargetEpisodeCode = code
 	}

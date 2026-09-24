@@ -3915,7 +3915,12 @@ func (s *Service) enrichTitleFromTMDB(ctx context.Context, title *models.Title) 
 	return true
 }
 
-func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.SeriesDetailsQuery, cause error) (*models.SeriesDetails, error) {
+func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.SeriesDetailsQuery, cause error) (out *models.SeriesDetails, retErr error) {
+	defer func() {
+		if out != nil {
+			models.StampEpisodeNumbering(out, fmt.Sprintf("tmdb:tv:%d", req.TMDBID))
+		}
+	}()
 	if req.TMDBID <= 0 {
 		req.TMDBID = s.resolveTMDBSeriesID(ctx, req)
 	}
@@ -3998,7 +4003,12 @@ func (s *Service) tmdbSeriesDetailsFallback(ctx context.Context, req models.Seri
 	return details, nil
 }
 
-func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQuery) (*models.SeriesDetails, error) {
+func (s *Service) SeriesDetails(ctx context.Context, req models.SeriesDetailsQuery) (out *models.SeriesDetails, retErr error) {
+	defer func() {
+		if out != nil && out.Numbering == nil {
+			models.StampEpisodeNumbering(out, fmt.Sprintf("tvdb:series:%d", out.Title.TVDBID))
+		}
+	}()
 	if s.client == nil {
 		return nil, fmt.Errorf("tvdb client not configured")
 	}
@@ -5035,7 +5045,12 @@ func populateAiredDateTimeUTC(details *models.SeriesDetails) {
 // It skips: getTVDBSeriesDetails, season translations, localized episode names,
 // MDBList ratings, and non-artwork TMDB enrichment (credits, genres, content rating).
 // It uses a dedicated lite cache key so it can't overwrite the richer full-details cache.
-func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetailsQuery) (*models.SeriesDetails, error) {
+func (s *Service) SeriesDetailsLite(ctx context.Context, req models.SeriesDetailsQuery) (out *models.SeriesDetails, retErr error) {
+	defer func() {
+		if out != nil && out.Numbering == nil {
+			models.StampEpisodeNumbering(out, fmt.Sprintf("tvdb:series:%d", out.Title.TVDBID))
+		}
+	}()
 	if s.client == nil {
 		return nil, fmt.Errorf("tvdb client not configured")
 	}
@@ -5529,6 +5544,7 @@ func (s *Service) BatchSeriesDetails(ctx context.Context, queries []models.Serie
 		if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached.Seasons) > 0 {
 			models.NormalizeReleaseAbsoluteEpisodeNumbers(&cached)
 			log.Printf("[metadata] batch series cache hit index=%d tvdbId=%d name=%q", i, tvdbID, query.Name)
+			models.StampEpisodeNumbering(&cached, fmt.Sprintf("tvdb:series:%d", tvdbID))
 			results[i].Details = &cached
 		} else {
 			// Need to fetch this one

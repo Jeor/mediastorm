@@ -119,20 +119,21 @@ type YouTubeVideoSearchResult struct {
 }
 
 type SeriesEpisode struct {
-	ID                    string `json:"id"`
-	TMDBID                int64  `json:"tmdbId,omitempty"`
-	TMDBSeasonNumber      int    `json:"tmdbSeasonNumber,omitempty"`
-	TMDBEpisodeNumber     int    `json:"tmdbEpisodeNumber,omitempty"`
-	TVDBID                int64  `json:"tvdbId,omitempty"`
-	Name                  string `json:"name"`
-	Overview              string `json:"overview"`
-	SeasonNumber          int    `json:"seasonNumber"`
-	EpisodeNumber         int    `json:"episodeNumber"`
-	AbsoluteEpisodeNumber int    `json:"absoluteEpisodeNumber,omitempty"` // Release absolute number; excludes season-zero specials.
-	AiredDate             string `json:"airedDate,omitempty"`
-	AiredDateTimeUTC      string `json:"airedDateTimeUTC,omitempty"`
-	Runtime               int    `json:"runtimeMinutes,omitempty"`
-	Image                 *Image `json:"image,omitempty"`
+	Numbering             *EpisodeNumbering `json:"numbering,omitempty"`
+	ID                    string            `json:"id"`
+	TMDBID                int64             `json:"tmdbId,omitempty"`
+	TMDBSeasonNumber      int               `json:"tmdbSeasonNumber,omitempty"`
+	TMDBEpisodeNumber     int               `json:"tmdbEpisodeNumber,omitempty"`
+	TVDBID                int64             `json:"tvdbId,omitempty"`
+	Name                  string            `json:"name"`
+	Overview              string            `json:"overview"`
+	SeasonNumber          int               `json:"seasonNumber"`
+	EpisodeNumber         int               `json:"episodeNumber"`
+	AbsoluteEpisodeNumber int               `json:"absoluteEpisodeNumber,omitempty"` // Release absolute number; excludes season-zero specials.
+	AiredDate             string            `json:"airedDate,omitempty"`
+	AiredDateTimeUTC      string            `json:"airedDateTimeUTC,omitempty"`
+	Runtime               int               `json:"runtimeMinutes,omitempty"`
+	Image                 *Image            `json:"image,omitempty"`
 }
 
 type SeriesSeason struct {
@@ -148,10 +149,11 @@ type SeriesSeason struct {
 }
 
 type SeriesDetails struct {
-	Title               Title          `json:"title"`
-	Seasons             []SeriesSeason `json:"seasons"`
-	PreferredSeason     *int           `json:"preferredSeason,omitempty"`
-	EpisodeTMDBEnriched bool           `json:"episodeTmdbEnriched,omitempty"`
+	Numbering           *EpisodeNumbering `json:"numbering,omitempty"`
+	Title               Title             `json:"title"`
+	Seasons             []SeriesSeason    `json:"seasons"`
+	PreferredSeason     *int              `json:"preferredSeason,omitempty"`
+	EpisodeTMDBEnriched bool              `json:"episodeTmdbEnriched,omitempty"`
 	// AvailableOrderings lists every TVDB season-ordering for this series
 	// (official, dvd, absolute, alternate, regional, …). Populated only when
 	// more than one ordering exists so the client can offer a switcher.

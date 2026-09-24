@@ -2220,6 +2220,7 @@ func (s *Service) findNextUnwatchedEpisode(
 			}
 
 			ref := &models.EpisodeReference{
+				Numbering:             ep.details.Numbering,
 				SeasonNumber:          ep.details.SeasonNumber,
 				EpisodeNumber:         ep.details.EpisodeNumber,
 				AbsoluteEpisodeNumber: ep.details.AbsoluteEpisodeNumber,
@@ -2285,6 +2286,9 @@ func (s *Service) enrichEpisodeFromMetadata(episodeRef *models.EpisodeReference,
 		return
 	}
 
+	if episodeRef.Numbering != nil && !models.SameEpisodeNumbering(episodeRef.Numbering, seriesDetails.Numbering) {
+		return
+	}
 	// Find the matching episode in metadata
 	for _, season := range seriesDetails.Seasons {
 		if season.Number == episodeRef.SeasonNumber {
@@ -2686,6 +2690,7 @@ func applyEpisodeMetadata(ref *models.EpisodeReference, ep models.SeriesEpisode)
 	if ref == nil {
 		return
 	}
+	ref.Numbering = ep.Numbering
 	ref.SeasonNumber = ep.SeasonNumber
 	ref.EpisodeNumber = ep.EpisodeNumber
 	if ep.AbsoluteEpisodeNumber > 0 {

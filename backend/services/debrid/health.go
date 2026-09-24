@@ -1476,8 +1476,8 @@ func selectMediaFiles(files []File, hints mediaresolve.SelectionHints) *mediaFil
 		// This prevents playing the wrong episode when absolute numbering differs from S##E##
 		if hints.TargetSeason > 0 && hints.TargetEpisode > 0 {
 			targetCode := mediaresolve.EpisodeCode{Season: hints.TargetSeason, Episode: hints.TargetEpisode}
-			matchesSeasonEpisode := mediaresolve.CandidateMatchesEpisode(candidates[0].label, targetCode)
-			matchesAbsolute := hints.AbsoluteEpisodeNumber > 0 && mediaresolve.CandidateMatchesAbsoluteEpisode(candidates[0].label, hints.AbsoluteEpisodeNumber)
+			matchesSeasonEpisode := mediaresolve.CandidateMatchesEpisode(candidates[0].label, targetCode) || mediaresolve.CandidateMatchesEpisodeAlias(candidates[0].label, hints.AlternateEpisodes)
+			matchesAbsolute := mediaresolve.CandidateMatchesSelectionAbsolute(candidates[0].label, hints)
 			// For daily shows, use exact date match only - no tolerance.
 			// Adjacent dates are different episodes, so tolerance would match the WRONG episode.
 			matchesDailyDate := hints.IsDaily && hints.TargetAirDate != "" &&

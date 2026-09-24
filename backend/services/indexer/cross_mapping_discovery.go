@@ -9,9 +9,6 @@ import (
 )
 
 func (s *Service) discoverCrossMapping(ctx context.Context, settings config.Settings, opts SearchOptions) {
-	if opts.IsAnime || strings.TrimSpace(opts.IMDBID) != "" {
-		return
-	}
 	parsed := debrid.ParseQuery(opts.Query)
 	mediaType := strings.ToLower(opts.MediaType)
 	if mediaType == "" {
@@ -21,5 +18,9 @@ func (s *Service) discoverCrossMapping(ctx context.Context, settings config.Sett
 		return
 	}
 	season := parsed.Season
+	mediaidentity.EnsureEpisodeMappings(ctx, opts.TitleID, season, parsed.Episode, opts.IsAnime, opts.Numbering)
+	if opts.IsAnime || strings.TrimSpace(opts.IMDBID) != "" {
+		return
+	}
 	mediaidentity.DiscoverSeason(ctx, settings.Metadata.TMDBAPIKey, opts.TitleID, opts.IMDBID, season)
 }

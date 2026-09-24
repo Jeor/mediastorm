@@ -1,10 +1,16 @@
 package mediaidentity
 
-import "strings"
+import (
+	"novastream/models"
+	"strings"
+)
 
 // AnthologyEpisode is the provider identity of a catalog episode. ReleaseTitle
 // and Year apply only together with these coordinates, never as global aliases.
 type AnthologyEpisode struct {
+	Numbering          *models.EpisodeNumbering
+	Source             string // Empty for legacy anthology identities.
+	AbsoluteEpisode    int    // Verified release-system absolute number, when available.
 	IMDBID             string
 	TVDBID             int64
 	ReleaseTitle       string

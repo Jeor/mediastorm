@@ -16,6 +16,8 @@ type Candidate struct {
 
 // SelectionHints contains release metadata used to narrow down multi-file selections.
 type SelectionHints struct {
+	MappedSeason          bool // A source-specific season was verified; absolute fallback must not cross it.
+	AlternateEpisodes     []EpisodeCode
 	ReleaseTitle          string
 	QueueName             string
 	Directory             string
@@ -170,12 +172,23 @@ func SelectBestCandidate(candidates []Candidate, hints SelectionHints) (int, str
 			}
 		}
 
+		if len(matching) == 0 && len(hints.AlternateEpisodes) > 0 {
+			for idx, cand := range candidates {
+				if CandidateMatchesEpisodeAlias(cand.Label, hints.AlternateEpisodes) {
+					matching = append(matching, idx)
+				}
+			}
+			if len(matching) > 0 {
+				idx := pickBestPriorityIndex(candidates, matching)
+				return idx, "matched verified episode numbering alias"
+			}
+		}
 		// If no S##E## matches found, try matching by absolute episode number (for anime)
 		if len(matching) == 0 && hints.AbsoluteEpisodeNumber > 0 {
 			fmt.Printf("[selector] No S%02dE%02d matches, trying absolute episode %d\n", targetEpisode.Season, targetEpisode.Episode, hints.AbsoluteEpisodeNumber)
 			var absoluteMatching []int
 			for idx, cand := range candidates {
-				matches := CandidateMatchesAbsoluteEpisode(cand.Label, hints.AbsoluteEpisodeNumber)
+				matches := CandidateMatchesSelectionAbsolute(cand.Label, hints)
 				fmt.Printf("[selector]   Candidate[%d]: %q - absoluteMatch=%v\n", idx, cand.Label, matches)
 				if matches {
 					absoluteMatching = append(absoluteMatching, idx)

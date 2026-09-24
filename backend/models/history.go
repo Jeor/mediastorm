@@ -4,19 +4,20 @@ import "time"
 
 // EpisodeReference captures identifying information for a specific episode.
 type EpisodeReference struct {
-	SeasonNumber          int       `json:"seasonNumber"`
-	EpisodeNumber         int       `json:"episodeNumber"`
-	AbsoluteEpisodeNumber int       `json:"absoluteEpisodeNumber,omitempty"` // Release absolute number; excludes season-zero specials.
-	EpisodeID             string    `json:"episodeId,omitempty"`
-	TvdbID                string    `json:"tvdbId,omitempty"`
-	Title                 string    `json:"title,omitempty"`
-	Overview              string    `json:"overview,omitempty"`
-	RuntimeMinutes        int       `json:"runtimeMinutes,omitempty"`
-	AirDate               string    `json:"airDate,omitempty"`
-	AirDateTimeUTC        string    `json:"airDateTimeUTC,omitempty"`
-	AirTimeEstimated      bool      `json:"airTimeEstimated,omitempty"` // Date-only end-of-day cutoff, not a displayable broadcast time.
-	Image                 *Image    `json:"image,omitempty"`
-	WatchedAt             time.Time `json:"watchedAt,omitempty"`
+	Numbering             *EpisodeNumbering `json:"numbering,omitempty"`
+	SeasonNumber          int               `json:"seasonNumber"`
+	EpisodeNumber         int               `json:"episodeNumber"`
+	AbsoluteEpisodeNumber int               `json:"absoluteEpisodeNumber,omitempty"` // Release absolute number; excludes season-zero specials.
+	EpisodeID             string            `json:"episodeId,omitempty"`
+	TvdbID                string            `json:"tvdbId,omitempty"`
+	Title                 string            `json:"title,omitempty"`
+	Overview              string            `json:"overview,omitempty"`
+	RuntimeMinutes        int               `json:"runtimeMinutes,omitempty"`
+	AirDate               string            `json:"airDate,omitempty"`
+	AirDateTimeUTC        string            `json:"airDateTimeUTC,omitempty"`
+	AirTimeEstimated      bool              `json:"airTimeEstimated,omitempty"` // Date-only end-of-day cutoff, not a displayable broadcast time.
+	Image                 *Image            `json:"image,omitempty"`
+	WatchedAt             time.Time         `json:"watchedAt,omitempty"`
 }
 
 // SeriesWatchState tracks a user's progress for a particular series.

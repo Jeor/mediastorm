@@ -10,6 +10,7 @@ import (
 
 // SearchRequest provides normalized inputs to scraper implementations.
 type SearchRequest struct {
+	Numbering       *models.EpisodeNumbering `json:"numbering,omitempty"`
 	TitleID         string
 	Query           string
 	Categories      []string

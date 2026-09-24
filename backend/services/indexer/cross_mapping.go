@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"strconv"
 	"strings"
 
 	"novastream/internal/mediaidentity"
@@ -14,10 +15,36 @@ func mappedQueryOptions(opts SearchOptions, query string) SearchOptions {
 	requested := debrid.ParseQuery(query)
 	out := opts
 	out.Query = query
-	mapped, ok := mediaidentity.KnownAnthologyEpisode(opts.TitleID, original.Season, original.Episode)
-	if ok && original.MediaType == debrid.MediaTypeSeries && strings.EqualFold(requested.Title, mapped.ReleaseTitle) && requested.Season == mapped.Season && (requested.Episode == mapped.Episode || requested.Episode == 0) {
-		out.IMDBID, out.TVDBID, out.Year = mapped.IMDBID, mapped.TVDBID, mapped.Year
+	if opts.Numbering != nil && strings.HasPrefix(opts.Numbering.SeriesID, "tvdb:series:") {
+		if id, err := strconv.ParseInt(strings.TrimPrefix(opts.Numbering.SeriesID, "tvdb:series:"), 10, 64); err == nil && id > 0 {
+			out.TVDBID = id
+		}
 	}
+	if opts.Numbering != nil && (strings.HasPrefix(opts.Numbering.SeriesID, "tmdb:") || (opts.Numbering.Ordering != "" && opts.Numbering.Ordering != "official")) {
+		out.TVDBID, out.IMDBID = 0, ""
+	}
+
+	for _, mapped := range mediaidentity.ReleaseEpisodeAliases(opts.TitleID, original.Season, original.Episode, opts.Numbering) {
+		title := mapped.ReleaseTitle
+		if title == "" {
+			title = original.Title
+		}
+		if original.MediaType == debrid.MediaTypeSeries && strings.EqualFold(requested.Title, title) && requested.Season == mapped.Season && (requested.Episode == mapped.Episode || requested.Episode == 0) {
+			if mapped.Source == "thexem" || (mapped.Numbering != nil && strings.HasPrefix(mapped.Numbering.SeriesID, "tmdb:")) {
+				out.TVDBID, out.IMDBID = 0, ""
+			}
+			if mapped.IMDBID != "" {
+				out.IMDBID = mapped.IMDBID
+			}
+			if mapped.TVDBID > 0 {
+				out.TVDBID = mapped.TVDBID
+			}
+			if mapped.Year > 0 {
+				out.Year = mapped.Year
+			}
+		}
+	}
+
 	return out
 }
 
@@ -25,7 +52,7 @@ func mappedQueryOptions(opts SearchOptions, query string) SearchOptions {
 func crossMappingSourceLimit(opts SearchOptions, limit int) int {
 	parsed := debrid.ParseQuery(opts.Query)
 	if parsed.MediaType == debrid.MediaTypeSeries {
-		if _, ok := mediaidentity.KnownAnthologyEpisode(opts.TitleID, parsed.Season, parsed.Episode); ok {
+		if len(mediaidentity.ReleaseEpisodeAliases(opts.TitleID, parsed.Season, parsed.Episode, opts.Numbering)) > 0 {
 			return 0
 		}
 	}

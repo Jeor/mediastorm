@@ -45,6 +45,7 @@ type imdbResolver interface {
 
 // SearchOptions mirrors the indexer search contract but is scoped for debrid providers.
 type SearchOptions struct {
+	Numbering             *models.EpisodeNumbering `json:"numbering,omitempty"`
 	TitleID               string
 	Query                 string
 	Categories            []string
@@ -511,6 +512,9 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 
 	log.Printf("[debrid] Search called with Query=%q, IMDBID=%q, MediaType=%q, Year=%d, UserID=%q", opts.Query, opts.IMDBID, opts.MediaType, opts.Year, opts.UserID)
 
+	if parsed.MediaType == MediaTypeSeries {
+		mediaidentity.EnsureEpisodeMappings(ctx, opts.TitleID, parsed.Season, parsed.Episode, opts.IsAnime, opts.Numbering)
+	}
 	if parsed.MediaType == MediaTypeSeries && !opts.IsAnime {
 		mediaidentity.DiscoverSeason(ctx, settings.Metadata.TMDBAPIKey, opts.TitleID, opts.IMDBID, parsed.Season)
 	}
@@ -526,6 +530,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 	}
 
 	req := SearchRequest{
+		Numbering:       opts.Numbering,
 		TitleID:         opts.TitleID,
 		Query:           opts.Query,
 		Categories:      append([]string(nil), opts.Categories...),
@@ -669,6 +674,7 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 		log.Printf("[debrid] Applying filter with title=%q, year=%d, mediaType=%s, hasEpisodeResolver=%v, targetS%02dE%02d, absoluteEp=%d",
 			expectedTitle, parsed.Year, parsed.MediaType, hasResolver, parsed.Season, parsed.Episode, opts.AbsoluteEpisodeNumber)
 		filterOpts := FilterOptions{
+			Numbering:             opts.Numbering,
 			TitleID:               opts.TitleID,
 			ExpectedTitle:         expectedTitle,
 			ExpectedYear:          parsed.Year,

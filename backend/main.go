@@ -25,6 +25,7 @@ import (
 	"novastream/internal/database"
 	"novastream/internal/datastore"
 	"novastream/internal/integration"
+	"novastream/internal/mediaidentity"
 	"novastream/internal/pool"
 	"novastream/internal/slogutil"
 	internalusenet "novastream/internal/usenet"
@@ -174,6 +175,12 @@ func main() {
 			log.Fatalf("failed to initialize PostgreSQL datastore: %v", dsErr)
 		}
 		defer store.Close()
+		mappingCtx, stopMappings := context.WithCancel(context.Background())
+		defer stopMappings()
+		mappingService := mediaidentity.NewEpisodeMappingService(store.EpisodeMappings(), nil)
+		mediaidentity.SetEpisodeMappingService(mappingService)
+		go mappingService.Run(mappingCtx)
+
 		fmt.Println("🐘 PostgreSQL datastore initialized")
 		log.Printf("[startup] phase=datastore-connect-and-schema-migrations duration=%s", time.Since(startupPhaseStarted))
 		startupPhaseStarted = time.Now()

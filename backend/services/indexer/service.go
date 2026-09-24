@@ -1249,6 +1249,7 @@ func (s *Service) sortResultsByScore(results []models.NZBResult, scoringCtx Scor
 }
 
 type SearchOptions struct {
+	Numbering             *models.EpisodeNumbering      `json:"numbering,omitempty"`
 	TitleID               string                        // Canonical selected title identity; independent of provider stream identity.
 	AdaptiveSummary       *models.AdaptiveSearchSummary // Optional request-owned output, populated before presentation limits.
 	Query                 string
@@ -1287,10 +1288,11 @@ type SearchOptions struct {
 }
 
 type searchCacheKeyPayload struct {
-	Mode            string                 `json:"mode"`
-	Options         searchCacheOptions     `json:"options"`
-	AlternateTitles []string               `json:"alternateTitles,omitempty"`
-	Settings        searchRelevantSettings `json:"settings"`
+	EpisodeAliases  []mediaidentity.AnthologyEpisode `json:"episodeAliases,omitempty"`
+	Mode            string                           `json:"mode"`
+	Options         searchCacheOptions               `json:"options"`
+	AlternateTitles []string                         `json:"alternateTitles,omitempty"`
+	Settings        searchRelevantSettings           `json:"settings"`
 	FilterSettings  models.FilterSettings
 	FilterBundle    effectiveFilterBundle
 	AnimeSettings   models.AnimeFilteringSettings
@@ -1329,6 +1331,7 @@ type searchRankingSettings struct {
 }
 
 type searchCacheOptions struct {
+	Numbering             *models.EpisodeNumbering `json:"numbering,omitempty"`
 	TitleID               string
 	Query                 string
 	Categories            []string
@@ -1355,6 +1358,7 @@ type searchCacheOptions struct {
 
 func buildSearchCacheOptions(opts SearchOptions) searchCacheOptions {
 	return searchCacheOptions{
+		Numbering:             opts.Numbering,
 		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            append([]string(nil), opts.Categories...),
@@ -1409,7 +1413,9 @@ func buildSearchRankingSettings(settings config.Settings) searchRankingSettings 
 }
 
 func (s *Service) searchCacheKey(mode string, opts SearchOptions, settings config.Settings, alternateTitles []string, filterSettings models.FilterSettings, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingCriteria []config.RankingCriterion, rankingBundle effectiveRankingBundle) string {
+	parsedMappingQuery := debrid.ParseQuery(opts.Query)
 	payload := searchCacheKeyPayload{
+		EpisodeAliases:  mediaidentity.ReleaseEpisodeAliases(opts.TitleID, parsedMappingQuery.Season, parsedMappingQuery.Episode, opts.Numbering),
 		Mode:            mode,
 		Options:         buildSearchCacheOptions(opts),
 		AlternateTitles: append([]string(nil), alternateTitles...),
@@ -1657,6 +1663,7 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 			hasResolver := opts.EpisodeResolver != nil
 			log.Printf("[indexer] TIMING: debrid search starting (query=%q, hasEpisodeResolver=%v)", opts.Query, hasResolver)
 			debOpts := debrid.SearchOptions{
+				Numbering:             opts.Numbering,
 				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
@@ -2340,6 +2347,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		return out
 	}
 	debOpts := debrid.SearchOptions{
+		Numbering:             opts.Numbering,
 		TitleID:               opts.TitleID,
 		Query:                 opts.Query,
 		Categories:            append([]string{}, opts.Categories...),
@@ -2680,6 +2688,7 @@ func (s *Service) searchRawResults(ctx context.Context, opts SearchOptions) ([]m
 				return
 			}
 			debOpts := debrid.SearchOptions{
+				Numbering:             opts.Numbering,
 				TitleID:               opts.TitleID,
 				Query:                 opts.Query,
 				Categories:            append([]string{}, opts.Categories...),
@@ -2865,6 +2874,7 @@ func (s *Service) buildFilterOptions(opts SearchOptions, filterSettings models.F
 	}
 
 	return filter.Options{
+		Numbering:             opts.Numbering,
 		TitleID:               opts.TitleID,
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,
@@ -3006,6 +3016,7 @@ func (s *Service) SearchSplit(ctx context.Context, opts SearchOptions) (debridCh
 		log.Printf("[indexer] TIMING: split debrid search starting (query=%q)", opts.Query)
 
 		debOpts := debrid.SearchOptions{
+			Numbering:             opts.Numbering,
 			TitleID:               opts.TitleID,
 			Query:                 opts.Query,
 			Categories:            append([]string{}, opts.Categories...),
@@ -3564,7 +3575,10 @@ func buildSearchQueries(opts SearchOptions, parsed debrid.ParsedQuery, alternate
 	// Add both catalog and explicitly mapped provider queries.
 	addQuery(opts.Query)
 	if parsed.MediaType == debrid.MediaTypeSeries {
-		if mapped, ok := mediaidentity.KnownAnthologyEpisode(opts.TitleID, parsed.Season, parsed.Episode); ok {
+		for _, mapped := range mediaidentity.ReleaseEpisodeAliases(opts.TitleID, parsed.Season, parsed.Episode, opts.Numbering) {
+			if mapped.ReleaseTitle == "" {
+				mapped.ReleaseTitle = parsed.Title
+			}
 			addQuery(fmt.Sprintf("%s S%02dE%02d", mapped.ReleaseTitle, mapped.Season, mapped.Episode))
 			addQuery(fmt.Sprintf("%s S%02d", mapped.ReleaseTitle, mapped.Season))
 		}
@@ -4328,6 +4342,7 @@ func (s *Service) applyUsenetFilteringWithSettings(results []models.NZBResult, o
 	}
 
 	filterOpts := filter.Options{
+		Numbering:             opts.Numbering,
 		TitleID:               opts.TitleID,
 		ExpectedTitle:         expectedTitle,
 		ExpectedYear:          expectedYear,

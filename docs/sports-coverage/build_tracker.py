@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Merge probe evidence into all 340 original targets without claiming API/UI certification."""
-import json,csv,pathlib,collections
+import json,csv,pathlib,collections,sys
 P=pathlib.Path(__file__).resolve().parent
 catalog=json.loads((P/'validated-catalog.json').read_text());by={x['id']:x for x in catalog}
 w6={x['id']:x for x in json.loads((P/'w6-findings.json').read_text())['targets']}
+cricket_path=pathlib.Path(sys.argv[1]) if len(sys.argv)>1 else P/'evidence/cricket-target-validation.json'
+cricket={x['target_id']:x for x in json.loads(cricket_path.read_text())} if cricket_path.exists() else {}
 rows=list(csv.DictReader((P/'handoff/coverage-tracker.csv').open()))
 for r in rows:
  x=by.get(r['target_id'])
@@ -14,6 +16,8 @@ for r in rows:
   w=w6[r['target_id']];r.update(status=w['status'],evidence='w6-findings.json',blocker_or_notes=w['nextAction'])
  if r['target_id'].startswith('cricket-discovery'):
   r.update(evidence='evidence/cricket-dropdown.json; all 500 rows inspected',source_date='2026-09-24',blocker_or_notes='Fresh dropdown acquired; see separate cricket target findings. No guessed slug or activation from directory alone.')
+for r in rows:
+ if r['target_id'] in cricket:r.update(cricket[r['target_id']])
 assert len(rows)==340 and len({r['target_id'] for r in rows})==340
 with (P/'coverage-tracker.csv').open('w') as f:
  w=csv.DictWriter(f,fieldnames=rows[0].keys());w.writeheader();w.writerows(rows)

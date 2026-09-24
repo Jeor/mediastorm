@@ -234,7 +234,7 @@ func scoreWatchEvent(value string, game models.SportsGame) sportsEvidence {
 	}
 	if game.EventKind == "race-session" {
 		v := normalizeForMatch(value)
-		series := map[string][]string{"f1": {"formula1", "formulaone"}, "motogp": {"motogp"}, "nascar": {"nascar"}, "indycar": {"indycar"}}
+		series := map[string][]string{"f1": {"formula1", "formulaone"}, "motogp": {"motogp"}, "nascar": {"nascar"}, "indycar": {"indycar"}, "espn:racing:nascar-secondary": {"nascar", "xfinity", "oreilly"}, "espn:racing:nascar-truck": {"nascar", "craftsman", "trucks"}}
 		found := game.League == "f1" && set["f1"]
 		for _, alias := range series[game.League] {
 			if strings.Contains(v, alias) {

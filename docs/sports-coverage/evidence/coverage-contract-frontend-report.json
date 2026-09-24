@@ -1,0 +1,57 @@
+{
+  "expected": 267,
+  "accepted": 267,
+  "missing": [],
+  "extra": [],
+  "families": [
+    "american-football",
+    "australian-football",
+    "baseball",
+    "basketball",
+    "boxing",
+    "cricket",
+    "cycling",
+    "field-hockey",
+    "golf",
+    "ice-hockey",
+    "lacrosse",
+    "mma",
+    "motorsport",
+    "rugby-league",
+    "rugby-union",
+    "soccer",
+    "softball",
+    "tennis",
+    "volleyball",
+    "water-polo"
+  ],
+  "tgl": {
+    "provider": "espn",
+    "providerSport": "golf",
+    "providerLeague": "tgl",
+    "applicationSport": "golf",
+    "college": false,
+    "adapter": "team-golf",
+    "implementationStatus": "limited",
+    "capabilities": [
+      "schedule",
+      "final-result",
+      "standings",
+      "team-identities"
+    ],
+    "coverageNote": "Dated current/relevant-season named-participant sample verified; live transitions and season completeness unverified. Team identities available; catalog completeness unverified.",
+    "id": "espn:golf:tgl",
+    "name": "TGL",
+    "sport": "golf",
+    "category": "golf",
+    "eventKind": "matchup",
+    "supportsTeams": true,
+    "enabled": true
+  },
+  "explicit": [
+    "nfl",
+    "mlb"
+  ],
+  "retainedFollowCount": 267,
+  "teamIdentities": 186
+}

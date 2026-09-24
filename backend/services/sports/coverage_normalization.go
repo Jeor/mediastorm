@@ -1,6 +1,7 @@
 package sports
 
 import (
+	"errors"
 	"fmt"
 	"novastream/models"
 	"strings"
@@ -52,4 +53,21 @@ func applyGenericScoreboardPeriods(game *models.SportsGame, comp espnCompetition
 	}
 	detail.Capabilities.Stats = len(detail.Periods) > 0
 	game.Detail = detail
+}
+
+var errPartialScoreboard = errors.New("provider scoreboard may be truncated; displaying available events")
+
+func mergeCoverageGames(previous, fresh []models.SportsGame) []models.SportsGame {
+	result := append([]models.SportsGame(nil), fresh...)
+	seen := map[string]bool{}
+	for _, game := range fresh {
+		seen[game.ID] = true
+	}
+	for _, game := range previous {
+		if !seen[game.ID] {
+			result = append(result, game)
+			seen[game.ID] = true
+		}
+	}
+	return result
 }

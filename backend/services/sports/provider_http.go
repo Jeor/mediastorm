@@ -87,10 +87,11 @@ func (t *sportsHTTPTransport) RoundTrip(req *http.Request) (*http.Response, erro
 		p.mu.Unlock()
 		return sportsHTTPResponse(req, old), nil
 	}
-	host := p.hosts[req.URL.Host]
+	provider := sportsProviderKey(req.URL.Hostname())
+	host := p.hosts[provider]
 	if host == nil {
 		host = &sportsHTTPHost{slots: make(chan struct{}, 4)}
-		p.hosts[req.URL.Host] = host
+		p.hosts[provider] = host
 	}
 	if time.Now().Before(host.until) {
 		entry := providerCooldown(host.until)
@@ -240,5 +241,15 @@ func sportsMetadataTTL(path string, body []byte) time.Duration {
 		return 15 * time.Minute
 	default:
 		return 30 * time.Second
+	}
+}
+
+// ESPN metadata hosts share one provider budget and rate-limit cooldown.
+func sportsProviderKey(host string) string {
+	switch strings.ToLower(host) {
+	case "site.api.espn.com", "site.web.api.espn.com", "sports.api.espn.com", "site.api.espncricinfo.com":
+		return "espn"
+	default:
+		return strings.ToLower(host)
 	}
 }

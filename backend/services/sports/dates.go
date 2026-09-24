@@ -2,6 +2,7 @@ package sports
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"novastream/models"
 	"sort"
@@ -11,6 +12,8 @@ import (
 )
 
 type LeagueAvailability struct {
+	Partial     bool      `json:"partial,omitempty"`
+	Reason      string    `json:"reason,omitempty"`
 	League      string    `json:"league"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 	Stale       bool      `json:"stale"`
@@ -160,7 +163,16 @@ func (s *Service) loadDatedScoreboard(ctx context.Context, date, key string, sel
 		leagueKey := "league:" + date + ":" + selected[i].ID
 		previous, hasPrevious := s.dated[leagueKey]
 		availability := LeagueAvailability{League: selected[i].ID, UpdatedAt: board.UpdatedAt}
-		if r.err != nil {
+		if errors.Is(r.err, errPartialScoreboard) {
+			successful++
+			availability.Partial = true
+			availability.Stale = true
+			availability.Reason = r.err.Error()
+			board.Stale = true
+			games := mergeCoverageGames(previous.board.Games, r.games)
+			board.Games = append(board.Games, games...)
+			s.dated[leagueKey] = datedEntry{board: DatedScoreboard{Games: games, UpdatedAt: board.UpdatedAt}, expires: time.Now().Add(30 * time.Second)}
+		} else if r.err != nil {
 			availability.Stale = true
 			board.Stale = true
 			if hasPrevious {

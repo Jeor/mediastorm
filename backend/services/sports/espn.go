@@ -15,7 +15,10 @@ import (
 // Undocumented/unstable third-party API - decode defensively, ignore unknown fields.
 
 type espnScoreboardResponse struct {
-	Events []espnEvent `json:"events"`
+	Events    []espnEvent `json:"events"`
+	Count     int         `json:"count"`
+	PageCount int         `json:"pageCount"`
+	PageIndex int         `json:"pageIndex"`
 }
 
 type espnTeamsResponse struct {

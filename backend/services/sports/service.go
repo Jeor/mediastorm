@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -512,7 +513,11 @@ func (s *Service) Refresh(ctx context.Context) error {
 			if err != nil {
 				log.Printf("[sports] scoreboard fetch failed for %s: %v", league.ID, err)
 				s.mu.RLock()
-				games = s.games[league.ID]
+				if errors.Is(err, errPartialScoreboard) {
+					games = mergeCoverageGames(s.games[league.ID], games)
+				} else {
+					games = s.games[league.ID]
+				}
 				s.mu.RUnlock()
 				resultMu.Lock()
 				if firstErr == nil {
@@ -601,6 +606,9 @@ func (s *Service) fetchLeagueScoreboardDate(ctx context.Context, league League, 
 	games := make([]models.SportsGame, 0, len(payload.Events))
 	for _, event := range payload.Events {
 		games = append(games, scoreboardEventGames(event, league)...)
+	}
+	if len(payload.Events) >= 200 || payload.Count > len(payload.Events) || payload.PageCount > max(1, payload.PageIndex) {
+		return games, errPartialScoreboard
 	}
 	return games, nil
 }

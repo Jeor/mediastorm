@@ -80,3 +80,23 @@ func TestMalformedScoreIsNotZero(t *testing.T) {
 		}
 	}
 }
+
+func TestPartialScoreboardRetainsAvailableGamesAndReportsHealth(t *testing.T) {
+	data, err := os.ReadFile("testdata/coverage/australian-football--afl.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err = json.Unmarshal(data, &payload); err != nil {
+		t.Fatal(err)
+	}
+	payload["count"] = 500
+	data, _ = json.Marshal(payload)
+	s := NewService(t.TempDir())
+	s.SetEnabledLeagueIDs([]string{"espn:australian-football:afl"})
+	s.client = &http.Client{Transport: coverageTransport(func(r *http.Request) (*http.Response, error) { return coverageResponse(200, string(data)), nil })}
+	board, err := s.GetDatedScoreboard(context.Background(), time.Now().UTC().Format("2006-01-02"), "")
+	if err != nil || len(board.Games) == 0 || !board.Stale || len(board.Leagues) != 1 || !board.Leagues[0].Partial || board.Leagues[0].Unavailable {
+		t.Fatalf("partial schedule lost or reported complete: %+v err=%v", board, err)
+	}
+}

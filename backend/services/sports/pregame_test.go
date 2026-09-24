@@ -68,13 +68,17 @@ func TestPregameRealProviderSummaries(t *testing.T) {
 		})
 	}
 }
-func TestPregameRejectsLiveAndMismatchedPayloads(t *testing.T) {
+func TestPregameRetainsOnlyHistoryForLiveAndFinal(t *testing.T) {
 	g, raw := pregameFixture(t, "mlb")
 	now := time.Now()
 	for _, state := range []models.SportsGameStatus{models.SportsGameLive, models.SportsGameFinal} {
 		g.Status = state
-		if normalizePregame(g, raw, now) != nil {
-			t.Fatal("exposed season context as game context")
+		context := normalizePregame(g, raw, now)
+		if context == nil || context.PreviousMeeting == nil || len(context.Teams[0].Recent) == 0 {
+			t.Fatal("lost historical context after the game started")
+		}
+		if len(context.Comparisons) != 0 || context.Teams[0].Record != "" || len(context.Teams[0].Leaders) != 0 || len(context.Teams[0].StandingStats) != 0 {
+			t.Fatal("exposed current game or updated aggregate statistics as history")
 		}
 	}
 	g.Status = models.SportsGameScheduled

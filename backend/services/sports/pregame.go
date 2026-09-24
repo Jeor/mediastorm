@@ -106,9 +106,6 @@ func pregameText(value string) string {
 
 // Parse only the already-fetched, identity-verified summary. No additional requests.
 func normalizePregame(game models.SportsGame, raw []byte, now time.Time) *models.SportsPregame {
-	if game.Status != models.SportsGameScheduled {
-		return nil
-	}
 	var p pregamePayload
 	if json.Unmarshal(raw, &p) != nil || p.Header.ID != game.ID || len(p.Header.Competitions) != 1 {
 		return nil
@@ -318,6 +315,14 @@ func normalizePregame(game models.SportsGame, raw []byte, now time.Time) *models
 			if valid && meeting.HomeTeamID != "" && meeting.AwayTeamID != "" {
 				out.PreviousMeeting = &meeting
 			}
+		}
+	}
+	if game.Status != models.SportsGameScheduled {
+		// Live summaries use boxscore/leader fields for this game, not season context.
+		// Keep only dated historical results; records/standings may already include it.
+		out.Comparisons = nil
+		for id, team := range teams {
+			teams[id] = &models.SportsPregameTeam{TeamID: team.TeamID, Recent: team.Recent}
 		}
 	}
 	for _, id := range []string{game.AwayTeam.ID, game.HomeTeam.ID} {

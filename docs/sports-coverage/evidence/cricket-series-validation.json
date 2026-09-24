@@ -1,0 +1,202 @@
+[
+  {
+    "provider_series_id": "23805",
+    "name": "Pakistan in England Test Series 2026",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/23805/scoreboard",
+    "tested_at": "2026-09-24T21:04:39.790588+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1496584",
+        "name": "England v Pakistan",
+        "date": "2026-09-09T10:00Z",
+        "endDate": "2026-09-13T23:59Z",
+        "states": [
+          "post"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "23805",
+        "name": "Pakistan in England Test Series 2026",
+        "slug": "23805"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "24200",
+    "name": "Bangladesh in South Africa Test Series 2026/27",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24200/scoreboard",
+    "tested_at": "2026-09-24T21:04:39.790931+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1525662",
+        "name": "South Africa v Bangladesh",
+        "date": "2026-11-15T08:00Z",
+        "endDate": "2026-11-20T23:59Z",
+        "states": [
+          "pre"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "24200",
+        "name": "Bangladesh in South Africa Test Series 2026/27",
+        "slug": "24200"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "24627",
+    "name": "The Ashes 2027",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24627/scoreboard",
+    "tested_at": "2026-09-24T21:04:39.988910+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1547175",
+        "name": "England v Australia",
+        "date": "2027-06-18T10:00Z",
+        "endDate": "2027-06-23T23:59Z",
+        "states": [
+          "pre"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "24627",
+        "name": "The Ashes 2027",
+        "slug": "24627"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "24619",
+    "name": "Bangladesh Women in England ODI Series 2027",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24619/scoreboard",
+    "tested_at": "2026-09-24T21:04:40.006937+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1547204",
+        "name": "England Women v Bangladesh Women",
+        "date": "2027-09-17T11:30Z",
+        "endDate": "2027-09-19T23:59Z",
+        "states": [
+          "pre"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "24619",
+        "name": "Bangladesh Women in England ODI Series 2027",
+        "slug": "24619"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "24620",
+    "name": "New Zealand in England ODI Series 2027",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24620/scoreboard",
+    "tested_at": "2026-09-24T21:04:40.222208+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1547183",
+        "name": "England v New Zealand",
+        "date": "2027-09-14T11:30Z",
+        "endDate": "2027-09-16T23:59Z",
+        "states": [
+          "pre"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "24620",
+        "name": "New Zealand in England ODI Series 2027",
+        "slug": "24620"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "24621",
+    "name": "Bangladesh Women in England T20I Series 2027",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24621/scoreboard",
+    "tested_at": "2026-09-24T21:04:42.305070+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1547201",
+        "name": "England Women v Bangladesh Women",
+        "date": "2027-09-08T17:30Z",
+        "endDate": "2027-09-10T23:59Z",
+        "states": [
+          "pre"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "24621",
+        "name": "Bangladesh Women in England T20I Series 2027",
+        "slug": "24621"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "24623",
+    "name": "New Zealand in England T20I Series 2027",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24623/scoreboard",
+    "tested_at": "2026-09-24T21:04:42.543113+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1547180",
+        "name": "England v New Zealand",
+        "date": "2027-09-07T17:30Z",
+        "endDate": "2027-09-09T23:59Z",
+        "states": [
+          "pre"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "24623",
+        "name": "New Zealand in England T20I Series 2027",
+        "slug": "24623"
+      }
+    ]
+  },
+  {
+    "provider_series_id": "8048",
+    "name": "Indian Premier League",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/8048/scoreboard",
+    "tested_at": "2026-09-24T21:04:44.238254+00:00",
+    "http_status": 200,
+    "events": [
+      {
+        "id": "1535465",
+        "name": "Royal Challengers Bengaluru v Gujarat Titans",
+        "date": "2026-05-31T14:00Z",
+        "endDate": "2026-06-01T23:59Z",
+        "states": [
+          "post"
+        ]
+      }
+    ],
+    "leagues": [
+      {
+        "id": "8048",
+        "name": "Indian Premier League",
+        "slug": "8048"
+      }
+    ]
+  }
+]

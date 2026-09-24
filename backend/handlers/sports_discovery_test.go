@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"novastream/models"
 	"strings"
 	"sync/atomic"
@@ -108,5 +109,48 @@ func TestSportsDiscoverySkipsExcludedSourceBeforeNetwork(t *testing.T) {
 	channels, err := h.FetchFilteredChannelsForRequest(req)
 	if err != nil || len(channels) != 0 || calls.Load() != 0 {
 		t.Fatalf("excluded source fetched: channels=%d requests=%d error=%v", len(channels), calls.Load(), err)
+	}
+}
+
+func TestSportsAddonSearchUsesEventFamilyAndEscapesParameters(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		game models.SportsGame
+		want string
+	}{
+		{"golf", models.SportsGame{League: "espn:golf:eur", Sport: "golf", EventKind: "tournament", Title: "BMW PGA Championship", AwayTeam: models.SportsTeam{Name: "Rory McIlroy"}}, "BMW PGA Championship"},
+		{"college", models.SportsGame{League: "espn:baseball:college-baseball", Sport: "baseball", EventKind: "matchup", AwayTeam: models.SportsTeam{Name: "Texas A&M Aggies"}}, "Texas A&M Aggies"},
+		{"tennis doubles", models.SportsGame{Sport: "tennis", EventKind: "matchup", AwayTeam: models.SportsTeam{Name: "González / Núñez"}}, "González / Núñez"},
+		{"race", models.SportsGame{League: "f1", Sport: "racing", EventKind: "race-session", Title: "Azerbaijan Grand Prix", EventContext: "Practice 2"}, "Azerbaijan Grand Prix"},
+		{"cricket", models.SportsGame{League: "espn:cricket:24627", Sport: "cricket", EventKind: "matchup", AwayTeam: models.SportsTeam{Name: "South Africa"}}, "South Africa"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/manifest.json" {
+					w.Write([]byte(`{"catalogs":[{"type":"tv","id":"live","extra":[{"name":"search"}]}]}`))
+					return
+				}
+				if strings.Contains(r.URL.Path, "search=") {
+					// Extras belong in the escaped Stremio path, not the HTTP query string.
+					part := strings.TrimSuffix(strings.TrimPrefix(r.URL.EscapedPath(), "/catalog/tv/live/"), ".json")
+					params, err := url.ParseQuery(part)
+					if err != nil {
+						t.Error(err)
+					}
+					got = params.Get("search")
+					if r.URL.RawQuery != "" || len(params) != 1 {
+						t.Errorf("unexpected query parameters %s", r.URL.String())
+					}
+				}
+				w.Write([]byte(`{"metas":[]}`))
+			}))
+			defer server.Close()
+			h := newStremioTestHandler(t, server.URL)
+			_, err := h.fetchSportsAddon(context.Background(), server.URL+"/manifest.json", "", &sportsDiscoveryRequest{game: tc.game})
+			if err != nil || got != tc.want {
+				t.Fatalf("search=%q want=%q err=%v", got, tc.want, err)
+			}
+		})
 	}
 }

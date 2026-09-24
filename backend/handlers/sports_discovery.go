@@ -90,6 +90,10 @@ func (h *LiveHandler) fetchSportsAddon(ctx context.Context, manifestURL, proxy s
 		return nil, err
 	}
 	query := strings.TrimSpace(d.game.AwayTeam.Name)
+	// A golf leaderboard has athletes, but addons index the tournament itself.
+	if d.game.EventKind == "tournament" && strings.TrimSpace(d.game.Title) != "" {
+		query = strings.TrimSpace(d.game.Title)
+	}
 	if query == "" {
 		query = strings.TrimSpace(d.game.HomeTeam.Name)
 	}

@@ -4,12 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestActivatedOptionalProviderFixtures(t *testing.T) {
+	var evidence []struct {
+		ID      string `json:"id"`
+		Summary struct {
+			RequestedEventID string `json:"requestedEventID"`
+		} `json:"summary"`
+	}
+	raw, err := os.ReadFile("../../../docs/sports-coverage/evidence/optional-capabilities.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(raw, &evidence); err != nil {
+		t.Fatal(err)
+	}
+	events := map[string]string{}
+	for _, row := range evidence {
+		events[row.ID] = row.Summary.RequestedEventID
+	}
+
 	for _, league := range LeagueCatalog {
 		if league.Provider != "espn" || !league.active() {
 			continue
@@ -28,14 +49,30 @@ func TestActivatedOptionalProviderFixtures(t *testing.T) {
 					t.Fatal(err)
 				}
 				service := NewService(t.TempDir())
-				service.client = &http.Client{Transport: coverageTransport(func(r *http.Request) (*http.Response, error) { return coverageResponse(200, string(data)), nil })}
+				requests := 0
+				service.client = &http.Client{Transport: coverageTransport(func(r *http.Request) (*http.Response, error) {
+					requests++
+					prefix := "/apis/site/v2/sports/"
+					params := url.Values{}
+					switch kind {
+					case "standings":
+						prefix = "/apis/v2/sports/"
+						params.Set("season", strconv.Itoa(time.Now().Year()))
+					case "summary":
+						params.Set("event", events[league.ID])
+					case "teams":
+						params.Set("limit", "1000")
+					}
+					expected := prefix + league.Sport + "/" + league.Slug + "/" + kind
+					if r.URL.Scheme != "https" || r.URL.Host != "site.api.espn.com" || r.URL.Path != expected || r.URL.Query().Encode() != params.Encode() {
+						t.Errorf("incorrect %s request %s; expected path %s params %s", kind, r.URL, expected, params.Encode())
+					}
+					return coverageResponse(200, string(data)), nil
+				})}
 				switch capability {
 				case "standings":
-					var raw standingsResponse
-					if err = json.Unmarshal(data, &raw); err != nil {
-						t.Fatal(err)
-					}
-					if len(normalizeLeagueStandings(raw, league.ID)) == 0 {
+					got := service.GetLeagueStandings(context.Background(), league.ID)
+					if len(got.Groups) == 0 {
 						t.Fatal("no usable standings")
 					}
 				case "team-identities":
@@ -77,6 +114,9 @@ func TestActivatedOptionalProviderFixtures(t *testing.T) {
 					if got.Detail == nil {
 						t.Fatal("summary not normalized")
 					}
+				}
+				if requests != 1 {
+					t.Errorf("expected one bounded metadata request, got%d", requests)
 				}
 			})
 		}

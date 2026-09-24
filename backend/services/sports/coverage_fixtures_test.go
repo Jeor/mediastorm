@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,30 @@ import (
 )
 
 func TestEveryActivatedCoverageFixtureNormalizes(t *testing.T) {
+	var evidence []struct {
+		ID       string `json:"id"`
+		Evidence struct {
+			Default struct {
+				URL string `json:"url"`
+			} `json:"default"`
+		} `json:"evidence"`
+	}
+	raw, err := os.ReadFile("../../../docs/sports-coverage/validated-catalog.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(raw, &evidence); err != nil {
+		t.Fatal(err)
+	}
+	verifiedPaths := map[string]string{}
+	for _, row := range evidence {
+		u, err := url.Parse(row.Evidence.Default.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		verifiedPaths[row.ID] = u.Path
+	}
+
 	for _, league := range LeagueCatalog {
 		if !strings.HasPrefix(league.ID, "espn:") || !league.active() || league.Provider != "espn" {
 			continue
@@ -26,7 +51,15 @@ func TestEveryActivatedCoverageFixtureNormalizes(t *testing.T) {
 				if err = json.Unmarshal(data, &board); err != nil {
 					t.Fatal(err)
 				}
-				events := normalizeRaceBoard(board, league.ID, time.Now())
+				service := NewService(t.TempDir())
+				service.SetEnabledLeagueIDs([]string{league.ID})
+				service.client = &http.Client{Transport: coverageTransport(func(req *http.Request) (*http.Response, error) {
+					if req.URL.Scheme != "https" || req.URL.Host != "site.api.espn.com" || req.URL.Path != verifiedPaths[league.ID] || req.URL.RawQuery != "" {
+						t.Errorf("incorrect racing API %s", req.URL)
+					}
+					return coverageResponse(200, string(data)), nil
+				})}
+				events := service.GetRaceBoard(context.Background()).Events
 				if len(events) == 0 {
 					t.Fatal("no usable race events")
 				}
@@ -58,6 +91,15 @@ func TestEveryActivatedCoverageFixtureNormalizes(t *testing.T) {
 			}
 			service := NewService(t.TempDir())
 			service.client = &http.Client{Transport: coverageTransport(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Host != "site.api.espn.com" || req.URL.Scheme != "https" {
+					t.Errorf("incorrect provider %s", req.URL)
+				}
+				if expected := verifiedPaths[league.ID]; expected != "" && req.URL.Path != expected {
+					t.Errorf("provider evidence path %s differs from request %s", expected, req.URL.Path)
+				}
+				if req.URL.Query().Get("dates") != "20260924" || req.URL.Query().Get("groups") != "" {
+					t.Errorf("incorrect dated expanded-league parameters %s", req.URL)
+				}
 				if req.URL.Query().Get("limit") != "200" {
 					t.Error("missing bounded schedule limit")
 				}

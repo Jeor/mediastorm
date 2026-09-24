@@ -39,3 +39,13 @@ func TestCoverageDescriptorPublicContract(t *testing.T) {
 		t.Fatal("status alone activated league")
 	}
 }
+
+func TestOrganizerProvidersAreNotAdvertisedAsESPN(t *testing.T) {
+	for _, league := range LeagueCatalog {
+		if league.ID == "motogp" || league.Sport == "cycling" {
+			if league.Provider != "organizer" {
+				t.Errorf("%s provider=%s", league.ID, league.Provider)
+			}
+		}
+	}
+}

@@ -1,0 +1,102 @@
+ok  	novastream	0.015s
+ok  	novastream/api	0.015s
+ok  	novastream/config	(cached)
+ok  	novastream/handlers	23.515s
+ok  	novastream/internal/accountrecovery	(cached)
+ok  	novastream/internal/apiusage	(cached)
+ok  	novastream/internal/auth	(cached)
+ok  	novastream/internal/database	(cached)
+ok  	novastream/internal/datastore	(cached)
+ok  	novastream/internal/dnscache	(cached)
+ok  	novastream/internal/encryption	(cached)
+ok  	novastream/internal/encryption/aes	(cached)
+ok  	novastream/internal/encryption/rclone	(cached)
+?   	novastream/internal/encryption/rclone/pkcs7	[no test files]
+?   	novastream/internal/encryption/rclone/version	[no test files]
+?   	novastream/internal/httpheaders	[no test files]
+ok  	novastream/internal/importer	(cached)
+?   	novastream/internal/integration	[no test files]
+?   	novastream/internal/liveusage	[no test files]
+?   	novastream/internal/mappingtest	[no test files]
+ok  	novastream/internal/mediaidentity	(cached)
+ok  	novastream/internal/mediaresolve	(cached)
+?   	novastream/internal/netproxy	[no test files]
+ok  	novastream/internal/nzb/filesystem	(cached)
+ok  	novastream/internal/nzb/metadata	(cached)
+?   	novastream/internal/nzb/metadata/proto	[no test files]
+ok  	novastream/internal/nzb/utils	(cached)
+ok  	novastream/internal/nzbfilesystem	(cached)
+ok  	novastream/internal/pool	(cached)
+ok  	novastream/internal/providerbreaker	(cached)
+ok  	novastream/internal/requestsecurity	(cached)
+ok  	novastream/internal/runtimepaths	(cached)
+?   	novastream/internal/sabnzbd	[no test files]
+ok  	novastream/internal/slogutil	(cached)
+ok  	novastream/internal/streamheaders	(cached)
+ok  	novastream/internal/torboxrate	(cached)
+ok  	novastream/internal/usenet	(cached)
+ok  	novastream/internal/webdav	(cached)
+ok  	novastream/internal/webdav/propfind	(cached)
+?   	novastream/internal/webdav/propfind/xml	[no test files]
+ok  	novastream/internal/ytdlp	(cached)
+ok  	novastream/models	(cached)
+?   	novastream/prerollassets	[no test files]
+?   	novastream/scripts	[no test files]
+ok  	novastream/services/accounts	(cached)
+ok  	novastream/services/backup	(cached)
+ok  	novastream/services/badstreams	(cached)
+ok  	novastream/services/calendar	(cached)
+ok  	novastream/services/castcaps	(cached)
+ok  	novastream/services/client_settings	(cached)
+ok  	novastream/services/clients	(cached)
+?   	novastream/services/content_preferences	[no test files]
+ok  	novastream/services/credits	(cached)
+ok  	novastream/services/customlists	(cached)
+ok  	novastream/services/debrid	(cached)
+ok  	novastream/services/epg	(cached)
+?   	novastream/services/hiddenitems	[no test files]
+ok  	novastream/services/history	(cached)
+ok  	novastream/services/indexer	(cached)
+ok  	novastream/services/invitations	(cached)
+ok  	novastream/services/jellyfin	(cached)
+ok  	novastream/services/kids	(cached)
+ok  	novastream/services/letterboxd	(cached)
+ok  	novastream/services/libraryaccess	(cached)
+ok  	novastream/services/localmedia	(cached)
+ok  	novastream/services/mdblist	(cached)
+ok  	novastream/services/metadata	(cached)
+ok  	novastream/services/notifications	(cached)
+ok  	novastream/services/numbersstation	(cached)
+ok  	novastream/services/playback	(cached)
+ok  	novastream/services/plex	(cached)
+ok  	novastream/services/prewarm	(cached)
+ok  	novastream/services/publicmetadb	(cached)
+ok  	novastream/services/realtimesessions	(cached)
+ok  	novastream/services/recordings	(cached)
+ok  	novastream/services/remoteaccess	(cached)
+ok  	novastream/services/remotemedia	(cached)
+ok  	novastream/services/scheduler	(cached)
+ok  	novastream/services/scrob	(cached)
+ok  	novastream/services/sessions	(cached)
+ok  	novastream/services/simkl	(cached)
+ok  	novastream/services/sports	0.977s
+?   	novastream/services/streaming	[no test files]
+ok  	novastream/services/streaming.old	(cached)
+ok  	novastream/services/trakt	(cached)
+ok  	novastream/services/updates	(cached)
+ok  	novastream/services/usenet	(cached)
+ok  	novastream/services/usenetengine	(cached)
+ok  	novastream/services/user_settings	(cached)
+ok  	novastream/services/users	(cached)
+ok  	novastream/services/watchlist	(cached)
+ok  	novastream/services/watchrooms	(cached)
+?   	novastream/tools/accountrecovery	[no test files]
+?   	novastream/tools/aiodiag	[no test files]
+?   	novastream/tools/dumpmeta	[no test files]
+?   	novastream/tools/dumpstream	[no test files]
+ok  	novastream/utils	(cached)
+ok  	novastream/utils/filter	(cached)
+ok  	novastream/utils/language	(cached)
+ok  	novastream/utils/parsett	(cached)
+?   	novastream/utils/parsett/example	[no test files]
+ok  	novastream/utils/similarity	(cached)

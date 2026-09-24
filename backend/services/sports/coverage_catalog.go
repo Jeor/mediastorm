@@ -72,7 +72,10 @@ func extendLeagueCatalog(legacy []League) []League {
 		l.Adapter = l.EventKind
 		l.ImplementationStatus = "validated"
 		l.Capabilities = []string{"schedule"}
-		if l.Sport == "cycling" {
+		if l.ID == "motogp" {
+			l.Provider = "organizer"
+			l.Capabilities = append(l.Capabilities, "live-score", "final-result")
+		} else if l.Sport == "cycling" {
 			l.Provider = "organizer"
 			l.ImplementationStatus = "limited"
 		} else if l.ID == "boxing" {

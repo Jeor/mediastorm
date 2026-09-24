@@ -14,6 +14,8 @@ for r in rows:
   r['backend_tests']='provider-fixture-only; integration-not-run';r['frontend_tests']='not-run';r['device_tests']='not-run'
  if r['target_id'] in w6:
   w=w6[r['target_id']];r.update(status=w['status'],evidence='w6-findings.json',blocker_or_notes=w['nextAction'])
+ if r['target_id']=='espn:football:cfl' and r['status']=='limited':
+  r.update(source='https://api.stats.cfl.ca/fixtures/2026',capabilities_validated='schedule;final-result',evidence='evidence/cfl-fixtures-2026.json; official full fixture validation in CFL work package',backend_tests='provider-fixture-only; see CFL adapter test evidence')
  if r['target_id'].startswith('cricket-discovery'):
   r.update(evidence='evidence/cricket-dropdown.json; all 500 rows inspected',source_date='2026-09-24',blocker_or_notes='Fresh dropdown acquired; see separate cricket target findings. No guessed slug or activation from directory alone.')
 for r in rows:

@@ -4,7 +4,7 @@
   "targets": [
     {
       "id": "espn:football:cfl",
-      "status": "blocked",
+      "status": "limited",
       "references": [
         {
           "url": "https://stats.cfl.ca/",
@@ -13,9 +13,25 @@
         {
           "url": "https://geniussports.atlassian.net/wiki/spaces/BID/pages/3990454841/Statistics%2BAPI",
           "observation": "Documented Statistics API lists CFL in live push v2 coverage. No credentials/entitlements supplied; no authenticated response exercised."
+        },
+        {
+          "url": "https://stats.cfl.ca/",
+          "observation": "Public runtime config identifies https://api.stats.cfl.ca; explicitly linked client assets request seasons, teams, fixtures and standings without credentials."
+        },
+        {
+          "url": "https://api.stats.cfl.ca/fixtures/2026?view=summary",
+          "observation": "HTTP 200; dated 2026 fixtures with stable game and team IDs. Full projection validated separately by cricket/CFL implementer."
+        },
+        {
+          "url": "https://api.stats.cfl.ca/teams",
+          "observation": "HTTP 200; names, region labels, colors and logo URLs."
+        },
+        {
+          "url": "https://api.stats.cfl.ca/standings/2026",
+          "observation": "HTTP 200; actual east/west rows with 2026 season, games played, wins and points."
         }
       ],
-      "nextAction": "Resolve authorized Genius/CFL fixture and statistics access and validate IDs and dated samples; do not activate ESPN2022 as current."
+      "nextAction": "Integrate tested official public CFL adapter; preserve legacy manifest canonical ID and record undocumented-interface limitation. ESPN feed remains stale."
     },
     {
       "id": "additional:wrestling",
@@ -85,9 +101,21 @@
         {
           "url": "https://flashresults.ncaa.com/Indoor/2026/index.htm",
           "observation": "Accessible official NCAA indoor championship results index March13\u201314,2026; lists men's/women's track/field and combined-event result links. HTML reference only, no documented authorized machine-readable interface established."
+        },
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/js/status.js",
+          "observation": "Public client loads status.csv; update_leaderboard.js loads mleader.htm and wleader.htm. These are meet-specific HTML endpoints, not an all-meet discovery API."
+        },
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/status.csv",
+          "observation": "HTTP 200; despite .csv suffix content is HTML span elements mapping event-round IDs to Official/Scored. No schedule or participant records in this response."
+        },
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/021-2_compiled.htm",
+          "observation": "Official result HTML contains 2026 women mile final table with places, named athletes, schools, time strings and millisecond tie-breaking precision. No generic JSON feed or cross-meet season discovery established."
         }
       ],
-      "nextAction": "Validate result partner access and discovery for indoor/outdoor men/women; explicit time/distance/points units required."
+      "nextAction": "Obtain partner-supported meet discovery/results access or scope an HTML adapter separately; present evidence covers one indoor championship, not outdoor/full college schedules."
     },
     {
       "id": "additional:volleyball",

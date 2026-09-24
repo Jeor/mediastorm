@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"novastream/models"
 	"os"
 	"strings"
 	"testing"
@@ -134,5 +135,98 @@ func TestCFLArtworkAllowlist(t *testing.T) {
 		if got := cflSportsTeam(&id, map[int]cflTeam{1: {Logo: logo}}); got.LogoURL != "" {
 			t.Fatal(got)
 		}
+	}
+}
+
+func TestCFLOptionalTeamCatalogAndStandings(t *testing.T) {
+	teams, err := os.ReadFile("testdata/cfl-teams.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	standings, err := os.ReadFile("testdata/cfl-standings-2026.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fail := false
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if fail {
+			w.WriteHeader(503)
+			return
+		}
+		switch r.URL.Path {
+		case "/seasons":
+			fmt.Fprintf(w, `[%d,2026,2025]`, time.Now().UTC().Year()+1)
+		case "/teams":
+			w.Write(teams)
+		case "/standings/2026":
+			w.Write(standings)
+		default:
+			t.Errorf("unexpected CFL optional path %s", r.URL.Path)
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+	client := server.Client()
+	client.Transport = cflTestTransport{server.URL, client.Transport}
+	s := &Service{client: client}
+	catalog, err := s.fetchCFLTeams(context.Background())
+	if err != nil || len(catalog) != 9 {
+		t.Fatal(catalog, err)
+	}
+	if catalog[0].ID != cflLeagueID+":"+catalog[0].EspnTeamID || !strings.HasPrefix(catalog[0].EspnTeamID, "cfl:") || catalog[0].Name == "" {
+		t.Fatal(catalog[0])
+	}
+	table := s.fetchCFLStandings(context.Background())
+	if table.State != "available" || table.Source != "CFL" || len(table.Groups) != 3 || table.UpdatedAt == nil {
+		t.Fatal(table)
+	}
+	east := table.Groups[0]
+	if east.Season != 2026 || east.SeasonLabel != "2026" || east.Title != "east" || len(east.Rows) != 4 || east.Rows[0].Name != "MONTREAL Alouettes" || east.Rows[0].Values["wins"] != "11" || east.Rows[0].Values["ties"] != "0" {
+		t.Fatal(east)
+	}
+	before := calls
+	cached := s.fetchCFLStandings(context.Background())
+	if cached.State != "available" || calls != before {
+		t.Fatal("standings not cached")
+	}
+	slot := s.standings.entries[cflLeagueID]
+	slot.expires = time.Time{}
+	fail = true
+	stale := s.fetchCFLStandings(context.Background())
+	if stale.State != "stale" || len(stale.Groups) != 3 || stale.UpdatedAt == nil || !stale.UpdatedAt.Equal(*table.UpdatedAt) {
+		t.Fatal("last good table lost", stale)
+	}
+}
+
+func TestCFLStandingsRequireActualSeasonAndNamedTeams(t *testing.T) {
+	raw, err := os.ReadFile("testdata/cfl-standings-2026.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response cflStandingsResponse
+	if err = json.Unmarshal(raw, &response); err != nil {
+		t.Fatal(err)
+	}
+	teams := []models.SportsTeamRecord{{League: cflLeagueID, EspnTeamID: "cfl:11", Name: "MONTREAL Alouettes"}}
+	if rows := normalizeCFLStandings(response, teams, 2025); len(rows) != 0 {
+		t.Fatal("relabelled stale season", rows)
+	}
+	if rows := normalizeCFLStandings(response, nil, 2026); len(rows) != 0 {
+		t.Fatal("invented unnamed teams", rows)
+	}
+	groups := normalizeCFLStandings(response, teams, 2026)
+	if len(groups) != 2 || len(groups[0].Rows) != 1 || groups[0].Rows[0].ID != "cfl:11" {
+		t.Fatal(groups)
+	}
+	for key, division := range response.Data.Divisions {
+		for i := range division.Rows {
+			division.Rows[i].Season = 0
+		}
+		response.Data.Divisions[key] = division
+	}
+	if groups := normalizeCFLStandings(response, teams, 2026); len(groups) != 0 {
+		t.Fatal("guessed missing row season", groups)
 	}
 }

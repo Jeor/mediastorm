@@ -190,3 +190,188 @@ func normalizeCFLFixtures(response cflFixtureResponse, teams map[int]cflTeam, no
 	sort.SliceStable(result, func(i, j int) bool { return result[i].StartTime.Before(result[j].StartTime) })
 	return result
 }
+
+// fetchCFLTeams exposes the same provider identity used by matchup participants.
+// EspnTeamID is a legacy storage field; its value stays provider-namespaced.
+func (s *Service) fetchCFLTeams(ctx context.Context) ([]models.SportsTeamRecord, error) {
+	var raw []cflTeam
+	if err := s.readCFLJSON(ctx, "/teams", &raw); err != nil {
+		return nil, err
+	}
+	result := make([]models.SportsTeamRecord, 0, len(raw))
+	seen := map[int]bool{}
+	now := time.Now().UTC()
+	for _, team := range raw {
+		if team.ID <= 0 || strings.TrimSpace(team.Name) == "" || strings.TrimSpace(team.Region) == "" || seen[team.ID] {
+			continue
+		}
+		seen[team.ID] = true
+		normalized := cflSportsTeam(&team.ID, map[int]cflTeam{team.ID: team})
+		result = append(result, models.SportsTeamRecord{ID: cflLeagueID + ":" + normalized.ID, League: cflLeagueID, EspnTeamID: normalized.ID, Name: normalized.Name, Location: normalized.Location, Nickname: normalized.Nickname, Abbreviation: normalized.Abbreviation, LogoURL: normalized.LogoURL, UpdatedAt: now})
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("CFL teams contains no named identities")
+	}
+	return result, nil
+}
+
+type cflStandingRow struct {
+	TeamID        int    `json:"team_id"`
+	Season        int    `json:"season"`
+	Abbreviation  string `json:"abbreviation"`
+	Place         *int   `json:"place"`
+	PlaceOverride *int   `json:"place_override"`
+	GamesPlayed   *int   `json:"games_played"`
+	Wins          *int   `json:"wins"`
+	Losses        *int   `json:"losses"`
+	Ties          *int   `json:"ties"`
+	Points        *int   `json:"points"`
+}
+type cflStandingDivision struct {
+	Name string           `json:"division_name"`
+	Rows []cflStandingRow `json:"standings"`
+}
+type cflStandingsResponse struct {
+	Data struct {
+		Divisions map[string]cflStandingDivision `json:"divisions"`
+	} `json:"data"`
+}
+
+func normalizeCFLStandings(raw cflStandingsResponse, teams []models.SportsTeamRecord, year int) []LeagueStandingGroup {
+	if year < 1900 || year > 2200 {
+		return nil
+	}
+	names := map[string]models.SportsTeamRecord{}
+	for _, team := range teams {
+		if team.League == cflLeagueID && strings.TrimSpace(team.Name) != "" {
+			names[team.EspnTeamID] = team
+		}
+	}
+	keys := []string{}
+	for key := range raw.Data.Divisions {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	groups := []LeagueStandingGroup{}
+	for _, key := range keys {
+		division := raw.Data.Divisions[key]
+		if strings.TrimSpace(division.Name) == "" {
+			continue
+		}
+		group := LeagueStandingGroup{ID: "cfl:" + key, Title: division.Name, Season: year, SeasonLabel: strconv.Itoa(year), Rows: []LeagueStandingRow{}, Columns: []StandingColumn{}}
+		seen := map[int]bool{}
+		present := map[string]bool{}
+		for _, row := range division.Rows {
+			team, known := names[fmt.Sprintf("cfl:%d", row.TeamID)]
+			if row.Season != year || row.TeamID <= 0 || seen[row.TeamID] || !known {
+				continue
+			}
+			seen[row.TeamID] = true
+			values := map[string]string{}
+			rank := row.Place
+			if row.PlaceOverride != nil && *row.PlaceOverride > 0 {
+				rank = row.PlaceOverride
+			}
+			for key, value := range map[string]*int{"rank": rank, "gamesPlayed": row.GamesPlayed, "wins": row.Wins, "losses": row.Losses, "ties": row.Ties, "points": row.Points} {
+				if value == nil || *value < 0 || (key == "rank" && *value == 0) {
+					continue
+				}
+				values[key] = strconv.Itoa(*value)
+				present[key] = true
+			}
+			if len(values) == 0 {
+				continue
+			}
+			group.Rows = append(group.Rows, LeagueStandingRow{ID: team.EspnTeamID, Name: team.Name, Abbreviation: team.Abbreviation, Kind: "team", Values: values})
+		}
+		for _, col := range []StandingColumn{{"rank", "Rank"}, {"gamesPlayed", "Played"}, {"wins", "Wins"}, {"losses", "Losses"}, {"ties", "Ties"}, {"points", "Points"}} {
+			if present[col.Key] {
+				group.Columns = append(group.Columns, col)
+			}
+		}
+		sort.SliceStable(group.Rows, func(i, j int) bool {
+			a, ea := strconv.Atoi(group.Rows[i].Values["rank"])
+			b, eb := strconv.Atoi(group.Rows[j].Values["rank"])
+			if ea != nil {
+				return false
+			}
+			if eb != nil {
+				return true
+			}
+			return a < b
+		})
+		if len(group.Rows) > 0 {
+			groups = append(groups, group)
+		}
+	}
+	return groups
+}
+
+// fetchCFLStandings is optional and never called from the fixture score path.
+// Discover the provider's season list before selecting the latest non-future
+// season; table rows must independently confirm the same year.
+func (s *Service) fetchCFLStandings(ctx context.Context) LeagueStandings {
+	s.standings.mu.Lock()
+	if s.standings.entries == nil {
+		s.standings.entries = map[string]*standingsSlot{}
+	}
+	slot := s.standings.entries[cflLeagueID]
+	if slot == nil {
+		slot = &standingsSlot{}
+		s.standings.entries[cflLeagueID] = slot
+	}
+	s.standings.mu.Unlock()
+	slot.mu.Lock()
+	defer slot.mu.Unlock()
+	if time.Now().Before(slot.expires) {
+		return slot.value
+	}
+	value := LeagueStandings{League: cflLeagueID, State: "unavailable", Source: "CFL", Groups: []LeagueStandingGroup{}, Reason: "Official CFL standings are unavailable"}
+	requestCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+	var seasons []int
+	err := s.readCFLJSON(requestCtx, "/seasons", &seasons)
+	year := 0
+	if err == nil {
+		for _, season := range seasons {
+			if season >= 1900 && season <= time.Now().UTC().Year() && season > year {
+				year = season
+			}
+		}
+		if year == 0 {
+			err = fmt.Errorf("CFL returned no known current or past season")
+		}
+	}
+	if err == nil {
+		value.SourceURL = fmt.Sprintf("%s/standings/%d", cflAPIBase, year)
+		var raw cflStandingsResponse
+		err = s.readCFLJSON(requestCtx, fmt.Sprintf("/standings/%d", year), &raw)
+		if err == nil {
+			var teams []models.SportsTeamRecord
+			teams, err = s.fetchCFLTeams(requestCtx)
+			if err == nil {
+				value.Groups = normalizeCFLStandings(raw, teams, year)
+				if len(value.Groups) == 0 {
+					err = fmt.Errorf("CFL table has no named rows for season %d", year)
+				}
+			}
+		}
+	}
+	ttl := 15 * time.Minute
+	if err == nil {
+		now := time.Now().UTC()
+		value.UpdatedAt = &now
+		value.State = "available"
+		value.Reason = ""
+	} else {
+		ttl = time.Minute
+		if slot.value.UpdatedAt != nil {
+			value = slot.value
+			value.State = "stale"
+			value.Reason = "Official CFL standings refresh unavailable; showing the last successful table"
+		}
+	}
+	slot.value = value
+	slot.expires = time.Now().Add(ttl)
+	return value
+}

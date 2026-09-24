@@ -1,0 +1,82 @@
+package sports
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestEveryActivatedCoverageFixtureNormalizes(t *testing.T) {
+	for _, league := range LeagueCatalog {
+		if !strings.HasPrefix(league.ID, "espn:") || !league.active() || league.Provider != "espn" {
+			continue
+		}
+		t.Run(league.ID, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join("testdata", "coverage", league.Sport+"--"+league.Slug+".json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if league.Sport == "racing" {
+				var board raceScoreboard
+				if err = json.Unmarshal(data, &board); err != nil {
+					t.Fatal(err)
+				}
+				events := normalizeRaceBoard(board, league.ID, time.Now())
+				if len(events) == 0 {
+					t.Fatal("no usable race events")
+				}
+				return
+			}
+			var board espnScoreboardResponse
+			if err = json.Unmarshal(data, &board); err != nil {
+				t.Fatal(err)
+			}
+			count := 0
+			seen := map[string]bool{}
+			for _, event := range board.Events {
+				for _, game := range scoreboardEventGames(event, league) {
+					if seen[game.ID] {
+						t.Errorf("duplicateevent %s", game.ID)
+					}
+					seen[game.ID] = true
+					if game.ID == "" || game.StartTime.IsZero() {
+						t.Errorf("invalid identity/time %+v", game)
+					}
+					if league.EventKind == "matchup" && (game.HomeTeam.Name == "" || game.AwayTeam.Name == "") {
+						t.Error("missing team identity")
+					}
+					if league.Slug == "tgl" && game.Detail != nil && len(game.Detail.Leaderboard) > 0 {
+						t.Fatal("TGL rendered as athlete leaderboard")
+					}
+					count++
+				}
+			}
+			service := NewService(t.TempDir())
+			service.client = &http.Client{Transport: coverageTransport(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Query().Get("limit") != "200" {
+					t.Error("missing bounded schedule limit")
+				}
+				return coverageResponse(200, string(data)), nil
+			})}
+			games, err := service.fetchLeagueScoreboardDate(context.Background(), league, "2026-09-24")
+			if err != nil || len(games) != count {
+				t.Fatalf("HTTP schedule normalization=%d want%d err=%v", len(games), count, err)
+			}
+			if count == 0 {
+				t.Fatal("activated league has no usable normalized events")
+			}
+		})
+	}
+}
+func TestMalformedScoreIsNotZero(t *testing.T) {
+	for _, raw := range []string{`{}`, `{"unexpected":2}`, `null`, `""`} {
+		if espnScore(json.RawMessage(raw)) != "" {
+			t.Errorf("invented zero for %s", raw)
+		}
+	}
+}

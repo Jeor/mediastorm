@@ -237,7 +237,7 @@ func (h *SportsHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid sports settings"}`, http.StatusBadRequest)
 		return
 	}
-	known := make(map[string]struct{})
+	known := map[string]struct{}{"*": {}}
 	for _, league := range h.service.Leagues() {
 		known[league.ID] = struct{}{}
 	}
@@ -695,4 +695,14 @@ func (h *SportsHandler) GetF1Archive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeSportsJSON(w, h.service.GetF1Archive(r.Context(), event))
+}
+
+// GetCricketSeries exposes discovery candidates separately from supported leagues.
+func (h *SportsHandler) GetCricketSeries(w http.ResponseWriter, r *http.Request) {
+	series, err := h.service.DiscoverCricketSeries(r.Context())
+	if err != nil && len(series) == 0 {
+		http.Error(w, `{"error":"cricket series discovery unavailable"}`, http.StatusBadGateway)
+		return
+	}
+	writeSportsJSON(w, map[string]any{"series": series, "complete": false, "stale": err != nil, "note": "Discovery candidates require scoreboard validation before activation; provider list is capped."})
 }

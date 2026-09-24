@@ -1,0 +1,297 @@
+{
+  "leagues": [
+    {
+      "id": "24627",
+      "uid": "s:200~l:24627",
+      "name": "The Ashes 2027",
+      "abbreviation": "The Ashes 2027",
+      "slug": "24627",
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/cricket/500/24627.png",
+          "width": 500,
+          "height": 500,
+          "rel": [
+            "full",
+            "default"
+          ],
+          "lastUpdated": ""
+        }
+      ],
+      "classId": [
+        1
+      ],
+      "mappings": {
+        "contentlink": "24627",
+        "cricinfo": 1547166
+      },
+      "season": {},
+      "links": [
+        {
+          "language": "en",
+          "rel": [
+            "serieshome",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/_/id/24627/24627",
+          "text": "Series Home",
+          "shortText": "Series Home",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "records",
+            "desktop"
+          ],
+          "href": "https://www.cricinfo.com/ci/engine/records/index.html?id=2;id=1;type=headtohead",
+          "text": "Records",
+          "shortText": "Records",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "fixtures",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/scores/series/24627/24627",
+          "text": "Fixtures",
+          "shortText": "Fixtures",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "calendarType": "day",
+      "calendarIsWhitelist": true,
+      "calendarStartDate": "2027-06-18T00:00:00Z",
+      "calendarEndDate": "2027-08-02T00:00:00Z",
+      "calendar": [
+        "2027-06-18T00:00:00Z",
+        "2027-06-19T00:00:00Z",
+        "2027-06-20T00:00:00Z",
+        "2027-06-21T00:00:00Z",
+        "2027-06-22T00:00:00Z",
+        "2027-06-30T00:00:00Z",
+        "2027-07-01T00:00:00Z",
+        "2027-07-02T00:00:00Z",
+        "2027-07-03T00:00:00Z",
+        "2027-07-04T00:00:00Z",
+        "2027-07-08T00:00:00Z",
+        "2027-07-09T00:00:00Z",
+        "2027-07-10T00:00:00Z",
+        "2027-07-11T00:00:00Z",
+        "2027-07-12T00:00:00Z",
+        "2027-07-21T00:00:00Z",
+        "2027-07-22T00:00:00Z",
+        "2027-07-23T00:00:00Z",
+        "2027-07-24T00:00:00Z",
+        "2027-07-25T00:00:00Z",
+        "2027-07-29T00:00:00Z",
+        "2027-07-30T00:00:00Z",
+        "2027-07-31T00:00:00Z",
+        "2027-08-01T00:00:00Z",
+        "2027-08-02T00:00:00Z"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "1547175",
+      "uid": "s:200~e:1547175",
+      "date": "2027-06-18T10:00Z",
+      "endDate": "2027-06-23T23:59Z",
+      "name": "England v Australia",
+      "shortName": "ENG v AUS",
+      "description": "1st Test, Australia tour of England at Nottingham, Jun 18-22 2027",
+      "season": {
+        "year": 2027,
+        "type": 24628
+      },
+      "competitions": [
+        {
+          "id": "1547175",
+          "uid": "s:200~e:1547175~c:1547175",
+          "description": "1st Test",
+          "shortDescription": "1st Test,  at Nottingham",
+          "date": "2027-06-18T10:00Z",
+          "endDate": "2027-06-23T23:59Z",
+          "timeValid": true,
+          "neutralSite": true,
+          "attendance": 0,
+          "conferenceCompetition": false,
+          "playByPlayAvailable": false,
+          "fastcastAvailable": false,
+          "recent": false,
+          "class": {
+            "internationalClassId": "1",
+            "generalClassId": "4",
+            "generalClassCard": "Test",
+            "name": "Test matches",
+            "eventType": "Test"
+          },
+          "venue": {
+            "id": "57219",
+            "fullName": "Trent Bridge, Nottingham",
+            "address": {
+              "city": "Nottingham",
+              "state": "",
+              "country": "England",
+              "summary": "Trent Bridge, Nottingham, Nottinghamshire NG2 6AG (Phone: 0115 982 3000)"
+            },
+            "capacity": 15350,
+            "indoor": false
+          },
+          "competitors": [
+            {
+              "id": "1",
+              "uid": "s:200~e:1547175~c:1547175~t:1",
+              "type": "team",
+              "order": 1,
+              "homeAway": "home",
+              "winner": "false",
+              "score": "",
+              "team": {
+                "id": "1",
+                "uid": "s:200~t:1",
+                "location": "England",
+                "name": "England",
+                "abbreviation": "ENG",
+                "displayName": "England",
+                "shortDisplayName": "ENG",
+                "isActive": true,
+                "countryCode": "www",
+                "color": "#0673c1",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop"
+                    ],
+                    "href": "https://www.espn.in/cricket/team/_/id/1/england",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/cricket/500/1.png"
+              },
+              "linescores": [],
+              "leaders": {
+                "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/24628/events/1547175/competitions/1547175/competitors/1/leaders"
+              },
+              "statistics": []
+            },
+            {
+              "id": "2",
+              "uid": "s:200~e:1547175~c:1547175~t:2",
+              "type": "team",
+              "order": 2,
+              "homeAway": "away",
+              "winner": "false",
+              "score": "",
+              "team": {
+                "id": "2",
+                "uid": "s:200~t:2",
+                "location": "Australia",
+                "name": "Australia",
+                "abbreviation": "AUS",
+                "displayName": "Australia",
+                "shortDisplayName": "AUS",
+                "isActive": true,
+                "countryCode": "AU",
+                "color": "#f3f702",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop"
+                    ],
+                    "href": "https://www.espn.in/cricket/team/_/id/2/australia",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/cricket/500/2.png"
+              },
+              "linescores": [],
+              "leaders": {
+                "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/24628/events/1547175/competitions/1547175/competitors/2/leaders"
+              },
+              "statistics": []
+            }
+          ],
+          "status": {
+            "clock": 0,
+            "displayClock": "0'",
+            "period": 0,
+            "featuredAthletes": [],
+            "summary": "Starts at 11:00 local time",
+            "type": {
+              "id": "0",
+              "description": "Scheduled",
+              "detail": "Scheduled",
+              "shortDetail": "Scheduled",
+              "state": "pre"
+            }
+          },
+          "odds": [],
+          "broadcasts": [],
+          "notes": [],
+          "startDate": "2027-06-18T10:00Z",
+          "broadcast": "",
+          "geoBroadcasts": [],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "boxscore",
+            "match",
+            "live",
+            "summary",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/24628/game/1547175/england-vs-australia-1st-test-24628",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "league",
+            "serieshome",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/_/id/24628/24628",
+          "text": "Series Home",
+          "shortText": "Series Home",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "status": {
+        "clock": 0,
+        "displayClock": "0'",
+        "period": 0,
+        "summary": "Starts at 11:00 local time",
+        "type": {
+          "id": "0",
+          "description": "Scheduled",
+          "detail": "Scheduled",
+          "shortDetail": "Scheduled",
+          "state": "pre"
+        }
+      }
+    }
+  ]
+}

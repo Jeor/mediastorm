@@ -1,0 +1,14 @@
+[
+  {
+    "id": "cricket-all",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/all/scoreboard",
+    "http_status": 404,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "cricket-root",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/scoreboard",
+    "http_status": 404,
+    "error": "HTTP Error 404: Not Found"
+  }
+]

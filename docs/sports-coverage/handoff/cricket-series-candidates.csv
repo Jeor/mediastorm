@@ -1,0 +1,501 @@
+name,provider_series_slug,scoreboard_candidate_url,status
+Summer Olympics Women's Cricket Competition 2028,,,missing-provider-slug-do-not-request
+Summer Olympics Men's Cricket Competition 2028,,,missing-provider-slug-do-not-request
+Bangladesh Women in England ODI Series 2027,24619,https://site.api.espn.com/apis/site/v2/sports/cricket/24619/scoreboard,requires-series-validation
+New Zealand in England ODI Series 2027,24620,https://site.api.espn.com/apis/site/v2/sports/cricket/24620/scoreboard,requires-series-validation
+Bangladesh Women in England T20I Series 2027,24621,https://site.api.espn.com/apis/site/v2/sports/cricket/24621/scoreboard,requires-series-validation
+New Zealand in England T20I Series 2027,24623,https://site.api.espn.com/apis/site/v2/sports/cricket/24623/scoreboard,requires-series-validation
+The Ashes 2027,24627,https://site.api.espn.com/apis/site/v2/sports/cricket/24627/scoreboard,requires-series-validation
+Bangladesh in England Test Match 2027,24629,https://site.api.espn.com/apis/site/v2/sports/cricket/24629/scoreboard,requires-series-validation
+Pakistan in England ODI Series 2027,24636,https://site.api.espn.com/apis/site/v2/sports/cricket/24636/scoreboard,requires-series-validation
+Australia Women in South Africa ODI Series 2026/27,24561,https://site.api.espn.com/apis/site/v2/sports/cricket/24561/scoreboard,requires-series-validation
+Bangladesh in Nepal T20I Series 2026/27,24792,https://site.api.espn.com/apis/site/v2/sports/cricket/24792/scoreboard,requires-series-validation
+150th Anniversary Test Match 2026/27,24264,https://site.api.espn.com/apis/site/v2/sports/cricket/24264/scoreboard,requires-series-validation
+Rose Bowl 2026/27,24266,https://site.api.espn.com/apis/site/v2/sports/cricket/24266/scoreboard,requires-series-validation
+New Zealand Women in Australia T20I Series 2026/27,24267,https://site.api.espn.com/apis/site/v2/sports/cricket/24267/scoreboard,requires-series-validation
+ICC Women's Champions Trophy 2027/28,,,missing-provider-slug-do-not-request
+Sri Lanka in New Zealand Test Series 2026/27,24459,https://site.api.espn.com/apis/site/v2/sports/cricket/24459/scoreboard,requires-series-validation
+Sri Lanka in New Zealand T20I Series 2026/27,24460,https://site.api.espn.com/apis/site/v2/sports/cricket/24460/scoreboard,requires-series-validation
+Border-Gavaskar Trophy 2026/27,24280,https://site.api.espn.com/apis/site/v2/sports/cricket/24280/scoreboard,requires-series-validation
+Sri Lanka in New Zealand ODI Series 2026/27,24461,https://site.api.espn.com/apis/site/v2/sports/cricket/24461/scoreboard,requires-series-validation
+England in South Africa ODI Series 2026/27,24195,https://site.api.espn.com/apis/site/v2/sports/cricket/24195/scoreboard,requires-series-validation
+Zimbabwe in India ODI Series 2026/27,24282,https://site.api.espn.com/apis/site/v2/sports/cricket/24282/scoreboard,requires-series-validation
+India Women in South Africa T20I Series 2026/27,24651,https://site.api.espn.com/apis/site/v2/sports/cricket/24651/scoreboard,requires-series-validation
+Sri Lanka in India T20I Series 2026/27,24284,https://site.api.espn.com/apis/site/v2/sports/cricket/24284/scoreboard,requires-series-validation
+India Women in South Africa Test Match 2026/27,24557,https://site.api.espn.com/apis/site/v2/sports/cricket/24557/scoreboard,requires-series-validation
+Basil D'Oliveira Trophy 2026/27,24196,https://site.api.espn.com/apis/site/v2/sports/cricket/24196/scoreboard,requires-series-validation
+Sri Lanka in India ODI Series 2026/27,24285,https://site.api.espn.com/apis/site/v2/sports/cricket/24285/scoreboard,requires-series-validation
+Bangladesh Women in New Zealand T20I Series 2026/27,24464,https://site.api.espn.com/apis/site/v2/sports/cricket/24464/scoreboard,requires-series-validation
+Bangladesh Women in New Zealand ODI Series 2026/27,24463,https://site.api.espn.com/apis/site/v2/sports/cricket/24463/scoreboard,requires-series-validation
+Bangladesh in South Africa T20I Series 2026/27,24197,https://site.api.espn.com/apis/site/v2/sports/cricket/24197/scoreboard,requires-series-validation
+Trans-Tasman Trophy 2026/27,24269,https://site.api.espn.com/apis/site/v2/sports/cricket/24269/scoreboard,requires-series-validation
+India Women in South Africa ODI Series 2026/27,24558,https://site.api.espn.com/apis/site/v2/sports/cricket/24558/scoreboard,requires-series-validation
+India A in Nepal unofficial T20I Series 2026/27,24579,https://site.api.espn.com/apis/site/v2/sports/cricket/24579/scoreboard,requires-series-validation
+Bangladesh in South Africa ODI Series 2026/27,24199,https://site.api.espn.com/apis/site/v2/sports/cricket/24199/scoreboard,requires-series-validation
+England Women Under-19s in India unofficial T20I Series 2026/27,24763,https://site.api.espn.com/apis/site/v2/sports/cricket/24763/scoreboard,requires-series-validation
+England in Australia T20I Series 2026/27,24271,https://site.api.espn.com/apis/site/v2/sports/cricket/24271/scoreboard,requires-series-validation
+India in New Zealand Test Series 2026/27,24466,https://site.api.espn.com/apis/site/v2/sports/cricket/24466/scoreboard,requires-series-validation
+Bangladesh in South Africa Test Series 2026/27,24200,https://site.api.espn.com/apis/site/v2/sports/cricket/24200/scoreboard,requires-series-validation
+England in Australia ODI Series 2026/27,24272,https://site.api.espn.com/apis/site/v2/sports/cricket/24272/scoreboard,requires-series-validation
+Sri Lanka in Pakistan Test Series 2026/27,24704,https://site.api.espn.com/apis/site/v2/sports/cricket/24704/scoreboard,requires-series-validation
+Afghanistan v Zimbabwe Test Series 2026/27,24797,https://site.api.espn.com/apis/site/v2/sports/cricket/24797/scoreboard,requires-series-validation
+India in New Zealand ODI Series 2026/27,24467,https://site.api.espn.com/apis/site/v2/sports/cricket/24467/scoreboard,requires-series-validation
+West Indies in Bangladesh Test Series 2026/27,24753,https://site.api.espn.com/apis/site/v2/sports/cricket/24753/scoreboard,requires-series-validation
+Afghanistan v Zimbabwe T20I Series 2026/27,24798,https://site.api.espn.com/apis/site/v2/sports/cricket/24798/scoreboard,requires-series-validation
+India A tour of New Zealand 2026/27,24805,https://site.api.espn.com/apis/site/v2/sports/cricket/24805/scoreboard,requires-series-validation
+India A in New Zealand unofficial Test Series 2026/27,24754,https://site.api.espn.com/apis/site/v2/sports/cricket/24754/scoreboard,requires-series-validation
+Zimbabwe Women in India ODI Series 2026/27,24369,https://site.api.espn.com/apis/site/v2/sports/cricket/24369/scoreboard,requires-series-validation
+India in New Zealand T20I Series 2026/27,24468,https://site.api.espn.com/apis/site/v2/sports/cricket/24468/scoreboard,requires-series-validation
+Pakistan ODI Tri-Series 2026/27,,,missing-provider-slug-do-not-request
+Bangladesh Women in Australia T20I Series 2026/27,24274,https://site.api.espn.com/apis/site/v2/sports/cricket/24274/scoreboard,requires-series-validation
+UAE ODI Tri-Series 2026/27,,,missing-provider-slug-do-not-request
+Zimbabwe Women in India T20I Series 2026/27,24370,https://site.api.espn.com/apis/site/v2/sports/cricket/24370/scoreboard,requires-series-validation
+Sri Lanka in Pakistan T20I Series 2026/27,24706,https://site.api.espn.com/apis/site/v2/sports/cricket/24706/scoreboard,requires-series-validation
+Bangladesh Women in Australia ODI Series 2026/27,24275,https://site.api.espn.com/apis/site/v2/sports/cricket/24275/scoreboard,requires-series-validation
+Australia in South Africa Test Series 2026/27,24201,https://site.api.espn.com/apis/site/v2/sports/cricket/24201/scoreboard,requires-series-validation
+Afghanistan v Bangladesh Test Match 2026/27,24800,https://site.api.espn.com/apis/site/v2/sports/cricket/24800/scoreboard,requires-series-validation
+ICC Men's T20 World Cup Sub Regional Asia Qualifier B 2026/27,,,missing-provider-slug-do-not-request
+West Indies in India T20I Series 2026/27,24287,https://site.api.espn.com/apis/site/v2/sports/cricket/24287/scoreboard,requires-series-validation
+ICC Men's T20 World Cup Sub Regional Asia Qualifier A 2026/27,,,missing-provider-slug-do-not-request
+CSA Women Pro20 Series 2026/27,,,missing-provider-slug-do-not-request
+West Indies Women in Zimbabwe T20I Series 2026,24794,https://site.api.espn.com/apis/site/v2/sports/cricket/24794/scoreboard,requires-series-validation
+Indonesial in South Korea T20I Series 2026/27,24804,https://site.api.espn.com/apis/site/v2/sports/cricket/24804/scoreboard,requires-series-validation
+CSA Women Pro50 Series 2026/27,,,missing-provider-slug-do-not-request
+Pakistan Women's Under-19s T20 Tri-Series 2026/27,,,missing-provider-slug-do-not-request
+Australia A Women in India unofficial Test Match 2026/27,24722,https://site.api.espn.com/apis/site/v2/sports/cricket/24722/scoreboard,requires-series-validation
+West Indies in India ODI Series 2026/27,24288,https://site.api.espn.com/apis/site/v2/sports/cricket/24288/scoreboard,requires-series-validation
+Australia Under-19s in India Youth Test Series 2026/27,24372,https://site.api.espn.com/apis/site/v2/sports/cricket/24372/scoreboard,requires-series-validation
+West Indies Women in Zimbabwe ODI Series 2026,24795,https://site.api.espn.com/apis/site/v2/sports/cricket/24795/scoreboard,requires-series-validation
+Australia in South Africa ODI Series 2026/27,24202,https://site.api.espn.com/apis/site/v2/sports/cricket/24202/scoreboard,requires-series-validation
+Sri Lanka in England ODI Series 2026,23800,https://site.api.espn.com/apis/site/v2/sports/cricket/23800/scoreboard,requires-series-validation
+India in Japan T20I Match 2026,24745,https://site.api.espn.com/apis/site/v2/sports/cricket/24745/scoreboard,requires-series-validation
+Australia A in India unofficial Test Series 2026/27,24374,https://site.api.espn.com/apis/site/v2/sports/cricket/24374/scoreboard,requires-series-validation
+Australia A in India unofficial ODI Series 2026/27,24373,https://site.api.espn.com/apis/site/v2/sports/cricket/24373/scoreboard,requires-series-validation
+Nigeria Quadrangular T20 Series,,,missing-provider-slug-do-not-request
+Australia A Women in India unofficial ODI Series 2026/27,24723,https://site.api.espn.com/apis/site/v2/sports/cricket/24723/scoreboard,requires-series-validation
+Hong Kong in Japan T20I Series 2026,24734,https://site.api.espn.com/apis/site/v2/sports/cricket/24734/scoreboard,requires-series-validation
+Australia Under-19s in India Youth ODI Series 2026/27,24376,https://site.api.espn.com/apis/site/v2/sports/cricket/24376/scoreboard,requires-series-validation
+Sri Lanka in England T20I Series 2026,23801,https://site.api.espn.com/apis/site/v2/sports/cricket/23801/scoreboard,requires-series-validation
+Australia in Zimbabwe ODI Series 2026,24302,https://site.api.espn.com/apis/site/v2/sports/cricket/24302/scoreboard,requires-series-validation
+United Arab Emirates in Malaysia T20I Series 2026,24747,https://site.api.espn.com/apis/site/v2/sports/cricket/24747/scoreboard,requires-series-validation
+Afghanistan in India T20I Series 2026,24676,https://site.api.espn.com/apis/site/v2/sports/cricket/24676/scoreboard,requires-series-validation
+Australia A Women in India unofficial T20I Series 2026/27,24724,https://site.api.espn.com/apis/site/v2/sports/cricket/24724/scoreboard,requires-series-validation
+South Africa Women in Zimbabwe T20I Series 2026,24564,https://site.api.espn.com/apis/site/v2/sports/cricket/24564/scoreboard,requires-series-validation
+Malaysia Women in Japan T20I Series 2026,24736,https://site.api.espn.com/apis/site/v2/sports/cricket/24736/scoreboard,requires-series-validation
+CSA 3-Day Series Division 2 2026/27,,,missing-provider-slug-do-not-request
+South Africa in Namibia ODI Series 2026,24669,https://site.api.espn.com/apis/site/v2/sports/cricket/24669/scoreboard,requires-series-validation
+Pakistan Under-19s in England Youth ODI Series 2026,24738,https://site.api.espn.com/apis/site/v2/sports/cricket/24738/scoreboard,requires-series-validation
+Bangladesh A in South Africa unofficial ODI Series 2026,24692,https://site.api.espn.com/apis/site/v2/sports/cricket/24692/scoreboard,requires-series-validation
+Serbia Women's T20I Tri-Series,24741,https://site.api.espn.com/apis/site/v2/sports/cricket/24741/scoreboard,requires-series-validation
+Czech Republic Women's T20I Tri-Series,24742,https://site.api.espn.com/apis/site/v2/sports/cricket/24742/scoreboard,requires-series-validation
+Pakistan Under-19s in England Youth Test Match 2026,24739,https://site.api.espn.com/apis/site/v2/sports/cricket/24739/scoreboard,requires-series-validation
+Ireland Women in England ODI Series 2026,23804,https://site.api.espn.com/apis/site/v2/sports/cricket/23804/scoreboard,requires-series-validation
+Netherlands Women in Scotland ODI Series 2026,24687,https://site.api.espn.com/apis/site/v2/sports/cricket/24687/scoreboard,requires-series-validation
+Namibia T20I Tri-Series,24752,https://site.api.espn.com/apis/site/v2/sports/cricket/24752/scoreboard,requires-series-validation
+European T20 Premier League,24698,https://site.api.espn.com/apis/site/v2/sports/cricket/24698/scoreboard,requires-series-validation
+Bangladesh A in South Africa unofficial Test Series 2026,24693,https://site.api.espn.com/apis/site/v2/sports/cricket/24693/scoreboard,requires-series-validation
+Belgium Women in Luxembourg T20I Series 2026,24647,https://site.api.espn.com/apis/site/v2/sports/cricket/24647/scoreboard,requires-series-validation
+China Women's T20I Tri-Series,24712,https://site.api.espn.com/apis/site/v2/sports/cricket/24712/scoreboard,requires-series-validation
+Pakistan in England Test Series 2026,23805,https://site.api.espn.com/apis/site/v2/sports/cricket/23805/scoreboard,requires-series-validation
+Bangladesh Emerging Team in South Africa unofficial Test Series 2026,24643,https://site.api.espn.com/apis/site/v2/sports/cricket/24643/scoreboard,requires-series-validation
+India in Sri Lanka Test Series 2026,24566,https://site.api.espn.com/apis/site/v2/sports/cricket/24566/scoreboard,requires-series-validation
+Thailand Women in Papua New Guinea ODI Series 2026,24665,https://site.api.espn.com/apis/site/v2/sports/cricket/24665/scoreboard,requires-series-validation
+Bangladesh in Australia Test Series 2026,24230,https://site.api.espn.com/apis/site/v2/sports/cricket/24230/scoreboard,requires-series-validation
+Malaysia in Bangladesh unofficial ODI Series 2026,24689,https://site.api.espn.com/apis/site/v2/sports/cricket/24689/scoreboard,requires-series-validation
+PCB National Champions Cup,24699,https://site.api.espn.com/apis/site/v2/sports/cricket/24699/scoreboard,requires-series-validation
+Malawi Tri-Nation T20I Series,24696,https://site.api.espn.com/apis/site/v2/sports/cricket/24696/scoreboard,requires-series-validation
+Germany in Finland T20I Match 2026,24668,https://site.api.espn.com/apis/site/v2/sports/cricket/24668/scoreboard,requires-series-validation
+Thailand Women in Papua New Guinea T20I Series 2026,24666,https://site.api.espn.com/apis/site/v2/sports/cricket/24666/scoreboard,requires-series-validation
+Malaysia in Bangladesh unofficial T20I Series 2026,24690,https://site.api.espn.com/apis/site/v2/sports/cricket/24690/scoreboard,requires-series-validation
+Hong Kong v Uganda unofficial ODI Match 2026,24700,https://site.api.espn.com/apis/site/v2/sports/cricket/24700/scoreboard,requires-series-validation
+Bangladesh Women Emerging Players in South Africa unofficial T20I Series 2026,24640,https://site.api.espn.com/apis/site/v2/sports/cricket/24640/scoreboard,requires-series-validation
+Afghanistan in Ireland ODI Series 2026,24262,https://site.api.espn.com/apis/site/v2/sports/cricket/24262/scoreboard,requires-series-validation
+Uganda in Tanzania unofficial ODI Match 2026,24701,https://site.api.espn.com/apis/site/v2/sports/cricket/24701/scoreboard,requires-series-validation
+Bahrain in Kenya unofficial ODI Series 2026,24702,https://site.api.espn.com/apis/site/v2/sports/cricket/24702/scoreboard,requires-series-validation
+Hong Kong in Tanzania unofficial ODI Series 2026,24703,https://site.api.espn.com/apis/site/v2/sports/cricket/24703/scoreboard,requires-series-validation
+Spain Women in Switzerland T20I Match 2026,24635,https://site.api.espn.com/apis/site/v2/sports/cricket/24635/scoreboard,requires-series-validation
+Pakistan Women in Sri Lanka T20I Series 2026,24507,https://site.api.espn.com/apis/site/v2/sports/cricket/24507/scoreboard,requires-series-validation
+Bahrain in Kenya T20I Series 2026,24644,https://site.api.espn.com/apis/site/v2/sports/cricket/24644/scoreboard,requires-series-validation
+South Africa Emerging Team Tri-Series 2026,,,missing-provider-slug-do-not-request
+Bangladesh Emerging Team tour of South Africa 2026,24646,https://site.api.espn.com/apis/site/v2/sports/cricket/24646/scoreboard,requires-series-validation
+Jersey Women in Switzerland T20I Match 2026,24613,https://site.api.espn.com/apis/site/v2/sports/cricket/24613/scoreboard,requires-series-validation
+Canada Women in Argentina T20I Series 2026,24568,https://site.api.espn.com/apis/site/v2/sports/cricket/24568/scoreboard,requires-series-validation
+Bangladesh Women Emerging Players in South Africa unofficial ODI Series 2026,24638,https://site.api.espn.com/apis/site/v2/sports/cricket/24638/scoreboard,requires-series-validation
+Women's T20 Quadrangular Series (in Switzerland),24697,https://site.api.espn.com/apis/site/v2/sports/cricket/24697/scoreboard,requires-series-validation
+Pakistan in West Indies Test Series 2026,24435,https://site.api.espn.com/apis/site/v2/sports/cricket/24435/scoreboard,requires-series-validation
+Finland Women in Estonia T20I Series 2026,24617,https://site.api.espn.com/apis/site/v2/sports/cricket/24617/scoreboard,requires-series-validation
+ECA Men's European Cup,24695,https://site.api.espn.com/apis/site/v2/sports/cricket/24695/scoreboard,requires-series-validation
+Pakistan Women in Sri Lanka ODI Series 2026,24508,https://site.api.espn.com/apis/site/v2/sports/cricket/24508/scoreboard,requires-series-validation
+India in Zimbabwe T20I Series 2026,24300,https://site.api.espn.com/apis/site/v2/sports/cricket/24300/scoreboard,requires-series-validation
+Bangladesh in Zimbabwe T20I Series 2026,24417,https://site.api.espn.com/apis/site/v2/sports/cricket/24417/scoreboard,requires-series-validation
+South Africa Women Under-19s in Pakistan unofficial T20I Series 2026,24581,https://site.api.espn.com/apis/site/v2/sports/cricket/24581/scoreboard,requires-series-validation
+India in England ODI Series 2026,23807,https://site.api.espn.com/apis/site/v2/sports/cricket/23807/scoreboard,requires-series-validation
+India Under-19s in Sri Lanka Youth Test Series 2026,24544,https://site.api.espn.com/apis/site/v2/sports/cricket/24544/scoreboard,requires-series-validation
+New Zealand in West Indies ODI Series 2026,24437,https://site.api.espn.com/apis/site/v2/sports/cricket/24437/scoreboard,requires-series-validation
+West Indies Women in Ireland ODI Series 2026,24255,https://site.api.espn.com/apis/site/v2/sports/cricket/24255/scoreboard,requires-series-validation
+Uzbekistan v Afghanistan XI T20 Match 2026,24577,https://site.api.espn.com/apis/site/v2/sports/cricket/24577/scoreboard,requires-series-validation
+Switzerland Women in Germany T20I Series 2026,24572,https://site.api.espn.com/apis/site/v2/sports/cricket/24572/scoreboard,requires-series-validation
+India Women in England Test Match 2026,23808,https://site.api.espn.com/apis/site/v2/sports/cricket/23808/scoreboard,requires-series-validation
+ICC Men's T20 World Cup Sub Regional Europe Qualifier B,24597,https://site.api.espn.com/apis/site/v2/sports/cricket/24597/scoreboard,requires-series-validation
+South Africa Under-19s in England Youth Test Series 2026,24554,https://site.api.espn.com/apis/site/v2/sports/cricket/24554/scoreboard,requires-series-validation
+Bangladesh in Zimbabwe ODI Series 2026,24418,https://site.api.espn.com/apis/site/v2/sports/cricket/24418/scoreboard,requires-series-validation
+India Under-19s in Sri Lanka Youth ODI Series 2026,24545,https://site.api.espn.com/apis/site/v2/sports/cricket/24545/scoreboard,requires-series-validation
+Portugal in Finland T20I Series 2026,24542,https://site.api.espn.com/apis/site/v2/sports/cricket/24542/scoreboard,requires-series-validation
+Portugal in Sweden T20I Series 2026,24496,https://site.api.espn.com/apis/site/v2/sports/cricket/24496/scoreboard,requires-series-validation
+India in England T20I Series 2026,23809,https://site.api.espn.com/apis/site/v2/sports/cricket/23809/scoreboard,requires-series-validation
+Sri Lanka Women Under-19s in India unofficial ODI Series 2026,24528,https://site.api.espn.com/apis/site/v2/sports/cricket/24528/scoreboard,requires-series-validation
+South Africa Under-19s in England Youth ODI Series 2026,24555,https://site.api.espn.com/apis/site/v2/sports/cricket/24555/scoreboard,requires-series-validation
+India A Women in England unofficial ODI Series 2026,24524,https://site.api.espn.com/apis/site/v2/sports/cricket/24524/scoreboard,requires-series-validation
+Bangladesh in Zimbabwe Test Match 2026,24419,https://site.api.espn.com/apis/site/v2/sports/cricket/24419/scoreboard,requires-series-validation
+Switzerland Women in Denmark T20I Series 2026,24510,https://site.api.espn.com/apis/site/v2/sports/cricket/24510/scoreboard,requires-series-validation
+Austria in Hungary T20I Series 2026,24532,https://site.api.espn.com/apis/site/v2/sports/cricket/24532/scoreboard,requires-series-validation
+Serbia Women in Bulgaria T20I Series 2026,24514,https://site.api.espn.com/apis/site/v2/sports/cricket/24514/scoreboard,requires-series-validation
+India in Ireland T20I Series 2026,24257,https://site.api.espn.com/apis/site/v2/sports/cricket/24257/scoreboard,requires-series-validation
+India A in Sri Lanka unofficial Test Series 2026,24516,https://site.api.espn.com/apis/site/v2/sports/cricket/24516/scoreboard,requires-series-validation
+West Indies Academy in Sri Lanka unofficial ODI Series 2026,24493,https://site.api.espn.com/apis/site/v2/sports/cricket/24493/scoreboard,requires-series-validation
+Sri Lanka Women Under-19s in India unofficial T20I Series 2026,24529,https://site.api.espn.com/apis/site/v2/sports/cricket/24529/scoreboard,requires-series-validation
+TG20 2026,,,missing-provider-slug-do-not-request
+ICC World Twenty20 Americas Sub Regional Qualifier A,24527,https://site.api.espn.com/apis/site/v2/sports/cricket/24527/scoreboard,requires-series-validation
+India A Women in England unofficial T20I Series 2026,24525,https://site.api.espn.com/apis/site/v2/sports/cricket/24525/scoreboard,requires-series-validation
+Malta Women in Cyprus T20I Series 2026,24501,https://site.api.espn.com/apis/site/v2/sports/cricket/24501/scoreboard,requires-series-validation
+Germany in Denmark T20I Series 2026,24474,https://site.api.espn.com/apis/site/v2/sports/cricket/24474/scoreboard,requires-series-validation
+Zimbabwe A in Bangladesh unofficial Test Series 2026,24503,https://site.api.espn.com/apis/site/v2/sports/cricket/24503/scoreboard,requires-series-validation
+Australia in Bangladesh T20I Series 2026,24322,https://site.api.espn.com/apis/site/v2/sports/cricket/24322/scoreboard,requires-series-validation
+Nordic Smash T20 Cup 2026,,,missing-provider-slug-do-not-request
+Guernsey Women in Jersey T20I Series 2026,24485,https://site.api.espn.com/apis/site/v2/sports/cricket/24485/scoreboard,requires-series-validation
+Afghanistan in India ODI Series 2026,24225,https://site.api.espn.com/apis/site/v2/sports/cricket/24225/scoreboard,requires-series-validation
+Sri Lanka in West Indies T20I Series 2026,24421,https://site.api.espn.com/apis/site/v2/sports/cricket/24421/scoreboard,requires-series-validation
+Jharkhand Premier League 2026,,,missing-provider-slug-do-not-request
+Sri Lanka A-Team Tri Series (OD) 2026,,,missing-provider-slug-do-not-request
+Australia in Bangladesh ODI Series 2026,24323,https://site.api.espn.com/apis/site/v2/sports/cricket/24323/scoreboard,requires-series-validation
+Zimbabwe A in Bangladesh unofficial ODI Series 2026,24504,https://site.api.espn.com/apis/site/v2/sports/cricket/24504/scoreboard,requires-series-validation
+West Indies Academy in Sri Lanka unofficial Test Series 2026,24494,https://site.api.espn.com/apis/site/v2/sports/cricket/24494/scoreboard,requires-series-validation
+ICC Women's T20 World Cup Warm-up Matches 2026,24447,https://site.api.espn.com/apis/site/v2/sports/cricket/24447/scoreboard,requires-series-validation
+EUT20 Belgium 2026,,,missing-provider-slug-do-not-request
+Afghanistan in India Test Match 2026,24226,https://site.api.espn.com/apis/site/v2/sports/cricket/24226/scoreboard,requires-series-validation
+South Africa A in England unofficial ODI Series 2026,24408,https://site.api.espn.com/apis/site/v2/sports/cricket/24408/scoreboard,requires-series-validation
+Sri Lanka in West Indies ODI Series 2026,24422,https://site.api.espn.com/apis/site/v2/sports/cricket/24422/scoreboard,requires-series-validation
+Madhya Pradesh League T20 2026,,,missing-provider-slug-do-not-request
+Eswatini T20 Tri-Series,24454,https://site.api.espn.com/apis/site/v2/sports/cricket/24454/scoreboard,requires-series-validation
+Asian Games Men's Qualifier,24453,https://site.api.espn.com/apis/site/v2/sports/cricket/24453/scoreboard,requires-series-validation
+Kuwait Women v Myanmar Women T20I Series 2026,24448,https://site.api.espn.com/apis/site/v2/sports/cricket/24448/scoreboard,requires-series-validation
+Australia in Pakistan ODI Series 2026,24378,https://site.api.espn.com/apis/site/v2/sports/cricket/24378/scoreboard,requires-series-validation
+Bahrain Women v Oman Women T20I Series 2026,24449,https://site.api.espn.com/apis/site/v2/sports/cricket/24449/scoreboard,requires-series-validation
+Scotland Women's T20I Tri-Series,24414,https://site.api.espn.com/apis/site/v2/sports/cricket/24414/scoreboard,requires-series-validation
+India Women in England T20I Series 2026,23812,https://site.api.espn.com/apis/site/v2/sports/cricket/23812/scoreboard,requires-series-validation
+New Zealand in Ireland Test Match 2026,24260,https://site.api.espn.com/apis/site/v2/sports/cricket/24260/scoreboard,requires-series-validation
+Asian Games Women's Qualifier,24413,https://site.api.espn.com/apis/site/v2/sports/cricket/24413/scoreboard,requires-series-validation
+South Africa A in England unofficial Test Series 2026,24409,https://site.api.espn.com/apis/site/v2/sports/cricket/24409/scoreboard,requires-series-validation
+New Zealand A Women in Sri Lanka unofficial T20I Series 2026,24380,https://site.api.espn.com/apis/site/v2/sports/cricket/24380/scoreboard,requires-series-validation
+New Zealand Women in England T20I Series 2026,23815,https://site.api.espn.com/apis/site/v2/sports/cricket/23815/scoreboard,requires-series-validation
+Nepal Women in Malaysia T20I Series 2026,24402,https://site.api.espn.com/apis/site/v2/sports/cricket/24402/scoreboard,requires-series-validation
+Indonesia Women in Malaysia T20I Series 2026,24401,https://site.api.espn.com/apis/site/v2/sports/cricket/24401/scoreboard,requires-series-validation
+Zimbabwe Women in Pakistan T20I Series 2026,24352,https://site.api.espn.com/apis/site/v2/sports/cricket/24352/scoreboard,requires-series-validation
+New Zealand A Women in Sri Lanka unofficial ODI Series 2026,24381,https://site.api.espn.com/apis/site/v2/sports/cricket/24381/scoreboard,requires-series-validation
+New Zealand Women in England ODI Series 2026,23816,https://site.api.espn.com/apis/site/v2/sports/cricket/23816/scoreboard,requires-series-validation
+Denmark Women in Greece T20I Series 2026,24353,https://site.api.espn.com/apis/site/v2/sports/cricket/24353/scoreboard,requires-series-validation
+Pakistan in Bangladesh Test Series 2026,24325,https://site.api.espn.com/apis/site/v2/sports/cricket/24325/scoreboard,requires-series-validation
+Finland in Cyprus T20I Series 2026,24335,https://site.api.espn.com/apis/site/v2/sports/cricket/24335/scoreboard,requires-series-validation
+Bulgaria in Romania T20I Series 2026,24359,https://site.api.espn.com/apis/site/v2/sports/cricket/24359/scoreboard,requires-series-validation
+Hong Kong Women's T20I Tri-Series,24412,https://site.api.espn.com/apis/site/v2/sports/cricket/24412/scoreboard,requires-series-validation
+Gibraltar in Malta T20I Series 2026,24317,https://site.api.espn.com/apis/site/v2/sports/cricket/24317/scoreboard,requires-series-validation
+Zimbabwe Women in Pakistan ODI Series 2026,24355,https://site.api.espn.com/apis/site/v2/sports/cricket/24355/scoreboard,requires-series-validation
+Cricket Ireland Women's Super T20 Series 2026,,,missing-provider-slug-do-not-request
+Isle of Man in Guernsey T20I Series 2026,24337,https://site.api.espn.com/apis/site/v2/sports/cricket/24337/scoreboard,requires-series-validation
+Indonesia in Malaysia T20I Series 2026,24339,https://site.api.espn.com/apis/site/v2/sports/cricket/24339/scoreboard,requires-series-validation
+Austria in Germany T20I Series 2026,24341,https://site.api.espn.com/apis/site/v2/sports/cricket/24341/scoreboard,requires-series-validation
+Sri Lanka Women in Bangladesh T20I Series 2026,24241,https://site.api.espn.com/apis/site/v2/sports/cricket/24241/scoreboard,requires-series-validation
+New Zealand in Bangladesh T20I Series 2026,24242,https://site.api.espn.com/apis/site/v2/sports/cricket/24242/scoreboard,requires-series-validation
+Chile Women in Costa Rica T20I Series 2026,24308,https://site.api.espn.com/apis/site/v2/sports/cricket/24308/scoreboard,requires-series-validation
+United Arab Emirates in Nepal T20I Series 2026,24320,https://site.api.espn.com/apis/site/v2/sports/cricket/24320/scoreboard,requires-series-validation
+Sri Lanka Women in Bangladesh ODI Series 2026,24243,https://site.api.espn.com/apis/site/v2/sports/cricket/24243/scoreboard,requires-series-validation
+ICC Women's T20I Challenge Trophy,24411,https://site.api.espn.com/apis/site/v2/sports/cricket/24411/scoreboard,requires-series-validation
+New Zealand in Bangladesh ODI Series 2026,24245,https://site.api.espn.com/apis/site/v2/sports/cricket/24245/scoreboard,requires-series-validation
+India Women in South Africa T20I Series 2026,24232,https://site.api.espn.com/apis/site/v2/sports/cricket/24232/scoreboard,requires-series-validation
+New Zealand A in Sri Lanka unofficial Test Series 2026,24292,https://site.api.espn.com/apis/site/v2/sports/cricket/24292/scoreboard,requires-series-validation
+Scotland in Namibia T20I Series 2026,24277,https://site.api.espn.com/apis/site/v2/sports/cricket/24277/scoreboard,requires-series-validation
+Australia Women in South Africa Test Match 2026/27,24560,https://site.api.espn.com/apis/site/v2/sports/cricket/24560/scoreboard,requires-series-validation
+Sweden in Indonesia T20I Series 2026,24304,https://site.api.espn.com/apis/site/v2/sports/cricket/24304/scoreboard,requires-series-validation
+New Zealand A in Sri Lanka unofficial ODI Series 2026,24293,https://site.api.espn.com/apis/site/v2/sports/cricket/24293/scoreboard,requires-series-validation
+Greece Women in Cyprus T20I Series 2026,24297,https://site.api.espn.com/apis/site/v2/sports/cricket/24297/scoreboard,requires-series-validation
+South Africa Women in New Zealand ODI Series 2025/26,23717,https://site.api.espn.com/apis/site/v2/sports/cricket/23717/scoreboard,requires-series-validation
+Australia Women in West Indies ODI Series 2025/26,24213,https://site.api.espn.com/apis/site/v2/sports/cricket/24213/scoreboard,requires-series-validation
+Afghanistan v Sri Lanka ODI Series 2025/26,24204,https://site.api.espn.com/apis/site/v2/sports/cricket/24204/scoreboard,requires-series-validation
+Australia Women in West Indies T20I Series 2025/26,24214,https://site.api.espn.com/apis/site/v2/sports/cricket/24214/scoreboard,requires-series-validation
+Australia Women in South Africa T20I Series 2026/27,24562,https://site.api.espn.com/apis/site/v2/sports/cricket/24562/scoreboard,requires-series-validation
+South Africa Women in New Zealand T20I Series 2025/26,23718,https://site.api.espn.com/apis/site/v2/sports/cricket/23718/scoreboard,requires-series-validation
+South Africa in New Zealand T20I Series 2025/26,23719,https://site.api.espn.com/apis/site/v2/sports/cricket/23719/scoreboard,requires-series-validation
+Austria in Cyprus T20I Series 2025/26,24237,https://site.api.espn.com/apis/site/v2/sports/cricket/24237/scoreboard,requires-series-validation
+Afghanistan v Sri Lanka T20I Series 2025/26,24205,https://site.api.espn.com/apis/site/v2/sports/cricket/24205/scoreboard,requires-series-validation
+Pakistan in Bangladesh ODI Series 2025/26,24208,https://site.api.espn.com/apis/site/v2/sports/cricket/24208/scoreboard,requires-series-validation
+Lesotho in Botswana T20I Series 2025/26,24234,https://site.api.espn.com/apis/site/v2/sports/cricket/24234/scoreboard,requires-series-validation
+ICC Men's T20 World Cup Sub Regional Americas Qualifier B,24307,https://site.api.espn.com/apis/site/v2/sports/cricket/24307/scoreboard,requires-series-validation
+Bahrain in Malaysia T20I Series 2025/26,24228,https://site.api.espn.com/apis/site/v2/sports/cricket/24228/scoreboard,requires-series-validation
+India Women in Australia Test Match 2025/26,23259,https://site.api.espn.com/apis/site/v2/sports/cricket/23259/scoreboard,requires-series-validation
+Zimbabwe Women in New Zealand ODI Series 2025/26,23721,https://site.api.espn.com/apis/site/v2/sports/cricket/23721/scoreboard,requires-series-validation
+Kuwait in Hong Kong unofficial ODI Series 2025/26,24189,https://site.api.espn.com/apis/site/v2/sports/cricket/24189/scoreboard,requires-series-validation
+Sri Lanka Women in West Indies T20I Series 2025/26,24186,https://site.api.espn.com/apis/site/v2/sports/cricket/24186/scoreboard,requires-series-validation
+England Lions v Pakistan Shaheens unofficial ODI Series 2025/26,24175,https://site.api.espn.com/apis/site/v2/sports/cricket/24175/scoreboard,requires-series-validation
+Zimbabwe Women in New Zealand T20I Series 2025/26,23722,https://site.api.espn.com/apis/site/v2/sports/cricket/23722/scoreboard,requires-series-validation
+Kuwait in Hong Kong T20I Series 2025/26,24190,https://site.api.espn.com/apis/site/v2/sports/cricket/24190/scoreboard,requires-series-validation
+India Women in Australia ODI Series 2025/26,23260,https://site.api.espn.com/apis/site/v2/sports/cricket/23260/scoreboard,requires-series-validation
+Pakistan Women in South Africa ODI Series 2025/26,23216,https://site.api.espn.com/apis/site/v2/sports/cricket/23216/scoreboard,requires-series-validation
+Sri Lanka Women in West Indies ODI Series 2025/26,24187,https://site.api.espn.com/apis/site/v2/sports/cricket/24187/scoreboard,requires-series-validation
+England Lions v Pakistan Shaheens unofficial T20I Series 2025/26,24176,https://site.api.espn.com/apis/site/v2/sports/cricket/24176/scoreboard,requires-series-validation
+India Women in Australia T20I Series 2025/26,23261,https://site.api.espn.com/apis/site/v2/sports/cricket/23261/scoreboard,requires-series-validation
+National T20 Cup Qualifiers 2025/26,,,missing-provider-slug-do-not-request
+ACC Women's Asia Cup Rising Stars,24306,https://site.api.espn.com/apis/site/v2/sports/cricket/24306/scoreboard,requires-series-validation
+Pakistan Women in South Africa T20I Series 2025/26,23217,https://site.api.espn.com/apis/site/v2/sports/cricket/23217/scoreboard,requires-series-validation
+Bahrain in Qatar T20I Series 2025/26,24184,https://site.api.espn.com/apis/site/v2/sports/cricket/24184/scoreboard,requires-series-validation
+Oman Women in Qatar T20I Series 2025/26,24182,https://site.api.espn.com/apis/site/v2/sports/cricket/24182/scoreboard,requires-series-validation
+Odommo Bangladesh T20 Cup 2025/26,,,missing-provider-slug-do-not-request
+Denmark Women in Oman T20I Series 2025/26,24122,https://site.api.espn.com/apis/site/v2/sports/cricket/24122/scoreboard,requires-series-validation
+Hong Kong Women's Premier League T20 Tournament 2025/26,,,missing-provider-slug-do-not-request
+England in Sri Lanka T20I Series 2025/26,23986,https://site.api.espn.com/apis/site/v2/sports/cricket/23986/scoreboard,requires-series-validation
+Ireland in United Arab Emirates T20I Series 2025/26,24105,https://site.api.espn.com/apis/site/v2/sports/cricket/24105/scoreboard,requires-series-validation
+Australia in Pakistan T20I Series 2025/26,24120,https://site.api.espn.com/apis/site/v2/sports/cricket/24120/scoreboard,requires-series-validation
+West Indies in South Africa T20I Series 2025/26,23219,https://site.api.espn.com/apis/site/v2/sports/cricket/23219/scoreboard,requires-series-validation
+Ireland v Italy T20I Series 2025/26,24106,https://site.api.espn.com/apis/site/v2/sports/cricket/24106/scoreboard,requires-series-validation
+England in Sri Lanka ODI Series 2025/26,23987,https://site.api.espn.com/apis/site/v2/sports/cricket/23987/scoreboard,requires-series-validation
+New Zealand in India T20I Series 2025/26,23692,https://site.api.espn.com/apis/site/v2/sports/cricket/23692/scoreboard,requires-series-validation
+Lotus Cup Women's Tri-Series,24147,https://site.api.espn.com/apis/site/v2/sports/cricket/24147/scoreboard,requires-series-validation
+Afghanistan v West Indies T20I Series 2025/26,24085,https://site.api.espn.com/apis/site/v2/sports/cricket/24085/scoreboard,requires-series-validation
+Global Cricket League,24136,https://site.api.espn.com/apis/site/v2/sports/cricket/24136/scoreboard,requires-series-validation
+ICC Women's T20 World Cup Global Qualifier Warm-up Matches 2025/26,24076,https://site.api.espn.com/apis/site/v2/sports/cricket/24076/scoreboard,requires-series-validation
+New Zealand in India ODI Series 2025/26,23693,https://site.api.espn.com/apis/site/v2/sports/cricket/23693/scoreboard,requires-series-validation
+ICC Men's Under-19 World Cup Warm-up Matches 2025/26,24089,https://site.api.espn.com/apis/site/v2/sports/cricket/24089/scoreboard,requires-series-validation
+Women's National Super League T20 Tournament 2025/26,,,missing-provider-slug-do-not-request
+Pakistan in Sri Lanka T20I Series 2025/26,24070,https://site.api.espn.com/apis/site/v2/sports/cricket/24070/scoreboard,requires-series-validation
+India Under-19s in South Africa Youth ODI Series 2025/26,24087,https://site.api.espn.com/apis/site/v2/sports/cricket/24087/scoreboard,requires-series-validation
+ICC Men's T20 World Cup Warm-up Matches 2025/26,24167,https://site.api.espn.com/apis/site/v2/sports/cricket/24167/scoreboard,requires-series-validation
+Zimbabwe Under-19 OD Tri-Series,24146,https://site.api.espn.com/apis/site/v2/sports/cricket/24146/scoreboard,requires-series-validation
+Afghanistan Under-19s tour of Zimbabwe 2025/26,24083,https://site.api.espn.com/apis/site/v2/sports/cricket/24083/scoreboard,requires-series-validation
+Myanmar in Bhutan T20I Series 2025/26,24074,https://site.api.espn.com/apis/site/v2/sports/cricket/24074/scoreboard,requires-series-validation
+Cambodia in Indonesia T20I Series 2025/26,24077,https://site.api.espn.com/apis/site/v2/sports/cricket/24077/scoreboard,requires-series-validation
+Sri Lanka Women in India T20I Series 2025/26,24045,https://site.api.espn.com/apis/site/v2/sports/cricket/24045/scoreboard,requires-series-validation
+North v South Women's T20 Series 2025/26,,,missing-provider-slug-do-not-request
+Ireland Women in South Africa ODI Series 2025/26,23221,https://site.api.espn.com/apis/site/v2/sports/cricket/23221/scoreboard,requires-series-validation
+South Africa in India T20I Series 2025/26,23274,https://site.api.espn.com/apis/site/v2/sports/cricket/23274/scoreboard,requires-series-validation
+Bahrain in Bhutan T20I Series 2025/26,24040,https://site.api.espn.com/apis/site/v2/sports/cricket/24040/scoreboard,requires-series-validation
+Oman Women's T20I Tri-Series,24145,https://site.api.espn.com/apis/site/v2/sports/cricket/24145/scoreboard,requires-series-validation
+Ireland Women in South Africa T20I Series 2025/26,23222,https://site.api.espn.com/apis/site/v2/sports/cricket/23222/scoreboard,requires-series-validation
+England Lions in Australia unofficial Test Match 2025/26,24030,https://site.api.espn.com/apis/site/v2/sports/cricket/24030/scoreboard,requires-series-validation
+Croatia in Spain T20I Series 2025/26,24068,https://site.api.espn.com/apis/site/v2/sports/cricket/24068/scoreboard,requires-series-validation
+Pakistan Women Under-19s in Bangladesh Youth T20I Series 2025/26,24037,https://site.api.espn.com/apis/site/v2/sports/cricket/24037/scoreboard,requires-series-validation
+West Indies in New Zealand Test Series 2025/26,23724,https://site.api.espn.com/apis/site/v2/sports/cricket/23724/scoreboard,requires-series-validation
+South Africa in India ODI Series 2025/26,23275,https://site.api.espn.com/apis/site/v2/sports/cricket/23275/scoreboard,requires-series-validation
+Brazil in Argentina T20I Series 2025/26,24033,https://site.api.espn.com/apis/site/v2/sports/cricket/24033/scoreboard,requires-series-validation
+Myanmar Women in Singapore T20I Series 2025/26,24018,https://site.api.espn.com/apis/site/v2/sports/cricket/24018/scoreboard,requires-series-validation
+Ireland in Bangladesh T20I Series 2025/26,23964,https://site.api.espn.com/apis/site/v2/sports/cricket/23964/scoreboard,requires-series-validation
+Mini SEA Men's Twenty20 Cricket Competition,24143,https://site.api.espn.com/apis/site/v2/sports/cricket/24143/scoreboard,requires-series-validation
+ICC Women’s Emerging Nations Trophy ,,,missing-provider-slug-do-not-request
+ICC Women's Emerging Nations Trophy,24142,https://site.api.espn.com/apis/site/v2/sports/cricket/24142/scoreboard,requires-series-validation
+Bahrain in Indonesia T20I Series 2025/26,24016,https://site.api.espn.com/apis/site/v2/sports/cricket/24016/scoreboard,requires-series-validation
+Pakistan T20I Tri-Series,24137,https://site.api.espn.com/apis/site/v2/sports/cricket/24137/scoreboard,requires-series-validation
+India Under-19 OD Tri-Series,24144,https://site.api.espn.com/apis/site/v2/sports/cricket/24144/scoreboard,requires-series-validation
+West Indies in New Zealand ODI Series 2025/26,23725,https://site.api.espn.com/apis/site/v2/sports/cricket/23725/scoreboard,requires-series-validation
+England Under-19s in West Indies Youth ODI Series 2025/26,24031,https://site.api.espn.com/apis/site/v2/sports/cricket/24031/scoreboard,requires-series-validation
+Asia Cup Rising Stars,24141,https://site.api.espn.com/apis/site/v2/sports/cricket/24141/scoreboard,requires-series-validation
+South Africa A in India unofficial ODI Series 2025/26,23668,https://site.api.espn.com/apis/site/v2/sports/cricket/23668/scoreboard,requires-series-validation
+Hong Kong in Qatar T20I Series 2025/26,24029,https://site.api.espn.com/apis/site/v2/sports/cricket/24029/scoreboard,requires-series-validation
+Sri Lanka in Pakistan ODI Series 2025/26,23910,https://site.api.espn.com/apis/site/v2/sports/cricket/23910/scoreboard,requires-series-validation
+Ireland in Bangladesh Test Series 2025/26,23965,https://site.api.espn.com/apis/site/v2/sports/cricket/23965/scoreboard,requires-series-validation
+Qatar v Afghanistan T20I Match 2025/26,24027,https://site.api.espn.com/apis/site/v2/sports/cricket/24027/scoreboard,requires-series-validation
+West Indies in New Zealand T20I Series 2025/26,23726,https://site.api.espn.com/apis/site/v2/sports/cricket/23726/scoreboard,requires-series-validation
+South Africa in Pakistan ODI Series 2025/26,23905,https://site.api.espn.com/apis/site/v2/sports/cricket/23905/scoreboard,requires-series-validation
+Canada Women in Tanzania T20I Series 2025/26,23978,https://site.api.espn.com/apis/site/v2/sports/cricket/23978/scoreboard,requires-series-validation
+Bulgaria in Cyprus T20I Series 2025/26,23971,https://site.api.espn.com/apis/site/v2/sports/cricket/23971/scoreboard,requires-series-validation
+South Africa A in India unofficial Test Series 2025/26,23669,https://site.api.espn.com/apis/site/v2/sports/cricket/23669/scoreboard,requires-series-validation
+India in Australia T20I Series 2025/26,23263,https://site.api.espn.com/apis/site/v2/sports/cricket/23263/scoreboard,requires-series-validation
+Afghanistan in Zimbabwe T20I Series 2025/26,23960,https://site.api.espn.com/apis/site/v2/sports/cricket/23960/scoreboard,requires-series-validation
+South Africa in Pakistan T20I Series 2025/26,23906,https://site.api.espn.com/apis/site/v2/sports/cricket/23906/scoreboard,requires-series-validation
+Afghanistan Under-19s in Bangladesh Youth ODI Series 2025/26,23994,https://site.api.espn.com/apis/site/v2/sports/cricket/23994/scoreboard,requires-series-validation
+West Indies in Bangladesh T20I Series 2025/26,23955,https://site.api.espn.com/apis/site/v2/sports/cricket/23955/scoreboard,requires-series-validation
+England in New Zealand ODI Series 2025/26,23728,https://site.api.espn.com/apis/site/v2/sports/cricket/23728/scoreboard,requires-series-validation
+CSA T20 Knock-Out Competition 2025/26,,,missing-provider-slug-do-not-request
+Canada Women in Uganda T20I Series 2025/26,23980,https://site.api.espn.com/apis/site/v2/sports/cricket/23980/scoreboard,requires-series-validation
+Afghanistan in Zimbabwe Test Match 2025/26,23961,https://site.api.espn.com/apis/site/v2/sports/cricket/23961/scoreboard,requires-series-validation
+India in Australia ODI Series 2025/26,23264,https://site.api.espn.com/apis/site/v2/sports/cricket/23264/scoreboard,requires-series-validation
+West Indies in Bangladesh ODI Series 2025/26,23956,https://site.api.espn.com/apis/site/v2/sports/cricket/23956/scoreboard,requires-series-validation
+England in New Zealand T20I Series 2025/26,23729,https://site.api.espn.com/apis/site/v2/sports/cricket/23729/scoreboard,requires-series-validation
+Austria tour of Romania 2025/26,23975,https://site.api.espn.com/apis/site/v2/sports/cricket/23975/scoreboard,requires-series-validation
+Austria in Romania T20I Series 2025/26,23974,https://site.api.espn.com/apis/site/v2/sports/cricket/23974/scoreboard,requires-series-validation
+United Arab Emirates Women in Papua New Guinea ODI Series 2025/26,23976,https://site.api.espn.com/apis/site/v2/sports/cricket/23976/scoreboard,requires-series-validation
+South Africa in Pakistan Test Series 2025/26,23907,https://site.api.espn.com/apis/site/v2/sports/cricket/23907/scoreboard,requires-series-validation
+South Africa in Namibia T20I Match 2025/26,23659,https://site.api.espn.com/apis/site/v2/sports/cricket/23659/scoreboard,requires-series-validation
+Canada Super 60 Women 2025/26,,,missing-provider-slug-do-not-request
+Canada Super 60,24139,https://site.api.espn.com/apis/site/v2/sports/cricket/24139/scoreboard,requires-series-validation
+ICC Men's T20 World Cup Asia & EAP Qualifier,24140,https://site.api.espn.com/apis/site/v2/sports/cricket/24140/scoreboard,requires-series-validation
+Afghanistan v Bangladesh ODI Series 2025/26,23882,https://site.api.espn.com/apis/site/v2/sports/cricket/23882/scoreboard,requires-series-validation
+United Arab Emirates Women in Zimbabwe T20I Series 2025/26,23928,https://site.api.espn.com/apis/site/v2/sports/cricket/23928/scoreboard,requires-series-validation
+CSA Women Pro20 Series 2025/26,,,missing-provider-slug-do-not-request
+CSA Women Pro50 Series 2025/26,,,missing-provider-slug-do-not-request
+West Indies in India Test Series 2025/26,23278,https://site.api.espn.com/apis/site/v2/sports/cricket/23278/scoreboard,requires-series-validation
+Nepal Women in Malaysia T20I Series 2025/26,23958,https://site.api.espn.com/apis/site/v2/sports/cricket/23958/scoreboard,requires-series-validation
+Afghanistan v Bangladesh T20I Series 2025/26,23883,https://site.api.espn.com/apis/site/v2/sports/cricket/23883/scoreboard,requires-series-validation
+Australia in New Zealand T20I Series 2025/26,23731,https://site.api.espn.com/apis/site/v2/sports/cricket/23731/scoreboard,requires-series-validation
+India Under-19s in Australia Youth Test Series 2025/26,23945,https://site.api.espn.com/apis/site/v2/sports/cricket/23945/scoreboard,requires-series-validation
+Australia A in India unofficial ODI Series 2025/26,23671,https://site.api.espn.com/apis/site/v2/sports/cricket/23671/scoreboard,requires-series-validation
+Kuwait in Oman T20I Series 2025/26,23954,https://site.api.espn.com/apis/site/v2/sports/cricket/23954/scoreboard,requires-series-validation
+Australia Women Under-19s in Sri Lanka unofficial  ODI Match 2025,23940,https://site.api.espn.com/apis/site/v2/sports/cricket/23940/scoreboard,requires-series-validation
+United Arab Emirates Women in Zimbabwe ODI Series 2025/26,23929,https://site.api.espn.com/apis/site/v2/sports/cricket/23929/scoreboard,requires-series-validation
+Nepal v West Indies T20I Series 2025,23689,https://site.api.espn.com/apis/site/v2/sports/cricket/23689/scoreboard,requires-series-validation
+ICC Women's World Cup Warm-up Matches 2025/26,23783,https://site.api.espn.com/apis/site/v2/sports/cricket/23783/scoreboard,requires-series-validation
+India Under-19s in Australia Youth ODI Series 2025/26,23946,https://site.api.espn.com/apis/site/v2/sports/cricket/23946/scoreboard,requires-series-validation
+Australia Women Under-19s tour of Sri Lanka 2025,23942,https://site.api.espn.com/apis/site/v2/sports/cricket/23942/scoreboard,requires-series-validation
+Australia Women Under-19s in Sri Lanka unofficial T20I Series 2025,23941,https://site.api.espn.com/apis/site/v2/sports/cricket/23941/scoreboard,requires-series-validation
+England in Ireland T20I Series 2025,22833,https://site.api.espn.com/apis/site/v2/sports/cricket/22833/scoreboard,requires-series-validation
+South Africa Women in Pakistan ODI Series 2025/26,23886,https://site.api.espn.com/apis/site/v2/sports/cricket/23886/scoreboard,requires-series-validation
+Australia A in India unofficial Test Series 2025/26,23672,https://site.api.espn.com/apis/site/v2/sports/cricket/23672/scoreboard,requires-series-validation
+Namibia in Zimbabwe T20I Series 2025/26,23912,https://site.api.espn.com/apis/site/v2/sports/cricket/23912/scoreboard,requires-series-validation
+Australia Women in India ODI Series 2025/26,23674,https://site.api.espn.com/apis/site/v2/sports/cricket/23674/scoreboard,requires-series-validation
+Mozambique in Eswatini T20I Series 2025,23895,https://site.api.espn.com/apis/site/v2/sports/cricket/23895/scoreboard,requires-series-validation
+Luxembourg Women's T20I Tri-Series,24138,https://site.api.espn.com/apis/site/v2/sports/cricket/24138/scoreboard,requires-series-validation
+South Africa in England T20I Series 2025,22835,https://site.api.espn.com/apis/site/v2/sports/cricket/22835/scoreboard,requires-series-validation
+New Zealand A in South Africa unofficial Test Series 2025,23224,https://site.api.espn.com/apis/site/v2/sports/cricket/23224/scoreboard,requires-series-validation
+Sweden in Isle of Man T20I Series 2025,23842,https://site.api.espn.com/apis/site/v2/sports/cricket/23842/scoreboard,requires-series-validation
+Czech Republic Women in Estonia T20I Series 2025,23876,https://site.api.espn.com/apis/site/v2/sports/cricket/23876/scoreboard,requires-series-validation
+Japan Women in Fiji T20I Series 2025,23878,https://site.api.espn.com/apis/site/v2/sports/cricket/23878/scoreboard,requires-series-validation
+Bangladesh Under-19s in England Youth ODI Series 2025,23901,https://site.api.espn.com/apis/site/v2/sports/cricket/23901/scoreboard,requires-series-validation
+Sri Lanka in Zimbabwe T20I Series 2025,23738,https://site.api.espn.com/apis/site/v2/sports/cricket/23738/scoreboard,requires-series-validation
+South Africa in England ODI Series 2025,22836,https://site.api.espn.com/apis/site/v2/sports/cricket/22836/scoreboard,requires-series-validation
+Ireland Under-19s in England Youth ODI Match 2025,23903,https://site.api.espn.com/apis/site/v2/sports/cricket/23903/scoreboard,requires-series-validation
+Women's ICC T20 Tri-Series,24135,https://site.api.espn.com/apis/site/v2/sports/cricket/24135/scoreboard,requires-series-validation
+ICC Women's T20 World Cup Africa Region Division One Qualifier,24133,https://site.api.espn.com/apis/site/v2/sports/cricket/24133/scoreboard,requires-series-validation
+Sri Lanka Under-19s in West Indies Youth ODI Series 2025,23880,https://site.api.espn.com/apis/site/v2/sports/cricket/23880/scoreboard,requires-series-validation
+New Zealand A in South Africa unofficial ODI Series 2025,23225,https://site.api.espn.com/apis/site/v2/sports/cricket/23225/scoreboard,requires-series-validation
+Netherlands in Bangladesh T20I Series 2025,23850,https://site.api.espn.com/apis/site/v2/sports/cricket/23850/scoreboard,requires-series-validation
+United Arab Emirates T20I Tri-Series,24130,https://site.api.espn.com/apis/site/v2/sports/cricket/24130/scoreboard,requires-series-validation
+Switzerland in Guernsey T20I Series 2025,23852,https://site.api.espn.com/apis/site/v2/sports/cricket/23852/scoreboard,requires-series-validation
+Sri Lanka in Zimbabwe ODI Series 2025,23739,https://site.api.espn.com/apis/site/v2/sports/cricket/23739/scoreboard,requires-series-validation
+Eastern Europe Cup,24134,https://site.api.espn.com/apis/site/v2/sports/cricket/24134/scoreboard,requires-series-validation
+India in Bangladesh T20I Series 2025,23299,https://site.api.espn.com/apis/site/v2/sports/cricket/23299/scoreboard,requires-series-validation
+Belgium in Austria T20I Series 2025,23854,https://site.api.espn.com/apis/site/v2/sports/cricket/23854/scoreboard,requires-series-validation
+India A Women in Australia unofficial Test Match 2025,23784,https://site.api.espn.com/apis/site/v2/sports/cricket/23784/scoreboard,requires-series-validation
+Czech Republic in Romania T20I Series 2025,23862,https://site.api.espn.com/apis/site/v2/sports/cricket/23862/scoreboard,requires-series-validation
+ICC Women's T20 World Cup Europe Division 1 Qualifier,24132,https://site.api.espn.com/apis/site/v2/sports/cricket/24132/scoreboard,requires-series-validation
+South Africa in Australia ODI Series 2025,23266,https://site.api.espn.com/apis/site/v2/sports/cricket/23266/scoreboard,requires-series-validation
+Norway Tri-Nation T20I Series,24131,https://site.api.espn.com/apis/site/v2/sports/cricket/24131/scoreboard,requires-series-validation
+India in Bangladesh ODI Series 2025,23300,https://site.api.espn.com/apis/site/v2/sports/cricket/23300/scoreboard,requires-series-validation
+Papua New Guinea in Guernsey T20I Match 2025,23856,https://site.api.espn.com/apis/site/v2/sports/cricket/23856/scoreboard,requires-series-validation
+India A Women in Australia unofficial ODI Series 2025,23785,https://site.api.espn.com/apis/site/v2/sports/cricket/23785/scoreboard,requires-series-validation
+Cambodia Women in Singapore T20I Series 2025,23840,https://site.api.espn.com/apis/site/v2/sports/cricket/23840/scoreboard,requires-series-validation
+South Africa in Australia T20I Series 2025,23267,https://site.api.espn.com/apis/site/v2/sports/cricket/23267/scoreboard,requires-series-validation
+Pakistan in West Indies ODI Series 2025,23147,https://site.api.espn.com/apis/site/v2/sports/cricket/23147/scoreboard,requires-series-validation
+Viking Cup,24129,https://site.api.espn.com/apis/site/v2/sports/cricket/24129/scoreboard,requires-series-validation
+India A Women in Australia unofficial T20I Series 2025,23786,https://site.api.espn.com/apis/site/v2/sports/cricket/23786/scoreboard,requires-series-validation
+Cyprus in Croatia T20I Series 2025,23818,https://site.api.espn.com/apis/site/v2/sports/cricket/23818/scoreboard,requires-series-validation
+Pakistan Women in Ireland T20I Series 2025,23208,https://site.api.espn.com/apis/site/v2/sports/cricket/23208/scoreboard,requires-series-validation
+Switzerland in Estonia T20I Series 2025,23762,https://site.api.espn.com/apis/site/v2/sports/cricket/23762/scoreboard,requires-series-validation
+Gibraltar Women in Estonia T20I Series 2025,23824,https://site.api.espn.com/apis/site/v2/sports/cricket/23824/scoreboard,requires-series-validation
+West Indies v Pakistan T20I Series 2025,23148,https://site.api.espn.com/apis/site/v2/sports/cricket/23148/scoreboard,requires-series-validation
+New Zealand in Zimbabwe Test Series 2025,23249,https://site.api.espn.com/apis/site/v2/sports/cricket/23249/scoreboard,requires-series-validation
+Tri-Nation Under-19s Tournament in Zimbabwe,24126,https://site.api.espn.com/apis/site/v2/sports/cricket/24126/scoreboard,requires-series-validation
+Finland in Estonia T20I Series 2025,23764,https://site.api.espn.com/apis/site/v2/sports/cricket/23764/scoreboard,requires-series-validation
+Zimbabwe Women in Ireland ODI Series 2025,23210,https://site.api.espn.com/apis/site/v2/sports/cricket/23210/scoreboard,requires-series-validation
+Zimbabwe Women in Ireland T20I Series 2025,23211,https://site.api.espn.com/apis/site/v2/sports/cricket/23211/scoreboard,requires-series-validation
+Pakistan in Bangladesh T20I Series 2025,23735,https://site.api.espn.com/apis/site/v2/sports/cricket/23735/scoreboard,requires-series-validation
+Australia in West Indies T20I Series 2025,23150,https://site.api.espn.com/apis/site/v2/sports/cricket/23150/scoreboard,requires-series-validation
+World Championship of Legends 2025,,,missing-provider-slug-do-not-request
+Saudi Arabia in Qatar T20I Series 2025,23766,https://site.api.espn.com/apis/site/v2/sports/cricket/23766/scoreboard,requires-series-validation
+Finland Women's T20I Tri-Series,23778,https://site.api.espn.com/apis/site/v2/sports/cricket/23778/scoreboard,requires-series-validation
+Asia Pacific Cricket Champions Trophy,24128,https://site.api.espn.com/apis/site/v2/sports/cricket/24128/scoreboard,requires-series-validation
+Pearl of Africa T20I Series,24127,https://site.api.espn.com/apis/site/v2/sports/cricket/24127/scoreboard,requires-series-validation
+India Women in England ODI Series 2025,22838,https://site.api.espn.com/apis/site/v2/sports/cricket/22838/scoreboard,requires-series-validation
+Bangladesh Under-19s in South Africa Youth ODI Series 2025,23234,https://site.api.espn.com/apis/site/v2/sports/cricket/23234/scoreboard,requires-series-validation
+Sri Lanka A in Australia unofficial Test Series 2025,23639,https://site.api.espn.com/apis/site/v2/sports/cricket/23639/scoreboard,requires-series-validation
+India Under-19s in England Youth Test Series 2025,23661,https://site.api.espn.com/apis/site/v2/sports/cricket/23661/scoreboard,requires-series-validation
+Bulgaria Tri-Nation T20I Series,23775,https://site.api.espn.com/apis/site/v2/sports/cricket/23775/scoreboard,requires-series-validation
+Bangladesh in Sri Lanka T20I Series 2025,23368,https://site.api.espn.com/apis/site/v2/sports/cricket/23368/scoreboard,requires-series-validation
+Women's T20 Quadrangular Series (in Bulgaria),23774,https://site.api.espn.com/apis/site/v2/sports/cricket/23774/scoreboard,requires-series-validation
+Indonesia Tri-Nation T20I Series,23777,https://site.api.espn.com/apis/site/v2/sports/cricket/23777/scoreboard,requires-series-validation
+Quadrangular Twenty20 Series (Malawi),23776,https://site.api.espn.com/apis/site/v2/sports/cricket/23776/scoreboard,requires-series-validation
+Jersey Women in Guernsey T20I Match 2025,23744,https://site.api.espn.com/apis/site/v2/sports/cricket/23744/scoreboard,requires-series-validation
+Sri Lanka A in Australia unofficial ODI Series 2025,23640,https://site.api.espn.com/apis/site/v2/sports/cricket/23640/scoreboard,requires-series-validation
+New Zealand A Women in England unofficial T20I Series 2025,23709,https://site.api.espn.com/apis/site/v2/sports/cricket/23709/scoreboard,requires-series-validation
+Indonesia Women in Singapore T20I Series 2025,23695,https://site.api.espn.com/apis/site/v2/sports/cricket/23695/scoreboard,requires-series-validation
+Bangladesh in Sri Lanka ODI Series 2025,23369,https://site.api.espn.com/apis/site/v2/sports/cricket/23369/scoreboard,requires-series-validation
+South Africa in Zimbabwe Test Series 2025,23251,https://site.api.espn.com/apis/site/v2/sports/cricket/23251/scoreboard,requires-series-validation
+India Women in England T20I Series 2025,22839,https://site.api.espn.com/apis/site/v2/sports/cricket/22839/scoreboard,requires-series-validation
+India Under-19s in England Youth ODI Series 2025,23662,https://site.api.espn.com/apis/site/v2/sports/cricket/23662/scoreboard,requires-series-validation
+New Zealand A Women in England unofficial ODI Series 2025,23715,https://site.api.espn.com/apis/site/v2/sports/cricket/23715/scoreboard,requires-series-validation
+Switzerland in Luxembourg T20I Series 2025,23649,https://site.api.espn.com/apis/site/v2/sports/cricket/23649/scoreboard,requires-series-validation
+Sri Lanka Emerging Players in West Indies unofficial ODI Series 2025,23702,https://site.api.espn.com/apis/site/v2/sports/cricket/23702/scoreboard,requires-series-validation
+Slovenia in Hungary T20I Series 2025,23391,https://site.api.espn.com/apis/site/v2/sports/cricket/23391/scoreboard,requires-series-validation
+South Africa Women in West Indies T20I Series 2025,23153,https://site.api.espn.com/apis/site/v2/sports/cricket/23153/scoreboard,requires-series-validation
+Anderson-Tendulkar Trophy 2025,22841,https://site.api.espn.com/apis/site/v2/sports/cricket/22841/scoreboard,requires-series-validation
+Bangladesh in Sri Lanka Test Series 2025,23370,https://site.api.espn.com/apis/site/v2/sports/cricket/23370/scoreboard,requires-series-validation
+Scotland T20 Tri-Series,23773,https://site.api.espn.com/apis/site/v2/sports/cricket/23773/scoreboard,requires-series-validation
+Finland v Norway T20I Match 2025,23676,https://site.api.espn.com/apis/site/v2/sports/cricket/23676/scoreboard,requires-series-validation
+West Indies in Ireland T20I Series 2025,23154,https://site.api.espn.com/apis/site/v2/sports/cricket/23154/scoreboard,requires-series-validation
+South Africa Women in West Indies ODI Series 2025,23155,https://site.api.espn.com/apis/site/v2/sports/cricket/23155/scoreboard,requires-series-validation
+No Frills T20I Series,23772,https://site.api.espn.com/apis/site/v2/sports/cricket/23772/scoreboard,requires-series-validation
+Cambodia in Indonesia T20I Series 2025,23683,https://site.api.espn.com/apis/site/v2/sports/cricket/23683/scoreboard,requires-series-validation
+United States of America Women in Netherlands T20I Series 2025,23647,https://site.api.espn.com/apis/site/v2/sports/cricket/23647/scoreboard,requires-series-validation
+Sri Lanka Emerging Players in West Indies unofficial Test Series 2025,23703,https://site.api.espn.com/apis/site/v2/sports/cricket/23703/scoreboard,requires-series-validation
+Slovenia in Serbia T20I Series 2025,23393,https://site.api.espn.com/apis/site/v2/sports/cricket/23393/scoreboard,requires-series-validation
+West Indies in England T20I Series 2025,22842,https://site.api.espn.com/apis/site/v2/sports/cricket/22842/scoreboard,requires-series-validation
+Women's T20 Pentangular Series (in Japan),23375,https://site.api.espn.com/apis/site/v2/sports/cricket/23375/scoreboard,requires-series-validation
+South Africa A in West Indies unofficial Test Series 2025,23642,https://site.api.espn.com/apis/site/v2/sports/cricket/23642/scoreboard,requires-series-validation
+West Indies Women in England ODI Series 2025,22843,https://site.api.espn.com/apis/site/v2/sports/cricket/22843/scoreboard,requires-series-validation
+T20 Blast Women,23079,https://site.api.espn.com/apis/site/v2/sports/cricket/23079/scoreboard,requires-series-validation
+Switzerland in Austria T20I Series 2025,23395,https://site.api.espn.com/apis/site/v2/sports/cricket/23395/scoreboard,requires-series-validation
+India A in England unofficial Test Series 2025,23386,https://site.api.espn.com/apis/site/v2/sports/cricket/23386/scoreboard,requires-series-validation
+West Indies in England ODI Series 2025,22844,https://site.api.espn.com/apis/site/v2/sports/cricket/22844/scoreboard,requires-series-validation
+Vitality Blast Women League 2,23685,https://site.api.espn.com/apis/site/v2/sports/cricket/23685/scoreboard,requires-series-validation
+Switzerland Women in Belgium T20I Series 2025,23336,https://site.api.espn.com/apis/site/v2/sports/cricket/23336/scoreboard,requires-series-validation
+Bangladesh in Pakistan T20I Series 2025,23338,https://site.api.espn.com/apis/site/v2/sports/cricket/23338/scoreboard,requires-series-validation
+Zimbabwe in England Test Match 2025,22039,https://site.api.espn.com/apis/site/v2/sports/cricket/22039/scoreboard,requires-series-validation
+West Indies Women in England T20I Series 2025,22846,https://site.api.espn.com/apis/site/v2/sports/cricket/22846/scoreboard,requires-series-validation
+West Indies in Ireland ODI Series 2025,23157,https://site.api.espn.com/apis/site/v2/sports/cricket/23157/scoreboard,requires-series-validation
+South Africa A in West Indies unofficial ODI Series 2025,23644,https://site.api.espn.com/apis/site/v2/sports/cricket/23644/scoreboard,requires-series-validation
+South Africa Emerging Players in Bangladesh unofficial Test Series 2025,23356,https://site.api.espn.com/apis/site/v2/sports/cricket/23356/scoreboard,requires-series-validation
+Slovenia in Austria T20I Series 2025,23383,https://site.api.espn.com/apis/site/v2/sports/cricket/23383/scoreboard,requires-series-validation
+Bangladesh in United Arab Emirates T20I Series 2025,23352,https://site.api.espn.com/apis/site/v2/sports/cricket/23352/scoreboard,requires-series-validation
+Bulgaria Women in Estonia T20I Series 2025,23326,https://site.api.espn.com/apis/site/v2/sports/cricket/23326/scoreboard,requires-series-validation
+New Zealand A in Bangladesh unofficial Test Series 2025,23351,https://site.api.espn.com/apis/site/v2/sports/cricket/23351/scoreboard,requires-series-validation
+Cook Islands in Japan T20I Series 2025,23319,https://site.api.espn.com/apis/site/v2/sports/cricket/23319/scoreboard,requires-series-validation
+South Africa Emerging Players in Bangladesh unofficial ODI Series 2025,23358,https://site.api.espn.com/apis/site/v2/sports/cricket/23358/scoreboard,requires-series-validation
+Germany Women in Greece T20I Series 2025,23324,https://site.api.espn.com/apis/site/v2/sports/cricket/23324/scoreboard,requires-series-validation
+Japan Twenty20 Tri-Series,23373,https://site.api.espn.com/apis/site/v2/sports/cricket/23373/scoreboard,requires-series-validation
+South Africa Emerging Players Women in Bangladesh unofficial T20I Series 2025,23357,https://site.api.espn.com/apis/site/v2/sports/cricket/23357/scoreboard,requires-series-validation
+South Africa Emerging Players Women in Bangladesh unofficial ODI Series 2025,23360,https://site.api.espn.com/apis/site/v2/sports/cricket/23360/scoreboard,requires-series-validation
+Estonia in Malta T20I Series 2025,23322,https://site.api.espn.com/apis/site/v2/sports/cricket/23322/scoreboard,requires-series-validation
+T20 Women's County Cup 2025,23078,https://site.api.espn.com/apis/site/v2/sports/cricket/23078/scoreboard,requires-series-validation
+New Zealand A in Bangladesh unofficial ODI Series 2025,23354,https://site.api.espn.com/apis/site/v2/sports/cricket/23354/scoreboard,requires-series-validation
+Croatia Women in Malta T20I Series 2025,23328,https://site.api.espn.com/apis/site/v2/sports/cricket/23328/scoreboard,requires-series-validation
+Women's T20 Quadrangular Series (in Thailand),23374,https://site.api.espn.com/apis/site/v2/sports/cricket/23374/scoreboard,requires-series-validation
+Kuwait Women in Botswana T20I Series 2025,23227,https://site.api.espn.com/apis/site/v2/sports/cricket/23227/scoreboard,requires-series-validation
+Cyprus Women in Czech Republic T20I Series 2025,23330,https://site.api.espn.com/apis/site/v2/sports/cricket/23330/scoreboard,requires-series-validation
+Bahrain Women in Oman T20I Series 2025,23349,https://site.api.espn.com/apis/site/v2/sports/cricket/23349/scoreboard,requires-series-validation
+Zimbabwe Women in United States of America ODI Series 2025,23304,https://site.api.espn.com/apis/site/v2/sports/cricket/23304/scoreboard,requires-series-validation
+Afghanistan A v Sri Lanka A unofficial Test Match 2025,23307,https://site.api.espn.com/apis/site/v2/sports/cricket/23307/scoreboard,requires-series-validation
+Sri Lanka Women's ODI Tri-Series,23372,https://site.api.espn.com/apis/site/v2/sports/cricket/23372/scoreboard,requires-series-validation
+Bangladesh Under-19s in Sri Lanka Youth ODI Series 2025,23236,https://site.api.espn.com/apis/site/v2/sports/cricket/23236/scoreboard,requires-series-validation
+Zimbabwe Women in United States of America T20I Series 2025,23305,https://site.api.espn.com/apis/site/v2/sports/cricket/23305/scoreboard,requires-series-validation
+Scotland in Zimbabwe unofficial ODI Series 2025,23311,https://site.api.espn.com/apis/site/v2/sports/cricket/23311/scoreboard,requires-series-validation
+ECB Women's One-Day Cup,23080,https://site.api.espn.com/apis/site/v2/sports/cricket/23080/scoreboard,requires-series-validation
+Zimbabwe in Bangladesh Test Series 2025,23202,https://site.api.espn.com/apis/site/v2/sports/cricket/23202/scoreboard,requires-series-validation
+North America T20 Cup,23315,https://site.api.espn.com/apis/site/v2/sports/cricket/23315/scoreboard,requires-series-validation
+Women's T20 Quadrangular Series (in Cyprus),23258,https://site.api.espn.com/apis/site/v2/sports/cricket/23258/scoreboard,requires-series-validation
+UAE A-Team Tri Series (OD),23291,https://site.api.espn.com/apis/site/v2/sports/cricket/23291/scoreboard,requires-series-validation
+England A Women in Australia unofficial Test Match 2025,23243,https://site.api.espn.com/apis/site/v2/sports/cricket/23243/scoreboard,requires-series-validation
+Uganda Women in Namibia T20I Series 2025,23282,https://site.api.espn.com/apis/site/v2/sports/cricket/23282/scoreboard,requires-series-validation
+Norway Women tour of Portugal 2025,23245,https://site.api.espn.com/apis/site/v2/sports/cricket/23245/scoreboard,requires-series-validation
+Norway Women in Portugal T20I Series 2025,23244,https://site.api.espn.com/apis/site/v2/sports/cricket/23244/scoreboard,requires-series-validation
+Norway in Portugal T20I Series 2025,23238,https://site.api.espn.com/apis/site/v2/sports/cricket/23238/scoreboard,requires-series-validation
+Ireland A tour of United Arab Emirates 2025,23290,https://site.api.espn.com/apis/site/v2/sports/cricket/23290/scoreboard,requires-series-validation
+Afghanistan A v Ireland A unofficial Test Match 2025,23289,https://site.api.espn.com/apis/site/v2/sports/cricket/23289/scoreboard,requires-series-validation
+ICC Women's World Cup Qualifier Warm-up Matches 2025,23215,https://site.api.espn.com/apis/site/v2/sports/cricket/23215/scoreboard,requires-series-validation
+Zimbabwe Regional Games,23285,https://site.api.espn.com/apis/site/v2/sports/cricket/23285/scoreboard,requires-series-validation
+Ireland Under-19s in Zimbabwe Youth ODI Series 2025,23280,https://site.api.espn.com/apis/site/v2/sports/cricket/23280/scoreboard,requires-series-validation
+Afghanistan Under-19s in Nepal Youth ODI Series 2025,23272,https://site.api.espn.com/apis/site/v2/sports/cricket/23272/scoreboard,requires-series-validation
+England A Women in Australia unofficial ODI Series 2025,23246,https://site.api.espn.com/apis/site/v2/sports/cricket/23246/scoreboard,requires-series-validation
+Pakistan in New Zealand ODI Series 2024/25,22751,https://site.api.espn.com/apis/site/v2/sports/cricket/22751/scoreboard,requires-series-validation
+North v South Women's One-Day Series 2024/25,,,missing-provider-slug-do-not-request
+England A Women in Australia unofficial T20I Series 2025,23247,https://site.api.espn.com/apis/site/v2/sports/cricket/23247/scoreboard,requires-series-validation
+Australia Women in New Zealand T20I Series 2024/25,22753,https://site.api.espn.com/apis/site/v2/sports/cricket/22753/scoreboard,requires-series-validation
+Canada in Namibia T20I Series 2024/25,23207,https://site.api.espn.com/apis/site/v2/sports/cricket/23207/scoreboard,requires-series-validation
+Pakistan in New Zealand T20I Series 2024/25,22754,https://site.api.espn.com/apis/site/v2/sports/cricket/22754/scoreboard,requires-series-validation
+Sri Lanka Women in New Zealand T20I Series 2024/25,22756,https://site.api.espn.com/apis/site/v2/sports/cricket/22756/scoreboard,requires-series-validation
+The Pacific-France Women Championship,23195,https://site.api.espn.com/apis/site/v2/sports/cricket/23195/scoreboard,requires-series-validation

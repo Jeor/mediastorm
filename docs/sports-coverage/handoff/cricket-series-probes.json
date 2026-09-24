@@ -1,0 +1,44 @@
+[
+  {
+    "slug": "23805",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/23805/scoreboard",
+    "http_status": 200,
+    "events": 1,
+    "league_names": [
+      "Pakistan in England Test Series 2026"
+    ],
+    "sample_event": {
+      "id": "1496584",
+      "name": "England v Pakistan",
+      "date": "2026-09-09T10:00Z"
+    }
+  },
+  {
+    "slug": "24627",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24627/scoreboard",
+    "http_status": 200,
+    "events": 1,
+    "league_names": [
+      "The Ashes 2027"
+    ],
+    "sample_event": {
+      "id": "1547175",
+      "name": "England v Australia",
+      "date": "2027-06-18T10:00Z"
+    }
+  },
+  {
+    "slug": "24200",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24200/scoreboard",
+    "http_status": 200,
+    "events": 1,
+    "league_names": [
+      "Bangladesh in South Africa Test Series 2026/27"
+    ],
+    "sample_event": {
+      "id": "1525662",
+      "name": "South Africa v Bangladesh",
+      "date": "2026-11-15T08:00Z"
+    }
+  }
+]

@@ -1,0 +1,840 @@
+{
+  "leagues": [
+    {
+      "id": "3767",
+      "uid": "s:40~l:3767",
+      "name": "Olympics Women's Basketball",
+      "abbreviation": "Olympics",
+      "slug": "womens-olympics-basketball",
+      "logos": [],
+      "season": {
+        "year": 2024,
+        "startDate": "2024-07-26T07:00Z",
+        "endDate": "2024-08-12T06:59Z",
+        "displayName": "2024",
+        "type": {
+          "id": "2",
+          "type": 2,
+          "name": "Regular Season",
+          "abbreviation": "reg"
+        }
+      },
+      "calendarType": "day",
+      "calendarIsWhitelist": true,
+      "calendarStartDate": "2024-07-26T07:00Z",
+      "calendarEndDate": "2024-08-12T06:59Z",
+      "calendar": [
+        "2024-07-28T07:00Z",
+        "2024-07-29T07:00Z",
+        "2024-07-31T07:00Z",
+        "2024-08-01T07:00Z",
+        "2024-08-03T07:00Z",
+        "2024-08-04T07:00Z",
+        "2024-08-07T07:00Z",
+        "2024-08-09T07:00Z",
+        "2024-08-11T07:00Z"
+      ]
+    }
+  ],
+  "season": {
+    "type": 2,
+    "year": 2024
+  },
+  "events": [
+    {
+      "id": "401694857",
+      "uid": "s:40~l:3767~e:401694857",
+      "date": "2024-08-11T09:30Z",
+      "name": "Belgium at Australia",
+      "shortName": "BEL VS AUS",
+      "season": {
+        "year": 2024,
+        "type": 2,
+        "slug": "regular-season"
+      },
+      "competitions": [
+        {
+          "id": "401694857",
+          "uid": "s:40~l:3767~e:401694857~c:401694857",
+          "date": "2024-08-11T09:30Z",
+          "attendance": 11968,
+          "type": {
+            "id": "37",
+            "abbreviation": "BM"
+          },
+          "timeValid": true,
+          "neutralSite": true,
+          "conferenceCompetition": true,
+          "playByPlayAvailable": true,
+          "recent": false,
+          "venue": {
+            "id": "6271",
+            "fullName": "Bercy Arena",
+            "address": {
+              "city": "Paris",
+              "state": "France"
+            },
+            "indoor": true
+          },
+          "competitors": [
+            {
+              "id": "17472",
+              "uid": "s:40~l:3767~t:17472",
+              "type": "team",
+              "order": 0,
+              "homeAway": "home",
+              "winner": true,
+              "team": {
+                "id": "17472",
+                "uid": "s:40~l:3767~t:17472",
+                "location": "Australia",
+                "name": "Australia",
+                "abbreviation": "AUS",
+                "displayName": "Australia",
+                "shortDisplayName": "Australia",
+                "color": "00843D",
+                "alternateColor": "FFCD00",
+                "isActive": true,
+                "links": [
+                  {
+                    "rel": [
+                      "roster",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/womens-olympics-basketball/team/roster/_/name/aus/australia",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:3767~t:17472&section=roster",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/womens-olympics-basketball/team/stats/_/name/aus/australia",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:3767~t:17472&section=stats",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/womens-olympics-basketball/team/schedule/_/name/aus",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:3767~t:17472&section=scores",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/countries/500/aus.png"
+              },
+              "score": "85",
+              "linescores": [
+                {
+                  "value": 20.0,
+                  "displayValue": "20",
+                  "period": 1
+                },
+                {
+                  "value": 17.0,
+                  "displayValue": "17",
+                  "period": 2
+                },
+                {
+                  "value": 23.0,
+                  "displayValue": "23",
+                  "period": 3
+                },
+                {
+                  "value": 25.0,
+                  "displayValue": "25",
+                  "period": 4
+                }
+              ],
+              "statistics": [
+                {
+                  "name": "rebounds",
+                  "abbreviation": "REB",
+                  "displayValue": "44"
+                },
+                {
+                  "name": "avgRebounds",
+                  "abbreviation": "REB",
+                  "displayValue": "44.0"
+                },
+                {
+                  "name": "assists",
+                  "abbreviation": "AST",
+                  "displayValue": "24"
+                },
+                {
+                  "name": "fieldGoalsAttempted",
+                  "abbreviation": "FGA",
+                  "displayValue": "67"
+                },
+                {
+                  "name": "fieldGoalsMade",
+                  "abbreviation": "FGM",
+                  "displayValue": "30"
+                },
+                {
+                  "name": "fieldGoalPct",
+                  "abbreviation": "FG%",
+                  "displayValue": "44.8"
+                },
+                {
+                  "name": "freeThrowPct",
+                  "abbreviation": "FT%",
+                  "displayValue": "81.0"
+                },
+                {
+                  "name": "freeThrowsAttempted",
+                  "abbreviation": "FTA",
+                  "displayValue": "21"
+                },
+                {
+                  "name": "freeThrowsMade",
+                  "abbreviation": "FTM",
+                  "displayValue": "17"
+                },
+                {
+                  "name": "points",
+                  "abbreviation": "PTS",
+                  "displayValue": "85"
+                },
+                {
+                  "name": "threePointFieldGoalsAttempted",
+                  "abbreviation": "3PA",
+                  "displayValue": "23"
+                },
+                {
+                  "name": "threePointFieldGoalsMade",
+                  "abbreviation": "3PM",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "avgPoints",
+                  "abbreviation": "PTS",
+                  "displayValue": "85.0"
+                },
+                {
+                  "name": "avgAssists",
+                  "abbreviation": "AST",
+                  "displayValue": "24.0"
+                },
+                {
+                  "name": "threePointFieldGoalPct",
+                  "abbreviation": "3P%",
+                  "displayValue": "34.8"
+                }
+              ],
+              "leaders": [
+                {
+                  "name": "points",
+                  "displayName": "Points",
+                  "shortDisplayName": "Pts",
+                  "abbreviation": "Pts",
+                  "leaders": [
+                    {
+                      "displayValue": "30",
+                      "value": 30.0,
+                      "athlete": {
+                        "id": "4420318",
+                        "fullName": "Ezi Magbegor",
+                        "displayName": "Ezi Magbegor",
+                        "shortName": "E. Magbegor",
+                        "links": [],
+                        "jersey": "13",
+                        "position": {
+                          "abbreviation": "F"
+                        },
+                        "team": {
+                          "id": "17472"
+                        }
+                      },
+                      "team": {
+                        "id": "17472"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "rebounds",
+                  "displayName": "Rebounds",
+                  "shortDisplayName": "Reb",
+                  "abbreviation": "Reb",
+                  "leaders": [
+                    {
+                      "displayValue": "13",
+                      "value": 13.0,
+                      "athlete": {
+                        "id": "4420318",
+                        "fullName": "Ezi Magbegor",
+                        "displayName": "Ezi Magbegor",
+                        "shortName": "E. Magbegor",
+                        "links": [],
+                        "jersey": "13",
+                        "position": {
+                          "abbreviation": "F"
+                        },
+                        "team": {
+                          "id": "17472"
+                        }
+                      },
+                      "team": {
+                        "id": "17472"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "assists",
+                  "displayName": "Assists",
+                  "shortDisplayName": "Ast",
+                  "abbreviation": "Ast",
+                  "leaders": [
+                    {
+                      "displayValue": "7",
+                      "value": 7.0,
+                      "athlete": {
+                        "id": "5017726",
+                        "fullName": "Jade Melbourne",
+                        "displayName": "Jade Melbourne",
+                        "shortName": "J. Melbourne",
+                        "links": [],
+                        "jersey": "2",
+                        "position": {
+                          "abbreviation": "G"
+                        },
+                        "team": {
+                          "id": "17472"
+                        }
+                      },
+                      "team": {
+                        "id": "17472"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "rating",
+                  "displayName": "Rating",
+                  "shortDisplayName": "RAT",
+                  "abbreviation": "RAT",
+                  "leaders": [
+                    {
+                      "displayValue": "30 PTS, 13 REB, 3 BLK",
+                      "value": 62.20000076293945,
+                      "athlete": {
+                        "id": "4420318",
+                        "fullName": "Ezi Magbegor",
+                        "displayName": "Ezi Magbegor",
+                        "shortName": "E. Magbegor",
+                        "links": [],
+                        "jersey": "13",
+                        "position": {
+                          "abbreviation": "F"
+                        },
+                        "team": {
+                          "id": "17472"
+                        }
+                      },
+                      "team": {
+                        "id": "17472"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "Season",
+                  "type": "total",
+                  "summary": "4-2"
+                }
+              ]
+            },
+            {
+              "id": "106761",
+              "uid": "s:40~l:3767~t:106761",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "winner": false,
+              "team": {
+                "id": "106761",
+                "uid": "s:40~l:3767~t:106761",
+                "location": "Belgium",
+                "name": "Belgium",
+                "abbreviation": "BEL",
+                "displayName": "Belgium",
+                "shortDisplayName": "Belgium",
+                "color": "DE2918",
+                "alternateColor": "000000",
+                "isActive": true,
+                "links": [
+                  {
+                    "rel": [
+                      "roster",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/womens-olympics-basketball/team/roster/_/name/bel/belgium",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:3767~t:106761&section=roster",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/womens-olympics-basketball/team/stats/_/name/bel/belgium",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:3767~t:106761&section=stats",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/womens-olympics-basketball/team/schedule/_/name/bel",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:40~l:3767~t:106761&section=scores",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/countries/500/bel.png"
+              },
+              "score": "81",
+              "linescores": [
+                {
+                  "value": 19.0,
+                  "displayValue": "19",
+                  "period": 1
+                },
+                {
+                  "value": 17.0,
+                  "displayValue": "17",
+                  "period": 2
+                },
+                {
+                  "value": 25.0,
+                  "displayValue": "25",
+                  "period": 3
+                },
+                {
+                  "value": 20.0,
+                  "displayValue": "20",
+                  "period": 4
+                }
+              ],
+              "statistics": [
+                {
+                  "name": "rebounds",
+                  "abbreviation": "REB",
+                  "displayValue": "31"
+                },
+                {
+                  "name": "avgRebounds",
+                  "abbreviation": "REB",
+                  "displayValue": "31.0"
+                },
+                {
+                  "name": "assists",
+                  "abbreviation": "AST",
+                  "displayValue": "19"
+                },
+                {
+                  "name": "fieldGoalsAttempted",
+                  "abbreviation": "FGA",
+                  "displayValue": "67"
+                },
+                {
+                  "name": "fieldGoalsMade",
+                  "abbreviation": "FGM",
+                  "displayValue": "31"
+                },
+                {
+                  "name": "fieldGoalPct",
+                  "abbreviation": "FG%",
+                  "displayValue": "46.3"
+                },
+                {
+                  "name": "freeThrowPct",
+                  "abbreviation": "FT%",
+                  "displayValue": "76.9"
+                },
+                {
+                  "name": "freeThrowsAttempted",
+                  "abbreviation": "FTA",
+                  "displayValue": "13"
+                },
+                {
+                  "name": "freeThrowsMade",
+                  "abbreviation": "FTM",
+                  "displayValue": "10"
+                },
+                {
+                  "name": "points",
+                  "abbreviation": "PTS",
+                  "displayValue": "81"
+                },
+                {
+                  "name": "threePointFieldGoalsAttempted",
+                  "abbreviation": "3PA",
+                  "displayValue": "22"
+                },
+                {
+                  "name": "threePointFieldGoalsMade",
+                  "abbreviation": "3PM",
+                  "displayValue": "9"
+                },
+                {
+                  "name": "avgPoints",
+                  "abbreviation": "PTS",
+                  "displayValue": "81.0"
+                },
+                {
+                  "name": "avgAssists",
+                  "abbreviation": "AST",
+                  "displayValue": "19.0"
+                },
+                {
+                  "name": "threePointFieldGoalPct",
+                  "abbreviation": "3P%",
+                  "displayValue": "40.9"
+                }
+              ],
+              "leaders": [
+                {
+                  "name": "points",
+                  "displayName": "Points",
+                  "shortDisplayName": "Pts",
+                  "abbreviation": "Pts",
+                  "leaders": [
+                    {
+                      "displayValue": "26",
+                      "value": 26.0,
+                      "athlete": {
+                        "id": "2566110",
+                        "fullName": "Julie Vanloo",
+                        "displayName": "Julie Vanloo",
+                        "shortName": "J. Vanloo",
+                        "links": [],
+                        "jersey": "35",
+                        "position": {
+                          "abbreviation": "G"
+                        },
+                        "team": {
+                          "id": "106761"
+                        }
+                      },
+                      "team": {
+                        "id": "106761"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "rebounds",
+                  "displayName": "Rebounds",
+                  "shortDisplayName": "Reb",
+                  "abbreviation": "Reb",
+                  "leaders": [
+                    {
+                      "displayValue": "8",
+                      "value": 8.0,
+                      "athlete": {
+                        "id": "4873359",
+                        "fullName": "Kyara Linskens",
+                        "displayName": "Kyara Linskens",
+                        "shortName": "K. Linskens",
+                        "links": [],
+                        "jersey": "13",
+                        "position": {
+                          "abbreviation": "C"
+                        },
+                        "team": {
+                          "id": "106761"
+                        }
+                      },
+                      "team": {
+                        "id": "106761"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "assists",
+                  "displayName": "Assists",
+                  "shortDisplayName": "Ast",
+                  "abbreviation": "Ast",
+                  "leaders": [
+                    {
+                      "displayValue": "11",
+                      "value": 11.0,
+                      "athlete": {
+                        "id": "2566110",
+                        "fullName": "Julie Vanloo",
+                        "displayName": "Julie Vanloo",
+                        "shortName": "J. Vanloo",
+                        "links": [],
+                        "jersey": "35",
+                        "position": {
+                          "abbreviation": "G"
+                        },
+                        "team": {
+                          "id": "106761"
+                        }
+                      },
+                      "team": {
+                        "id": "106761"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "rating",
+                  "displayName": "Rating",
+                  "shortDisplayName": "RAT",
+                  "abbreviation": "RAT",
+                  "leaders": [
+                    {
+                      "displayValue": "26 PTS, 11 AST",
+                      "value": 50.29999923706055,
+                      "athlete": {
+                        "id": "2566110",
+                        "fullName": "Julie Vanloo",
+                        "displayName": "Julie Vanloo",
+                        "shortName": "J. Vanloo",
+                        "links": [],
+                        "jersey": "35",
+                        "position": {
+                          "abbreviation": "G"
+                        },
+                        "team": {
+                          "id": "106761"
+                        }
+                      },
+                      "team": {
+                        "id": "106761"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "Season",
+                  "type": "total",
+                  "summary": "2-4"
+                }
+              ]
+            }
+          ],
+          "notes": [
+            {
+              "type": "event",
+              "headline": "2024 Olympic Women's Basketball - Bronze Medal Game"
+            }
+          ],
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 4,
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            }
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "USA Net"
+              ]
+            }
+          ],
+          "format": {
+            "regulation": {
+              "periods": 4
+            }
+          },
+          "startDate": "2024-08-11T09:30Z",
+          "broadcast": "USA Net",
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "USA Net"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/womens-olympics-basketball/game/_/gameId/401694857/belgium-australia",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "boxscore",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/womens-olympics-basketball/boxscore/_/gameId/401694857",
+          "text": "Box Score",
+          "shortText": "Box Score",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "http://www.espn.com/womens-olympics-basketball/video/_/gameId/401694857",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "pbp",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/womens-olympics-basketball/playbyplay/_/gameId/401694857",
+          "text": "Play-by-Play",
+          "shortText": "Play-by-Play",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 4,
+        "type": {
+          "id": "3",
+          "name": "STATUS_FINAL",
+          "state": "post",
+          "completed": true,
+          "description": "Final",
+          "detail": "Final",
+          "shortDetail": "Final"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,4373 @@
+[
+  {
+    "sport": "australian-football",
+    "slug": "afl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "AFL",
+        "slug": "afl"
+      }
+    ],
+    "sample_event_id": "1133711",
+    "sample_event_name": "Brisbane Lions at Fremantle",
+    "sample_event_date": "2026-09-26T04:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, September 25th at 9:30 PM EDT",
+        "shortDetail": "9/25 - 9:30 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "week",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "statistics",
+      "leaders",
+      "records"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/australian-football--afl.json"
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-baseball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Baseball",
+        "slug": "college-baseball"
+      }
+    ],
+    "sample_event_id": "401874453",
+    "sample_event_name": "Oklahoma Sooners at North Carolina Tar Heels",
+    "sample_event_date": "2026-06-22T23:00Z",
+    "sample_state": {
+      "period": 9,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final",
+        "altDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "wasSuspended",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "series",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "curatedRank",
+      "hits",
+      "errors",
+      "record",
+      "records"
+    ],
+    "competitor_score_example": "2",
+    "sample_file": "provider-samples/baseball--college-baseball.json"
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-softball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Softball",
+        "slug": "college-softball"
+      }
+    ],
+    "sample_event_id": "401873593",
+    "sample_event_name": "Texas Longhorns at Texas Tech Red Raiders",
+    "sample_event_date": "2026-06-05T00:00Z",
+    "sample_state": {
+      "period": 7,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final",
+        "altDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "wasSuspended",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "series",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "curatedRank",
+      "hits",
+      "errors",
+      "record",
+      "records"
+    ],
+    "competitor_score_example": "1",
+    "sample_file": "provider-samples/baseball--college-softball.json"
+  },
+  {
+    "sport": "baseball",
+    "slug": "world-baseball-classic",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/world-baseball-classic/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "World Baseball Classic",
+        "slug": "world-baseball-classic"
+      }
+    ],
+    "sample_event_id": "401845801",
+    "sample_event_name": "Venezuela at United States",
+    "sample_event_date": "2026-03-18T00:00Z",
+    "sample_state": {
+      "period": 9,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final",
+        "altDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "wasSuspended",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "probables",
+      "hits",
+      "errors",
+      "records"
+    ],
+    "competitor_score_example": "2",
+    "sample_file": "provider-samples/baseball--world-baseball-classic.json"
+  },
+  {
+    "sport": "baseball",
+    "slug": "llb",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/llb/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "Little League Baseball",
+        "slug": "llb"
+      }
+    ],
+    "sample_event_id": "401896846",
+    "sample_event_name": "Hamilton OH at Tokyo JPN",
+    "sample_event_date": "2026-08-30T14:00Z",
+    "sample_state": {
+      "period": 6,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final",
+        "altDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "wasSuspended",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "statistics",
+      "hits",
+      "errors",
+      "records"
+    ],
+    "competitor_score_example": "3",
+    "sample_file": "provider-samples/baseball--llb.json"
+  },
+  {
+    "sport": "baseball",
+    "slug": "lls",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/lls/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "Little League Softball",
+        "slug": "lls"
+      }
+    ],
+    "sample_event_id": "401896649",
+    "sample_event_name": "Toms River NJ at Lake Mary FL",
+    "sample_event_date": "2026-08-09T14:00Z",
+    "sample_state": {
+      "period": 6,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final",
+        "altDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "wasSuspended",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "statistics",
+      "hits",
+      "errors",
+      "records"
+    ],
+    "competitor_score_example": "5",
+    "sample_file": "provider-samples/baseball--lls.json"
+  },
+  {
+    "sport": "baseball",
+    "slug": "caribbean-series",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/caribbean-series/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Caribbean Series",
+        "slug": "caribbean-series"
+      }
+    ],
+    "sample_event_id": "401850934",
+    "sample_event_name": "Mexico Verde at Mexico Rojo",
+    "sample_event_date": "2026-02-08T01:00Z",
+    "sample_state": {
+      "period": 10,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final/10",
+        "shortDetail": "Final/10",
+        "altDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "wasSuspended",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "hits",
+      "errors",
+      "records"
+    ],
+    "competitor_score_example": "12",
+    "sample_file": "provider-samples/baseball--caribbean-series.json"
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-development",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-development/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 10,
+    "leagues": [
+      {
+        "name": "NBA G League",
+        "slug": "nba-development"
+      }
+    ],
+    "sample_event_id": "401914361",
+    "sample_event_name": "Westchester Knicks at Maine Celtics",
+    "sample_event_date": "2026-11-07T00:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, November 6th at 7:00 PM EST",
+        "shortDetail": "11/6 - 7:00 PM EST"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "tickets",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "statistics"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/basketball--nba-development.json"
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-summer-las-vegas",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-summer-las-vegas/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 3,
+    "leagues": [
+      {
+        "name": "Las Vegas Summer League",
+        "slug": "nba-summer-las-vegas"
+      }
+    ],
+    "sample_event_id": "401881720",
+    "sample_event_name": "Brooklyn Nets at Oklahoma City Thunder",
+    "sample_event_date": "2026-07-19T20:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "leaders",
+      "records"
+    ],
+    "competitor_score_example": "90",
+    "sample_file": "provider-samples/basketball--nba-summer-las-vegas.json"
+  },
+  {
+    "sport": "basketball",
+    "slug": "fiba",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/fiba/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "FIBA World Cup",
+        "slug": "fiba"
+      }
+    ],
+    "sample_event_id": "401917259",
+    "sample_event_name": "Spain Spain at Germany Germany",
+    "sample_event_date": "2026-09-13T14:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "58",
+    "sample_file": "provider-samples/basketball--fiba.json"
+  },
+  {
+    "sport": "basketball",
+    "slug": "nbl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nbl/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "National Basketball League",
+        "slug": "nbl"
+      }
+    ],
+    "sample_event_id": "401875267",
+    "sample_event_name": "Melbourne United at South East Melbourne Phoenix",
+    "sample_event_date": "2026-09-24T09:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "leaders",
+      "records"
+    ],
+    "competitor_score_example": "61",
+    "sample_file": "provider-samples/basketball--nbl.json"
+  },
+  {
+    "sport": "basketball",
+    "slug": "mens-olympics-basketball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-olympics-basketball/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "Olympics Men's Basketball",
+        "slug": "mens-olympics-basketball"
+      }
+    ],
+    "sample_event_id": "401694865",
+    "sample_event_name": "Germany at Serbia",
+    "sample_event_date": "2024-08-10T09:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "leaders",
+      "records"
+    ],
+    "competitor_score_example": "93",
+    "sample_file": "provider-samples/basketball--mens-olympics-basketball.json"
+  },
+  {
+    "sport": "basketball",
+    "slug": "womens-olympics-basketball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/womens-olympics-basketball/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "Olympics Women's Basketball",
+        "slug": "womens-olympics-basketball"
+      }
+    ],
+    "sample_event_id": "401694857",
+    "sample_event_name": "Belgium at Australia",
+    "sample_event_date": "2024-08-11T09:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "leaders",
+      "records"
+    ],
+    "competitor_score_example": "85",
+    "sample_file": "provider-samples/basketball--womens-olympics-basketball.json"
+  },
+  {
+    "sport": "field-hockey",
+    "slug": "womens-college-field-hockey",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/field-hockey/womens-college-field-hockey/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Women's Field Hockey",
+        "slug": "womens-college-field-hockey"
+      }
+    ],
+    "sample_event_id": "401899815",
+    "sample_event_name": "Long Island University Sharks at Wagner Seahawks",
+    "sample_event_date": "2026-09-24T14:00Z",
+    "sample_state": {
+      "clock": 3600.0,
+      "displayClock": "60:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "6",
+    "sample_file": "provider-samples/field-hockey--womens-college-field-hockey.json"
+  },
+  {
+    "sport": "football",
+    "slug": "cfl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/cfl/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Canadian Football League",
+        "slug": "cfl"
+      }
+    ],
+    "sample_event_id": "401504210",
+    "sample_event_name": "Toronto Argonauts at Winnipeg Blue Bombers",
+    "sample_event_date": "2022-11-20T23:00Z",
+    "sample_state": {
+      "clock": 900.0,
+      "displayClock": "15:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "week",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "dateValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics"
+    ],
+    "competitor_score_example": "23",
+    "sample_file": "provider-samples/football--cfl.json"
+  },
+  {
+    "sport": "football",
+    "slug": "ufl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/ufl/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "United Football League",
+        "slug": "ufl"
+      }
+    ],
+    "sample_event_id": "401857566",
+    "sample_event_name": "DC Defenders at Louisville Kings",
+    "sample_event_date": "2026-06-13T19:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "week",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "dateValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "27",
+    "sample_file": "provider-samples/football--ufl.json"
+  },
+  {
+    "sport": "golf",
+    "slug": "lpga",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/lpga/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Ladies Pro Golf Association",
+        "slug": "lpga"
+      }
+    ],
+    "sample_event_id": "401835170",
+    "sample_event_name": "Walmart NW Arkansas Championship pres. by P&G",
+    "sample_event_date": "2026-09-25T04:00Z",
+    "sample_state": {
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, September 24th at 12:00 AM EDT",
+        "shortDetail": "9/25 - 12:00 AM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 144,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "broadcasts",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "athlete",
+      "score",
+      "linescores"
+    ],
+    "competitor_score_example": "E",
+    "sample_file": "provider-samples/golf--lpga.json"
+  },
+  {
+    "sport": "golf",
+    "slug": "eur",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/eur/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "DP World Tour",
+        "slug": "eur"
+      }
+    ],
+    "sample_event_id": "401822703",
+    "sample_event_name": "FedEx Open de France",
+    "sample_event_date": "2026-09-24T04:00Z",
+    "sample_state": {
+      "period": 1,
+      "type": {
+        "id": "35",
+        "name": "STATUS_PLAY_COMPLETE",
+        "state": "post",
+        "completed": true,
+        "description": "Play Complete",
+        "detail": "Round 1 - Play Complete",
+        "shortDetail": "Round 1 - Play Complete"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 144,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "athlete",
+      "score",
+      "linescores",
+      "statistics"
+    ],
+    "competitor_score_example": "-8",
+    "sample_file": "provider-samples/golf--eur.json"
+  },
+  {
+    "sport": "golf",
+    "slug": "liv",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/liv/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:25Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "LIV Golf Invitational Series",
+        "slug": "liv"
+      }
+    ],
+    "sample_event_id": "401843582",
+    "sample_event_name": "LIV Golf Michigan - Stroke Play",
+    "sample_event_date": "2026-08-30T04:00Z",
+    "sample_state": {
+      "period": 0,
+      "type": {
+        "id": "5",
+        "name": "STATUS_CANCELED",
+        "state": "post",
+        "completed": false,
+        "description": "Canceled",
+        "detail": "Canceled",
+        "shortDetail": "Canceled"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 0,
+    "competitor_types": [],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "status",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/golf--liv.json"
+  },
+  {
+    "sport": "golf",
+    "slug": "champions-tour",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/champions-tour/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "PGA Tour Champions",
+        "slug": "champions-tour"
+      }
+    ],
+    "sample_event_id": "401832077",
+    "sample_event_name": "Jefferson Lehigh Valley Classic",
+    "sample_event_date": "2026-10-02T04:00Z",
+    "sample_state": {
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, October 1st at 12:00 AM EDT",
+        "shortDetail": "10/2 - 12:00 AM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 0,
+    "competitor_types": [],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "status",
+      "broadcasts",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/golf--champions-tour.json"
+  },
+  {
+    "sport": "golf",
+    "slug": "ntw",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/ntw/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Korn Ferry Tour",
+        "slug": "ntw"
+      }
+    ],
+    "sample_event_id": "401837450",
+    "sample_event_name": "Compliance Solutions Championship",
+    "sample_event_date": "2026-10-01T04:00Z",
+    "sample_state": {
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Thu, October 30th at 12:00 AM EDT",
+        "shortDetail": "10/1 - 12:00 AM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 0,
+    "competitor_types": [],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "status",
+      "broadcasts",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/golf--ntw.json"
+  },
+  {
+    "sport": "golf",
+    "slug": "tgl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/tgl/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "TGL",
+        "slug": "tgl"
+      }
+    ],
+    "sample_event_id": "401865268",
+    "sample_event_name": "Jupiter Links GC vs. Los Angeles GC",
+    "sample_event_date": "2026-03-24T01:00Z",
+    "sample_state": {
+      "period": 1,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Complete"
+      }
+    },
+    "competition_count": 5,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "type",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "broadcasts",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "statistics",
+      "winner",
+      "records"
+    ],
+    "competitor_score_example": "6",
+    "sample_file": "provider-samples/golf--tgl.json"
+  },
+  {
+    "sport": "hockey",
+    "slug": "mens-college-hockey",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 14,
+    "leagues": [
+      {
+        "name": "NCAA Men's Ice Hockey",
+        "slug": "mens-college-hockey"
+      }
+    ],
+    "sample_event_id": "401912409",
+    "sample_event_name": "Maryville (Mo) Saints at St. Lawrence Saints",
+    "sample_event_date": "2026-10-02T22:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, October 2nd at 6:00 PM EDT",
+        "shortDetail": "10/2 - 6:00 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "curatedRank",
+      "statistics"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/hockey--mens-college-hockey.json"
+  },
+  {
+    "sport": "hockey",
+    "slug": "womens-college-hockey",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/womens-college-hockey/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "NCAA Women's Hockey",
+        "slug": "womens-college-hockey"
+      }
+    ],
+    "sample_event_id": "401904100",
+    "sample_event_name": "Lindenwood Lions at Merrimack Warriors",
+    "sample_event_date": "2026-09-24T21:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Thu, September 24th at 5:00 PM EDT",
+        "shortDetail": "9/24 - 5:00 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "curatedRank",
+      "statistics"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/hockey--womens-college-hockey.json"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "mens-college-lacrosse",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/mens-college-lacrosse/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Men's Lacrosse",
+        "slug": "mens-college-lacrosse"
+      }
+    ],
+    "sample_event_id": "401870925",
+    "sample_event_name": "Notre Dame Fighting Irish at Princeton Tigers",
+    "sample_event_date": "2026-05-25T17:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "16",
+    "sample_file": "provider-samples/lacrosse--mens-college-lacrosse.json"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "womens-college-lacrosse",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/womens-college-lacrosse/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Women's Lacrosse",
+        "slug": "womens-college-lacrosse"
+      }
+    ],
+    "sample_event_id": "401870993",
+    "sample_event_name": "North Carolina Tar Heels at Northwestern Wildcats",
+    "sample_event_date": "2026-05-24T16:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "14",
+    "sample_file": "provider-samples/lacrosse--womens-college-lacrosse.json"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "nll",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/nll/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "National Lacrosse League",
+        "slug": "nll"
+      }
+    ],
+    "sample_event_id": "401872545",
+    "sample_event_name": "Toronto Rock at Halifax Thunderbirds",
+    "sample_event_date": "2026-05-17T22:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "7",
+    "sample_file": "provider-samples/lacrosse--nll.json"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "pll",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/pll/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Premier Lacrosse League",
+        "slug": "pll"
+      }
+    ],
+    "sample_event_id": "401919201",
+    "sample_event_name": "Denver Outlaws at Philadelphia Waterdogs",
+    "sample_event_date": "2026-09-20T16:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "14",
+    "sample_file": "provider-samples/lacrosse--pll.json"
+  },
+  {
+    "sport": "mma",
+    "slug": "pfl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/pfl/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Professional Fighters League",
+        "slug": "pfl"
+      }
+    ],
+    "sample_event_id": "600061331",
+    "sample_event_name": "PFL Chicago: Carmouche vs. Bishop 2",
+    "sample_event_date": "2026-10-16T22:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "-",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, October 16th at 6:00 PM EDT",
+        "shortDetail": "10/16 - 6:00 PM EDT"
+      }
+    },
+    "competition_count": 6,
+    "competitor_count": 2,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "venues",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "winner",
+      "athlete",
+      "records"
+    ],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/mma--pfl.json"
+  },
+  {
+    "sport": "mma",
+    "slug": "ofc",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ofc/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "One Fighting Championship",
+        "slug": "ofc"
+      }
+    ],
+    "sample_event_id": "600060243",
+    "sample_event_name": "ONE Friday Fights 144",
+    "sample_event_date": "2026-02-27T05:00Z",
+    "sample_state": {
+      "clock": 300.0,
+      "displayClock": "5:00",
+      "period": 3,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      },
+      "featured": false
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "venues",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "winner",
+      "athlete",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/mma--ofc.json"
+  },
+  {
+    "sport": "mma",
+    "slug": "rizin",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/rizin/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Rizin Fight Federation",
+        "slug": "rizin"
+      }
+    ],
+    "sample_event_id": "600053671",
+    "sample_event_name": "Rizin 49: Decade",
+    "sample_event_date": "2024-12-31T05:00Z",
+    "sample_state": {
+      "clock": 150.0,
+      "displayClock": "2:30",
+      "period": 2,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      },
+      "featured": false
+    },
+    "competition_count": 2,
+    "competitor_count": 2,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "venues",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "winner",
+      "athlete",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/mma--rizin.json"
+  },
+  {
+    "sport": "mma",
+    "slug": "ksw",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ksw/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Konfrontacja Sztuk Walki",
+        "slug": "ksw"
+      }
+    ],
+    "sample_event_id": "600059074",
+    "sample_event_name": "KSW 101 Le Classique: Parnasse vs. Varela",
+    "sample_event_date": "2024-12-20T05:00Z",
+    "sample_state": {
+      "clock": 54.0,
+      "displayClock": "0:54",
+      "period": 2,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      },
+      "featured": false
+    },
+    "competition_count": 2,
+    "competitor_count": 2,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "venues",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "winner",
+      "athlete",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/mma--ksw.json"
+  },
+  {
+    "sport": "mma",
+    "slug": "ifc",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ifc/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Invicta FC",
+        "slug": "ifc"
+      }
+    ],
+    "sample_event_id": "600053913",
+    "sample_event_name": "Invicta FC 61: Ferreira vs. Palacios",
+    "sample_event_date": "2025-04-04T04:00Z",
+    "sample_state": {
+      "clock": 149.0,
+      "displayClock": "2:29",
+      "period": 1,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      },
+      "featured": false
+    },
+    "competition_count": 3,
+    "competitor_count": 2,
+    "competitor_types": [
+      "athlete"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "venues",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "status",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "broadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "winner",
+      "athlete",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/mma--ifc.json"
+  },
+  {
+    "sport": "racing",
+    "slug": "nascar-secondary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-secondary/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NASCAR O'Reilly Auto Parts Series",
+        "slug": "nascar-secondary"
+      }
+    ],
+    "sample_event_id": "202610030788",
+    "sample_event_name": "NASCAR O'Reilly Auto Parts Series at Las Vegas",
+    "sample_event_date": "2026-10-03T23:30Z",
+    "sample_state": {
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Sat, October 3rd at 7:30 PM EDT",
+        "shortDetail": "10/3 - 7:30 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 0,
+    "competitor_types": [],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "timeValid",
+      "recent",
+      "status",
+      "broadcasts",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/racing--nascar-secondary.json"
+  },
+  {
+    "sport": "racing",
+    "slug": "nascar-truck",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-truck/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NASCAR Truck Series",
+        "slug": "nascar-truck"
+      }
+    ],
+    "sample_event_id": "202609260412",
+    "sample_event_name": "NASCAR Truck Series at Kansas",
+    "sample_event_date": "2026-09-26T17:00Z",
+    "sample_state": {
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Sat, September 26th at 1:00 PM EDT",
+        "shortDetail": "9/26 - 1:00 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 0,
+    "competitor_types": [],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "timeValid",
+      "recent",
+      "status",
+      "broadcasts",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [],
+    "competitor_score_example": null,
+    "sample_file": "provider-samples/racing--nascar-truck.json"
+  },
+  {
+    "sport": "rugby",
+    "slug": "244293",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/244293/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:26Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "The Rugby Championship",
+        "slug": "244293"
+      }
+    ],
+    "sample_event_id": "603128",
+    "sample_event_name": "Australia vs New Zealand",
+    "sample_event_date": "2025-10-04T10:05Z",
+    "sample_state": {
+      "clock": 4891.0,
+      "displayClock": "82'",
+      "period": 2,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "FT",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights",
+      "details"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "form",
+      "records"
+    ],
+    "competitor_score_example": "14",
+    "sample_file": "provider-samples/rugby--244293.json"
+  },
+  {
+    "sport": "rugby",
+    "slug": "271937",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/271937/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "European Rugby Champions Cup",
+        "slug": "271937"
+      }
+    ],
+    "sample_event_id": "604246",
+    "sample_event_name": "Gloucester Rugby vs Bordeaux Begles",
+    "sample_event_date": "2026-10-16T19:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "1'",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, October 16th at 3:00 PM EDT",
+        "shortDetail": "10/16 - 3:00 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "details",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "form",
+      "records"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/rugby--271937.json"
+  },
+  {
+    "sport": "rugby",
+    "slug": "270557",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/270557/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 3,
+    "leagues": [
+      {
+        "name": "United Rugby Championship",
+        "slug": "270557"
+      }
+    ],
+    "sample_event_id": "604032",
+    "sample_event_name": "Benetton Treviso vs Dragons",
+    "sample_event_date": "2026-09-25T18:45Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "1'",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, September 25th at 2:45 PM EDT",
+        "shortDetail": "9/25 - 2:45 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights",
+      "details"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "form",
+      "records"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/rugby--270557.json"
+  },
+  {
+    "sport": "rugby",
+    "slug": "289237",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289237/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "Women's Rugby World Cup",
+        "slug": "289237"
+      }
+    ],
+    "sample_event_id": "600494",
+    "sample_event_name": "New Zealand Women vs France Women",
+    "sample_event_date": "2025-09-27T11:30Z",
+    "sample_state": {
+      "clock": 4821.0,
+      "displayClock": "81'",
+      "period": 2,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "FT",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights",
+      "details"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "statistics",
+      "form"
+    ],
+    "competitor_score_example": "42",
+    "sample_file": "provider-samples/rugby--289237.json"
+  },
+  {
+    "sport": "rugby",
+    "slug": "289262",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289262/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "Major League Rugby",
+        "slug": "289262"
+      }
+    ],
+    "sample_event_id": "604201",
+    "sample_event_name": "California Legion vs Chicago Hounds",
+    "sample_event_date": "2026-06-21T23:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "1'",
+      "period": 0,
+      "type": {
+        "id": "0",
+        "name": "STATUS_TBD",
+        "state": "pre",
+        "completed": false,
+        "description": "TBD",
+        "detail": "TBD",
+        "shortDetail": "TBD"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "details",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "statistics",
+      "form"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/rugby--289262.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.fa",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.fa/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "English FA Cup",
+        "slug": "eng.fa"
+      }
+    ],
+    "sample_event_id": "401867655",
+    "sample_event_name": "Manchester City at Chelsea",
+    "sample_event_date": "2026-05-16T14:00Z",
+    "sample_state": {
+      "clock": 5400.0,
+      "displayClock": "90'+6'",
+      "period": 2,
+      "type": {
+        "id": "28",
+        "name": "STATUS_FULL_TIME",
+        "state": "post",
+        "completed": true,
+        "description": "Full Time",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "headlines",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "team",
+      "statistics"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/soccer--eng.fa.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.league_cup",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.league_cup/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "English Carabao Cup",
+        "slug": "eng.league_cup"
+      }
+    ],
+    "sample_event_id": "401914260",
+    "sample_event_name": "Norwich City at Manchester City",
+    "sample_event_date": "2026-09-17T18:30Z",
+    "sample_state": {
+      "clock": 5400.0,
+      "displayClock": "90'+2'",
+      "period": 2,
+      "type": {
+        "id": "28",
+        "name": "STATUS_FULL_TIME",
+        "state": "post",
+        "completed": true,
+        "description": "Full Time",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "headlines",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "team",
+      "statistics"
+    ],
+    "competitor_score_example": "5",
+    "sample_file": "provider-samples/soccer--eng.league_cup.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "uefa.euro",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.euro/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "UEFA European Championship",
+        "slug": "uefa.euro"
+      }
+    ],
+    "sample_event_id": "703945",
+    "sample_event_name": "England at Spain",
+    "sample_event_date": "2024-07-14T19:00Z",
+    "sample_state": {
+      "clock": 5400.0,
+      "displayClock": "90'+5'",
+      "period": 2,
+      "type": {
+        "id": "28",
+        "name": "STATUS_FULL_TIME",
+        "state": "post",
+        "completed": true,
+        "description": "Full Time",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "headlines",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "team",
+      "statistics"
+    ],
+    "competitor_score_example": "2",
+    "sample_file": "provider-samples/soccer--uefa.euro.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "fifa.worldq.uefa",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldq.uefa/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 4,
+    "leagues": [
+      {
+        "name": "FIFA World Cup Qualifying - UEFA",
+        "slug": "fifa.worldq.uefa"
+      }
+    ],
+    "sample_event_id": "761952",
+    "sample_event_name": "Italy at Bosnia-Herzegovina",
+    "sample_event_date": "2026-03-31T18:45Z",
+    "sample_state": {
+      "clock": 7200.0,
+      "displayClock": "120'",
+      "period": 5,
+      "type": {
+        "id": "47",
+        "name": "STATUS_FINAL_PEN",
+        "state": "post",
+        "completed": true,
+        "description": "Final Score - After Penalties",
+        "detail": "FT-Pens",
+        "shortDetail": "FT-Pens"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "headlines",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "advance",
+      "form",
+      "score",
+      "shootoutScore",
+      "team",
+      "statistics"
+    ],
+    "competitor_score_example": "1",
+    "sample_file": "provider-samples/soccer--fifa.worldq.uefa.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.w.1",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.w.1/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 2,
+    "leagues": [
+      {
+        "name": "English Women's Super League",
+        "slug": "eng.w.1"
+      }
+    ],
+    "sample_event_id": "401902907",
+    "sample_event_name": "Manchester City at Charlton Athletic",
+    "sample_event_date": "2026-09-26T12:30Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0'",
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Sat, September 26th at 8:30 AM EDT",
+        "shortDetail": "Scheduled"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "records",
+      "team",
+      "statistics",
+      "leaders"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/soccer--eng.w.1.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "uefa.wchampions",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.wchampions/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 4,
+    "leagues": [
+      {
+        "name": "UEFA Women's Champions League",
+        "slug": "uefa.wchampions"
+      }
+    ],
+    "sample_event_id": "401917013",
+    "sample_event_name": "Roma at Oud-Heverlee Leuven",
+    "sample_event_date": "2026-09-23T16:45Z",
+    "sample_state": {
+      "clock": 5400.0,
+      "displayClock": "90'+7'",
+      "period": 2,
+      "type": {
+        "id": "28",
+        "name": "STATUS_FULL_TIME",
+        "state": "post",
+        "completed": true,
+        "description": "Full Time",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "records",
+      "team",
+      "statistics"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/soccer--uefa.wchampions.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "usa.usl.1",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.usl.1/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 3,
+    "leagues": [
+      {
+        "name": "USL Championship",
+        "slug": "usa.usl.1"
+      }
+    ],
+    "sample_event_id": "401842249",
+    "sample_event_name": "Louisville City FC at Hartford Athletic",
+    "sample_event_date": "2026-09-25T23:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0'",
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Fri, September 25th at 7:00 PM EDT",
+        "shortDetail": "Scheduled"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "records",
+      "team",
+      "statistics",
+      "leaders"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/soccer--usa.usl.1.json"
+  },
+  {
+    "sport": "soccer",
+    "slug": "conmebol.libertadores",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.libertadores/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "CONMEBOL Libertadores",
+        "slug": "conmebol.libertadores"
+      }
+    ],
+    "sample_event_id": "401912526",
+    "sample_event_name": "Independiente del Valle at Flamengo",
+    "sample_event_date": "2026-09-18T00:30Z",
+    "sample_state": {
+      "clock": 5400.0,
+      "displayClock": "90'+7'",
+      "period": 2,
+      "type": {
+        "id": "28",
+        "name": "STATUS_FULL_TIME",
+        "state": "post",
+        "completed": true,
+        "description": "Full Time",
+        "detail": "FT",
+        "shortDetail": "FT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status",
+      "venue",
+      "links"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "startDate",
+      "attendance",
+      "timeValid",
+      "recent",
+      "status",
+      "venue",
+      "format",
+      "leg",
+      "series",
+      "altGameNote",
+      "notes",
+      "geoBroadcasts",
+      "broadcasts",
+      "broadcast",
+      "competitors",
+      "details",
+      "odds",
+      "wasSuspended",
+      "playByPlayAvailable",
+      "playByPlayAthletes"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "form",
+      "score",
+      "aggregateScore",
+      "team",
+      "statistics"
+    ],
+    "competitor_score_example": "1",
+    "sample_file": "provider-samples/soccer--conmebol.libertadores.json"
+  },
+  {
+    "sport": "volleyball",
+    "slug": "mens-college-volleyball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Men's Volleyball",
+        "slug": "mens-college-volleyball"
+      }
+    ],
+    "sample_event_id": "401870476",
+    "sample_event_name": "UC Irvine Anteaters at Hawai'i Rainbow Warriors",
+    "sample_event_date": "2026-05-11T23:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "ranks",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "3",
+    "sample_file": "provider-samples/volleyball--mens-college-volleyball.json"
+  },
+  {
+    "sport": "volleyball",
+    "slug": "womens-college-volleyball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 41,
+    "leagues": [
+      {
+        "name": "NCAA Women's Volleyball",
+        "slug": "womens-college-volleyball"
+      }
+    ],
+    "sample_event_id": "401890102",
+    "sample_event_name": "Kansas State Wildcats at UCF Knights",
+    "sample_event_date": "2026-09-24T22:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 0,
+      "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Thu, September 24th at 6:00 PM EDT",
+        "shortDetail": "9/24 - 6:00 PM EDT"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "type",
+      "timeValid",
+      "neutralSite",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "recent",
+      "venue",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "team",
+      "score",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "0",
+    "sample_file": "provider-samples/volleyball--womens-college-volleyball.json"
+  },
+  {
+    "sport": "water-polo",
+    "slug": "mens-college-water-polo",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/mens-college-water-polo/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Men's Water Polo",
+        "slug": "mens-college-water-polo"
+      }
+    ],
+    "sample_event_id": "401838421",
+    "sample_event_name": "UCLA Bruins at USC Trojans",
+    "sample_event_date": "2025-12-07T23:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "10",
+    "sample_file": "provider-samples/water-polo--mens-college-water-polo.json"
+  },
+  {
+    "sport": "water-polo",
+    "slug": "womens-college-water-polo",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/womens-college-water-polo/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "NCAA Women's Water Polo",
+        "slug": "womens-college-water-polo"
+      }
+    ],
+    "sample_event_id": "401868986",
+    "sample_event_name": "California Golden Bears at USC Trojans",
+    "sample_event_date": "2026-04-27T01:00Z",
+    "sample_state": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "name",
+      "shortName",
+      "season",
+      "competitions",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "date",
+      "attendance",
+      "timeValid",
+      "neutralSite",
+      "playByPlayAvailable",
+      "recent",
+      "competitors",
+      "notes",
+      "status",
+      "broadcasts",
+      "format",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "team",
+      "score",
+      "linescores",
+      "curatedRank",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "10",
+    "sample_file": "provider-samples/water-polo--womens-college-water-polo.json"
+  },
+  {
+    "sport": "cricket",
+    "slug": "8048",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/8048/scoreboard",
+    "checked_at_utc": "2026-09-24T20:33:27Z",
+    "http_status": 200,
+    "event_count": 1,
+    "leagues": [
+      {
+        "name": "Indian Premier League",
+        "slug": "8048"
+      }
+    ],
+    "sample_event_id": "1535465",
+    "sample_event_name": "Royal Challengers Bengaluru v Gujarat Titans",
+    "sample_event_date": "2026-05-31T14:00Z",
+    "sample_state": {
+      "clock": 0,
+      "displayClock": "0'",
+      "period": 2,
+      "featuredAthletes": [
+        {
+          "abbreviation": "POTM",
+          "athlete": {
+            "id": "253802",
+            "name": "Virat Kohli",
+            "shortName": "Kohli",
+            "fullName": "Virat Kohli",
+            "displayName": "Virat Kohli",
+            "position": "TBT",
+            "headshot": "https://a.espncdn.com/i/headshots/cricket/players/full/253802.png",
+            "team": {
+              "id": "6"
+            },
+            "links": [
+              {
+                "rel": [
+                  "playercard",
+                  "desktop"
+                ],
+                "href": "https://www.cricinfo.com/ci/content/player/253802.html"
+              }
+            ]
+          },
+          "displayName": "Player Of The Match",
+          "linescores": {
+            "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/8048/events/1535465/competitions/1535465/competitors/335970/roster/253802/linescores"
+          },
+          "name": "playerOfTheMatch",
+          "playerId": 253802,
+          "shortDisplayName": "POTM",
+          "team": {
+            "id": "335970"
+          },
+          "statistics": []
+        },
+        {
+          "abbreviation": "POTS",
+          "athlete": {
+            "id": "1408688",
+            "name": "Vaibhav Sooryavanshi",
+            "shortName": "Sooryavanshi",
+            "fullName": "Vaibhav Sooryavanshi",
+            "displayName": "Vaibhav Sooryavanshi",
+            "position": "TBT",
+            "headshot": "https://a.espncdn.com/i/headshots/cricket/players/default-player-logo-500.png",
+            "team": {
+              "id": "6"
+            },
+            "links": [
+              {
+                "rel": [
+                  "playercard",
+                  "desktop"
+                ],
+                "href": "https://www.cricinfo.com/ci/content/player/1408688.html"
+              }
+            ]
+          },
+          "displayName": "Player Of The Series",
+          "linescores": {
+            "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/8048/events/1535465/competitions/1535465/competitors/335977/roster/1408688/linescores"
+          },
+          "name": "playerOfTheSeries",
+          "playerId": 1408688,
+          "shortDisplayName": "POTS",
+          "team": {
+            "id": "335977"
+          },
+          "statistics": []
+        }
+      ],
+      "summary": "RCB won by 5 wkts (12b rem)",
+      "type": {
+        "id": "1",
+        "description": "Result",
+        "detail": "Final",
+        "shortDetail": "Final",
+        "state": "post"
+      }
+    },
+    "competition_count": 1,
+    "competitor_count": 2,
+    "competitor_types": [
+      "team"
+    ],
+    "event_keys": [
+      "id",
+      "uid",
+      "date",
+      "endDate",
+      "name",
+      "shortName",
+      "description",
+      "season",
+      "competitions",
+      "links",
+      "status"
+    ],
+    "competition_keys": [
+      "id",
+      "uid",
+      "description",
+      "shortDescription",
+      "date",
+      "endDate",
+      "timeValid",
+      "neutralSite",
+      "attendance",
+      "conferenceCompetition",
+      "playByPlayAvailable",
+      "fastcastAvailable",
+      "recent",
+      "class",
+      "venue",
+      "competitors",
+      "status",
+      "broadcasts",
+      "notes",
+      "startDate",
+      "broadcast",
+      "geoBroadcasts",
+      "highlights"
+    ],
+    "competitor_keys": [
+      "id",
+      "uid",
+      "type",
+      "order",
+      "homeAway",
+      "winner",
+      "score",
+      "team",
+      "linescores",
+      "leaders",
+      "statistics",
+      "records"
+    ],
+    "competitor_score_example": "161/5 (18/20 ov, target 156)",
+    "sample_file": "provider-samples/cricket--8048.json"
+  }
+]

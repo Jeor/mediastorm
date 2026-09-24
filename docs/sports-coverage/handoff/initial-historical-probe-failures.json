@@ -1,0 +1,373 @@
+[
+  {
+    "sport": "australian-football",
+    "slug": "afl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-baseball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-softball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "baseball",
+    "slug": "world-baseball-classic",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/world-baseball-classic/scoreboard?dates=20230301-20230331&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "baseball",
+    "slug": "llb",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/llb/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "baseball",
+    "slug": "lls",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/lls/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "baseball",
+    "slug": "caribbean-series",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/caribbean-series/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-development",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-development/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-summer-las-vegas",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-summer-las-vegas/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "basketball",
+    "slug": "fiba",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/fiba/scoreboard?dates=20230801-20230930&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "basketball",
+    "slug": "nbl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nbl/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "basketball",
+    "slug": "mens-olympics-basketball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-olympics-basketball/scoreboard?dates=20240701-20240831&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "basketball",
+    "slug": "womens-olympics-basketball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/womens-olympics-basketball/scoreboard?dates=20240701-20240831&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "field-hockey",
+    "slug": "womens-college-field-hockey",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/field-hockey/womens-college-field-hockey/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "football",
+    "slug": "cfl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/cfl/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "football",
+    "slug": "ufl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/ufl/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "golf",
+    "slug": "lpga",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/lpga/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:33Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "golf",
+    "slug": "eur",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/eur/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "golf",
+    "slug": "liv",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/liv/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "golf",
+    "slug": "champions-tour",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/champions-tour/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "golf",
+    "slug": "ntw",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/ntw/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "golf",
+    "slug": "tgl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/tgl/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "hockey",
+    "slug": "mens-college-hockey",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "hockey",
+    "slug": "womens-college-hockey",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/womens-college-hockey/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "mens-college-lacrosse",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/mens-college-lacrosse/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "womens-college-lacrosse",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/womens-college-lacrosse/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "nll",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/nll/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "pll",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/pll/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "mma",
+    "slug": "pfl",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/pfl/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "mma",
+    "slug": "ofc",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ofc/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "mma",
+    "slug": "rizin",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/rizin/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "mma",
+    "slug": "ksw",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ksw/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "mma",
+    "slug": "ifc",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ifc/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "racing",
+    "slug": "nascar-secondary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-secondary/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "racing",
+    "slug": "nascar-truck",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-truck/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "rugby",
+    "slug": "244293",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/244293/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "rugby",
+    "slug": "271937",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/271937/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:34Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "rugby",
+    "slug": "270557",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/270557/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "rugby",
+    "slug": "289237",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289237/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "rugby",
+    "slug": "289262",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289262/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.fa",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.fa/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.league_cup",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.league_cup/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "uefa.euro",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.euro/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "fifa.worldq.uefa",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldq.uefa/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.w.1",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.w.1/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "uefa.wchampions",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.wchampions/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "usa.usl.1",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.usl.1/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "soccer",
+    "slug": "conmebol.libertadores",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.libertadores/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "volleyball",
+    "slug": "mens-college-volleyball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "volleyball",
+    "slug": "womens-college-volleyball",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "water-polo",
+    "slug": "mens-college-water-polo",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/mens-college-water-polo/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "water-polo",
+    "slug": "womens-college-water-polo",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/womens-college-water-polo/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "sport": "cricket",
+    "slug": "8048",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/8048/scoreboard?dates=20250101-20251231&limit=5",
+    "checked_at_utc": "2026-09-24T20:32:35Z",
+    "error": "HTTP Error 403: Forbidden"
+  }
+]

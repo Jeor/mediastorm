@@ -1,0 +1,423 @@
+{
+  "header": {
+    "id": "401912409",
+    "uid": "s:70~l:91~e:401912409",
+    "season": {
+      "year": 2027,
+      "current": true,
+      "type": 2
+    },
+    "timeValid": true,
+    "competitions": [
+      {
+        "id": "401912409",
+        "uid": "s:70~l:91~e:401912409~c:401912409",
+        "date": "2026-10-02T22:00Z",
+        "neutralSite": false,
+        "boxscoreAvailable": false,
+        "commentaryAvailable": false,
+        "liveAvailable": false,
+        "onWatchESPN": true,
+        "recent": false,
+        "wallclockAvailable": false,
+        "boxscoreSource": "none",
+        "playByPlaySource": "none",
+        "competitors": [
+          {
+            "id": "2779",
+            "uid": "s:70~l:91~t:2779",
+            "order": 0,
+            "homeAway": "home",
+            "team": {
+              "id": "2779",
+              "guid": "464e8222-e4d0-3278-af32-1856de6f1163",
+              "uid": "s:70~l:91~t:2779",
+              "location": "St. Lawrence",
+              "name": "Saints",
+              "nickname": "St. Lawrence",
+              "abbreviation": "USL",
+              "displayName": "St. Lawrence Saints",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2779.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2022-08-03T20:00Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2779.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2022-08-03T20:05Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/464e8222-e4d0-3278-af32-1856de6f1163/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:43Z"
+                }
+              ],
+              "links": []
+            },
+            "record": [],
+            "possession": false
+          },
+          {
+            "id": "132633",
+            "uid": "s:70~l:91~t:132633",
+            "order": 1,
+            "homeAway": "away",
+            "team": {
+              "id": "132633",
+              "uid": "s:70~l:91~t:132633",
+              "location": "Maryville (Mo)",
+              "name": "Saints",
+              "nickname": "Maryville (Mo)",
+              "abbreviation": "MAR",
+              "displayName": "Maryville (Mo) Saints",
+              "links": []
+            },
+            "record": [],
+            "possession": false
+          }
+        ],
+        "status": {
+          "type": {
+            "id": "1",
+            "name": "STATUS_SCHEDULED",
+            "state": "pre",
+            "completed": false,
+            "description": "Scheduled",
+            "detail": "Fri, October 2nd at 6:00 PM EDT",
+            "shortDetail": "10/2 - 6:00 PM EDT"
+          }
+        },
+        "broadcasts": [
+          {
+            "type": {
+              "id": "4",
+              "shortName": "Streaming"
+            },
+            "market": {
+              "id": "1",
+              "type": "National"
+            },
+            "media": {
+              "shortName": "ESPN+"
+            },
+            "lang": "en",
+            "region": "us",
+            "isNational": true
+          }
+        ],
+        "series": [
+          {
+            "type": "season",
+            "title": "Regular Season Series",
+            "description": "Regular Season Series",
+            "summary": "",
+            "completed": false,
+            "totalCompetitions": 1,
+            "competitors": [
+              {
+                "id": "2779",
+                "uid": "s:70~l:91~t:2779",
+                "wins": 0,
+                "ties": 0,
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/hockey/leagues/mens-college-hockey/seasons/2027/teams/2779?lang=en&region=us"
+                }
+              },
+              {
+                "id": "132633",
+                "uid": "s:70~l:91~t:132633",
+                "wins": 0,
+                "ties": 0,
+                "team": {
+                  "$ref": "http://sports.core.api.espn.pvt/v2/sports/hockey/leagues/mens-college-hockey/seasons/2027/teams/132633?lang=en&region=us"
+                }
+              }
+            ],
+            "events": [
+              {
+                "$ref": "http://sports.core.api.espn.pvt/v2/sports/hockey/leagues/mens-college-hockey/events/401912409?lang=en&region=us",
+                "id": "401912409"
+              }
+            ],
+            "startDate": "2026-10-02T22:00Z"
+          }
+        ],
+        "boxscoreMinutes": false
+      }
+    ],
+    "links": [],
+    "league": {
+      "id": "91",
+      "uid": "s:70~l:91",
+      "name": "NCAA Men's Ice Hockey",
+      "abbreviation": "NCAAH",
+      "shortName": "NCAAH",
+      "slug": "mens-college-hockey",
+      "isTournament": false,
+      "links": [
+        {
+          "rel": [
+            "index",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/college-sports/",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "index",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:70~l:91",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "rankings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/mens-college-hockey/rankings",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "scores",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/mens-college-hockey/scoreboard",
+          "text": "Scores"
+        }
+      ],
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-hockey.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        },
+        {
+          "href": "https://a.espncdn.com/redesign/assets/img/icons/ESPN-icon-hockey.png",
+          "rel": [
+            "full",
+            "dark"
+          ]
+        }
+      ]
+    }
+  },
+  "gameInfo": {
+    "venue": {
+      "id": "1213",
+      "fullName": "Appleton Arena",
+      "address": {
+        "city": "Canton",
+        "state": "NY",
+        "country": "USA"
+      },
+      "grass": false,
+      "images": []
+    },
+    "officials": []
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "132633",
+          "uid": "s:70~l:91~t:132633",
+          "slug": "maryville-mo-saints",
+          "location": "Maryville (Mo)",
+          "name": "Saints",
+          "abbreviation": "MAR",
+          "displayName": "Maryville (Mo) Saints",
+          "shortDisplayName": "Maryville (Mo)"
+        },
+        "statistics": [],
+        "displayOrder": 1,
+        "homeAway": "away"
+      },
+      {
+        "team": {
+          "id": "2779",
+          "uid": "s:70~l:91~t:2779",
+          "slug": "st-lawrence-saints",
+          "location": "St. Lawrence",
+          "name": "Saints",
+          "abbreviation": "USL",
+          "displayName": "St. Lawrence Saints",
+          "shortDisplayName": "St. Lawrence",
+          "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2779.png"
+        },
+        "statistics": [],
+        "displayOrder": 2,
+        "homeAway": "home"
+      }
+    ]
+  },
+  "format": {
+    "regulation": {
+      "periods": 3,
+      "displayName": "Period",
+      "slug": "period",
+      "clock": 1200.0
+    },
+    "overtime": {
+      "periods": 1,
+      "displayName": "Period",
+      "slug": "period",
+      "clock": 300.0
+    },
+    "shootout": {
+      "periods": 1,
+      "displayName": "Shootout",
+      "slug": "shootout"
+    }
+  }
+}

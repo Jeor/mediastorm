@@ -1,0 +1,18 @@
+[
+  {
+    "url": "https://stats.cfl.ca/_nuxt/Cm-yLhf3.js",
+    "observedRequests": [
+      "/seasons",
+      "/fixtures/${season}?view=summary",
+      "/standings/${season}",
+      "/stats/teams?season=${season}"
+    ],
+    "authentication": "No authentication headers supplied by these observed request sites."
+  },
+  {
+    "url": "https://stats.cfl.ca/_nuxt/DWOFej28.js",
+    "observedRequests": [
+      "/teams"
+    ]
+  }
+]

@@ -1,0 +1,321 @@
+{
+  "leagues": [
+    {
+      "id": "24621",
+      "uid": "s:200~l:24621",
+      "name": "Bangladesh Women in England T20I Series 2027",
+      "abbreviation": "Bangladesh Women in England T20Is 2027",
+      "slug": "24621",
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/cricket/500/24621.png",
+          "width": 500,
+          "height": 500,
+          "rel": [
+            "full",
+            "default"
+          ],
+          "lastUpdated": ""
+        }
+      ],
+      "classId": [
+        10
+      ],
+      "mappings": {
+        "contentlink": "24621",
+        "cricinfo": 1547192
+      },
+      "season": {},
+      "links": [
+        {
+          "language": "en",
+          "rel": [
+            "serieshome",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/_/id/24621/24621",
+          "text": "Series Home",
+          "shortText": "Series Home",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "records",
+            "desktop"
+          ],
+          "href": "https://www.cricinfo.com/ci/engine/records/index.html?id=4240;id=1026;type=headtohead",
+          "text": "Records",
+          "shortText": "Records",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "fixtures",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/scores/series/24621/24621",
+          "text": "Fixtures",
+          "shortText": "Fixtures",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "calendarType": "day",
+      "calendarIsWhitelist": true,
+      "calendarStartDate": "2027-09-08T00:00:00Z",
+      "calendarEndDate": "2027-09-12T00:00:00Z",
+      "calendar": [
+        "2027-09-08T00:00:00Z",
+        "2027-09-10T00:00:00Z",
+        "2027-09-12T00:00:00Z"
+      ]
+    }
+  ],
+  "teams": [
+    {
+      "id": "299037",
+      "uid": "s:200~t:299037",
+      "location": "Bangladesh",
+      "name": "Bangladesh Women",
+      "nickname": "Bangladesh Women",
+      "abbreviation": "BAN-W",
+      "displayName": "Bangladesh Women",
+      "shortDisplayName": "BAN-W",
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/teamlogos/cricket/500/299037.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "975",
+      "uid": "s:200~t:975",
+      "location": "England",
+      "name": "England Women",
+      "nickname": "England Women",
+      "abbreviation": "ENG-W",
+      "displayName": "England Women",
+      "shortDisplayName": "ENG-W",
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/teamlogos/cricket/500/975.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "1547201",
+      "uid": "s:200~e:1547201",
+      "date": "2027-09-08T17:30Z",
+      "endDate": "2027-09-10T23:59Z",
+      "name": "England Women v Bangladesh Women",
+      "shortName": "ENG-W v BAN-W",
+      "description": "1st T20I (N), Bangladesh Women tour of England at Northampton, Sep 8 2027",
+      "season": {
+        "year": 2027,
+        "type": 24622
+      },
+      "competitions": [
+        {
+          "id": "1547201",
+          "uid": "s:200~e:1547201~c:1547201",
+          "description": "1st T20I",
+          "shortDescription": "1st T20I,  (N) at Northampton",
+          "date": "2027-09-08T17:30Z",
+          "endDate": "2027-09-10T23:59Z",
+          "timeValid": true,
+          "neutralSite": true,
+          "attendance": 0,
+          "conferenceCompetition": false,
+          "playByPlayAvailable": false,
+          "fastcastAvailable": false,
+          "recent": false,
+          "class": {
+            "internationalClassId": "10",
+            "generalClassId": "17",
+            "generalClassCard": "Women T20",
+            "name": "Women's Twenty20 Internationals",
+            "eventType": "T20"
+          },
+          "venue": {
+            "id": "57207",
+            "fullName": "County Ground, Northampton",
+            "address": {
+              "city": "Northampton",
+              "state": "",
+              "country": "England",
+              "summary": "The County Ground, Wantage Road, Northampton, NN1 4TJ. (Phone: 01604 32917)"
+            },
+            "capacity": 6500,
+            "indoor": false
+          },
+          "competitors": [
+            {
+              "id": "975",
+              "uid": "s:200~e:1547201~c:1547201~t:975",
+              "type": "team",
+              "order": 1,
+              "homeAway": "home",
+              "winner": "false",
+              "score": "",
+              "team": {
+                "id": "975",
+                "uid": "s:200~t:975",
+                "location": "England",
+                "name": "England Women",
+                "abbreviation": "ENG-W",
+                "displayName": "England Women",
+                "shortDisplayName": "ENG-W",
+                "isActive": true,
+                "countryCode": "www",
+                "color": "#0673c1",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop"
+                    ],
+                    "href": "https://www.espn.in/cricket/team/_/id/975/england-women",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/cricket/500/975.png"
+              },
+              "linescores": [],
+              "leaders": {
+                "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/24622/events/1547201/competitions/1547201/competitors/975/leaders"
+              },
+              "statistics": []
+            },
+            {
+              "id": "299037",
+              "uid": "s:200~e:1547201~c:1547201~t:299037",
+              "type": "team",
+              "order": 2,
+              "homeAway": "away",
+              "winner": "false",
+              "score": "",
+              "team": {
+                "id": "299037",
+                "uid": "s:200~t:299037",
+                "location": "Bangladesh",
+                "name": "Bangladesh Women",
+                "abbreviation": "BAN-W",
+                "displayName": "Bangladesh Women",
+                "shortDisplayName": "BAN-W",
+                "isActive": true,
+                "countryCode": "BD",
+                "color": "#ed3507",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop"
+                    ],
+                    "href": "https://www.espn.in/cricket/team/_/id/299037/bangladesh-women",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/cricket/500/299037.png"
+              },
+              "linescores": [],
+              "leaders": {
+                "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/24622/events/1547201/competitions/1547201/competitors/299037/leaders"
+              },
+              "statistics": []
+            }
+          ],
+          "status": {
+            "clock": 0,
+            "displayClock": "0'",
+            "period": 0,
+            "featuredAthletes": [],
+            "summary": "Starts at 18:30 local time",
+            "type": {
+              "id": "0",
+              "description": "Scheduled",
+              "detail": "Scheduled",
+              "shortDetail": "Scheduled",
+              "state": "pre"
+            }
+          },
+          "odds": [],
+          "broadcasts": [],
+          "notes": [],
+          "startDate": "2027-09-08T17:30Z",
+          "broadcast": "",
+          "geoBroadcasts": [],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "boxscore",
+            "match",
+            "live",
+            "summary",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/24622/game/1547201/england-women-vs-bangladesh-women-1st-t20i-24622",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "league",
+            "serieshome",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/_/id/24622/24622",
+          "text": "Series Home",
+          "shortText": "Series Home",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "status": {
+        "clock": 0,
+        "displayClock": "0'",
+        "period": 0,
+        "summary": "Starts at 18:30 local time",
+        "type": {
+          "id": "0",
+          "description": "Scheduled",
+          "detail": "Scheduled",
+          "shortDetail": "Scheduled",
+          "state": "pre"
+        }
+      }
+    }
+  ],
+  "provider": {
+    "id": "100",
+    "name": "Draft Kings",
+    "displayName": "Draft Kings",
+    "priority": 1
+  }
+}

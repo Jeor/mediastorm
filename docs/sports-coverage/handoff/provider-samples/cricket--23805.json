@@ -1,0 +1,519 @@
+{
+  "leagues": [
+    {
+      "id": "23805",
+      "uid": "s:200~l:23805",
+      "name": "Pakistan in England Test Series 2026",
+      "abbreviation": "Pakistan tour in England Test 2026",
+      "slug": "23805",
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/cricket/500/23805.png",
+          "width": 500,
+          "height": 500,
+          "rel": [
+            "full",
+            "default"
+          ],
+          "lastUpdated": ""
+        }
+      ],
+      "classId": [
+        1
+      ],
+      "mappings": {
+        "contentlink": "23805",
+        "cricinfo": 1496564
+      },
+      "season": {},
+      "links": [
+        {
+          "language": "en",
+          "rel": [
+            "serieshome",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/_/id/23805/23805",
+          "text": "Series Home",
+          "shortText": "Series Home",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "records",
+            "desktop"
+          ],
+          "href": "https://www.cricinfo.com/ci/engine/records/index.html?id=1;id=7;type=headtohead",
+          "text": "Records",
+          "shortText": "Records",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "fixtures",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/scores/series/23805/23805",
+          "text": "Fixtures",
+          "shortText": "Fixtures",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "statistics",
+            "desktop"
+          ],
+          "href": "https://www.cricinfo.com/ci/engine/series/1496564.html?view=records",
+          "text": "Statistics",
+          "shortText": "Statistics",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "calendarType": "day",
+      "calendarIsWhitelist": true,
+      "calendarStartDate": "2026-08-19T00:00:00Z",
+      "calendarEndDate": "2026-09-12T00:00:00Z",
+      "calendar": [
+        "2026-08-19T00:00:00Z",
+        "2026-08-20T00:00:00Z",
+        "2026-08-21T00:00:00Z",
+        "2026-08-27T00:00:00Z",
+        "2026-08-28T00:00:00Z",
+        "2026-08-29T00:00:00Z",
+        "2026-08-30T00:00:00Z",
+        "2026-09-09T00:00:00Z",
+        "2026-09-10T00:00:00Z",
+        "2026-09-11T00:00:00Z",
+        "2026-09-12T00:00:00Z"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "1496584",
+      "uid": "s:200~e:1496584",
+      "date": "2026-09-09T10:00Z",
+      "endDate": "2026-09-13T23:59Z",
+      "name": "England v Pakistan",
+      "shortName": "ENG v PAK",
+      "description": "3rd Test, Pakistan tour of England at Birmingham, Sep 9-12 2026",
+      "season": {
+        "year": 2026,
+        "type": 23806
+      },
+      "competitions": [
+        {
+          "id": "1496584",
+          "uid": "s:200~e:1496584~c:1496584",
+          "description": "3rd Test",
+          "shortDescription": "3rd Test,  at Birmingham",
+          "date": "2026-09-09T10:00Z",
+          "endDate": "2026-09-13T23:59Z",
+          "timeValid": true,
+          "neutralSite": true,
+          "attendance": 0,
+          "conferenceCompetition": false,
+          "playByPlayAvailable": false,
+          "fastcastAvailable": false,
+          "recent": false,
+          "class": {
+            "internationalClassId": "1",
+            "generalClassId": "4",
+            "generalClassCard": "Test",
+            "name": "Test matches",
+            "eventType": "Test"
+          },
+          "venue": {
+            "id": "56788",
+            "fullName": "Edgbaston, Birmingham",
+            "address": {
+              "city": "Birmingham",
+              "state": "",
+              "country": "England",
+              "summary": "Edgbaston Stadium, Edgbaston Road, Edgbaston, Birmingham, West Midlands B5 7QU. (Phone: 0844 635 1092)"
+            },
+            "capacity": 24803,
+            "indoor": false
+          },
+          "competitors": [
+            {
+              "id": "1",
+              "uid": "s:200~e:1496584~c:1496584~t:1",
+              "type": "team",
+              "order": 2,
+              "homeAway": "home",
+              "winner": "true",
+              "score": "453 & 130/2 (24.2 ov, target 130)",
+              "team": {
+                "id": "1",
+                "uid": "s:200~t:1",
+                "location": "England",
+                "name": "England",
+                "abbreviation": "ENG",
+                "displayName": "England",
+                "shortDisplayName": "ENG",
+                "isActive": true,
+                "countryCode": "www",
+                "color": "#0673c1",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop"
+                    ],
+                    "href": "https://www.espn.in/cricket/team/_/id/1/england",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/cricket/500/1.png"
+              },
+              "linescores": [
+                {
+                  "period": 1,
+                  "value": 1,
+                  "displayValue": 1,
+                  "wickets": 0,
+                  "runs": 0,
+                  "overs": 33.5,
+                  "isBatting": false,
+                  "description": "all out",
+                  "isCurrent": 0
+                },
+                {
+                  "period": 2,
+                  "value": 2,
+                  "displayValue": 2,
+                  "wickets": 10,
+                  "runs": 453,
+                  "overs": 89.0,
+                  "isBatting": true,
+                  "description": "all out",
+                  "isCurrent": 0
+                },
+                {
+                  "period": 3,
+                  "value": 3,
+                  "displayValue": 3,
+                  "wickets": 0,
+                  "runs": 0,
+                  "overs": 96.4,
+                  "isBatting": false,
+                  "description": "all out",
+                  "isCurrent": 0
+                },
+                {
+                  "period": 4,
+                  "value": 4,
+                  "displayValue": 4,
+                  "wickets": 2,
+                  "runs": 130,
+                  "overs": 24.2,
+                  "isBatting": true,
+                  "description": "target reached",
+                  "isCurrent": 1
+                }
+              ],
+              "leaders": {
+                "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/23806/events/1496584/competitions/1496584/competitors/1/leaders"
+              },
+              "statistics": []
+            },
+            {
+              "id": "7",
+              "uid": "s:200~e:1496584~c:1496584~t:7",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "winner": "false",
+              "score": "133 & 449",
+              "team": {
+                "id": "7",
+                "uid": "s:200~t:7",
+                "location": "Pakistan",
+                "name": "Pakistan",
+                "abbreviation": "PAK",
+                "displayName": "Pakistan",
+                "shortDisplayName": "PAK",
+                "isActive": true,
+                "countryCode": "PK",
+                "color": "#07df52",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop"
+                    ],
+                    "href": "https://www.espn.in/cricket/team/_/id/7/pakistan",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/cricket/500/7.png"
+              },
+              "linescores": [
+                {
+                  "period": 1,
+                  "value": 1,
+                  "displayValue": 1,
+                  "wickets": 10,
+                  "runs": 133,
+                  "overs": 33.5,
+                  "isBatting": true,
+                  "description": "all out",
+                  "isCurrent": 0
+                },
+                {
+                  "period": 2,
+                  "value": 2,
+                  "displayValue": 2,
+                  "wickets": 0,
+                  "runs": 0,
+                  "overs": 89.0,
+                  "isBatting": false,
+                  "description": "all out",
+                  "isCurrent": 0
+                },
+                {
+                  "period": 3,
+                  "value": 3,
+                  "displayValue": 3,
+                  "wickets": 10,
+                  "runs": 449,
+                  "overs": 96.4,
+                  "isBatting": true,
+                  "description": "all out",
+                  "isCurrent": 0
+                },
+                {
+                  "period": 4,
+                  "value": 4,
+                  "displayValue": 4,
+                  "wickets": 0,
+                  "runs": 0,
+                  "overs": 24.2,
+                  "isBatting": false,
+                  "description": "target reached",
+                  "isCurrent": 1
+                }
+              ],
+              "leaders": {
+                "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/23806/events/1496584/competitions/1496584/competitors/7/leaders"
+              },
+              "statistics": []
+            }
+          ],
+          "status": {
+            "clock": 0,
+            "displayClock": "0'",
+            "period": 4,
+            "featuredAthletes": [
+              {
+                "abbreviation": "POTM",
+                "athlete": {
+                  "id": "641423",
+                  "name": "Dan Lawrence",
+                  "shortName": "Lawrence",
+                  "fullName": "Daniel William Lawrence",
+                  "displayName": "Dan Lawrence",
+                  "position": "MBT",
+                  "headshot": "https://a.espncdn.com/i/headshots/cricket/players/full/641423.png",
+                  "team": {
+                    "id": "1"
+                  },
+                  "links": [
+                    {
+                      "rel": [
+                        "playercard",
+                        "desktop"
+                      ],
+                      "href": "https://www.cricinfo.com/ci/content/player/641423.html"
+                    }
+                  ]
+                },
+                "displayName": "Player Of The Match",
+                "linescores": {
+                  "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/23806/events/1496584/competitions/1496584/competitors/1/roster/641423/linescores"
+                },
+                "name": "playerOfTheMatch",
+                "playerId": 641423,
+                "shortDisplayName": "POTM",
+                "team": {
+                  "id": "1"
+                },
+                "statistics": []
+              },
+              {
+                "abbreviation": "POTS",
+                "athlete": {
+                  "id": "389666",
+                  "name": "Mohammad Abbas",
+                  "shortName": "Abbas",
+                  "fullName": "Mohammad Abbas",
+                  "displayName": "Mohammad Abbas",
+                  "position": "BL",
+                  "headshot": "https://a.espncdn.com/i/headshots/cricket/players/full/389666.png",
+                  "team": {
+                    "id": "7"
+                  },
+                  "links": [
+                    {
+                      "rel": [
+                        "playercard",
+                        "desktop"
+                      ],
+                      "href": "https://www.cricinfo.com/ci/content/player/389666.html"
+                    }
+                  ]
+                },
+                "displayName": "Player Of The Series",
+                "linescores": {
+                  "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/23806/events/1496584/competitions/1496584/competitors/7/roster/389666/linescores"
+                },
+                "name": "playerOfTheSeries",
+                "playerId": 389666,
+                "shortDisplayName": "POTS",
+                "team": {
+                  "id": "7"
+                },
+                "statistics": []
+              },
+              {
+                "abbreviation": "POTS",
+                "athlete": {
+                  "id": "527776",
+                  "name": "Ollie Robinson",
+                  "shortName": "Robinson",
+                  "fullName": "Oliver Edward Robinson",
+                  "displayName": "Ollie Robinson",
+                  "position": "BL",
+                  "headshot": "https://a.espncdn.com/i/headshots/cricket/players/full/527776.png",
+                  "team": {
+                    "id": "1"
+                  },
+                  "links": [
+                    {
+                      "rel": [
+                        "playercard",
+                        "desktop"
+                      ],
+                      "href": "https://www.cricinfo.com/ci/content/player/527776.html"
+                    }
+                  ]
+                },
+                "displayName": "Player Of The Series",
+                "linescores": {
+                  "$ref": "http://new.core.espnuk.org/v2/sports/cricket/leagues/23806/events/1496584/competitions/1496584/competitors/1/roster/527776/linescores"
+                },
+                "name": "playerOfTheSeries",
+                "playerId": 527776,
+                "shortDisplayName": "POTS",
+                "team": {
+                  "id": "1"
+                },
+                "statistics": []
+              }
+            ],
+            "summary": "England won by 8 wkts",
+            "type": {
+              "id": "1",
+              "description": "Result",
+              "detail": "Final",
+              "shortDetail": "Final",
+              "state": "post"
+            }
+          },
+          "broadcasts": [],
+          "notes": [],
+          "startDate": "2026-09-09T10:00Z",
+          "broadcast": "",
+          "geoBroadcasts": [],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "boxscore",
+            "scorecard",
+            "match",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/23806/scorecard/1496584/england-vs-pakistan-3rd-test-23806",
+          "text": "Scorecard",
+          "shortText": "Scorecard",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "recap",
+            "report",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/23806/report/1496584/england-vs-pakistan-3rd-test-23806",
+          "text": "Report",
+          "shortText": "Report",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "boxscore",
+            "match",
+            "live",
+            "summary",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/23806/game/1496584/england-vs-pakistan-3rd-test-23806",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en",
+          "rel": [
+            "event",
+            "league",
+            "serieshome",
+            "desktop"
+          ],
+          "href": "https://www.espn.in/cricket/series/_/id/23806/23806",
+          "text": "Series Home",
+          "shortText": "Series Home",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "status": {
+        "clock": 0,
+        "displayClock": "0'",
+        "period": 4,
+        "summary": "England won by 8 wkts",
+        "type": {
+          "id": "1",
+          "description": "Result",
+          "detail": "Final",
+          "shortDetail": "Final",
+          "state": "post"
+        }
+      }
+    }
+  ]
+}

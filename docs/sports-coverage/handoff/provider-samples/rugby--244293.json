@@ -1,0 +1,3349 @@
+{
+  "leagues": [
+    {
+      "id": "8328",
+      "uid": "s:300~l:8328",
+      "name": "The Rugby Championship",
+      "abbreviation": "Rugby Championship",
+      "midsizeName": "244293",
+      "slug": "244293",
+      "season": {
+        "year": 2025,
+        "startDate": "2025-07-20T04:00Z",
+        "endDate": "2026-07-20T03:59Z",
+        "displayName": "2025",
+        "type": {
+          "id": "1",
+          "type": 1,
+          "name": "The Rugby Championship",
+          "abbreviation": "The Rugby Championship"
+        }
+      },
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-rugby.png",
+          "width": 500,
+          "height": 500,
+          "alt": "",
+          "rel": [
+            "full",
+            "default"
+          ],
+          "lastUpdated": "2026-09-23T23:23Z"
+        }
+      ],
+      "isClubCompetition": true,
+      "calendarType": "day",
+      "calendarIsWhitelist": true,
+      "calendarStartDate": "2025-07-20T04:00Z",
+      "calendarEndDate": "2026-07-20T03:59Z",
+      "calendar": [
+        "2025-08-16T07:00Z",
+        "2025-08-23T07:00Z",
+        "2025-09-06T07:00Z",
+        "2025-09-13T07:00Z",
+        "2025-09-27T07:00Z",
+        "2025-10-04T07:00Z"
+      ]
+    }
+  ],
+  "season": {
+    "type": 1,
+    "year": 2025
+  },
+  "events": [
+    {
+      "id": "603128",
+      "uid": "s:300~l:8328~e:603128",
+      "date": "2025-10-04T10:05Z",
+      "name": "Australia vs New Zealand",
+      "shortName": "AUS VS NEW",
+      "season": {
+        "year": 2025,
+        "type": 1,
+        "slug": "the-rugby-championship"
+      },
+      "competitions": [
+        {
+          "id": "603128",
+          "uid": "s:300~l:8328~e:603128~c:603128",
+          "date": "2025-10-04T10:05Z",
+          "attendance": 0,
+          "timeValid": true,
+          "neutralSite": false,
+          "conferenceCompetition": false,
+          "playByPlayAvailable": true,
+          "recent": false,
+          "venue": {
+            "id": "289673",
+            "fullName": "Optus Stadium",
+            "address": {
+              "city": "Perth",
+              "state": "Australia"
+            },
+            "indoor": false
+          },
+          "competitors": [
+            {
+              "id": "6",
+              "uid": "s:300~l:8328~t:6",
+              "type": "team",
+              "order": 0,
+              "homeAway": "home",
+              "winner": false,
+              "team": {
+                "id": "6",
+                "uid": "s:300~t:6",
+                "name": "Australia",
+                "abbreviation": "AUS",
+                "displayName": "Australia",
+                "shortDisplayName": "Australia",
+                "color": "FFCC00",
+                "isActive": true,
+                "venue": {
+                  "id": "16728"
+                },
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/rugby/team/_/id/6/australia",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/rugby/teams/500/6.png"
+              },
+              "score": "14",
+              "linescores": [
+                {
+                  "value": 9.0,
+                  "displayValue": "9",
+                  "period": 1
+                },
+                {
+                  "value": 14.0,
+                  "displayValue": "14",
+                  "period": 2
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 20
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 60
+                }
+              ],
+              "statistics": [
+                {
+                  "name": "attackingEventsZoneA",
+                  "abbreviation": "AEZA",
+                  "displayValue": "33"
+                },
+                {
+                  "name": "attackingEventsZoneB",
+                  "abbreviation": "AEZB",
+                  "displayValue": "179"
+                },
+                {
+                  "name": "attackingEventsZoneC",
+                  "abbreviation": "AEZC",
+                  "displayValue": "202"
+                },
+                {
+                  "name": "attackingEventsZoneD",
+                  "abbreviation": "AEZD",
+                  "displayValue": "67"
+                },
+                {
+                  "name": "ballPossessionLast10Mins",
+                  "abbreviation": "BPL1M",
+                  "displayValue": "0.080"
+                },
+                {
+                  "name": "ballWonZoneA",
+                  "abbreviation": "BWZA",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "ballWonZoneB",
+                  "abbreviation": "BWZB",
+                  "displayValue": "41"
+                },
+                {
+                  "name": "ballWonZoneC",
+                  "abbreviation": "BWZC",
+                  "displayValue": "56"
+                },
+                {
+                  "name": "ballWonZoneD",
+                  "abbreviation": "BWZD",
+                  "displayValue": "20"
+                },
+                {
+                  "name": "carriesCrossedGainLine",
+                  "abbreviation": "CCGL",
+                  "displayValue": "92"
+                },
+                {
+                  "name": "carriesMetres",
+                  "abbreviation": "CM",
+                  "displayValue": "454"
+                },
+                {
+                  "name": "carriesNotMadeGainLine",
+                  "abbreviation": "CNMGL",
+                  "displayValue": "28"
+                },
+                {
+                  "name": "carriesSupport",
+                  "abbreviation": "CS",
+                  "displayValue": "11"
+                },
+                {
+                  "name": "cleanBreaks",
+                  "abbreviation": "CB",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "collectionFailed",
+                  "abbreviation": "CF",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "collectionFromKick",
+                  "abbreviation": "CFK",
+                  "displayValue": "16"
+                },
+                {
+                  "name": "collectionInterception",
+                  "abbreviation": "CI",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "collectionLooseBall",
+                  "abbreviation": "CLB",
+                  "displayValue": "28"
+                },
+                {
+                  "name": "collectionSuccess",
+                  "abbreviation": "CS",
+                  "displayValue": "351.000"
+                },
+                {
+                  "name": "conversionGoals",
+                  "abbreviation": "CG",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "defendersBeaten",
+                  "abbreviation": "DB",
+                  "displayValue": "17"
+                },
+                {
+                  "name": "dropGoalMissed",
+                  "abbreviation": "DGM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "dropGoalsConverted",
+                  "abbreviation": "DGC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConceded",
+                  "abbreviation": "FKC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConcededAtLineout",
+                  "abbreviation": "FKCAL",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConcededAtScrum",
+                  "abbreviation": "FKCAS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConcededInGeneralPlay",
+                  "abbreviation": "FKCIGP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConcededInRuckOrMaul",
+                  "abbreviation": "FKCIROM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "goals",
+                  "abbreviation": "G",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "handlingError",
+                  "abbreviation": "HE",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickChargedDown",
+                  "abbreviation": "KCD",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "kickFromHandMetres",
+                  "abbreviation": "KFHM",
+                  "displayValue": "590"
+                },
+                {
+                  "name": "kickInTouch",
+                  "abbreviation": "KIT",
+                  "displayValue": "17"
+                },
+                {
+                  "name": "kickOppnCollection",
+                  "abbreviation": "KOC",
+                  "displayValue": "11"
+                },
+                {
+                  "name": "kickOutOfPlay",
+                  "abbreviation": "KOOP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "kickPenaltyBad",
+                  "abbreviation": "KPB",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickPenaltyGood",
+                  "abbreviation": "KPG",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "kickPercentSuccess",
+                  "abbreviation": "KPS",
+                  "displayValue": "0.750"
+                },
+                {
+                  "name": "kickPossessionLost",
+                  "abbreviation": "KPL",
+                  "displayValue": "28"
+                },
+                {
+                  "name": "kickPossessionRetained",
+                  "abbreviation": "KPR",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "kicks",
+                  "abbreviation": "K",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kicksFromHand",
+                  "abbreviation": "KFH",
+                  "displayValue": "28"
+                },
+                {
+                  "name": "kickSuccess",
+                  "abbreviation": "KS",
+                  "displayValue": "28.000"
+                },
+                {
+                  "name": "kickTouchInGoal",
+                  "abbreviation": "KTIG",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "kickTryScored",
+                  "abbreviation": "KTS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutsInfringeOpp",
+                  "abbreviation": "LIO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutsInfringeOwn",
+                  "abbreviation": "LIO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutsLost",
+                  "abbreviation": "LL",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "lineoutsToOppPlayer",
+                  "abbreviation": "LTOP",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "lineoutsToOwnPlayer",
+                  "abbreviation": "LTOP",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "lineoutSuccess",
+                  "abbreviation": "LS",
+                  "displayValue": "0.670"
+                },
+                {
+                  "name": "lineoutsWon",
+                  "abbreviation": "LW",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "lineoutThrowLostFreeKick",
+                  "abbreviation": "LTLFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowLostHandlingError",
+                  "abbreviation": "LTLHE",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "lineoutThrowLostNotStraight",
+                  "abbreviation": "LTLNS",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "lineoutThrowLostOutright",
+                  "abbreviation": "LTLO",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "lineoutThrowLostPenalty",
+                  "abbreviation": "LTLP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowNotStraight",
+                  "abbreviation": "LTNS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowWonClean",
+                  "abbreviation": "LTWC",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "lineoutThrowWonFreeKick",
+                  "abbreviation": "LTWFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowWonPenalty",
+                  "abbreviation": "LTWP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowWonTap",
+                  "abbreviation": "LTWT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutWonOwnThrow",
+                  "abbreviation": "LWOT",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "lineoutWonSteal",
+                  "abbreviation": "LWS",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "losingBonusPoints",
+                  "abbreviation": "LBP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulingMetres",
+                  "abbreviation": "MM",
+                  "displayValue": "9"
+                },
+                {
+                  "name": "maulsLost",
+                  "abbreviation": "ML",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsLostOutright",
+                  "abbreviation": "MLO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsLostTurnover",
+                  "abbreviation": "MLT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsTotal",
+                  "abbreviation": "MT",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "maulsWon",
+                  "abbreviation": "MW",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "maulsWonOutright",
+                  "abbreviation": "MWO",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "maulsWonPenalty",
+                  "abbreviation": "MWP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsWonPenaltyTry",
+                  "abbreviation": "MWPT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsWonTry",
+                  "abbreviation": "MWT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "metres",
+                  "abbreviation": "MR",
+                  "displayValue": "454"
+                },
+                {
+                  "name": "missedConversionGoals",
+                  "abbreviation": "MCG",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "missedGoals",
+                  "abbreviation": "MG",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "missedPenaltyGoals",
+                  "abbreviation": "MPG",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "missedTackles",
+                  "abbreviation": "MT",
+                  "displayValue": "29"
+                },
+                {
+                  "name": "offload",
+                  "abbreviation": "O",
+                  "displayValue": "10"
+                },
+                {
+                  "name": "passes",
+                  "abbreviation": "P",
+                  "displayValue": "210"
+                },
+                {
+                  "name": "pcKickPercent",
+                  "abbreviation": "PKP",
+                  "displayValue": "0.750"
+                },
+                {
+                  "name": "pcPossessionFirst",
+                  "abbreviation": "PPF",
+                  "displayValue": "0.560"
+                },
+                {
+                  "name": "pcPossessionSecond",
+                  "abbreviation": "PPS",
+                  "displayValue": "0.510"
+                },
+                {
+                  "name": "pcTerritoryFirst",
+                  "abbreviation": "PTF",
+                  "displayValue": "0.440"
+                },
+                {
+                  "name": "pcTerritorySecond",
+                  "abbreviation": "PTS",
+                  "displayValue": "0.380"
+                },
+                {
+                  "name": "penaltiesConceded",
+                  "abbreviation": "PC",
+                  "displayValue": "14"
+                },
+                {
+                  "name": "penaltyConcededCollapsing",
+                  "abbreviation": "PCC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededCollapsingMaul",
+                  "abbreviation": "PCCM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededCollapsingOffense",
+                  "abbreviation": "PCCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededDelibKnockOn",
+                  "abbreviation": "PCDKO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededDissent",
+                  "abbreviation": "PCD",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededEarlyTackle",
+                  "abbreviation": "PCET",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededFoulPlay",
+                  "abbreviation": "PCFP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyConcededHandlingInRuck",
+                  "abbreviation": "PCHIR",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyConcededHighTackle",
+                  "abbreviation": "PCHT",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "penaltyConcededKillingRuck",
+                  "abbreviation": "PCKR",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "penaltyConcededLineoutOffence",
+                  "abbreviation": "PCLO",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyConcededObstruction",
+                  "abbreviation": "PCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededOffside",
+                  "abbreviation": "PCO",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "penaltyConcededOppHalf",
+                  "abbreviation": "PCOPH",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "penaltyConcededOther",
+                  "abbreviation": "PCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededOwnHalf",
+                  "abbreviation": "PCOWH",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "penaltyConcededScrumOffence",
+                  "abbreviation": "PCSO",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyConcededStamping",
+                  "abbreviation": "PCS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededWrongSide",
+                  "abbreviation": "PCWS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyGoals",
+                  "abbreviation": "PG",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "penaltyKickForTouchMetres",
+                  "abbreviation": "PKFTM",
+                  "displayValue": "207"
+                },
+                {
+                  "name": "penaltyTries",
+                  "abbreviation": "PT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "points",
+                  "abbreviation": "PTS",
+                  "displayValue": "14"
+                },
+                {
+                  "name": "possession",
+                  "abbreviation": "P",
+                  "displayValue": "0.530"
+                },
+                {
+                  "name": "redCards",
+                  "abbreviation": "RC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restart22m",
+                  "abbreviation": "R2",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "restartErrorNotTen",
+                  "abbreviation": "RENT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restartErrorOutOfPlay",
+                  "abbreviation": "REOOP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "restartHalfway",
+                  "abbreviation": "RH",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "restartOppError",
+                  "abbreviation": "ROE",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "restartOppPlayer",
+                  "abbreviation": "ROP",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "restartOwnPlayer",
+                  "abbreviation": "ROP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "restartsLost",
+                  "abbreviation": "RL",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "restartsSuccess",
+                  "abbreviation": "RS",
+                  "displayValue": "0.250"
+                },
+                {
+                  "name": "restartsWon",
+                  "abbreviation": "RW",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "retainedKicks",
+                  "abbreviation": "RK",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "rucksLost",
+                  "abbreviation": "RL",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "rucksTotal",
+                  "abbreviation": "RT",
+                  "displayValue": "119"
+                },
+                {
+                  "name": "ruckSuccess",
+                  "abbreviation": "RS",
+                  "displayValue": "0.940"
+                },
+                {
+                  "name": "rucksWon",
+                  "abbreviation": "RW",
+                  "displayValue": "112"
+                },
+                {
+                  "name": "runs",
+                  "abbreviation": "R",
+                  "displayValue": "134"
+                },
+                {
+                  "name": "scrumsLost",
+                  "abbreviation": "SL",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostFreeKick",
+                  "abbreviation": "SLFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostOutright",
+                  "abbreviation": "SLO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostPenalty",
+                  "abbreviation": "SLP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostReversed",
+                  "abbreviation": "SLR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsReset",
+                  "abbreviation": "SR",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "scrumsSuccess",
+                  "abbreviation": "SS",
+                  "displayValue": "1.000"
+                },
+                {
+                  "name": "scrumsTotal",
+                  "abbreviation": "ST",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "scrumsWon",
+                  "abbreviation": "SW",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "scrumsWonFreeKick",
+                  "abbreviation": "SWFK",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "scrumsWonOutright",
+                  "abbreviation": "SWO",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "scrumsWonPenalty",
+                  "abbreviation": "SWP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsWonPenaltyTry",
+                  "abbreviation": "SWPT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsWonPushoverTry",
+                  "abbreviation": "SWPT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "setPieceWon",
+                  "abbreviation": "SPW",
+                  "displayValue": "13"
+                },
+                {
+                  "name": "tackles",
+                  "abbreviation": "T",
+                  "displayValue": "142"
+                },
+                {
+                  "name": "tackleSuccess",
+                  "abbreviation": "TS",
+                  "displayValue": "0.740"
+                },
+                {
+                  "name": "territory",
+                  "abbreviation": "T",
+                  "displayValue": "0.410"
+                },
+                {
+                  "name": "territoryLast10Mins",
+                  "abbreviation": "TL1M",
+                  "displayValue": "0.000"
+                },
+                {
+                  "name": "totalFreeKicksConceded",
+                  "abbreviation": "TFKC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "totalKicks",
+                  "abbreviation": "TK",
+                  "displayValue": "28"
+                },
+                {
+                  "name": "totalKicksSucceeded",
+                  "abbreviation": "TKS",
+                  "displayValue": "30"
+                },
+                {
+                  "name": "totalLineouts",
+                  "abbreviation": "TL",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "tries",
+                  "abbreviation": "T",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "trueRetainedKicks",
+                  "abbreviation": "TRK",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "tryAssists",
+                  "abbreviation": "TA",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "tryBonusPoints",
+                  "abbreviation": "TBP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "tryKicks",
+                  "abbreviation": "TK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverBadPass",
+                  "abbreviation": "TBP",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "turnoverCarriedInTouch",
+                  "abbreviation": "TCIT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverCarriedOver",
+                  "abbreviation": "TCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverForwardPass",
+                  "abbreviation": "TFP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverKickError",
+                  "abbreviation": "TKE",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "turnoverKnockOn",
+                  "abbreviation": "TKO",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "turnoverLostInRuckOrMaul",
+                  "abbreviation": "TLIROM",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "turnoverOppHalf",
+                  "abbreviation": "TOH",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "turnoverOwnHalf",
+                  "abbreviation": "TOH",
+                  "displayValue": "10"
+                },
+                {
+                  "name": "turnoversConceded",
+                  "abbreviation": "TC",
+                  "displayValue": "16"
+                },
+                {
+                  "name": "turnoverWon",
+                  "abbreviation": "TW",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "yellowCards",
+                  "abbreviation": "YC",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "won",
+                  "abbreviation": "W",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lost",
+                  "abbreviation": "L",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "drawn",
+                  "abbreviation": "D",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "numberOfTeams",
+                  "abbreviation": "NOT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "matches",
+                  "abbreviation": "M",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "startingMatches",
+                  "abbreviation": "SM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "replacementMatches",
+                  "abbreviation": "RM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "attackingKicks",
+                  "abbreviation": "AK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "averageGain",
+                  "abbreviation": "AGK",
+                  "displayValue": "0.00"
+                },
+                {
+                  "name": "breakAssist",
+                  "abbreviation": "BA",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "completeSets",
+                  "abbreviation": "CS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "dummyHalfMetres",
+                  "abbreviation": "DHM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "fortyTwenty",
+                  "abbreviation": "FT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "hitUpMetres",
+                  "abbreviation": "HUP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "hitUps",
+                  "abbreviation": "HU",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "incompleteSets",
+                  "abbreviation": "IS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickReturnMetres",
+                  "abbreviation": "KRM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickReturns",
+                  "abbreviation": "KR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "markerTackles",
+                  "abbreviation": "MT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "onReport",
+                  "abbreviation": "OR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "phaseNumber",
+                  "abbreviation": "PN",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "playTheBall",
+                  "abbreviation": "PTB",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "runFromDummyHalf",
+                  "abbreviation": "RDH",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "tackleBusts",
+                  "abbreviation": "TB",
+                  "displayValue": "0"
+                }
+              ],
+              "form": "TWWWW",
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "Total",
+                  "type": "total",
+                  "summary": "TWWWW"
+                }
+              ]
+            },
+            {
+              "id": "8",
+              "uid": "s:300~l:8328~t:8",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "winner": true,
+              "team": {
+                "id": "8",
+                "uid": "s:300~t:8",
+                "name": "New Zealand",
+                "abbreviation": "NZL",
+                "displayName": "New Zealand",
+                "shortDisplayName": "New Zealand",
+                "color": "000000",
+                "isActive": true,
+                "venue": {
+                  "id": "16155"
+                },
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/rugby/team/_/id/8/new-zealand",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/rugby/teams/500/8.png"
+              },
+              "score": "28",
+              "linescores": [
+                {
+                  "value": 17.0,
+                  "displayValue": "17",
+                  "period": 1
+                },
+                {
+                  "value": 28.0,
+                  "displayValue": "28",
+                  "period": 2
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 20
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 60
+                }
+              ],
+              "statistics": [
+                {
+                  "name": "attackingEventsZoneA",
+                  "abbreviation": "AEZA",
+                  "displayValue": "11"
+                },
+                {
+                  "name": "attackingEventsZoneB",
+                  "abbreviation": "AEZB",
+                  "displayValue": "95"
+                },
+                {
+                  "name": "attackingEventsZoneC",
+                  "abbreviation": "AEZC",
+                  "displayValue": "191"
+                },
+                {
+                  "name": "attackingEventsZoneD",
+                  "abbreviation": "AEZD",
+                  "displayValue": "105"
+                },
+                {
+                  "name": "ballPossessionLast10Mins",
+                  "abbreviation": "BPL1M",
+                  "displayValue": "0.920"
+                },
+                {
+                  "name": "ballWonZoneA",
+                  "abbreviation": "BWZA",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "ballWonZoneB",
+                  "abbreviation": "BWZB",
+                  "displayValue": "17"
+                },
+                {
+                  "name": "ballWonZoneC",
+                  "abbreviation": "BWZC",
+                  "displayValue": "50"
+                },
+                {
+                  "name": "ballWonZoneD",
+                  "abbreviation": "BWZD",
+                  "displayValue": "33"
+                },
+                {
+                  "name": "carriesCrossedGainLine",
+                  "abbreviation": "CCGL",
+                  "displayValue": "62"
+                },
+                {
+                  "name": "carriesMetres",
+                  "abbreviation": "CM",
+                  "displayValue": "381"
+                },
+                {
+                  "name": "carriesNotMadeGainLine",
+                  "abbreviation": "CNMGL",
+                  "displayValue": "33"
+                },
+                {
+                  "name": "carriesSupport",
+                  "abbreviation": "CS",
+                  "displayValue": "11"
+                },
+                {
+                  "name": "cleanBreaks",
+                  "abbreviation": "CB",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "collectionFailed",
+                  "abbreviation": "CF",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "collectionFromKick",
+                  "abbreviation": "CFK",
+                  "displayValue": "14"
+                },
+                {
+                  "name": "collectionInterception",
+                  "abbreviation": "CI",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "collectionLooseBall",
+                  "abbreviation": "CLB",
+                  "displayValue": "22"
+                },
+                {
+                  "name": "collectionSuccess",
+                  "abbreviation": "CS",
+                  "displayValue": "285.000"
+                },
+                {
+                  "name": "conversionGoals",
+                  "abbreviation": "CG",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "defendersBeaten",
+                  "abbreviation": "DB",
+                  "displayValue": "29"
+                },
+                {
+                  "name": "dropGoalMissed",
+                  "abbreviation": "DGM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "dropGoalsConverted",
+                  "abbreviation": "DGC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConceded",
+                  "abbreviation": "FKC",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "freeKickConcededAtLineout",
+                  "abbreviation": "FKCAL",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConcededAtScrum",
+                  "abbreviation": "FKCAS",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "freeKickConcededInGeneralPlay",
+                  "abbreviation": "FKCIGP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "freeKickConcededInRuckOrMaul",
+                  "abbreviation": "FKCIROM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "goals",
+                  "abbreviation": "G",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "handlingError",
+                  "abbreviation": "HE",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickChargedDown",
+                  "abbreviation": "KCD",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "kickFromHandMetres",
+                  "abbreviation": "KFHM",
+                  "displayValue": "696"
+                },
+                {
+                  "name": "kickInTouch",
+                  "abbreviation": "KIT",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "kickOppnCollection",
+                  "abbreviation": "KOC",
+                  "displayValue": "14"
+                },
+                {
+                  "name": "kickOutOfPlay",
+                  "abbreviation": "KOOP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickPenaltyBad",
+                  "abbreviation": "KPB",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "kickPenaltyGood",
+                  "abbreviation": "KPG",
+                  "displayValue": "8"
+                },
+                {
+                  "name": "kickPercentSuccess",
+                  "abbreviation": "KPS",
+                  "displayValue": "0.430"
+                },
+                {
+                  "name": "kickPossessionLost",
+                  "abbreviation": "KPL",
+                  "displayValue": "29"
+                },
+                {
+                  "name": "kickPossessionRetained",
+                  "abbreviation": "KPR",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "kicks",
+                  "abbreviation": "K",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kicksFromHand",
+                  "abbreviation": "KFH",
+                  "displayValue": "25"
+                },
+                {
+                  "name": "kickSuccess",
+                  "abbreviation": "KS",
+                  "displayValue": "25.000"
+                },
+                {
+                  "name": "kickTouchInGoal",
+                  "abbreviation": "KTIG",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "kickTryScored",
+                  "abbreviation": "KTS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutsInfringeOpp",
+                  "abbreviation": "LIO",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "lineoutsInfringeOwn",
+                  "abbreviation": "LIO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutsLost",
+                  "abbreviation": "LL",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "lineoutsToOppPlayer",
+                  "abbreviation": "LTOP",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "lineoutsToOwnPlayer",
+                  "abbreviation": "LTOP",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "lineoutSuccess",
+                  "abbreviation": "LS",
+                  "displayValue": "0.800"
+                },
+                {
+                  "name": "lineoutsWon",
+                  "abbreviation": "LW",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "lineoutThrowLostFreeKick",
+                  "abbreviation": "LTLFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowLostHandlingError",
+                  "abbreviation": "LTLHE",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "lineoutThrowLostNotStraight",
+                  "abbreviation": "LTLNS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowLostOutright",
+                  "abbreviation": "LTLO",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "lineoutThrowLostPenalty",
+                  "abbreviation": "LTLP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowNotStraight",
+                  "abbreviation": "LTNS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowWonClean",
+                  "abbreviation": "LTWC",
+                  "displayValue": "9"
+                },
+                {
+                  "name": "lineoutThrowWonFreeKick",
+                  "abbreviation": "LTWFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutThrowWonPenalty",
+                  "abbreviation": "LTWP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "lineoutThrowWonTap",
+                  "abbreviation": "LTWT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lineoutWonOwnThrow",
+                  "abbreviation": "LWOT",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "lineoutWonSteal",
+                  "abbreviation": "LWS",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "losingBonusPoints",
+                  "abbreviation": "LBP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulingMetres",
+                  "abbreviation": "MM",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "maulsLost",
+                  "abbreviation": "ML",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsLostOutright",
+                  "abbreviation": "MLO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsLostTurnover",
+                  "abbreviation": "MLT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsTotal",
+                  "abbreviation": "MT",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "maulsWon",
+                  "abbreviation": "MW",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "maulsWonOutright",
+                  "abbreviation": "MWO",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "maulsWonPenalty",
+                  "abbreviation": "MWP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsWonPenaltyTry",
+                  "abbreviation": "MWPT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "maulsWonTry",
+                  "abbreviation": "MWT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "metres",
+                  "abbreviation": "MR",
+                  "displayValue": "381"
+                },
+                {
+                  "name": "missedConversionGoals",
+                  "abbreviation": "MCG",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "missedGoals",
+                  "abbreviation": "MG",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "missedPenaltyGoals",
+                  "abbreviation": "MPG",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "missedTackles",
+                  "abbreviation": "MT",
+                  "displayValue": "17"
+                },
+                {
+                  "name": "offload",
+                  "abbreviation": "O",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "passes",
+                  "abbreviation": "P",
+                  "displayValue": "175"
+                },
+                {
+                  "name": "pcKickPercent",
+                  "abbreviation": "PKP",
+                  "displayValue": "0.430"
+                },
+                {
+                  "name": "pcPossessionFirst",
+                  "abbreviation": "PPF",
+                  "displayValue": "0.440"
+                },
+                {
+                  "name": "pcPossessionSecond",
+                  "abbreviation": "PPS",
+                  "displayValue": "0.490"
+                },
+                {
+                  "name": "pcTerritoryFirst",
+                  "abbreviation": "PTF",
+                  "displayValue": "0.560"
+                },
+                {
+                  "name": "pcTerritorySecond",
+                  "abbreviation": "PTS",
+                  "displayValue": "0.620"
+                },
+                {
+                  "name": "penaltiesConceded",
+                  "abbreviation": "PC",
+                  "displayValue": "14"
+                },
+                {
+                  "name": "penaltyConcededCollapsing",
+                  "abbreviation": "PCC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededCollapsingMaul",
+                  "abbreviation": "PCCM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededCollapsingOffense",
+                  "abbreviation": "PCCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededDelibKnockOn",
+                  "abbreviation": "PCDKO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededDissent",
+                  "abbreviation": "PCD",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyConcededEarlyTackle",
+                  "abbreviation": "PCET",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededFoulPlay",
+                  "abbreviation": "PCFP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededHandlingInRuck",
+                  "abbreviation": "PCHIR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededHighTackle",
+                  "abbreviation": "PCHT",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyConcededKillingRuck",
+                  "abbreviation": "PCKR",
+                  "displayValue": "9"
+                },
+                {
+                  "name": "penaltyConcededLineoutOffence",
+                  "abbreviation": "PCLO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededObstruction",
+                  "abbreviation": "PCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededOffside",
+                  "abbreviation": "PCO",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "penaltyConcededOppHalf",
+                  "abbreviation": "PCOPH",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "penaltyConcededOther",
+                  "abbreviation": "PCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededOwnHalf",
+                  "abbreviation": "PCOWH",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "penaltyConcededScrumOffence",
+                  "abbreviation": "PCSO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededStamping",
+                  "abbreviation": "PCS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "penaltyConcededWrongSide",
+                  "abbreviation": "PCWS",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "penaltyGoals",
+                  "abbreviation": "PG",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "penaltyKickForTouchMetres",
+                  "abbreviation": "PKFTM",
+                  "displayValue": "190"
+                },
+                {
+                  "name": "penaltyTries",
+                  "abbreviation": "PT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "points",
+                  "abbreviation": "PTS",
+                  "displayValue": "28"
+                },
+                {
+                  "name": "possession",
+                  "abbreviation": "P",
+                  "displayValue": "0.470"
+                },
+                {
+                  "name": "redCards",
+                  "abbreviation": "RC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restart22m",
+                  "abbreviation": "R2",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restartErrorNotTen",
+                  "abbreviation": "RENT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restartErrorOutOfPlay",
+                  "abbreviation": "REOOP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restartHalfway",
+                  "abbreviation": "RH",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "restartOppError",
+                  "abbreviation": "ROE",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "restartOppPlayer",
+                  "abbreviation": "ROP",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "restartOwnPlayer",
+                  "abbreviation": "ROP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "restartsLost",
+                  "abbreviation": "RL",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "restartsSuccess",
+                  "abbreviation": "RS",
+                  "displayValue": "0.170"
+                },
+                {
+                  "name": "restartsWon",
+                  "abbreviation": "RW",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "retainedKicks",
+                  "abbreviation": "RK",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "rucksLost",
+                  "abbreviation": "RL",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "rucksTotal",
+                  "abbreviation": "RT",
+                  "displayValue": "87"
+                },
+                {
+                  "name": "ruckSuccess",
+                  "abbreviation": "RS",
+                  "displayValue": "0.940"
+                },
+                {
+                  "name": "rucksWon",
+                  "abbreviation": "RW",
+                  "displayValue": "82"
+                },
+                {
+                  "name": "runs",
+                  "abbreviation": "R",
+                  "displayValue": "112"
+                },
+                {
+                  "name": "scrumsLost",
+                  "abbreviation": "SL",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostFreeKick",
+                  "abbreviation": "SLFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostOutright",
+                  "abbreviation": "SLO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostPenalty",
+                  "abbreviation": "SLP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsLostReversed",
+                  "abbreviation": "SLR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsReset",
+                  "abbreviation": "SR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsSuccess",
+                  "abbreviation": "SS",
+                  "displayValue": "1.000"
+                },
+                {
+                  "name": "scrumsTotal",
+                  "abbreviation": "ST",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "scrumsWon",
+                  "abbreviation": "SW",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "scrumsWonFreeKick",
+                  "abbreviation": "SWFK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsWonOutright",
+                  "abbreviation": "SWO",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "scrumsWonPenalty",
+                  "abbreviation": "SWP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "scrumsWonPenaltyTry",
+                  "abbreviation": "SWPT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "scrumsWonPushoverTry",
+                  "abbreviation": "SWPT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "setPieceWon",
+                  "abbreviation": "SPW",
+                  "displayValue": "19"
+                },
+                {
+                  "name": "tackles",
+                  "abbreviation": "T",
+                  "displayValue": "179"
+                },
+                {
+                  "name": "tackleSuccess",
+                  "abbreviation": "TS",
+                  "displayValue": "0.840"
+                },
+                {
+                  "name": "territory",
+                  "abbreviation": "T",
+                  "displayValue": "0.590"
+                },
+                {
+                  "name": "territoryLast10Mins",
+                  "abbreviation": "TL1M",
+                  "displayValue": "1.000"
+                },
+                {
+                  "name": "totalFreeKicksConceded",
+                  "abbreviation": "TFKC",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "totalKicks",
+                  "abbreviation": "TK",
+                  "displayValue": "25"
+                },
+                {
+                  "name": "totalKicksSucceeded",
+                  "abbreviation": "TKS",
+                  "displayValue": "32"
+                },
+                {
+                  "name": "totalLineouts",
+                  "abbreviation": "TL",
+                  "displayValue": "15"
+                },
+                {
+                  "name": "tries",
+                  "abbreviation": "T",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "trueRetainedKicks",
+                  "abbreviation": "TRK",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "tryAssists",
+                  "abbreviation": "TA",
+                  "displayValue": "2"
+                },
+                {
+                  "name": "tryBonusPoints",
+                  "abbreviation": "TBP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "tryKicks",
+                  "abbreviation": "TK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverBadPass",
+                  "abbreviation": "TBP",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "turnoverCarriedInTouch",
+                  "abbreviation": "TCIT",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "turnoverCarriedOver",
+                  "abbreviation": "TCO",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverForwardPass",
+                  "abbreviation": "TFP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverKickError",
+                  "abbreviation": "TKE",
+                  "displayValue": "1"
+                },
+                {
+                  "name": "turnoverKnockOn",
+                  "abbreviation": "TKO",
+                  "displayValue": "9"
+                },
+                {
+                  "name": "turnoverLostInRuckOrMaul",
+                  "abbreviation": "TLIROM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "turnoverOppHalf",
+                  "abbreviation": "TOH",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "turnoverOwnHalf",
+                  "abbreviation": "TOH",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "turnoversConceded",
+                  "abbreviation": "TC",
+                  "displayValue": "12"
+                },
+                {
+                  "name": "turnoverWon",
+                  "abbreviation": "TW",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "yellowCards",
+                  "abbreviation": "YC",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "won",
+                  "abbreviation": "W",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "lost",
+                  "abbreviation": "L",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "drawn",
+                  "abbreviation": "D",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "numberOfTeams",
+                  "abbreviation": "NOT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "matches",
+                  "abbreviation": "M",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "startingMatches",
+                  "abbreviation": "SM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "replacementMatches",
+                  "abbreviation": "RM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "attackingKicks",
+                  "abbreviation": "AK",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "averageGain",
+                  "abbreviation": "AGK",
+                  "displayValue": "0.00"
+                },
+                {
+                  "name": "breakAssist",
+                  "abbreviation": "BA",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "completeSets",
+                  "abbreviation": "CS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "dummyHalfMetres",
+                  "abbreviation": "DHM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "fortyTwenty",
+                  "abbreviation": "FT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "hitUpMetres",
+                  "abbreviation": "HUP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "hitUps",
+                  "abbreviation": "HU",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "incompleteSets",
+                  "abbreviation": "IS",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickReturnMetres",
+                  "abbreviation": "KRM",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "kickReturns",
+                  "abbreviation": "KR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "markerTackles",
+                  "abbreviation": "MT",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "onReport",
+                  "abbreviation": "OR",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "phaseNumber",
+                  "abbreviation": "PN",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "playTheBall",
+                  "abbreviation": "PTB",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "runFromDummyHalf",
+                  "abbreviation": "RDH",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "tackleBusts",
+                  "abbreviation": "TB",
+                  "displayValue": "0"
+                }
+              ],
+              "form": "LLLWW",
+              "records": [
+                {
+                  "name": "overall",
+                  "abbreviation": "Total",
+                  "type": "total",
+                  "summary": "LLLWW"
+                }
+              ]
+            }
+          ],
+          "notes": [],
+          "status": {
+            "clock": 4891.0,
+            "displayClock": "82'",
+            "period": 2,
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "FT",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "broadcasts": [],
+          "format": {
+            "regulation": {
+              "periods": 2
+            }
+          },
+          "startDate": "2025-10-04T10:05Z",
+          "broadcast": "",
+          "geoBroadcasts": [],
+          "highlights": [],
+          "details": [
+            {
+              "type": {
+                "id": "3",
+                "text": "penalty goal"
+              },
+              "clock": {
+                "value": 341.0,
+                "displayValue": "6'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299075",
+                  "fullName": "Tane Edmed",
+                  "displayName": "Tane Edmed",
+                  "shortName": "T. Edmed",
+                  "position": "FH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "1",
+                "text": "try"
+              },
+              "clock": {
+                "value": 439.0,
+                "displayValue": "8'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "296766",
+                  "fullName": "Leroy Carter",
+                  "displayName": "Leroy Carter",
+                  "shortName": "L. Carter",
+                  "position": "SH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "2",
+                "text": "conversion"
+              },
+              "clock": {
+                "value": 486.0,
+                "displayValue": "9'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "228027",
+                  "fullName": "Damian McKenzie",
+                  "displayName": "Damian McKenzie",
+                  "shortName": "D. McKenzie",
+                  "position": "FB",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "3",
+                "text": "penalty goal"
+              },
+              "clock": {
+                "value": 611.0,
+                "displayValue": "11'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299075",
+                  "fullName": "Tane Edmed",
+                  "displayName": "Tane Edmed",
+                  "shortName": "T. Edmed",
+                  "position": "FH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "5",
+                "text": "yellow card"
+              },
+              "clock": {
+                "value": 711.0,
+                "displayValue": "12'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299092",
+                  "fullName": "Tom Hooper",
+                  "displayName": "Tom Hooper",
+                  "shortName": "T. Hooper",
+                  "position": "FL",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 843.0,
+                "displayValue": "15'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "181854",
+                  "fullName": "Will Skelton",
+                  "displayName": "Will Skelton",
+                  "shortName": "W. Skelton",
+                  "position": "L",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 843.0,
+                "displayValue": "15'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299076",
+                  "fullName": "Jeremy Williams",
+                  "displayName": "Jeremy Williams",
+                  "shortName": "J. Williams",
+                  "position": "L",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "3",
+                "text": "penalty goal"
+              },
+              "clock": {
+                "value": 986.0,
+                "displayValue": "17'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299075",
+                  "fullName": "Tane Edmed",
+                  "displayName": "Tane Edmed",
+                  "shortName": "T. Edmed",
+                  "position": "FH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "1",
+                "text": "try"
+              },
+              "clock": {
+                "value": 1928.0,
+                "displayValue": "33'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "294901",
+                  "fullName": "Quinn Tupaea",
+                  "displayName": "Quinn Tupaea",
+                  "shortName": "Q. Tupaea",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "1",
+                "text": "try"
+              },
+              "clock": {
+                "value": 2103.0,
+                "displayValue": "36'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "294901",
+                  "fullName": "Quinn Tupaea",
+                  "displayName": "Quinn Tupaea",
+                  "shortName": "Q. Tupaea",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 2402.0,
+                "displayValue": "41'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "165153",
+                  "fullName": "Allan Alaalatoa",
+                  "displayName": "Allan Alaalatoa",
+                  "shortName": "A. Alaalatoa",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 2402.0,
+                "displayValue": "41'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "231133",
+                  "fullName": "Taniela Tupou",
+                  "displayName": "Taniela Tupou",
+                  "shortName": "T. Tupou",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 2662.0,
+                "displayValue": "45'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "117323",
+                  "fullName": "James Slipper",
+                  "displayName": "James Slipper",
+                  "shortName": "J. Slipper",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 2662.0,
+                "displayValue": "45'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "228195",
+                  "fullName": "Tom Robertson",
+                  "displayName": "Tom Robertson",
+                  "shortName": "T. Robertson",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "5",
+                "text": "yellow card"
+              },
+              "clock": {
+                "value": 2681.0,
+                "displayValue": "45'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "295396",
+                  "fullName": "Len Ikitau",
+                  "displayName": "Len Ikitau",
+                  "shortName": "L. Ikitau",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3036.0,
+                "displayValue": "51'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "300943",
+                  "fullName": "Fabian Holland",
+                  "displayName": "Fabian Holland",
+                  "shortName": "F. Holland",
+                  "position": "L",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3036.0,
+                "displayValue": "51'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "184466",
+                  "fullName": "Patrick Tuipulotu",
+                  "displayName": "Patrick Tuipulotu",
+                  "shortName": "P. Tuipulotu",
+                  "position": "L",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3107.0,
+                "displayValue": "52'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "296973",
+                  "fullName": "Nick Frost",
+                  "displayName": "Nick Frost",
+                  "shortName": "N. Frost",
+                  "position": "L",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3107.0,
+                "displayValue": "52'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "291552",
+                  "fullName": "Rob Valetini",
+                  "displayName": "Rob Valetini",
+                  "shortName": "R. Valetini",
+                  "position": "FL",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3342.0,
+                "displayValue": "56'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "294901",
+                  "fullName": "Quinn Tupaea",
+                  "displayName": "Quinn Tupaea",
+                  "shortName": "Q. Tupaea",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3342.0,
+                "displayValue": "56'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "269001",
+                  "fullName": "Rieko Ioane",
+                  "displayName": "Rieko Ioane",
+                  "shortName": "R. Ioane",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3420.0,
+                "displayValue": "57'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "238093",
+                  "fullName": "Jake Gordon",
+                  "displayName": "Jake Gordon",
+                  "shortName": "J. Gordon",
+                  "position": "SH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3420.0,
+                "displayValue": "57'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "291587",
+                  "fullName": "Ryan Lonergan",
+                  "displayName": "Ryan Lonergan",
+                  "shortName": "R. Lonergan",
+                  "position": "SH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3606.0,
+                "displayValue": "61'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "142048",
+                  "fullName": "Codie Taylor",
+                  "displayName": "Codie Taylor",
+                  "shortName": "C. Taylor",
+                  "position": "H",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3606.0,
+                "displayValue": "61'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "291731",
+                  "fullName": "Samisoni Taukei'aho",
+                  "displayName": "Samisoni Taukei'aho",
+                  "shortName": "S. Taukei'aho",
+                  "position": "H",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "3",
+                "text": "penalty goal"
+              },
+              "clock": {
+                "value": 3714.0,
+                "displayValue": "62'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "228027",
+                  "fullName": "Damian McKenzie",
+                  "displayName": "Damian McKenzie",
+                  "shortName": "D. McKenzie",
+                  "position": "FB",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3721.0,
+                "displayValue": "63'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "301950",
+                  "fullName": "Peter Lakai",
+                  "displayName": "Peter Lakai",
+                  "shortName": "P. Lakai",
+                  "position": "FL",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3721.0,
+                "displayValue": "63'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "302027",
+                  "fullName": "Wallace Sititi",
+                  "displayName": "Wallace Sititi",
+                  "shortName": "W. Sititi",
+                  "position": "FL",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3722.0,
+                "displayValue": "63'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299094",
+                  "fullName": "Billy Pollard",
+                  "displayName": "Billy Pollard",
+                  "shortName": "B. Pollard",
+                  "position": "H",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3722.0,
+                "displayValue": "63'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "297007",
+                  "fullName": "Josh Nasser",
+                  "displayName": "Josh Nasser",
+                  "shortName": "J. Nasser",
+                  "position": "H",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3902.0,
+                "displayValue": "66'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299012",
+                  "fullName": "Tamaiti Williams",
+                  "displayName": "Tamaiti Williams",
+                  "shortName": "T. Williams",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3902.0,
+                "displayValue": "66'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "240437",
+                  "fullName": "George Bower",
+                  "displayName": "George Bower",
+                  "shortName": "G. Bower",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 3903.0,
+                "displayValue": "66'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299026",
+                  "fullName": "Fletcher Newell",
+                  "displayName": "Fletcher Newell",
+                  "shortName": "F. Newell",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 3903.0,
+                "displayValue": "66'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "295070",
+                  "fullName": "Pasilio Tosi",
+                  "displayName": "Pasilio Tosi",
+                  "shortName": "P. Tosi",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "1",
+                "text": "try"
+              },
+              "clock": {
+                "value": 3951.0,
+                "displayValue": "66'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "295396",
+                  "fullName": "Len Ikitau",
+                  "displayName": "Len Ikitau",
+                  "shortName": "L. Ikitau",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "3",
+                "text": "penalty goal"
+              },
+              "clock": {
+                "value": 4194.0,
+                "displayValue": "70'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "228027",
+                  "fullName": "Damian McKenzie",
+                  "displayName": "Damian McKenzie",
+                  "shortName": "D. McKenzie",
+                  "position": "FB",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 4205.0,
+                "displayValue": "71'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "296963",
+                  "fullName": "Harry Potter",
+                  "displayName": "Harry Potter",
+                  "shortName": "H. Potter",
+                  "position": "FB",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 4205.0,
+                "displayValue": "71'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "298437",
+                  "fullName": "Josh Flook",
+                  "displayName": "Josh Flook",
+                  "shortName": "J. Flook",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 4321.0,
+                "displayValue": "73'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "295833",
+                  "fullName": "Fraser McReight",
+                  "displayName": "Fraser McReight",
+                  "shortName": "F. McReight",
+                  "position": "FL",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 4321.0,
+                "displayValue": "73'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "85497",
+                  "fullName": "James O'Connor",
+                  "displayName": "James O'Connor",
+                  "shortName": "J. O'Connor",
+                  "position": "FH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 4333.0,
+                "displayValue": "73'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299284",
+                  "fullName": "Cam Roigard",
+                  "displayName": "Cam Roigard",
+                  "shortName": "C. Roigard",
+                  "position": "SH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 4333.0,
+                "displayValue": "73'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "300774",
+                  "fullName": "Cortez Ratima",
+                  "displayName": "Cortez Ratima",
+                  "shortName": "C. Ratima",
+                  "position": "SH",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 4335.0,
+                "displayValue": "73'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "295066",
+                  "fullName": "Leicester Fainga'anuku",
+                  "displayName": "Leicester Fainga'anuku",
+                  "shortName": "L. Fainga'anuku",
+                  "position": "W",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 4335.0,
+                "displayValue": "73'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "299050",
+                  "fullName": "Ruben Love",
+                  "displayName": "Ruben Love",
+                  "shortName": "R. Love",
+                  "position": "FB",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "7",
+                "text": "player substituted"
+              },
+              "clock": {
+                "value": 4782.0,
+                "displayValue": "80'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "298437",
+                  "fullName": "Josh Flook",
+                  "displayName": "Josh Flook",
+                  "shortName": "J. Flook",
+                  "position": "C",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "8",
+                "text": "substitute on"
+              },
+              "clock": {
+                "value": 4782.0,
+                "displayValue": "80'"
+              },
+              "team": {
+                "id": "6"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "296973",
+                  "fullName": "Nick Frost",
+                  "displayName": "Nick Frost",
+                  "shortName": "N. Frost",
+                  "position": "L",
+                  "links": []
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "1",
+                "text": "try"
+              },
+              "clock": {
+                "value": 4826.0,
+                "displayValue": "81'"
+              },
+              "team": {
+                "id": "8"
+              },
+              "athletesInvolved": [
+                {
+                  "id": "240437",
+                  "fullName": "George Bower",
+                  "displayName": "George Bower",
+                  "shortName": "G. Bower",
+                  "position": "P",
+                  "links": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/rugby/match/_/gameId/603128/league/244293",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "lineup",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/rugby/lineups/_/gameId/603128/league/244293",
+          "text": "Line-Ups",
+          "shortText": "Line-Ups",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "match",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/rugby/match/_/gameId/603128/league/244293",
+          "text": "Match",
+          "shortText": "Match",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "matchstats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/rugby/matchstats/_/gameId/603128/league/244293",
+          "text": "Match Stats",
+          "shortText": "Match Stats",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "playerstats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/rugby/playerstats/_/gameId/603128/league/244293",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "status": {
+        "clock": 4891.0,
+        "displayClock": "82'",
+        "period": 2,
+        "type": {
+          "id": "3",
+          "name": "STATUS_FINAL",
+          "state": "post",
+          "completed": true,
+          "description": "FT",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      }
+    }
+  ]
+}

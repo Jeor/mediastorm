@@ -1,0 +1,997 @@
+[
+  {
+    "sport": "australian-football",
+    "slug": "afl",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/summary?event=1133711",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "lastFiveGames",
+      "leaders",
+      "injuries",
+      "rosters",
+      "header",
+      "wallclockAvailable",
+      "news",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "leaders",
+      "standings",
+      "format",
+      "rosters"
+    ],
+    "boxscore_keys": [
+      "teams"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "australian-football",
+    "slug": "afl",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/teams",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 19
+  },
+  {
+    "sport": "australian-football",
+    "slug": "afl",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/australian-football/afl/standings",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "shortName",
+      "standings",
+      "children",
+      "season",
+      "links",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": true
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-baseball",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/summary?event=401874453",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "notes",
+      "boxscore",
+      "format",
+      "gameInfo",
+      "seasonseries",
+      "broadcasts",
+      "pickcenter",
+      "odds",
+      "againstTheSpread",
+      "rosters",
+      "news",
+      "header",
+      "videos",
+      "plays",
+      "playsMap",
+      "atBats",
+      "wallclockAvailable",
+      "meta"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "format",
+      "plays",
+      "rosters"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-baseball",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/teams",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 50
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-baseball",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/baseball/college-baseball/standings",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "shortName",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 1,
+    "has_standings": true
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-softball",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/summary?event=401873593",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "notes",
+      "boxscore",
+      "format",
+      "gameInfo",
+      "seasonseries",
+      "broadcasts",
+      "pickcenter",
+      "odds",
+      "againstTheSpread",
+      "rosters",
+      "news",
+      "header",
+      "videos",
+      "plays",
+      "playsMap",
+      "atBats",
+      "wallclockAvailable",
+      "meta"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "format",
+      "plays",
+      "rosters"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-softball",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/teams",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 50
+  },
+  {
+    "sport": "baseball",
+    "slug": "college-softball",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/baseball/college-softball/standings",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "shortName",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 1,
+    "has_standings": true
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-development",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-development/summary?event=401914361",
+    "checked_at_utc": "2026-09-24T20:35:22Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "lastFiveGames",
+      "leaders",
+      "seasonseries",
+      "broadcasts",
+      "pickcenter",
+      "odds",
+      "againstTheSpread",
+      "news",
+      "ticketsInfo",
+      "header",
+      "videos",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "leaders",
+      "standings",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-development",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-development/teams",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 34
+  },
+  {
+    "sport": "basketball",
+    "slug": "nba-development",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/basketball/nba-development/standings",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "children",
+      "isConference",
+      "season",
+      "links",
+      "seasons"
+    ],
+    "group_count": 2,
+    "has_standings": true
+  },
+  {
+    "sport": "field-hockey",
+    "slug": "womens-college-field-hockey",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/field-hockey/womens-college-field-hockey/summary?event=401899815",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "header",
+      "news",
+      "videos",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "standings",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "field-hockey",
+    "slug": "womens-college-field-hockey",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/field-hockey/womens-college-field-hockey/teams",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 0
+  },
+  {
+    "sport": "field-hockey",
+    "slug": "womens-college-field-hockey",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/field-hockey/womens-college-field-hockey/standings",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "shortName",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 2,
+    "has_standings": true
+  },
+  {
+    "sport": "football",
+    "slug": "ufl",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/ufl/summary?event=401857566",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "leaders",
+      "broadcasts",
+      "pickcenter",
+      "odds",
+      "againstTheSpread",
+      "header",
+      "winprobability",
+      "news",
+      "videos",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "leaders",
+      "standings",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "football",
+    "slug": "ufl",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/ufl/teams",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 8
+  },
+  {
+    "sport": "football",
+    "slug": "ufl",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/football/ufl/standings",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "isConference",
+      "standings",
+      "children",
+      "season",
+      "links",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": true
+  },
+  {
+    "sport": "golf",
+    "slug": "lpga",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/lpga/summary?event=401835170",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 404,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "sport": "golf",
+    "slug": "lpga",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/lpga/teams",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 0
+  },
+  {
+    "sport": "golf",
+    "slug": "lpga",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/golf/lpga/standings",
+    "checked_at_utc": "2026-09-24T20:35:23Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": false
+  },
+  {
+    "sport": "golf",
+    "slug": "tgl",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/tgl/summary?event=401865268",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 404,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "sport": "golf",
+    "slug": "tgl",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/golf/tgl/teams",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 6
+  },
+  {
+    "sport": "golf",
+    "slug": "tgl",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/golf/tgl/standings",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "shortName",
+      "standings",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": true
+  },
+  {
+    "sport": "hockey",
+    "slug": "mens-college-hockey",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/summary?event=401912409",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "lastFiveGames",
+      "broadcasts",
+      "news",
+      "header",
+      "wallclockAvailable",
+      "meta"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "hockey",
+    "slug": "mens-college-hockey",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/teams",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 50
+  },
+  {
+    "sport": "hockey",
+    "slug": "mens-college-hockey",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/hockey/mens-college-hockey/standings",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 10,
+    "has_standings": true
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "pll",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/pll/summary?event=401919201",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "news",
+      "videos",
+      "header",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "boxscore",
+      "standings",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "pll",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/pll/teams",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 12
+  },
+  {
+    "sport": "lacrosse",
+    "slug": "pll",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/lacrosse/pll/standings",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "standings",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": true
+  },
+  {
+    "sport": "mma",
+    "slug": "pfl",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/pfl/summary?event=600061331",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 404,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "sport": "mma",
+    "slug": "pfl",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/pfl/teams",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 0
+  },
+  {
+    "sport": "mma",
+    "slug": "pfl",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/mma/pfl/standings",
+    "checked_at_utc": "2026-09-24T20:35:24Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": false
+  },
+  {
+    "sport": "rugby",
+    "slug": "244293",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/244293/summary?event=603128",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "lastFiveGames",
+      "headToHeadGames",
+      "pickcenter",
+      "odds",
+      "againstTheSpread",
+      "hasOdds",
+      "rosters",
+      "news",
+      "header",
+      "article",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "standings",
+      "format",
+      "rosters"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "rugby",
+    "slug": "244293",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/244293/teams",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 4
+  },
+  {
+    "sport": "rugby",
+    "slug": "244293",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/rugby/244293/standings",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 1,
+    "has_standings": true
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.fa",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.fa/summary?event=401867655",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "lastFiveGames",
+      "leaders",
+      "broadcasts",
+      "pickcenter",
+      "odds",
+      "hasOdds",
+      "rosters",
+      "news",
+      "article",
+      "videos",
+      "header",
+      "seasonseries",
+      "keyEvents",
+      "commentary",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "leaders",
+      "standings",
+      "format",
+      "rosters"
+    ],
+    "boxscore_keys": [
+      "teams"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.fa",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.fa/teams",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 124
+  },
+  {
+    "sport": "soccer",
+    "slug": "eng.fa",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/soccer/eng.fa/standings",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "season",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": false
+  },
+  {
+    "sport": "volleyball",
+    "slug": "womens-college-volleyball",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/summary?event=401890102",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "news",
+      "header",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "standings",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "volleyball",
+    "slug": "womens-college-volleyball",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/teams",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 50
+  },
+  {
+    "sport": "volleyball",
+    "slug": "womens-college-volleyball",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/volleyball/womens-college-volleyball/standings",
+    "checked_at_utc": "2026-09-24T20:35:25Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "shortName",
+      "children",
+      "season",
+      "links",
+      "seasons"
+    ],
+    "group_count": 3,
+    "has_standings": true
+  },
+  {
+    "sport": "water-polo",
+    "slug": "mens-college-water-polo",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/mens-college-water-polo/summary?event=401838421",
+    "checked_at_utc": "2026-09-24T20:35:26Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "boxscore",
+      "format",
+      "gameInfo",
+      "header",
+      "videos",
+      "wallclockAvailable",
+      "news",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "boxscore",
+      "standings",
+      "format"
+    ],
+    "boxscore_keys": [
+      "teams",
+      "players"
+    ],
+    "has_header_event": true,
+    "has_venue_images": false
+  },
+  {
+    "sport": "water-polo",
+    "slug": "mens-college-water-polo",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/mens-college-water-polo/teams",
+    "checked_at_utc": "2026-09-24T20:35:26Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "sports"
+    ],
+    "team_count": 0
+  },
+  {
+    "sport": "water-polo",
+    "slug": "mens-college-water-polo",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/water-polo/mens-college-water-polo/standings",
+    "checked_at_utc": "2026-09-24T20:35:26Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "children",
+      "season",
+      "seasons"
+    ],
+    "group_count": 0,
+    "has_standings": false
+  },
+  {
+    "sport": "cricket",
+    "slug": "8048",
+    "kind": "summary",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/8048/summary?event=1535465",
+    "checked_at_utc": "2026-09-24T20:35:26Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "notes",
+      "gameInfo",
+      "debuts",
+      "rosters",
+      "matchcards",
+      "leaders",
+      "article",
+      "videos",
+      "news",
+      "header",
+      "wallclockAvailable",
+      "meta",
+      "standings"
+    ],
+    "nonempty_sections": [
+      "header",
+      "gameInfo",
+      "leaders",
+      "standings",
+      "rosters"
+    ],
+    "boxscore_keys": [],
+    "has_header_event": true,
+    "has_venue_images": true
+  },
+  {
+    "sport": "cricket",
+    "slug": "8048",
+    "kind": "teams",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/8048/teams",
+    "checked_at_utc": "2026-09-24T20:35:26Z",
+    "http_status": 404,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "sport": "cricket",
+    "slug": "8048",
+    "kind": "standings",
+    "url": "https://site.api.espn.com/apis/v2/sports/cricket/8048/standings",
+    "checked_at_utc": "2026-09-24T20:35:26Z",
+    "http_status": 200,
+    "top_level_keys": [
+      "uid",
+      "id",
+      "name",
+      "abbreviation",
+      "children",
+      "season",
+      "rules",
+      "seasons"
+    ],
+    "group_count": 1,
+    "has_standings": true
+  }
+]

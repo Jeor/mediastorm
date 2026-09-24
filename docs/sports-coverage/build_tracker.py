@@ -17,7 +17,7 @@ for r in rows:
  if r['target_id'].startswith('cricket-discovery'):
   r.update(evidence='evidence/cricket-dropdown.json; all 500 rows inspected',source_date='2026-09-24',blocker_or_notes='Fresh dropdown acquired; see separate cricket target findings. No guessed slug or activation from directory alone.')
 for r in rows:
- if r['target_id'] in cricket:r.update(cricket[r['target_id']])
+ if r['target_id'] in cricket:r.update({k:v for k,v in cricket[r['target_id']].items() if k in r})
 assert len(rows)==340 and len({r['target_id'] for r in rows})==340
 with (P/'coverage-tracker.csv').open('w') as f:
  w=csv.DictWriter(f,fieldnames=rows[0].keys());w.writeheader();w.writerows(rows)

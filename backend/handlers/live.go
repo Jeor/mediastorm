@@ -1673,13 +1673,17 @@ func (h *LiveHandler) livePlaylistScanHTTPClient(proxyURL string) *http.Client {
 }
 
 func (h *LiveHandler) liveStreamHTTPClient(proxyURL string) *http.Client {
+	return h.liveStreamHTTPClientWithTimeout(proxyURL, defaultStreamOpenTimeout)
+}
+
+func (h *LiveHandler) liveStreamHTTPClientWithTimeout(proxyURL string, headerTimeout time.Duration) *http.Client {
 	client, err := netproxy.NewHTTPClientWithOptions(netproxy.HTTPClientOptions{
-		ResponseHeaderTimeout: defaultStreamOpenTimeout,
+		ResponseHeaderTimeout: headerTimeout,
 	}, proxyURL)
 	if err != nil {
 		log.Printf("[live] invalid stream proxy URL %q: %v", proxyURL, err)
 		client, _ = netproxy.NewHTTPClientWithOptions(netproxy.HTTPClientOptions{
-			ResponseHeaderTimeout: defaultStreamOpenTimeout,
+			ResponseHeaderTimeout: headerTimeout,
 		}, "")
 	}
 	return secureLiveRedirects(client, configuredLiveHostPolicy(h.cfgManager))

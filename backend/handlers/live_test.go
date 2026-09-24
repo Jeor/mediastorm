@@ -1302,3 +1302,19 @@ func TestGetFavoriteChannelsSkipsUnrelatedProviders(t *testing.T) {
 		t.Fatalf("source choices lost: %+v", response.Sources)
 	}
 }
+
+func TestAddonLookupAllowsSlowerHeadersWithoutChangingPlaybackTimeout(t *testing.T) {
+	h := &LiveHandler{}
+	lookup := h.liveStreamHTTPClientWithTimeout("", 30*time.Second)
+	transport, ok := lookup.Transport.(*http.Transport)
+	if !ok || transport.ResponseHeaderTimeout != 30*time.Second {
+		t.Fatal("addon lookup did not retain its longer header timeout")
+	}
+	playback := h.liveStreamHTTPClient("")
+	if playback.Transport.(*http.Transport).ResponseHeaderTimeout != defaultStreamOpenTimeout {
+		t.Fatal("changed playback connection timeout")
+	}
+	if lookup.CheckRedirect == nil {
+		t.Fatal("lost outbound redirect validation")
+	}
+}

@@ -676,10 +676,10 @@ func (h *LiveHandler) GetStremioStreamOptions(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), liveStreamTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	client := h.liveStreamHTTPClient(h.resolveProxyURLForStream(r, parsed))
+	client := h.liveStreamHTTPClientWithTimeout(h.resolveProxyURLForStream(r, parsed), 30*time.Second)
 	var resp stremioStreamResponse
 	if err := getStremioJSON(ctx, client, streamResourceURL, &resp); err != nil {
 		log.Printf("[live] failed to fetch stremio stream options %q: %v", streamResourceURL, err)

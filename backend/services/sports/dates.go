@@ -243,7 +243,7 @@ func (s *Service) fetchDatedLeagueWithOverlap(ctx context.Context, league League
 		return games, datedErr
 	}
 	current, currentErr := s.fetchLeagueScoreboardDate(ctx, league, "")
-	if currentErr != nil {
+	if currentErr != nil && !errors.Is(currentErr, errPartialScoreboard) {
 		return games, datedErr
 	}
 	seen := make(map[string]bool, len(games))
@@ -267,7 +267,13 @@ func (s *Service) fetchDatedLeagueWithOverlap(ctx context.Context, league League
 			seen[game.ID], added = true, true
 		}
 	}
-	if datedErr != nil && !added {
+	if errors.Is(datedErr, errPartialScoreboard) || errors.Is(currentErr, errPartialScoreboard) {
+		return games, errPartialScoreboard
+	}
+	if datedErr != nil {
+		if added {
+			return games, errPartialScoreboard
+		}
 		return games, datedErr
 	}
 	return games, nil

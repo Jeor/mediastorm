@@ -2,6 +2,7 @@ package sports
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -144,5 +145,26 @@ func TestDatedInitiatorCancellationDoesNotCancelSharedAcquisition(t *testing.T) 
 	}
 	if calls.Load() != 1 {
 		t.Fatal("waiter required a replacement request", calls.Load())
+	}
+}
+
+func TestCricketPartialStatusSurvivesOverlapMerge(t *testing.T) {
+	for _, partialOverview := range []bool{false, true} {
+		s := NewService(t.TempDir())
+		s.client = &http.Client{Transport: detailTransport(func(r *http.Request) (*http.Response, error) {
+			overview := r.URL.Query().Get("dates") == ""
+			body := `{"events":[]}`
+			if overview {
+				body = `{"events":[{"id":"ongoing","date":"2026-09-21T10:00Z","endDate":"2026-09-25T18:00Z","competitions":[{"id":"ongoing","competitors":[{"team":{"id":"a","displayName":"A"}},{"team":{"id":"b","displayName":"B"}}]}]}]}`
+			}
+			if overview == partialOverview {
+				body = strings.Replace(body, `{"events":`, `{"count":500,"events":`, 1)
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
+		})}
+		games, err := s.fetchDatedLeagueWithOverlap(context.Background(), League{ID: "cricket-8048", Sport: "cricket", Slug: "8048", EventKind: "matchup"}, "2026-09-24")
+		if len(games) != 1 || !errors.Is(err, errPartialScoreboard) {
+			t.Fatalf("overview=%v games=%d err=%v", partialOverview, len(games), err)
+		}
 	}
 }

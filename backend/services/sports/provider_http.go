@@ -247,7 +247,7 @@ func sportsMetadataTTL(path string, body []byte) time.Duration {
 // ESPN metadata hosts share one provider budget and rate-limit cooldown.
 func sportsProviderKey(host string) string {
 	switch strings.ToLower(host) {
-	case "site.api.espn.com", "site.web.api.espn.com", "sports.api.espn.com", "site.api.espncricinfo.com":
+	case "site.api.espn.com", "site.web.api.espn.com", "sports.api.espn.com", "sports.core.api.espn.com", "site.api.espncricinfo.com":
 		return "espn"
 	default:
 		return strings.ToLower(host)

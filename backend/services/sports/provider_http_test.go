@@ -33,7 +33,7 @@ func TestProviderDistinctRequestsShareFourSlotsAcrossClients(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		go func(i int) {
 			client := &http.Client{Transport: &sportsHTTPTransport{pool: pool, next: next}}
-			resp, err := client.Get(fmt.Sprintf("https://%s/scoreboard/%d", []string{"site.api.espn.com", "site.web.api.espn.com"}[i%2], i))
+			resp, err := client.Get(fmt.Sprintf("https://%s/scoreboard/%d", []string{"site.api.espn.com", "site.web.api.espn.com", "sports.core.api.espn.com"}[i%3], i))
 			if err != nil {
 				t.Error(err)
 			} else {

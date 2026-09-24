@@ -601,3 +601,28 @@ func TestStremioCatalogPartialFilters(t *testing.T) {
 		t.Fatalf("got %v, %v", got, err)
 	}
 }
+
+// Nuvio puts Formula 2 in the description even when the visible title is shared with F1.
+func TestStremioRaceMatchingPreservesSeriesMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/manifest.json" {
+			w.Write([]byte(`{"catalogs":[{"type":"tv","id":"motorsport"}]}`))
+			return
+		}
+		w.Write([]byte(`{"metas":[
+   {"id":"practice2","name":"LIVE: Motorsports - Azerbaijan Grand Prix - Practice 2","description":"Category: MOTORSPORT"},
+   {"id":"f2","name":"LIVE: Azerbaijan Grand Prix - Practice 2","description":"League: Formula 2"}
+  ]}`))
+	}))
+	defer server.Close()
+	h := newStremioTestHandler(t, server.URL)
+	channels, err := h.fetchStremioChannels(context.Background(), server.URL+"/manifest.json", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := models.SportsGame{Title: "Qatar Airways Azerbaijan Grand Prix", League: "f1", EventKind: "race-session", EventContext: "FP2"}
+	got := selectableSportsMatches(matchGameToChannels(game, channels, nil, ""))
+	if len(got) != 1 || got[0].ChannelID != "practice2" {
+		t.Fatalf("expected only F1 practice candidate, got %+v", got)
+	}
+}

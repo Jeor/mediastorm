@@ -64,18 +64,19 @@ var liveStreamRequestSequence uint64
 
 // LiveChannel represents a parsed channel from an M3U playlist.
 type LiveChannel struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	URL         string `json:"url"`
-	Logo        string `json:"logo,omitempty"`
-	Group       string `json:"group,omitempty"`
-	TvgID       string `json:"tvgId,omitempty"`
-	TvgName     string `json:"tvgName,omitempty"`
-	TvgLanguage string `json:"tvgLanguage,omitempty"`
-	SourceID    string `json:"sourceId,omitempty"`
-	SourceName  string `json:"sourceName,omitempty"`
-	StreamURL   string `json:"streamUrl,omitempty"`  // Backend-proxied stream URL
-	PlaybackID  string `json:"playbackId,omitempty"` // Provider-local ID used for tune-time resolution
+	SportsMetadata string `json:"-"` // Provider description used to reject contradictory sports series.
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	Logo           string `json:"logo,omitempty"`
+	Group          string `json:"group,omitempty"`
+	TvgID          string `json:"tvgId,omitempty"`
+	TvgName        string `json:"tvgName,omitempty"`
+	TvgLanguage    string `json:"tvgLanguage,omitempty"`
+	SourceID       string `json:"sourceId,omitempty"`
+	SourceName     string `json:"sourceName,omitempty"`
+	StreamURL      string `json:"streamUrl,omitempty"`  // Backend-proxied stream URL
+	PlaybackID     string `json:"playbackId,omitempty"` // Provider-local ID used for tune-time resolution
 }
 
 // LiveSourceOption represents a selectable M3U source exposed to clients.

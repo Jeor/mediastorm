@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"novastream/config"
+	"novastream/internal/streamheaders"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,6 +63,12 @@ func TestLiveQualityIPTVAddonAndAdaptiveMedia(t *testing.T) {
 		switch r.URL.Path {
 		case "/stream/sport/event.json":
 			fmt.Fprintf(w, `{"streams":[{"url":%q},{"url":%q,"behaviorHints":{"proxyHeaders":{"request":{"X-Probe-Fixture":"required","User-Agent":"QualityFixtureAgent"}}}}]}`, server.URL+"/360.ts", server.URL+"/protected.ts")
+		case "/fragment.ts":
+			if r.Header.Get("Referer") != "https://provider.example/" {
+				http.Error(w, "referer required", 403)
+				return
+			}
+			http.ServeFile(w, r, filepath.Join(dir, "720.ts"))
 		case "/protected.ts":
 			if r.Header.Get("X-Probe-Fixture") != "required" || r.UserAgent() != "QualityFixtureAgent" {
 				http.Error(w, "header required", 403)
@@ -87,10 +94,14 @@ func TestLiveQualityIPTVAddonAndAdaptiveMedia(t *testing.T) {
 	}{
 		{"iptv-transport-stream", "/720.ts", nil, 720, false},
 		{"addon-selected-feed-and-headers", "/stream/sport/event.json", new(1), 720, false},
+		{"embedded-playback-headers", "/fragment.ts", nil, 720, false},
 		{"adaptive-hls", "/master.m3u8", nil, 720, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			streamURL := server.URL + tc.path
+			if tc.name == "embedded-playback-headers" {
+				streamURL = streamheaders.Attach(streamURL, map[string]string{"Referer": "https://provider.example/"})
+			}
 			h.SetLiveChannelProvider(staticLiveChannelProvider{channels: []LiveChannel{{ID: tc.name, SourceID: "fixture", URL: streamURL}}})
 			body, _ := json.Marshal(liveQualityRequest{URL: streamURL, SourceID: "fixture", ChannelID: tc.name, StreamIndex: tc.index})
 			req := httptest.NewRequest(http.MethodPost, "/video/live/quality", strings.NewReader(string(body)))

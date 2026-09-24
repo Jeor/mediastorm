@@ -466,6 +466,12 @@ func matchGameToChannels(game models.SportsGame, channels []LiveChannel, epgServ
 	matches := make([]models.SportsStreamMatch, 0)
 channelLoop:
 	for _, channel := range channels {
+		if conflictingNamedEventSport(channel.Name+" "+channel.TvgName+" "+channel.SportsMetadata, game) {
+			continue
+		}
+		if game.EventKind == "race-session" && conflictingWatchSeries(channel.Name+" "+channel.TvgName+" "+channel.SportsMetadata, game.League) {
+			continue
+		}
 		channelLifecycle := sportsLifecycle(channel.Name)
 		if channelLifecycle == "" {
 			channelLifecycle = sportsLifecycle(channel.TvgName)
@@ -573,7 +579,7 @@ channelLoop:
 			continue
 		}
 		score := roundSportsConfidence(evidence.score)
-		if game.EventKind == "race-session" || game.EventKind == "cycling-stage" {
+		if game.EventKind == "race-session" || game.EventKind == "cycling-stage" || game.EventKind == "tournament" {
 			score = math.Min(score, 0.84)
 		}
 		matches = append(matches, models.SportsStreamMatch{
@@ -589,28 +595,51 @@ channelLoop:
 	return matches
 }
 
+// A full named event (or full parent card/bout) is required. Two shared words
+// can otherwise match a different opponent or an unrelated tournament.
 func scoreSportsEventTitle(value, title string) sportsEvidence {
-	valueTokens := make(map[string]struct{})
-	for _, token := range sportsTokens(value) {
-		valueTokens[token] = struct{}{}
-	}
-	terms := make([]string, 0)
-	for _, token := range sportsTokens(title) {
-		if len(token) < 3 {
-			continue
-		}
-		switch token {
-		case "the", "and", "tour", "round", "event", "championship":
-			continue
-		}
-		if _, ok := valueTokens[token]; ok {
+	valueTokens := tokenSet(value)
+	var best sportsEvidence
+	for _, part := range strings.Split(title, ":") {
+		terms := []string{}
+		distinctive := false
+		matched := true
+		for _, token := range sportsTokens(part) {
+			switch token {
+			case "the", "and", "vs", "v", "at", "de", "of":
+				continue
+			}
+			if watchYear.MatchString(token) {
+				continue
+			}
+			if _, ok := valueTokens[token]; !ok {
+				matched = false
+				break
+			}
 			terms = append(terms, token)
+			switch token {
+			case "golf", "boxing", "mma", "ufc", "tour", "round", "event", "championship", "championships", "world", "open", "cup", "grand", "prix", "race", "live", "men", "women":
+			default:
+				if len(token) >= 3 && strings.IndexFunc(token, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+					distinctive = true
+				}
+			}
+		}
+		// A promotion and its numbered card identify a broadcast without fighter names.
+		tokens := sportsTokens(part)
+		numberedCard := len(tokens) == 2 && tokens[0] == "ufc" && watchCardNumber.MatchString(tokens[1])
+		if !matched || len(terms) == 0 || (!distinctive && !numberedCard) {
+			continue
+		}
+		score := 0.78
+		if len(terms) >= 2 {
+			score = math.Min(0.98, 0.82+float64(len(terms))*0.04)
+		}
+		if score > best.score {
+			best = sportsEvidence{score: score, reason: "Event title match", terms: terms, on: "event-title"}
 		}
 	}
-	if len(terms) < 2 {
-		return sportsEvidence{}
-	}
-	return sportsEvidence{score: math.Min(0.98, 0.82+float64(len(terms))*0.04), reason: "Event title match", terms: terms, on: "event-title"}
+	return best
 }
 
 // Racing uses the existing generalized event contract, separate from matchup routes.

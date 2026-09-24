@@ -106,3 +106,88 @@ func TestCyclingCalendarStreamIdentity(t *testing.T) {
 		t.Fatal("accepted unknown stream target")
 	}
 }
+
+func TestNuvioF1SessionMatching(t *testing.T) {
+	game := models.SportsGame{Title: "Qatar Airways Azerbaijan Grand Prix", League: "f1", EventKind: "race-session", EventContext: "FP2"}
+	for _, tc := range []struct {
+		name string
+		want bool
+	}{
+		{"🔴 LIVE: Motorsports - Azerbaijan Grand Prix - Practice 2", true},
+		{"🔴 LIVE: Qatar Airways Azerbaijan Grand Prix - FP2", true},
+		{"🔴 LIVE: Azerbaijan Grand Prix - Practice 2", true},
+		{"🔴 LIVE: Qatar Airways Azerbaijan GP - Practice 2", true},
+		{"🔴 LIVE: Azerbaijan Grand Prix - Practice 1", false},
+		{"🔴 LIVE: Azerbaijan Grand Prix - Qualifying", false},
+		{"🔴 LIVE: Formula 2 Azerbaijan Grand Prix - Practice 2", false},
+		{"🔴 LIVE: MotoGP Azerbaijan Grand Prix - Practice 2", false},
+		{"🔴 LIVE: Qatar Grand Prix - Practice 2", false},
+		{"🔴 LIVE: Azerbaijan Grand Prix", false},
+		{"Replay: Azerbaijan Grand Prix - Practice 2", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := selectableSportsMatches(matchGameToChannels(game, []LiveChannel{{ID: "nuvio", Name: tc.name, URL: "https://addon.test/stream/tv/event.json"}}, nil, ""))
+			if (len(got) > 0) != tc.want {
+				t.Fatalf("matches=%+v, want match=%v", got, tc.want)
+			}
+			for _, m := range got {
+				if m.Confidence >= strongSportsConfidence {
+					t.Fatal("must require manual selection")
+				}
+			}
+		})
+	}
+}
+
+func TestRaceStreamQualAbbreviation(t *testing.T) {
+	game := models.SportsGame{Title: "Qatar Airways Azerbaijan Grand Prix", League: "f1", EventKind: "race-session", EventContext: "Qual"}
+	if scoreWatchEvent("LIVE: Azerbaijan Grand Prix - Qualifying", game).score == 0 {
+		t.Fatal("ESPN Qual abbreviation did not match")
+	}
+	if scoreWatchEvent("F1 Azerbaijan Grand Prix - Race", game).score != 0 {
+		t.Fatal("wrong session matched Qual")
+	}
+}
+
+func TestNamedEventsWithoutSportLabels(t *testing.T) {
+	for _, tc := range []struct {
+		name, league, sport, kind, title, session, channel string
+		want                                               bool
+	}{
+		{"motogp", "motogp", "racing", "race-session", "Thailand Grand Prix", "Race", "Thailand GP - Race", true},
+		{"nascar", "nascar", "racing", "race-session", "NASCAR Hollywood Casino 400", "Race", "Hollywood Casino 400 - Race", true},
+		{"indycar", "indycar", "racing", "race-session", "IndyCar Long Beach Grand Prix", "Qualifying", "Long Beach GP - Qualifying", true},
+		{"wrong series", "motogp", "racing", "race-session", "Thailand Grand Prix", "Race", "Formula 1 Thailand Grand Prix - Race", false},
+		{"generic race", "nascar", "racing", "race-session", "NASCAR Race", "Race", "Live Race", false},
+		{"wrong numbered race", "nascar", "racing", "race-session", "NASCAR Hollywood Casino 400", "Race", "Hollywood Casino 500 - Race", false},
+		{"single named golf", "pga", "golf", "tournament", "PGA Tour The Masters", "", "The Masters - Round 2", true},
+		{"golf event", "pga", "golf", "tournament", "Golf Ryder Cup", "", "Ryder Cup Live", true},
+		{"different golf event", "pga", "golf", "tournament", "PGA Tour BMW Championship", "", "PGA Tour Championship", false},
+		{"partial golf identity", "pga", "golf", "tournament", "Farmers Insurance Open", "", "Farmers Insurance News", false},
+		{"generic event", "pga", "golf", "tournament", "Golf World Championship", "", "World Championship Live", false},
+		{"boxing", "boxing", "boxing", "fight-card", "Boxing: Canelo Alvarez vs Terence Crawford", "", "Canelo Alvarez vs Terence Crawford", true},
+		{"one fighter", "boxing", "boxing", "fight-card", "Boxing: Canelo Alvarez vs Terence Crawford", "", "Canelo Alvarez vs Another Boxer", false},
+		{"cycling", "cycling", "cycling", "cycling-stage", "Cycling Tour de France", "Stage 3", "Tour de France Stage 3", true},
+		{"wrong stage", "cycling", "cycling", "cycling-stage", "Cycling Tour de France", "Stage 3", "Tour de France Stage 4", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			game := models.SportsGame{League: tc.league, Sport: tc.sport, EventKind: tc.kind, Title: tc.title, EventContext: tc.session}
+			got := selectableSportsMatches(matchGameToChannels(game, []LiveChannel{{ID: "event", Name: tc.channel, URL: "https://example.test/live"}}, nil, ""))
+			if (len(got) > 0) != tc.want {
+				t.Fatalf("matches=%+v want=%v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNamedTournamentRejectsOtherSportMetadata(t *testing.T) {
+	game := models.SportsGame{Title: "PGA Tour The Masters", League: "pga", Sport: "golf", EventKind: "tournament"}
+	channels := []LiveChannel{
+		{ID: "golf", Name: "The Masters", SportsMetadata: "Category: Golf", URL: "https://example.test/golf"},
+		{ID: "snooker", Name: "The Masters", SportsMetadata: "Category: Snooker", URL: "https://example.test/snooker"},
+	}
+	got := selectableSportsMatches(matchGameToChannels(game, channels, nil, ""))
+	if len(got) != 1 || got[0].ChannelID != "golf" {
+		t.Fatalf("wrong sport matched: %+v", got)
+	}
+}

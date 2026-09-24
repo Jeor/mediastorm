@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"novastream/internal/auth"
+	"novastream/internal/streamheaders"
 )
 
 // Bound process pressure across clients, independently of the client's serial queue.
@@ -172,6 +173,18 @@ func (h *VideoHandler) probeLiveQuality(ctx context.Context, streamURL, proxy st
 	if h.ffprobePath == "" {
 		return liveQualityResult{}, errors.New("ffprobe unavailable")
 	}
+	// Playback carries safe provider headers in a private URL fragment. Extract
+	// them for ffprobe too; otherwise protected streams can play but fail analysis.
+	cleanURL, embedded := streamheaders.Extract(streamURL)
+	streamURL = cleanURL
+	merged := make(map[string]string, len(embedded)+len(headers))
+	for key, value := range embedded {
+		merged[key] = value
+	}
+	for key, value := range headers {
+		merged[http.CanonicalHeaderKey(key)] = value
+	}
+	headers = merged
 	args := []string{"-v", "error", "-probesize", "5000000", "-analyzeduration", "5000000", "-rw_timeout", "10000000",
 		"-protocol_whitelist", "http,https,tcp,tls,crypto", "-print_format", "json", "-show_streams", "-show_format"}
 	if proxy != "" {

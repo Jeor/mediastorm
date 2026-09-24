@@ -329,7 +329,18 @@ func hasNegativeSportsLabel(target string) bool {
 	return false
 }
 
+func unknownSportsParticipant(name string) bool {
+	switch normalizeSportsText(name) {
+	case "", "tbd", "tba", "unknown", "to be determined", "to be announced":
+		return true
+	}
+	return false
+}
+
 func scoreTextForTeam(target string, team sportsTeamIdentity, permanentLink bool) sportsEvidence {
+	if unknownSportsParticipant(team.name) {
+		return sportsEvidence{}
+	}
 	normTarget := normalizeSportsText(target)
 	if normTarget == "" {
 		return sportsEvidence{}
@@ -404,6 +415,9 @@ func scoreTextForTeam(target string, team sportsTeamIdentity, permanentLink bool
 }
 
 func scoreMatchupSegment(target string, home, away sportsTeamIdentity) sportsEvidence {
+	if unknownSportsParticipant(home.name) || unknownSportsParticipant(away.name) {
+		return sportsEvidence{}
+	}
 	type matchupVariant struct {
 		home   []string
 		away   []string
@@ -462,7 +476,7 @@ func scoreMatchupSegment(target string, home, away sportsTeamIdentity) sportsEvi
 	}
 	// A dedicated team channel is plausible; an explicit matchup with a different
 	// opponent is not evidence for this event.
-	if containsMatchupMarker(target) {
+	if containsMatchupMarker(target) || home.league == "atp" || home.league == "wta" {
 		return scoreFuzzySportsMatchup(target, home, away)
 	}
 
@@ -806,6 +820,10 @@ func autoLinkCandidatesForTeam(team models.SportsTeamRecord, channels []LiveChan
 
 // PPV and series can describe live sports; exclude only explicit non-live content here.
 func hasNonLiveSportsLabel(value string) bool {
+	// Nuvio uses a rewind prefix for replay catalog entries without the word Replay.
+	if strings.HasPrefix(strings.TrimSpace(value), "⏪") {
+		return true
+	}
 	for token := range tokenSet(value) {
 		switch token {
 		case "replay", "archive", "classic", "movie", "movies", "ondemand", "vod":

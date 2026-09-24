@@ -514,12 +514,13 @@ func (h *LiveHandler) fetchStremioChannels(ctx context.Context, manifestURL, pro
 				group = strings.TrimSpace(meta.Genres[0])
 			}
 			channels = append(channels, LiveChannel{
-				ID:    id,
-				Name:  strings.TrimSpace(meta.Name),
-				URL:   stremioStreamResourceURL(baseURL, catalog.Type, id),
-				Logo:  strings.TrimSpace(meta.Poster),
-				Group: group,
-				TvgID: id,
+				SportsMetadata: strings.TrimSpace(meta.Description),
+				ID:             id,
+				Name:           strings.TrimSpace(meta.Name),
+				URL:            stremioStreamResourceURL(baseURL, catalog.Type, id),
+				Logo:           strings.TrimSpace(meta.Poster),
+				Group:          group,
+				TvgID:          id,
 			})
 		}
 	}

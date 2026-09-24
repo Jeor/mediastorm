@@ -60,8 +60,47 @@ func cyclingStreamEvent(races []sports.CyclingRace, id, parentID string) (models
 	return models.SportsGame{}, false
 }
 
+var watchCardNumber = regexp.MustCompile(`^[0-9]{1,4}$`)
 var watchYear = regexp.MustCompile(`^20[0-9]{2}$`)
 var watchStage = regexp.MustCompile(`(?i)\b(?:stage|etape|étape)\s*([0-9]+)\b`)
+
+// Keep sponsor normalization explicit: arbitrary prefix dropping could turn
+// the Azerbaijan event sponsored by Qatar Airways into the Qatar Grand Prix.
+func watchRaceTitle(value string) string {
+	tokens := sportsTokens(value)
+	if len(tokens) >= 2 && tokens[0] == "qatar" && tokens[1] == "airways" {
+		tokens = tokens[2:]
+	}
+	var expanded []string
+	for _, token := range tokens {
+		if token == "gp" {
+			expanded = append(expanded, "grand", "prix")
+		} else {
+			expanded = append(expanded, token)
+		}
+	}
+	return strings.Join(expanded, " ")
+}
+
+var watchSeriesPattern = regexp.MustCompile(`(?i)\b(f[123]|formula\s*(?:[123]|one|two|three|e)|motogp|moto2|moto3|nascar|indycar)\b`)
+
+func conflictingWatchSeries(value, league string) bool {
+	for _, raw := range watchSeriesPattern.FindAllString(value, -1) {
+		series := strings.ReplaceAll(strings.ToLower(raw), " ", "")
+		switch series {
+		case "formula1", "formulaone":
+			series = "f1"
+		case "formula2", "formulatwo":
+			series = "f2"
+		case "formula3", "formulathree":
+			series = "f3"
+		}
+		if series != league {
+			return true
+		}
+	}
+	return false
+}
 
 var watchPractice = regexp.MustCompile(`(?i)\b(?:fp|(?:free\s+)?practice\s*)([1-3])\b`)
 
@@ -69,6 +108,9 @@ func watchSession(value string) string {
 	v := strings.ToLower(value)
 	if m := watchPractice.FindStringSubmatch(v); len(m) > 1 {
 		return "practice" + m[1]
+	}
+	if v == "qual" {
+		return "qualifying"
 	}
 	for _, name := range []string{"qualifying", "practice", "sprint", "race"} {
 		if strings.Contains(v, name) {
@@ -92,12 +134,76 @@ func conflictingWatchSegment(value string, game models.SportsGame) bool {
 	}
 	return false
 }
+
+// Only use unambiguous sport words as exclusions. Generic "Motorsport" addon
+// categories can also contain cycling, and are not reliable series evidence.
+func conflictingNamedEventSport(value string, game models.SportsGame) bool {
+	if game.EventKind != "tournament" && game.EventKind != "fight-card" {
+		return false
+	}
+	wanted := game.Sport
+	if wanted == "" {
+		wanted = map[string]string{"pga": "golf", "ufc": "mma", "boxing": "boxing"}[game.League]
+	}
+	if wanted == "" {
+		return false
+	}
+	for _, token := range sportsTokens(value) {
+		switch token {
+		case "golf", "tennis", "snooker", "darts", "boxing", "mma", "cycling", "basketball", "baseball", "cricket", "hockey":
+			if token != wanted {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Strip only known leading category labels, not arbitrary sponsor/event words.
+func watchEventTitle(title string, game models.SportsGame) string {
+	title = normalizeSportsText(title)
+	labels := map[string][]string{
+		"f1":     {"formula 1", "formula one", "f1"},
+		"motogp": {"motogp"}, "nascar": {"nascar"}, "indycar": {"indycar"},
+		"pga":     {"pga tour", "pga", "golf"},
+		"cycling": {"cycling"}, "boxing": {"boxing"}, "ufc": {"mma"},
+	}
+	for _, label := range labels[game.League] {
+		title = strings.TrimSpace(strings.TrimPrefix(title, label+" "))
+	}
+	return title
+}
+
 func scoreWatchEvent(value string, game models.SportsGame) sportsEvidence {
+	if conflictingNamedEventSport(value, game) {
+		return sportsEvidence{}
+	}
 	if game.EventKind != "race-session" && game.EventKind != "cycling-stage" {
-		return scoreSportsEventTitle(value, game.Title)
+		// Preserve colon-separated card/bout identities while removing category labels.
+		parts := strings.Split(game.Title, ":")
+		for i, part := range parts {
+			parts[i] = watchEventTitle(part, game)
+		}
+		evidence := scoreSportsEventTitle(value, strings.Join(parts, ":"))
+		if game.EventKind != "fight-card" && evidence.score > 0.78 {
+			evidence.score = 0.78
+		}
+		return evidence
 	}
 	if conflictingWatchSegment(value, game) {
 		return sportsEvidence{}
+	}
+	title := watchEventTitle(game.Title, game)
+	// A race name must remain a phrase: scattered Tour / de / France words
+	// also occur in golf's DP World Tour Open de France.
+	if game.EventKind == "cycling-stage" && !strings.Contains(" "+normalizeSportsText(value)+" ", " "+normalizeSportsText(title)+" ") {
+		return sportsEvidence{}
+	}
+	if game.EventKind == "race-session" {
+		if conflictingWatchSeries(value, game.League) {
+			return sportsEvidence{}
+		}
+		value, title = watchRaceTitle(value), watchRaceTitle(title)
 	}
 	tokens := sportsTokens(value)
 	set := map[string]bool{}
@@ -105,7 +211,7 @@ func scoreWatchEvent(value string, game models.SportsGame) sportsEvidence {
 		set[t] = true
 	}
 	meaningful := 0
-	for _, t := range sportsTokens(game.Title) {
+	for _, t := range sportsTokens(title) {
 		switch t {
 		case "the", "and", "de", "d", "a", "championship":
 			continue
@@ -118,7 +224,7 @@ func scoreWatchEvent(value string, game models.SportsGame) sportsEvidence {
 			return sportsEvidence{}
 		}
 	}
-	generic := strings.ToLower(strings.TrimSpace(game.Title))
+	generic := strings.ToLower(strings.TrimSpace(title))
 	if meaningful == 0 || generic == "race" || generic == "grand prix" || generic == "qualifying" || generic == "practice" {
 		return sportsEvidence{}
 	}
@@ -132,7 +238,12 @@ func scoreWatchEvent(value string, game models.SportsGame) sportsEvidence {
 			}
 		}
 		if !found {
-			return sportsEvidence{}
+			// Addons often omit the series. Require both the specific race
+			// identity above and an explicit matching session; never auto-select it.
+			actual, wanted := watchSession(value), watchSession(game.EventContext)
+			if actual == "" || actual != wanted {
+				return sportsEvidence{}
+			}
 		}
 
 	} else {

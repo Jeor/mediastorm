@@ -104,3 +104,45 @@ func TestDatedCacheRetainsExpandedLeagueFallbacks(t *testing.T) {
 		t.Fatalf("expanded fallback entries evicted: %d", len(s.dated))
 	}
 }
+
+func TestDatedInitiatorCancellationDoesNotCancelSharedAcquisition(t *testing.T) {
+	s := NewService(t.TempDir())
+	s.SetEnabledLeagueIDs([]string{"mlb"})
+	started, release := make(chan struct{}), make(chan struct{})
+	var calls atomic.Int32
+	s.client = &http.Client{Transport: detailTransport(func(r *http.Request) (*http.Response, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+		}
+		select {
+		case <-r.Context().Done():
+			return nil, r.Context().Err()
+		case <-release:
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"events":[]}`))}, nil
+	})}
+	day := time.Now().UTC().Format("2006-01-02")
+	creatorCtx, cancel := context.WithCancel(context.Background())
+	first, second := make(chan error, 1), make(chan error, 1)
+	go func() { _, err := s.GetDatedScoreboard(creatorCtx, day, "mlb"); first <- err }()
+	<-started
+	waiterCtx, stop := context.WithTimeout(context.Background(), time.Second)
+	defer stop()
+	go func() { _, err := s.GetDatedScoreboard(waiterCtx, day, "mlb"); second <- err }()
+	cancel()
+	select {
+	case err := <-first:
+		if err != context.Canceled {
+			t.Errorf("creator did not cancel independently: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Error("creator cancellation blocked")
+	}
+	close(release)
+	if err := <-second; err != nil {
+		t.Fatal("creator canceled shared work", err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("waiter required a replacement request", calls.Load())
+	}
+}

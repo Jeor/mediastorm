@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -37,7 +36,6 @@ type cricketDiscoverySnapshot struct {
 	Complete bool `json:"complete"`
 }
 
-var cricketDiscoveryMu sync.Mutex
 var cricketSeriesIDPattern = regexp.MustCompile(`^[0-9]+$`)
 var cricketSeasonPattern = regexp.MustCompile(`\s+(20[0-9]{2}(?:/[0-9]{2,4})?)$`)
 
@@ -80,8 +78,14 @@ func parseCricketDiscovery(data []byte) ([]CricketSeriesDescriptor, error) {
 // It never mutates the global registry or promotes a dropdown row to live coverage.
 // Network failure returns the last good snapshot with the error for health reporting.
 func (s *Service) DiscoverCricketSeries(ctx context.Context) ([]CricketSeriesDescriptor, error) {
-	cricketDiscoveryMu.Lock()
-	defer cricketDiscoveryMu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	// The shared provider client coalesces network reads. Unique temporary files
+	// and atomic rename make concurrent snapshot publication safe without a
+	// process-wide lock that could block unrelated services or cancellation.
 	path := filepath.Join(s.storageDir, sportsCacheDir, "cricket-series.json")
 	var cached cricketDiscoverySnapshot
 	if data, err := os.ReadFile(path); err == nil {

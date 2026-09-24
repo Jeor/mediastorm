@@ -3,6 +3,7 @@ package sports
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -72,5 +73,53 @@ func TestCricketDiscoveryPersistsAndKeepsLastGood(t *testing.T) {
 	rows, err = s.DiscoverCricketSeries(context.Background())
 	if err == nil || len(rows) != 1 || rows[0].ProviderSeriesID != "24627" {
 		t.Fatal("lost last good data", rows, err)
+	}
+}
+
+func TestCricketDiscoveryDoesNotHoldGlobalLockAcrossNetwork(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	first := &Service{storageDir: t.TempDir(), client: &http.Client{Transport: detailTransport(func(r *http.Request) (*http.Response, error) {
+		close(started)
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return nil, r.Context().Err()
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"leagues":[{"name":"Ashes 2027","slug":"24627"}]}`))}, nil
+	})}}
+	done := make(chan error, 1)
+	go func() { _, err := first.DiscoverCricketSeries(context.Background()); done <- err }()
+	<-started
+	defer func() {
+		close(release)
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}()
+	second := &Service{storageDir: t.TempDir(), client: &http.Client{Transport: detailTransport(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"leagues":[{"name":"ODI 2027","slug":"24620"}]}`))}, nil
+	})}}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	other := make(chan error, 1)
+	go func() {
+		rows, err := second.DiscoverCricketSeries(ctx)
+		if err == nil && len(rows) != 1 {
+			err = fmt.Errorf("missing discovery rows")
+		}
+		other <- err
+	}()
+	select {
+	case err := <-other:
+		if err != nil {
+			t.Fatal("other discovery failed", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("other discovery blocked by global lock")
+	}
+	canceled, stop := context.WithCancel(context.Background())
+	stop()
+	if _, err := first.DiscoverCricketSeries(canceled); err != context.Canceled {
+		t.Fatal("canceled discovery did not stop", err)
 	}
 }

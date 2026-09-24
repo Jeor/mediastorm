@@ -95,28 +95,37 @@ func (s *Service) GetDatedScoreboard(ctx context.Context, date, leagueID string)
 	s.dated[key] = pending
 	s.dateMu.Unlock()
 
-	board, err := s.loadDatedScoreboard(ctx, date, key, selected, cached, exists)
-	s.dateMu.Lock()
-	if err != nil {
-		if exists {
-			s.dated[key] = cached
-		} else {
-			delete(s.dated, key)
+	go func() {
+		board, err := s.loadDatedScoreboard(context.WithoutCancel(ctx), date, key, selected, cached, exists)
+		s.dateMu.Lock()
+		if err != nil {
+			if exists {
+				s.dated[key] = cached
+			} else {
+				delete(s.dated, key)
+			}
 		}
+		flight.board, flight.err = board, err
+		entry := s.dated[key]
+		entry.inFlight = nil
+		if err == nil {
+			s.dated[key] = entry
+		}
+		close(flight.done)
+		s.dateMu.Unlock()
+	}()
+	select {
+	case <-ctx.Done():
+		return DatedScoreboard{}, ctx.Err()
+	case <-flight.done:
+		return flight.board, flight.err
 	}
-	flight.board, flight.err = board, err
-	entry := s.dated[key]
-	entry.inFlight = nil
-	if err == nil {
-		s.dated[key] = entry
-	}
-	close(flight.done)
-	s.dateMu.Unlock()
-	return board, err
 }
 
 // Cache locks never cover provider requests. Pending work is shared only for
-// the same selected-league/date key; a canceled waiter leaves other callers alone.
+// the same selected-league/date key; every caller, including the initiator, is
+// only a waiter. Shared work has its own 15-second bound and survives any one
+// caller cancellation.
 func (s *Service) loadDatedScoreboard(ctx context.Context, date, key string, selected []League, cached datedEntry, exists bool) (DatedScoreboard, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

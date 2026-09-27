@@ -924,11 +924,13 @@ var SettingsSchema = map[string]interface{}{
 			"navigationTabVisibility": map[string]interface{}{
 				"type":        "checkboxes",
 				"label":       "Navigation Items",
-				"description": "Choose which drawer and tab-bar items are visible for this scope. Items retain their platform-defined order. Selecting none restores the default items. Admin is web only.",
+				"description": "Choose which drawer and tab-bar items are visible for this scope. Items retain their platform-defined order. Selecting none restores the default items. Movies and Shows are off by default on TV and mobile. Admin is web only.",
 				"order":       1,
 				"optionsFrom": "navigationTabs",
 				"options": []map[string]interface{}{
 					{"value": "home", "label": "Home"},
+					{"value": "movies", "label": "Movies"},
+					{"value": "shows", "label": "Shows"},
 					{"value": "watchlist", "label": "Watchlist"},
 					{"value": "search", "label": "Search"},
 					{"value": "lists", "label": "Discovery"},

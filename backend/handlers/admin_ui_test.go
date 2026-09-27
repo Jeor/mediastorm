@@ -2951,3 +2951,24 @@ func TestSettingsPageVersionsHomeEditorByContent(t *testing.T) {
 		t.Fatal("Home editor URL must change with script content, independent of BuildID")
 	}
 }
+
+func TestNavigationHomeViewsAreOptional(t *testing.T) {
+	fields := handlers.SettingsSchema["display"].(map[string]interface{})["fields"].(map[string]interface{})
+	options := fields["navigationTabVisibility"].(map[string]interface{})["options"].([]map[string]interface{})
+	for _, key := range []string{"movies", "shows"} {
+		found := false
+		for _, option := range options {
+			if option["value"] == key {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("missing navigation option %s", key)
+		}
+	}
+	for _, key := range config.DefaultSettings().Display.NavigationTabVisibility {
+		if key == "movies" || key == "shows" {
+			t.Errorf("%s must default off", key)
+		}
+	}
+}

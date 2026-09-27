@@ -13254,7 +13254,7 @@
         const fallbackBadge = !selectedUserId && criteriaPath !== 'ranking.criteria' && (!Array.isArray(configuredCriteria) || configuredCriteria.length === 0)
             ? '<span class="inheritance-badge inherited" style="margin-left:8px;font-size:11px;padding:2px 8px;background:rgba(100,100,100,0.3);border-radius:4px;color:#aaa;">Using shared criteria</span>'
             : '';
-        const languagePriority = '<div class="ranking-language-priority" style="padding:12px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:8px;"><strong>1. Preferred Audio Language</strong> <span class="form-hint">Fixed first priority</span><p class="form-hint">When set on your profile or device, matching audio ranks ahead of every rule below, including newest release first. Set it under Playback. Unknown audio remains a fallback; filters still apply. Metadata language controls alternate title searches.</p></div>';
+        const languagePriority = '<div class="ranking-language-priority" style="padding:12px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:8px;"><strong>1. Preferred Audio Language</strong> <span class="form-hint">Fixed first priority</span><p class="form-hint">When set on your profile or device, matching audio ranks ahead of every rule below, including newest release first. Automatic playback waits for all sources and tries candidates in rank order when this preference is set. Set it under Playback. Unknown audio remains a fallback; filters still apply. Metadata language controls alternate title searches.</p></div>';
         return styles + languagePriority + '<div class="'+containerClass+'" data-ranking-path="'+criteriaPath+'">'+rows+'</div>' + inheritanceBadgeHtml + fallbackBadge;
     }
 

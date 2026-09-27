@@ -192,8 +192,28 @@ func (z *ZileanScraper) searchMovie(ctx context.Context, title string, year int,
 	}
 	setZileanIMDBID(params, imdbID)
 
-	log.Printf("[zilean] Movie search: Query=%q, Year=%d", title, year)
-	return z.fetchResults(ctx, params)
+	log.Printf("[zilean] Movie search: Query=%q, Year=%d, imdbConstrained=%v", title, year, strings.TrimSpace(imdbID) != "")
+	results, err := z.fetchResults(ctx, params)
+	if err != nil || len(results) > 0 || strings.TrimSpace(imdbID) == "" {
+		return results, err
+	}
+	// Localized releases may have no IMDb association in Zilean. Retain the
+	// exact title/year query when retrying; downstream title filters still apply.
+	params.Del("ImdbId")
+	log.Printf("[zilean] No IMDb-constrained movie results for %q; retrying title/year without IMDb constraint", title)
+	results, err = z.fetchResults(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	compatible := results[:0]
+	for _, result := range results {
+		if result.MetaID != "" && !strings.EqualFold(strings.TrimSpace(result.MetaID), strings.TrimSpace(imdbID)) {
+			continue
+		}
+		compatible = append(compatible, result)
+	}
+	log.Printf("[zilean] Title/year fallback for %q returned %d compatible result(s)", title, len(compatible))
+	return compatible, nil
 }
 
 // searchTV performs a TV search with title, season, and episode.

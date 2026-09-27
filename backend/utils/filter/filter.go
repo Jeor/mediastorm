@@ -19,6 +19,8 @@ import (
 	"novastream/utils/similarity"
 )
 
+var polishAudioReleasePattern = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(?:pldub|dubbing[ ._-]+pl|lektor[ ._-]+pl)(?:$|[^a-z0-9])`)
+
 const (
 	// MinTitleSimilarity is the minimum similarity score (0.0-1.0) required
 	// for a result's title to match the expected title (90%)
@@ -715,6 +717,13 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// This fixes issues like "wolfmax4k" provider name triggering false 4K detection
 		if parsed.Resolution != "" {
 			result.Attributes["resolution"] = parsed.Resolution
+		}
+
+		// These explicit audio labels are common on Polish releases whose
+		// indexer omits structured languages. Do not infer audio from PL.SUBS.
+		if strings.TrimSpace(result.Attributes["languages"]) == "" && polishAudioReleasePattern.MatchString(result.Title) {
+			result.Attributes["languages"] = "pol"
+			result.Attributes["languageSource"] = "release audio label"
 		}
 
 		// Store additional parsed metadata for frontend badge display

@@ -1839,6 +1839,7 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	var allowedTrackLanguages []string
 	var playbackDefaults models.UserSettings
 	resolveFirstReadySource := false
+	explicitAudioLanguage := ""
 
 	// Layer 1: Start with global settings
 	if h.configManager != nil {
@@ -1858,6 +1859,9 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// Layer 2: User settings override global
 	if h.userSettingsSvc != nil {
 		userSettings, err := h.userSettingsSvc.Get(userID)
+		if err == nil && userSettings != nil {
+			explicitAudioLanguage = strings.TrimSpace(userSettings.Playback.PreferredAudioLanguage)
+		}
 		if err == nil && userSettings != nil && userSettings.Filtering.HDRDVPolicy != "" {
 			hdrDVPolicy = userSettings.Filtering.HDRDVPolicy
 		}
@@ -1872,6 +1876,9 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 	// Layer 3: Client/device settings override user
 	if clientID != "" && userID != "" && h.clientSettingsSvc != nil {
 		clientSettings, err := h.clientSettingsSvc.Get(clientID, userID)
+		if err == nil && clientSettings != nil && clientSettings.PreferredAudioLanguage != nil {
+			explicitAudioLanguage = strings.TrimSpace(*clientSettings.PreferredAudioLanguage)
+		}
 		if err == nil && clientSettings != nil && clientSettings.HDRDVPolicy != nil {
 			hdrDVPolicy = *clientSettings.HDRDVPolicy
 			log.Printf("[prequeue] Using client-specific HDR/DV policy: %s", hdrDVPolicy)
@@ -1884,6 +1891,11 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			allowedTrackLanguages = normalizeAllowedTrackLanguages(*clientSettings.AllowedTrackLanguages)
 			log.Printf("[prequeue] Using client-specific allowed track languages: %v", allowedTrackLanguages)
 		}
+	}
+
+	if explicitAudioLanguage != "" && resolveFirstReadySource {
+		log.Printf("[prequeue] Explicit audio preference %q requires complete ranked search and sequential resolution; ignoring first-ready-source mode", explicitAudioLanguage)
+		resolveFirstReadySource = false
 	}
 
 	// Default to allowing all content

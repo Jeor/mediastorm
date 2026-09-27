@@ -3,11 +3,20 @@ package parsett
 import (
 	"regexp"
 	"strings"
+	"sync"
 
 	ptt "github.com/itsrenoria/ptt-go"
 )
 
 var nikt0ReleaseGroupPattern = regexp.MustCompile(`(?i)(?:^|[.\s_-])nikt0(?:$|[.\s_-])`)
+
+// ptt-go's default parser shares handler options that are mutated during Parse.
+// Give concurrent searches separate instances while reusing compiled handlers.
+var parsers = sync.Pool{New: func() any {
+	parser := ptt.NewParser()
+	ptt.AddDefaults(parser)
+	return parser
+}}
 
 // ParsedTitle represents parsed metadata from a media/torrent title
 type ParsedTitle struct {
@@ -79,14 +88,18 @@ func fromTorrentInfo(rawTitle string, info *ptt.TorrentInfo) *ParsedTitle {
 
 // ParseTitle parses a single media title using ptt-go (native Go, no subprocess)
 func ParseTitle(title string) (*ParsedTitle, error) {
-	return fromTorrentInfo(title, ptt.Parse(title)), nil
+	parser := parsers.Get().(*ptt.Parser)
+	defer parsers.Put(parser)
+	return fromTorrentInfo(title, parser.Parse(title)), nil
 }
 
 // ParseTitleBatch parses multiple titles and returns a map of title -> parsed result
 func ParseTitleBatch(titles []string) (map[string]*ParsedTitle, error) {
+	parser := parsers.Get().(*ptt.Parser)
+	defer parsers.Put(parser)
 	resultMap := make(map[string]*ParsedTitle, len(titles))
 	for _, title := range titles {
-		resultMap[title] = fromTorrentInfo(title, ptt.Parse(title))
+		resultMap[title] = fromTorrentInfo(title, parser.Parse(title))
 	}
 	return resultMap, nil
 }

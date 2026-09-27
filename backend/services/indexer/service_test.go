@@ -172,8 +172,8 @@ func (localizedSearchMetadata) Search(_ context.Context, _ string, _ string) ([]
 }
 
 func (localizedSearchMetadata) ResolveSearchTitle(_ context.Context, _, _ string, _ int, _, language string) (*models.Title, error) {
-	if language != "eng" {
-		return nil, fmt.Errorf("unexpected language %q", language)
+	if language == "pol" {
+		return &models.Title{Name: "Rojst", MediaType: "series"}, nil
 	}
 	return &models.Title{Name: "The Mire", OriginalName: "The Mire", MediaType: "series", TVDBID: 348545, IMDBID: "tt8855592"}, nil
 }
@@ -598,7 +598,7 @@ func TestSearchBypassesRankingForAIOStreamsOnlyDebridMode(t *testing.T) {
 	}
 }
 
-func TestSearchUsesEnglishTitleOnlyAfterLocalizedSearchIsEmpty(t *testing.T) {
+func TestSearchUsesEnglishTitleAlongsideEmptyLocalizedSearch(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "settings.json")
 	mgr := config.NewManager(cfgPath)
 	settings := config.DefaultSettings()
@@ -623,12 +623,13 @@ func TestSearchUsesEnglishTitleOnlyAfterLocalizedSearchIsEmpty(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("results = %d, want 1", len(results))
 	}
+	sort.Strings(debridSvc.queries)
 	if got, want := debridSvc.queries, []string{"Rojst S01E01", "The Mire S01E01"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("queries = %v, want %v", got, want)
 	}
 }
 
-func TestSearchDoesNotUseEnglishFallbackWhenLocalizedSearchSucceeds(t *testing.T) {
+func TestSearchUsesEnglishTitleEvenWhenLocalizedSearchSucceeds(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "settings.json")
 	mgr := config.NewManager(cfgPath)
 	settings := config.DefaultSettings()
@@ -653,11 +654,12 @@ func TestSearchDoesNotUseEnglishFallbackWhenLocalizedSearchSucceeds(t *testing.T
 	if len(results) != 1 {
 		t.Fatalf("results = %d, want 1", len(results))
 	}
-	if got, want := debridSvc.queries, []string{"Rojst S01E01"}; !reflect.DeepEqual(got, want) {
+	sort.Strings(debridSvc.queries)
+	if got, want := debridSvc.queries, []string{"Rojst S01E01", "The Mire S01E01"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("queries = %v, want %v", got, want)
 	}
-	if got := debridSvc.alternateTitleSets; len(got) != 1 || !reflect.DeepEqual(got[0], []string{"The Mire"}) {
-		t.Fatalf("filter alternate titles = %v, want English fallback title even without a fallback query", got)
+	if got := debridSvc.alternateTitleSets; len(got) != 2 || !reflect.DeepEqual(got[0], []string{"The Mire"}) || !reflect.DeepEqual(got[1], []string{"The Mire"}) {
+		t.Fatalf("filter alternate titles = %v, want complete title identities on both language queries", got)
 	}
 }
 

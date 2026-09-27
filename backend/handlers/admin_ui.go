@@ -316,7 +316,7 @@ var SettingsSchema = map[string]interface{}{
 			"maxAlternateTitleSearches": map[string]interface{}{
 				"type":        "number",
 				"label":       "Max Alternate Title Searches",
-				"description": "Maximum alternate/international titles to search per item (0 = unlimited). Titles matching your metadata language are prioritized.",
+				"description": "Maximum additional title names to search per item (0 = unlimited). English and the profile's metadata-language title are always included when available, even if that requires extra slots. Other aliases use the remaining slots.",
 			},
 			"maxDailyUsenetQueries": map[string]interface{}{
 				"type":        "number",
@@ -1217,7 +1217,7 @@ var SettingsSchema = map[string]interface{}{
 			"language": map[string]interface{}{
 				"type":        "checkboxes",
 				"label":       "Metadata Languages",
-				"description": "Languages available for movie/TV titles, descriptions, and episode names.",
+				"description": "Languages profiles can choose for titles, descriptions, episode names, and alternate-title search priority. Each profile uses its selected language; enabling several languages does not search all of them.",
 				"order":       7,
 				"globalOnly":  true,
 				"options": []map[string]interface{}{
@@ -1251,7 +1251,7 @@ var SettingsSchema = map[string]interface{}{
 			"primaryLanguage": map[string]interface{}{
 				"type":        "select",
 				"label":       "Primary Metadata Language",
-				"description": "Default metadata language. Profiles can choose one language from the globally enabled list.",
+				"description": "Controls displayed metadata and release-title searches. Searches include English plus the profile's selected language when available: for example, Moana and Vaiana for Polish. Matching names are searched once. Profiles can override this default. Preferred audio language controls language ranking; subtitle preferences are separate under Playback.",
 				"order":       8,
 				"optionsFrom": "metadataLanguages",
 			},

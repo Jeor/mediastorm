@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"novastream/models"
+	langutil "novastream/utils/language"
 )
 
 // AudioStreamInfo contains audio stream metadata for track selection
@@ -92,6 +93,25 @@ func IsCommentaryTrack(title string) bool {
 func matchesLanguage(language, title, normalizedPref string) bool {
 	language = strings.ToLower(strings.TrimSpace(language))
 	title = strings.ToLower(strings.TrimSpace(title))
+	normalizedPref = strings.ToLower(strings.TrimSpace(normalizedPref))
+	if normalizedPref == "" {
+		return false
+	}
+	if langutil.NormalizeToCode(normalizedPref) != "" {
+		if langutil.HasPreferredLanguage(language, normalizedPref) {
+			return true
+		}
+		// Match labels such as "Polish 5.1" on word boundaries, never a
+		// substring of an unrelated word or language name.
+		for _, token := range strings.FieldsFunc(language+" "+title, func(r rune) bool {
+			return r < 'a' || r > 'z'
+		}) {
+			if langutil.HasPreferredLanguage(token, normalizedPref) {
+				return true
+			}
+		}
+		return false
+	}
 
 	// Exact match
 	if language == normalizedPref || title == normalizedPref {
@@ -303,10 +323,7 @@ func FindSubtitleTrackByPreference(streams []SubtitleStreamInfo, preferredLangua
 		if len(nonForcedMatches) > 0 {
 			// Determine if audio and subtitle languages match
 			normalizedAudio := strings.ToLower(strings.TrimSpace(audioLanguage))
-			isSameLanguage := normalizedAudio != "" && normalizedPref != "" &&
-				(normalizedAudio == normalizedPref ||
-					strings.Contains(normalizedAudio, normalizedPref) ||
-					strings.Contains(normalizedPref, normalizedAudio))
+			isSameLanguage := matchesLanguage(normalizedAudio, "", normalizedPref)
 
 			// Priority 1: SDH subtitles (always top priority)
 			for _, stream := range nonForcedMatches {

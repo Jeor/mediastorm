@@ -1,18 +1,56 @@
 package indexer
 
-import "context"
+import (
+	"context"
+	"log"
+	"strings"
 
-// resolveSearchTitles resolves metadata once, keeping the query budget separate
+	"novastream/services/debrid"
+	"novastream/utils/language"
+)
+
+// resolveSearchTitles resolves release titles, keeping the query budget separate
 // from title identity. An alias outside the search budget can still identify a
 // release returned by the canonical query or an IMDb-based scraper.
-func (s *Service) resolveSearchTitles(ctx context.Context, opts SearchOptions, metadataLanguage string, maxAlternates int) (searchTitles, filterTitles, englishFallbackTitles []string) {
+func (s *Service) resolveSearchTitles(ctx context.Context, opts SearchOptions, metadataLanguage string, maxAlternates int) (searchTitles, filterTitles, requiredTitles []string) {
 	aliases := s.resolveAlternateTitles(ctx, opts, metadataLanguage, 0)
-	englishFallbackTitles = s.resolveEnglishFallbackTitles(ctx, opts, metadataLanguage)
-	filterTitles = combineFilterTitles(opts.AlternateTitles, aliases, englishFallbackTitles)
-	searchTitles = aliases
-	if maxAlternates > 0 && len(searchTitles) > maxAlternates {
-		searchTitles = searchTitles[:maxAlternates]
+	// Hydrated aliases are plain names in provider order. Resolve the localized
+	// main title through the language-scoped metadata cache instead of guessing
+	// its language from that order (or from TMDB country codes).
+	query := strings.TrimSpace(debrid.ParseQuery(opts.Query).Title)
+	if query == "" {
+		query = strings.TrimSpace(opts.Query)
 	}
-	searchTitles = excludeFallbackTitles(searchTitles, englishFallbackTitles)
-	return searchTitles, filterTitles, englishFallbackTitles
+	if resolver, ok := s.metadata.(metadataLocalizedTitleResolver); ok && strings.TrimSpace(metadataLanguage) != "" {
+		languages := []string{metadataLanguage}
+		if !language.HasPreferredLanguage(metadataLanguage, "eng") {
+			languages = append(languages, "eng")
+		}
+		for _, lang := range languages {
+			title, err := resolver.ResolveSearchTitle(ctx, opts.MediaType, query, opts.Year, opts.IMDBID, lang)
+			if err != nil {
+				log.Printf("[indexer] release-title resolution failed query=%q language=%q err=%v", query, lang, err)
+			}
+			if title != nil {
+				if name := strings.TrimSpace(title.Name); name != "" && !strings.EqualFold(name, query) {
+					requiredTitles = append(requiredTitles, name)
+				}
+			}
+		}
+	}
+	requiredTitles = combineFilterTitles(requiredTitles)
+	filterTitles = combineFilterTitles(opts.AlternateTitles, requiredTitles, aliases)
+	searchTitles = combineFilterTitles(requiredTitles, aliases)
+	// English and the profile's metadata title always fit, even when the
+	// configured alternate limit is smaller. Remaining slots go to aliases.
+	budget := maxAlternates
+	if budget > 0 {
+		if budget < len(requiredTitles) {
+			budget = len(requiredTitles)
+		}
+		if len(searchTitles) > budget {
+			searchTitles = searchTitles[:budget]
+		}
+	}
+	return searchTitles, filterTitles, requiredTitles
 }

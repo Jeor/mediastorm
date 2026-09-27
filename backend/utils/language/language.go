@@ -4,6 +4,17 @@ import (
 	"strings"
 )
 
+// ISO 639-1 aliases used by provider results and container track metadata.
+var shortCodes = map[string]string{
+	"en": "eng", "es": "spa", "fr": "fra", "de": "deu", "it": "ita",
+	"pt": "por", "ru": "rus", "ja": "jpn", "zh": "zho", "ko": "kor",
+	"nl": "nld", "pl": "pol", "sv": "swe", "cs": "ces", "hu": "hun",
+	"tr": "tur", "ar": "ara", "hi": "hin", "th": "tha", "vi": "vie",
+	"id": "ind", "da": "dan", "no": "nor", "fi": "fin", "el": "ell",
+	"he": "heb", "uk": "ukr", "ro": "ron", "bg": "bul", "hr": "hrv",
+	"sl": "slv", "sr": "srp",
+}
+
 // codeToEmojis maps ISO 639-2/3 codes to their corresponding emoji flags
 var codeToEmojis = map[string][]string{
 	"eng": {"🇬🇧", "🇺🇸", "🇦🇺", "🇨🇦", "🇳🇿", "🇮🇪"},
@@ -99,6 +110,7 @@ var nameToCode = map[string]string{
 	"korean":     "kor",
 	"dutch":      "nld",
 	"polish":     "pol",
+	"polski":     "pol",
 	"swedish":    "swe",
 	"czech":      "ces",
 	"hungarian":  "hun",
@@ -132,7 +144,20 @@ func NormalizeToCode(lang string) string {
 
 	// Check if it's already an ISO code (3 letters)
 	lowerLang := strings.ToLower(lang)
-	if len(lang) == 3 {
+	// Region-tagged codes identify the same audio/subtitle language.
+	if i := strings.IndexAny(lowerLang, "-_"); i > 0 {
+		lowerLang = lowerLang[:i]
+	}
+	if code, ok := shortCodes[lowerLang]; ok {
+		return code
+	}
+	switch lowerLang {
+	case "fre":
+		return "fra"
+	case "ger":
+		return "deu"
+	}
+	if len(lowerLang) == 3 {
 		// Verify it's a known code by checking if it's in codeToEmojis
 		if _, ok := codeToEmojis[lowerLang]; ok {
 			return lowerLang
@@ -161,6 +186,9 @@ func HasPreferredLanguage(resultLanguages, preferredLangCode string) bool {
 	}
 
 	preferredLangCode = strings.ToLower(strings.TrimSpace(preferredLangCode))
+	if normalized := NormalizeToCode(preferredLangCode); normalized != "" {
+		preferredLangCode = normalized
+	}
 	if preferredLangCode == "" {
 		return false
 	}

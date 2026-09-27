@@ -47,7 +47,10 @@ func TestNormalizeToCode(t *testing.T) {
 		{"Whitespace around value", "  eng  ", "eng"},
 		{"Unknown language", "klingon", ""},
 		{"Unknown code", "xyz", ""},
-		{"Two-letter code", "en", ""},
+		{"Two-letter code", "en", "eng"},
+		{"Polish short code", "pl", "pol"},
+		{"Polish regional code", "pl-PL", "pol"},
+		{"Polish regional underscore", "pl_PL", "pol"},
 	}
 
 	for _, tt := range tests {
@@ -99,6 +102,13 @@ func TestHasPreferredLanguage(t *testing.T) {
 		{"zho matches chi pref", "🇨🇳", "zho", true},
 		{"dut matches nld result", "Dutch", "dut", true},
 		{"cze matches ces result", "Czech", "cze", true},
+		{"Polish two-letter result", "pl", "pol", true},
+		{"Polish two-letter preference", "pol", "pl", true},
+		{"Polish regional result", "pl-PL", "pol", true},
+		{"Polish regional preference", "Polish", "pl_PL", true},
+		{"Polish native name", "Polski", "pol", true},
+		{"Polish mismatch", "en", "pol", false},
+		{"French bibliographic code", "fre", "fr", true},
 
 		// Edge cases
 		{"Empty result languages", "", "eng", false},

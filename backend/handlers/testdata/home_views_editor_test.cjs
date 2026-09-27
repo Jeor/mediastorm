@@ -62,3 +62,33 @@ test("hero selection is saved only in the selected view", () => {
   );
   assert.equal(run("currentSettings.homeShelves.tvTopShelfMode"), undefined);
 });
+test("custom profile views are not dimmed when regular Home inherits global shelves", () => {
+  const { run } = fixture();
+  run("selectedUserId='profile';userSettings={};setEditingHomeView('movies')");
+  assert.equal(run("isAlternateHomeViewInherited()"), true);
+  run("setHomeViewMode('custom')");
+  assert.equal(run("isAlternateHomeViewInherited()"), false);
+  assert.equal(run("userSettings.homeShelves.shelves"), undefined);
+  run("setEditingHomeView('shows')");
+  assert.equal(run("isAlternateHomeViewInherited()"), true);
+  run("setEditingHomeView('movies');setHomeViewMode('inherit')");
+  assert.equal(run("isAlternateHomeViewInherited()"), true);
+});
+test("alternate layout fields use standard full-width form controls and associated labels", () => {
+  const { run } = fixture();
+  run("setEditingHomeView('movies');setHomeViewMode('custom')");
+  const html = run("renderHomeViewControls()");
+  assert.equal((html.match(/class="form-input"/g) || []).length, 3);
+  assert.equal((html.match(/class="form-select"/g) || []).length, 2);
+  assert.equal((html.match(/class="form-group"/g) || []).length, 5);
+  for (const id of [
+    "itemCap",
+    "homeShelfScale",
+    "homeHeroScale",
+    "tv-hero",
+    "mobile-hero",
+  ]) {
+    assert.ok(html.includes('for="home-view-' + id + '"'));
+    assert.ok(html.includes('id="home-view-' + id + '"'));
+  }
+});

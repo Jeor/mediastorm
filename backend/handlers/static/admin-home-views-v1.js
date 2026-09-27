@@ -3,6 +3,11 @@ let editingHomeView = "all";
 function homeViewOwner() {
   return selectedUserId && userSettings ? userSettings : currentSettings;
 }
+function isAlternateHomeViewInherited() {
+  return (
+    homeViewOwner().homeShelves?.views?.[editingHomeView]?.mode !== "custom"
+  );
+}
 function effectiveHomeView() {
   const globalHome = currentSettings.homeShelves || {};
   const profileHome = selectedUserId ? userSettings?.homeShelves || {} : {};
@@ -124,9 +129,14 @@ function renderHomeViewControls() {
       ["TV hero scale", "homeHeroScale", 0.5, 1, 0.05],
     ]) {
       content +=
-        '<label class="form-label" style="margin-top:12px">' +
+        '<div class="form-group" style="margin-top:12px"><label class="form-label" for="home-view-' +
+        field +
+        '">' +
         label +
-        '<input type="number" min="' +
+        "</label>" +
+        '<input class="form-input" id="home-view-' +
+        field +
+        '" type="number" min="' +
         min +
         '" max="' +
         max +
@@ -136,7 +146,7 @@ function renderHomeViewControls() {
         escapeHtml(view?.[field] ?? "") +
         '" onchange="setHomeViewLayoutNumber(\'' +
         field +
-        "',this.value)\"></label>";
+        "',this.value)\"></div>";
     }
     for (const [label, prefix] of [
       ["TV", "tv"],
@@ -151,9 +161,13 @@ function renderHomeViewControls() {
         ...(effective.shelves || []).filter((s) => s.enabled),
       ];
       content +=
-        '<label class="form-label" style="margin-top:12px">' +
+        '<div class="form-group" style="margin-top:12px"><label class="form-label" for="home-view-' +
+        prefix +
+        '-hero">' +
         label +
-        " top shelf<select onchange=\"setHomeViewHero('" +
+        ' top shelf</label><select class="form-select" id="home-view-' +
+        prefix +
+        '-hero" onchange="setHomeViewHero(\'' +
         prefix +
         "TopShelfMode',this.value)\">" +
         options
@@ -168,7 +182,7 @@ function renderHomeViewControls() {
               "</option>",
           )
           .join("") +
-        "</select></label>";
+        "</select></div>";
     }
   }
   return content + "</div>";

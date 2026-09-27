@@ -9581,7 +9581,10 @@
 
         shelves = ensureBuiltInHomeShelfConfig(shelves);
 
-        if (editingHomeView !== 'all') shelves = effectiveHomeView().shelves;
+        if (editingHomeView !== 'all') {
+            shelves = effectiveHomeView().shelves;
+            isInherited = isAlternateHomeViewInherited();
+        }
         const viewControls = renderHomeViewControls();
 
         // Build inheritance badge for section

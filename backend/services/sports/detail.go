@@ -306,7 +306,11 @@ func (s *Service) EnrichGame(ctx context.Context, game models.SportsGame) models
 				decoder := json.NewDecoder(io.LimitReader(response.Body, 8<<20))
 				var raw json.RawMessage
 				err = decoder.Decode(&raw)
-				if game.League == "mlb" {
+				if sport == "cricket" {
+					if err == nil {
+						result, err = normalizeCricketDetail(game, raw, time.Now())
+					}
+				} else if game.League == "mlb" {
 					var payload mlbSummary
 					if err == nil {
 						err = json.Unmarshal(raw, &payload)

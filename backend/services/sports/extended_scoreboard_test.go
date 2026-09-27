@@ -76,3 +76,52 @@ func TestTennisSetsPreserveZeroAndDoNotInventFutureScores(t *testing.T) {
 		t.Fatal("future scores exposed")
 	}
 }
+
+func TestTennisExtrasCaptured(t *testing.T) {
+	for _, file := range []string{"tennis-scoreboard-nested.json", "tennis-seed-captured.json"} {
+		raw, err := os.ReadFile("testdata/" + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var payload espnScoreboardResponse
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			t.Fatal(err)
+		}
+		games := scoreboardEventGames(payload.Events[0], League{ID: "wta", Sport: "tennis"})
+		if len(games) == 0 {
+			t.Fatal("no games")
+		}
+		if games[0].BestOf != 3 || games[0].CourtName == "" {
+			t.Fatal("missing match format/court")
+		}
+		if file == "tennis-seed-captured.json" {
+			seeded := false
+			for _, g := range games {
+				if g.AwayTeam.Name == "Iva Jovic" {
+					seeded = g.AwayTeam.Seed == 2 && g.AwayTeam.Rank == 0
+				}
+				if g.HomeTeam.Name == "Iva Jovic" {
+					seeded = g.HomeTeam.Seed == 2 && g.HomeTeam.Rank == 0
+				}
+			}
+			if !seeded {
+				t.Fatal("tournament seed lost or confused with world rank")
+			}
+		} else {
+			found := false
+			for _, g := range games {
+				for _, p := range g.Detail.Periods {
+					if p.AwayTiebreak != nil || p.HomeTiebreak != nil {
+						found = true
+						if p.AwayWinner == nil || p.HomeWinner == nil {
+							t.Fatal("set winner lost")
+						}
+					}
+				}
+			}
+			if !found {
+				t.Fatal("tiebreak data lost")
+			}
+		}
+	}
+}

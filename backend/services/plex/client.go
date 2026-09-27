@@ -1466,16 +1466,25 @@ func (c *Client) fetchDetailsParallel(server PlexResource, history []WatchHistor
 		go func() {
 			for job := range jobs {
 				details, err := c.GetServerItemDetails(server, job.item.RatingKey)
+				// Episode provider IDs identify the episode, never its parent show.
+				// Clear them even when either metadata request fails.
+				if job.item.Type == "episode" {
+					job.item.ExternalIDs = nil
+				}
 				if err == nil && details != nil {
-					job.item.ExternalIDs = details.ExternalIDs
 					job.item.GUID = details.GUID
 					job.item.Year = details.Year
-					// For episodes, also fetch show details
-					if job.item.Type == "episode" && job.item.GrandparentRatingKey != "" {
-						showDetails, err := c.GetServerItemDetails(server, job.item.GrandparentRatingKey)
-						if err == nil && showDetails != nil {
-							job.item.ExternalIDs = showDetails.ExternalIDs
-						}
+					if job.item.Type != "episode" {
+						job.item.ExternalIDs = details.ExternalIDs
+					} else if details.GrandparentRatingKey != "" {
+						// History responses can omit this key; library metadata has it.
+						job.item.GrandparentRatingKey = details.GrandparentRatingKey
+					}
+				}
+				if job.item.Type == "episode" && job.item.GrandparentRatingKey != "" {
+					showDetails, err := c.GetServerItemDetails(server, job.item.GrandparentRatingKey)
+					if err == nil && showDetails != nil && showDetails.Type == "show" {
+						job.item.ExternalIDs = showDetails.ExternalIDs
 					}
 				}
 				done <- struct{}{}

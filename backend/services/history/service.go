@@ -877,9 +877,10 @@ func (s *Service) GetContinueWatchingRevision(userID string) (string, error) {
 	}
 
 	return fmt.Sprintf(
-		"wh:%d:%d|pp:%d:%d:%d",
+		"wh:%d:%d:%x|pp:%d:%d:%d",
 		stats.watchHistoryCount,
 		stats.watchHistoryUpdated.UTC().UnixNano(),
+		watchHistoryIdentityRevision(s.watchHistory[userID]),
 		stats.playbackProgressCount,
 		stats.hiddenCount,
 		stats.playbackUpdated.UTC().UnixNano(),
@@ -906,7 +907,7 @@ func (s *Service) GetWatchHistoryRevision(userID string) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("wh:%d:%d", count, newest.UTC().UnixNano()), nil
+	return fmt.Sprintf("wh:%d:%d:%x", count, newest.UTC().UnixNano(), watchHistoryIdentityRevision(s.watchHistory[userID])), nil
 }
 
 // ListSeriesStates returns the watch state for ALL series the user has watched,
@@ -928,6 +929,10 @@ func (s *Service) ListSeriesStates(userID string) ([]models.SeriesWatchState, er
 // Prioritizes in-progress episodes (partially watched) over completed episodes.
 // Metadata lookups are parallelized for better performance.
 func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID string, onlyInProgress bool) ([]models.SeriesWatchState, error) {
+	return s.buildSeriesStatesWithIdentityRepair(ctx, userID, onlyInProgress, true)
+}
+
+func (s *Service) buildSeriesStatesWithIdentityRepair(ctx context.Context, userID string, onlyInProgress, allowRepair bool) ([]models.SeriesWatchState, error) {
 	s.mu.RLock()
 	metadataSvc := s.metadataService
 	s.mu.RUnlock()
@@ -1232,6 +1237,8 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 
 	// Results will be collected here
 	var continueWatching []models.SeriesWatchState
+	var identityRepairs []episodeSeriesIdentityRepair
+	var repairLookups sync.Map
 
 	// Process series in parallel
 	type seriesTask struct {
@@ -1272,6 +1279,26 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 			// Fetch series metadata once (cached) so the in-progress reconciliation,
 			// next-episode lookup, and enrichment below can all reuse it.
 			seriesDetails, seriesErr := s.getSeriesMetadataWithCache(ctx, t.seriesID, t.info.SeriesName, t.info.ExternalIDs)
+			if allowRepair {
+				repairDetails := seriesDetails
+				if seriesErr != nil && strings.TrimSpace(t.info.SeriesName) != "" {
+					// A legacy Plex import can contain an episode ID in the series
+					// slot. Search by name only to obtain a candidate, then require
+					// an exact episode-provider ID match before changing history.
+					name := normalizeSeriesName(t.info.SeriesName)
+					entry, _ := repairLookups.LoadOrStore(strings.ToLower(name), &episodeSeriesRepairLookup{})
+					lookup := entry.(*episodeSeriesRepairLookup)
+					lookup.once.Do(func() { lookup.details = s.getEpisodeSeriesRepairMetadata(ctx, name) })
+					repairDetails = lookup.details
+				}
+				for _, item := range t.history {
+					if repaired, ok := repairEpisodeSeriesIdentity(item, repairDetails); ok {
+						mu.Lock()
+						identityRepairs = append(identityRepairs, episodeSeriesIdentityRepair{before: item, after: repaired})
+						mu.Unlock()
+					}
+				}
+			}
 			numbering := newEpisodeNumberingIndex(seriesDetails)
 			t.episodes = watchedEpisodesAfterManualUnwatch(t.episodes, t.history, numbering)
 
@@ -1679,6 +1706,17 @@ func (s *Service) buildSeriesStatesFromHistory(ctx context.Context, userID strin
 
 	// Wait for all metadata lookups to complete
 	wg.Wait()
+	if len(identityRepairs) > 0 {
+		changed, err := s.applyEpisodeSeriesIdentityRepairs(userID, identityRepairs)
+		if err != nil {
+			return nil, err
+		}
+		if changed {
+			// Re-group using the repaired stored identities before selecting next
+			// episodes; merging finished shelf cards loses watched-episode sets.
+			return s.buildSeriesStatesWithIdentityRepair(ctx, userID, onlyInProgress, false)
+		}
+	}
 
 	continueWatching = dedupeContinueWatchingEntries(continueWatching)
 

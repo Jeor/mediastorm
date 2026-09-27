@@ -520,7 +520,28 @@ func (h *HistoryHandler) BulkUpdateWatchHistory(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	items, err := h.Service.BulkUpdateWatchHistory(userID, updates)
+	var items []models.WatchHistoryItem
+	var err error
+	if scope := r.URL.Query().Get("scope"); scope != "" {
+		if scope != "show" && scope != "season" {
+			http.Error(w, "invalid bulk watch scope", http.StatusBadRequest)
+			return
+		}
+		service, ok := h.Service.(interface {
+			BulkUpdateScopedWatchHistory(string, []models.WatchHistoryUpdate, string) ([]models.WatchHistoryItem, error)
+		})
+		if !ok {
+			http.Error(w, "scoped bulk watch is not supported", http.StatusBadRequest)
+			return
+		}
+		items, err = service.BulkUpdateScopedWatchHistory(userID, updates, scope)
+	} else {
+		items, err = h.Service.BulkUpdateWatchHistory(userID, updates)
+	}
+	if errors.Is(err, history.ErrInvalidBulkScope) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

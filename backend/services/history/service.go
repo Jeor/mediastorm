@@ -124,6 +124,7 @@ type Service struct {
 	metadataService        MetadataService
 	airtimeClient          *tvmazeAirtimeClient
 	traktScrobbler         TraktScrobbler
+	bulkSyncTail           map[string]<-chan struct{} // protected by mu; preserves bulk action order per user
 	traktRTScrobbler       TraktRealTimeScrobbler
 	metadataCache          map[string]*cachedSeriesMetadata // seriesID -> metadata (full details)
 	seriesInfoCache        map[string]*cachedSeriesInfo     // seriesID -> lightweight info
@@ -3477,6 +3478,15 @@ func (s *Service) ClearWatchHistory() (int, error) {
 
 // BulkUpdateWatchHistory marks multiple episodes as watched/unwatched in a single operation.
 func (s *Service) BulkUpdateWatchHistory(userID string, updates []models.WatchHistoryUpdate) ([]models.WatchHistoryItem, error) {
+	return s.BulkUpdateScopedWatchHistory(userID, updates, "")
+}
+
+// BulkUpdateScopedWatchHistory carries explicit whole-show/season intent for
+// providers whose bulk APIs cannot accept an arbitrary episode selection.
+func (s *Service) BulkUpdateScopedWatchHistory(userID string, updates []models.WatchHistoryUpdate, scope string) ([]models.WatchHistoryItem, error) {
+	if err := validateBulkScope(updates, scope); err != nil {
+		return nil, err
+	}
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return nil, ErrUserIDRequired
@@ -3607,13 +3617,27 @@ func (s *Service) BulkUpdateWatchHistory(userID string, updates []models.WatchHi
 
 	// Only scrobble items whose watched state actually changed from unwatched to watched.
 	// This prevents duplicate Trakt history entries on redundant bulk updates.
+	changed := make([]models.WatchHistoryItem, 0, len(results))
+	initial := make(map[string]bool)
+	final := make(map[string]models.WatchHistoryItem)
+	var order []string
 	for i, update := range updates {
-		if update.Watched != nil && *update.Watched && !wasAlreadyWatched[i] {
-			s.doScrobble(scrobbler, userID, results[i])
-		} else if update.Watched != nil && !*update.Watched && wasAlreadyWatched[i] {
-			s.doUnscrobble(scrobbler, userID, results[i])
+		if update.Watched == nil {
+			continue
+		}
+		item := results[i]
+		if _, seen := initial[item.ID]; !seen {
+			initial[item.ID] = wasAlreadyWatched[i]
+			order = append(order, item.ID)
+		}
+		final[item.ID] = item
+	}
+	for _, id := range order {
+		if item := final[id]; item.Watched != initial[id] {
+			changed = append(changed, item)
 		}
 	}
+	s.doBulkScrobble(scrobbler, userID, changed, scope)
 
 	return results, nil
 }

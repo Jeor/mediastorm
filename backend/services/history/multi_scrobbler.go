@@ -1,11 +1,27 @@
 package history
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"novastream/models"
 )
+
+func (m *MultiScrobbler) SyncWatchHistory(userID string, items []models.WatchHistoryItem) error {
+	return m.SyncScopedWatchHistory(userID, items, "")
+}
+
+func (m *MultiScrobbler) SyncScopedWatchHistory(userID string, items []models.WatchHistoryItem, scope string) error {
+	var errs []error
+	for _, s := range m.scrobblers {
+		if err := syncScopedWatchHistory(s, userID, items, scope); err != nil {
+			errs = append(errs, fmt.Errorf("%T: %w", s, err))
+		}
+	}
+	return errors.Join(errs...)
+}
 
 // MultiScrobbler fans out scrobble calls to multiple providers.
 // Implements TraktScrobbler.

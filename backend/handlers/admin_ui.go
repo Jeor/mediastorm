@@ -585,7 +585,7 @@ var SettingsSchema = map[string]interface{}{
 			"newestReleaseFirst": map[string]interface{}{
 				"type":        "boolean",
 				"label":       "Newest Release First",
-				"description": "Sort all search results by source-reported release time, newest first. Supported by Usenet/Newznab, Jackett/Prowlarr, Nyaa, Internet Archive, and Zilean (using its ingestion time). Torrentio, Comet, MediaFusion, AIOStreams, and StremThru do not expose release timestamps; their results are placed after dated results. When enabled, all other ranking criteria are ignored.",
+				"description": "Sort all search results by source-reported release time, newest first. Supported by Usenet/Newznab, Jackett/Prowlarr, Nyaa, Internet Archive, and Zilean (using its ingestion time). Torrentio, Comet, MediaFusion, AIOStreams, and StremThru do not expose release timestamps; their results are placed after dated results. An explicit profile or device audio language remains first priority. Other ranking criteria are ignored when this is enabled.",
 				"order":       0,
 			},
 			"splitByService": map[string]interface{}{"type": "boolean", "label": "Split Debrid/Usenet Ranking", "description": "Rank Debrid and Usenet results independently with their service-specific criteria, then merge the two ordered lists using the shared Overall Ranking criteria."},

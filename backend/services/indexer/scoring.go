@@ -19,6 +19,7 @@ type ScoringContext struct {
 	DownloadPreferredTerms []filter.CompiledTerm
 	UseDownloadRanking     bool
 	PreferredLang          string
+	ExplicitAudioLanguage  string
 	PreferredScraper       string
 }
 
@@ -45,6 +46,7 @@ const (
 // done lexicographically by criterion priority in service.go.
 func ScoreResult(result models.NZBResult, ctx ScoringContext) (int, []models.ScoreBreakdownItem) {
 	var breakdown []models.ScoreBreakdownItem
+	breakdown = append(breakdown, explicitAudioBreakdown(result, ctx.ExplicitAudioLanguage)...)
 	totalScore := 0
 
 	// Collect enabled criteria in priority order; disabled criteria do not
@@ -283,4 +285,29 @@ func scoreDownloadPreferredTerms(r models.NZBResult, terms []filter.CompiledTerm
 		return totalWeight * band, fmt.Sprintf("matches download preferred terms '%s' (combined weight %d)", strings.Join(matchedNames, ", "), totalWeight)
 	}
 	return 0, "no download preferred terms matched"
+}
+
+func explicitAudioBreakdown(result models.NZBResult, preferred string) []models.ScoreBreakdownItem {
+	if preferred == "" {
+		return nil
+	}
+	_, reason := scoreLanguage(result, preferred)
+	if strings.TrimSpace(result.Attributes["languages"]) == "" {
+		reason = fmt.Sprintf("audio language unknown; preferred language %q is unverified", preferred)
+	}
+	return []models.ScoreBreakdownItem{{
+		Criterion: "Preferred Audio Language", RankValue: boolRankingValue(language.HasPreferredLanguage(result.Attributes["languages"], preferred)),
+		Reason: "fixed first priority: " + reason,
+	}}
+}
+
+// Release-date mode still reports explicit language ahead of the date rule.
+func newestReleaseBreakdown(result models.NZBResult, preferred string) []models.ScoreBreakdownItem {
+	points := 0
+	if !result.PublishDate.IsZero() {
+		points = int(result.PublishDate.Unix())
+	}
+	return append(explicitAudioBreakdown(result, preferred), models.ScoreBreakdownItem{
+		Criterion: "Newest Release", Points: points, RankValue: int64(points), Reason: "source-reported release time",
+	})
 }

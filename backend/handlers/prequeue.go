@@ -2248,7 +2248,13 @@ func (h *PrequeueHandler) runPrequeueWorker(prequeueID, titleID, titleName, imdb
 			if userSettings.Playback.PreferredAudioLanguage != "" || len(allowedTrackLanguages) > 0 {
 				selectedAudioTrack = findAllowedAudioTrack(audioStreams, allowedTrackLanguages, userSettings.Playback.PreferredAudioLanguage)
 				if selectedAudioTrack >= 0 {
-					log.Printf("[prequeue] Selected audio track %d for preferred language %q within allowed languages %v", selectedAudioTrack, userSettings.Playback.PreferredAudioLanguage, allowedTrackLanguages)
+					for _, stream := range audioStreams {
+						if stream.Index == selectedAudioTrack {
+							preferred := userSettings.Playback.PreferredAudioLanguage
+							log.Printf("[prequeue] Selected audio track %d language=%q requestedLanguage=%q preferredMatch=%v allowedLanguages=%v", selectedAudioTrack, stream.Language, preferred, matchesLanguage(stream.Language, stream.Title, preferred), allowedTrackLanguages)
+							break
+						}
+					}
 				} else {
 					log.Printf("[prequeue] No audio track found matching preferred language %q within allowed languages %v", userSettings.Playback.PreferredAudioLanguage, allowedTrackLanguages)
 				}
@@ -3409,15 +3415,12 @@ func (h *PrequeueHandler) updatePrequeueRaceProgress(prequeueID string, minCurre
 }
 
 func logPrequeueCandidateList(scoredResults []models.ScoredNZBResult, source string) {
-	limit := 10
-	if len(scoredResults) < limit {
-		limit = len(scoredResults)
-	}
-	log.Printf("[prequeue] candidate decision list (%s): showing %d of %d result(s)", source, limit, len(scoredResults))
+	limit := len(scoredResults)
+	log.Printf("[prequeue] candidate decision list (%s): showing all %d result(s); score is explanatory, order follows ranking priorities", source, limit)
 	for i := 0; i < limit; i++ {
 		result := scoredResults[i]
 		badStream := strings.Contains(strings.ToLower(result.FilterReason), "marked bad stream")
-		log.Printf("[prequeue] candidate #%d title=%q provider=%q service=%q status=%q sourceCacheStatus=%q badStream=%v score=%d reason=%q",
+		log.Printf("[prequeue] candidate #%d title=%q provider=%q service=%q status=%q sourceCacheStatus=%q badStream=%v score=%d languages=%q ranking=%+v reason=%q",
 			i+1,
 			result.Title,
 			result.Indexer,
@@ -3426,6 +3429,8 @@ func logPrequeueCandidateList(scoredResults []models.ScoredNZBResult, source str
 			result.Attributes["sourceCacheStatus"],
 			badStream,
 			result.TotalScore,
+			result.Attributes["languages"],
+			result.ScoreBreakdown,
 			result.FilterReason,
 		)
 	}
@@ -3459,6 +3464,7 @@ func combinedPrequeueSearchOptions(opts indexer.SearchOptions) indexer.SearchOpt
 		SeasonPremiereYear:    opts.SeasonPremiereYear,
 		EpisodeReleased:       opts.EpisodeReleased,
 		IncludeFiltered:       true,
+		IncludeScoreBreakdown: true,
 	}
 }
 

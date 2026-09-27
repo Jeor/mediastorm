@@ -1015,6 +1015,9 @@ func compareCountryMatch(i, j models.NZBResult) int {
 }
 
 func compareByRankingCriteria(i, j models.NZBResult, scoringCtx ScoringContext) int {
+	if cmp := compareLanguage(i, j, scoringCtx.ExplicitAudioLanguage); cmp != 0 {
+		return cmp
+	}
 	if cmp := compareCountryMatch(i, j); cmp != 0 {
 		return cmp
 	}
@@ -1150,7 +1153,10 @@ func sortScoredResultsByRankingBundle(results []models.ScoredNZBResult, baseCtx 
 // sortResultsNewestReleaseFirst is the final ordering override for release-age
 // ranking. Results without a source-supplied timestamp stay behind dated
 // results, retaining their existing deterministic order.
-func sortResultsNewestReleaseFirst(results []models.NZBResult) {
+func sortResultsNewestReleaseFirst(results []models.NZBResult, preferred ...string) {
+	if len(preferred) > 0 {
+		defer prioritizeExplicitAudio(results, preferred[0])
+	}
 	sort.SliceStable(results, func(i, j int) bool {
 		if cmp := compareCountryMatch(results[i], results[j]); cmp != 0 {
 			return cmp < 0
@@ -1167,7 +1173,10 @@ func sortResultsNewestReleaseFirst(results []models.NZBResult) {
 	})
 }
 
-func sortScoredResultsNewestReleaseFirst(results []models.ScoredNZBResult) {
+func sortScoredResultsNewestReleaseFirst(results []models.ScoredNZBResult, preferred ...string) {
+	if len(preferred) > 0 {
+		defer prioritizeExplicitAudioScored(results, preferred[0])
+	}
 	sort.SliceStable(results, func(i, j int) bool {
 		if cmp := compareCountryMatch(results[i].NZBResult, results[j].NZBResult); cmp != 0 {
 			return cmp < 0
@@ -1219,6 +1228,7 @@ func (s *Service) buildScoringContextWithCriteria(opts SearchOptions, settings c
 		DownloadPreferredTerms: filter.CompileTerms(filterSettings.DownloadPreferredTerms),
 		UseDownloadRanking:     opts.UseDownloadRanking,
 		PreferredLang:          s.getEffectiveAudioLanguage(opts.UserID, opts.ClientID, settings),
+		ExplicitAudioLanguage:  s.explicitAudioLanguage(opts.UserID, opts.ClientID),
 		PreferredScraper:       models.StringVal(filterSettings.PreferredScraper, settings.Filtering.PreferredScraper),
 	}
 }
@@ -1289,20 +1299,21 @@ type SearchOptions struct {
 }
 
 type searchCacheKeyPayload struct {
-	AudioLanguage   string                           `json:"audioLanguage"`
-	QueryTitles     []string                         `json:"queryTitles,omitempty"`
-	EpisodeAliases  []mediaidentity.AnthologyEpisode `json:"episodeAliases,omitempty"`
-	Mode            string                           `json:"mode"`
-	Options         searchCacheOptions               `json:"options"`
-	AlternateTitles []string                         `json:"alternateTitles,omitempty"`
-	Settings        searchRelevantSettings           `json:"settings"`
-	FilterSettings  models.FilterSettings
-	FilterBundle    effectiveFilterBundle
-	AnimeSettings   models.AnimeFilteringSettings
-	FilterOverrides effectiveOverrides
-	RankingSettings searchRankingSettings
-	RankingCriteria []config.RankingCriterion
-	RankingBundle   effectiveRankingBundle
+	ExplicitAudioLanguage string                           `json:"explicitAudioLanguage,omitempty"`
+	AudioLanguage         string                           `json:"audioLanguage"`
+	QueryTitles           []string                         `json:"queryTitles,omitempty"`
+	EpisodeAliases        []mediaidentity.AnthologyEpisode `json:"episodeAliases,omitempty"`
+	Mode                  string                           `json:"mode"`
+	Options               searchCacheOptions               `json:"options"`
+	AlternateTitles       []string                         `json:"alternateTitles,omitempty"`
+	Settings              searchRelevantSettings           `json:"settings"`
+	FilterSettings        models.FilterSettings
+	FilterBundle          effectiveFilterBundle
+	AnimeSettings         models.AnimeFilteringSettings
+	FilterOverrides       effectiveOverrides
+	RankingSettings       searchRankingSettings
+	RankingCriteria       []config.RankingCriterion
+	RankingBundle         effectiveRankingBundle
 }
 
 type searchRelevantSettings struct {
@@ -1418,20 +1429,21 @@ func buildSearchRankingSettings(settings config.Settings) searchRankingSettings 
 func (s *Service) searchCacheKey(mode string, opts SearchOptions, settings config.Settings, alternateTitles []string, filterSettings models.FilterSettings, filterBundle effectiveFilterBundle, animeSettings models.AnimeFilteringSettings, filterOverrides effectiveOverrides, rankingCriteria []config.RankingCriterion, rankingBundle effectiveRankingBundle) string {
 	parsedMappingQuery := debrid.ParseQuery(opts.Query)
 	payload := searchCacheKeyPayload{
-		AudioLanguage:   s.getEffectiveAudioLanguage(opts.UserID, opts.ClientID, settings),
-		QueryTitles:     opts.requiredSearchTitles,
-		EpisodeAliases:  mediaidentity.ReleaseEpisodeAliases(opts.TitleID, parsedMappingQuery.Season, parsedMappingQuery.Episode, opts.Numbering),
-		Mode:            mode,
-		Options:         buildSearchCacheOptions(opts),
-		AlternateTitles: append([]string(nil), alternateTitles...),
-		Settings:        buildSearchRelevantSettings(settings),
-		FilterSettings:  filterSettings,
-		FilterBundle:    filterBundle,
-		AnimeSettings:   animeSettings,
-		FilterOverrides: filterOverrides,
-		RankingSettings: buildSearchRankingSettings(settings),
-		RankingCriteria: append([]config.RankingCriterion(nil), rankingCriteria...),
-		RankingBundle:   rankingBundle,
+		AudioLanguage:         s.getEffectiveAudioLanguage(opts.UserID, opts.ClientID, settings),
+		ExplicitAudioLanguage: s.explicitAudioLanguage(opts.UserID, opts.ClientID),
+		QueryTitles:           opts.requiredSearchTitles,
+		EpisodeAliases:        mediaidentity.ReleaseEpisodeAliases(opts.TitleID, parsedMappingQuery.Season, parsedMappingQuery.Episode, opts.Numbering),
+		Mode:                  mode,
+		Options:               buildSearchCacheOptions(opts),
+		AlternateTitles:       append([]string(nil), alternateTitles...),
+		Settings:              buildSearchRelevantSettings(settings),
+		FilterSettings:        filterSettings,
+		FilterBundle:          filterBundle,
+		AnimeSettings:         animeSettings,
+		FilterOverrides:       filterOverrides,
+		RankingSettings:       buildSearchRankingSettings(settings),
+		RankingCriteria:       append([]config.RankingCriterion(nil), rankingCriteria...),
+		RankingBundle:         rankingBundle,
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -1734,8 +1746,8 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 
 	var scoringCtx *ScoringContext
 	if rankingBundle.NewestReleaseFirst {
-		log.Printf("[indexer] Sorting %d results by newest release first; all ranking criteria are ignored", len(aggregated))
-		sortResultsNewestReleaseFirst(aggregated)
+		log.Printf("[indexer] Sorting %d results by newest release first; explicit audio preference remains first", len(aggregated))
+		sortResultsNewestReleaseFirst(aggregated, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 	} else if bypassRanking {
 		log.Printf("[indexer] Bypassing mediastorm ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
 	} else {
@@ -1744,6 +1756,8 @@ func (s *Service) Search(ctx context.Context, opts SearchOptions) ([]models.NZBR
 		log.Printf("[indexer] Ranking %d results per service, then merging with %d overall criteria, ServicePriority=%q, downloadRanking=%v", len(aggregated), len(scoringCtx.RankingCriteria), scoringCtx.ServicePriority, opts.UseDownloadRanking)
 		sortResultsByRankingBundle(aggregated, *scoringCtx, rankingBundle)
 	}
+
+	prioritizeExplicitAudio(aggregated, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 
 	// Debug: log all results after sorting
 	for idx := 0; idx < len(aggregated); idx++ {
@@ -1849,16 +1863,7 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 			opts.AdaptiveSummary.MaxSizeGB = nil
 		}
 		log.Printf("[indexer] Bypassing mediastorm filtering/ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
-		scored := make([]models.ScoredNZBResult, len(rawResults))
-		for i, r := range rawResults {
-			scored[i] = models.ScoredNZBResult{
-				NZBResult:    markRankingBypassed(r),
-				FilterStatus: "passed",
-			}
-		}
-		if rankingBundle.NewestReleaseFirst {
-			sortScoredResultsNewestReleaseFirst(scored)
-		}
+		scored := bypassScoredResults(rawResults, rankingBundle.NewestReleaseFirst, opts.IncludeScoreBreakdown, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 		return capScoredResults(scored, opts.MaxResults), nil
 	}
 	if opts.IsAnime && models.BoolVal(animeSettings.AnimeLanguageEnabled, false) {
@@ -1942,7 +1947,12 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 	// Sort passed results by the same priority order used by standard ranking.
 	if len(passed) > 0 {
 		if rankingBundle.NewestReleaseFirst {
-			sortScoredResultsNewestReleaseFirst(passed)
+			sortScoredResultsNewestReleaseFirst(passed, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
+			if opts.IncludeScoreBreakdown {
+				for i := range passed {
+					passed[i].ScoreBreakdown = newestReleaseBreakdown(passed[i].NZBResult, scoringCtx.ExplicitAudioLanguage)
+				}
+			}
 		} else {
 			sortScoredResultsByRankingBundle(passed, scoringCtx, rankingBundle)
 		}
@@ -1964,7 +1974,7 @@ func (s *Service) SearchWithScoring(ctx context.Context, opts SearchOptions) ([]
 		}
 	}
 	if rankingBundle.NewestReleaseFirst {
-		sortScoredResultsNewestReleaseFirst(filtered)
+		sortScoredResultsNewestReleaseFirst(filtered, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 	}
 
 	// Combine: passed first, then filtered. Cap after ranking so MaxResults is a
@@ -2113,7 +2123,7 @@ func (s *Service) SearchWithScoringSplit(ctx context.Context, opts SearchOptions
 			// candidates on a warm cache. In AIOStreams bypass mode the debrid
 			// partition skips filter/rank, matching splitSearchDebrid.
 			if bypassAIOStreamsRanking && out.source == "debrid" {
-				out.scored = bypassScoredResults(out.raw, rankingBundle.NewestReleaseFirst, opts.IncludeScoreBreakdown)
+				out.scored = bypassScoredResults(out.raw, rankingBundle.NewestReleaseFirst, opts.IncludeScoreBreakdown, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 				out.filtered = 0
 			} else {
 				filterOpts := s.buildFilterOptions(opts, filterBundle.Usenet, filterTitles)
@@ -2365,7 +2375,7 @@ func (s *Service) splitSearchDebrid(ctx context.Context, settings config.Setting
 		// enabled scraper and the bypass setting is on, so skip filter/rank and
 		// pass every raw candidate through flagged as ranking-bypassed.
 		log.Printf("[indexer] Bypassing mediastorm filtering/ranking - AIOStreams is the only enabled scraper and bypass setting is enabled")
-		out.scored = bypassScoredResults(raw, rankingBundle.NewestReleaseFirst, opts.IncludeScoreBreakdown)
+		out.scored = bypassScoredResults(raw, rankingBundle.NewestReleaseFirst, opts.IncludeScoreBreakdown, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 		out.filtered = 0
 	} else {
 		out.scored, out.filtered = s.scoreSourceCandidates(opts, settings, raw, s.buildFilterOptions(opts, filterBundle.Debrid, filterTitles), filterBundle, animeSettings, filterOverrides, rankingBundle)
@@ -2427,19 +2437,10 @@ func (s *Service) scoreSourceCandidates(opts SearchOptions, settings config.Sett
 	if len(passed) > 0 {
 		scoringCtx := s.buildScoringContextWithCriteria(opts, settings, filterBundle.Default, animeSettings, rankingBundle.Default)
 		if rankingBundle.NewestReleaseFirst {
-			sortScoredResultsNewestReleaseFirst(passed)
+			sortScoredResultsNewestReleaseFirst(passed, s.explicitAudioLanguage(opts.UserID, opts.ClientID))
 			if opts.IncludeScoreBreakdown {
 				for i := range passed {
-					points := 0
-					if !passed[i].PublishDate.IsZero() {
-						points = int(passed[i].PublishDate.Unix())
-					}
-					passed[i].ScoreBreakdown = []models.ScoreBreakdownItem{{
-						Criterion: "Newest Release",
-						Points:    points,
-						RankValue: int64(points),
-						Reason:    "source-reported release time",
-					}}
+					passed[i].ScoreBreakdown = newestReleaseBreakdown(passed[i].NZBResult, scoringCtx.ExplicitAudioLanguage)
 				}
 			}
 		} else {
@@ -2466,7 +2467,7 @@ func (s *Service) scoreSourceCandidates(opts SearchOptions, settings config.Sett
 // bypassScoredResults wraps raw candidates as ranking-bypassed passed results,
 // mirroring SearchWithScoring's AIOStreams short-circuit: no filtering and no
 // mediastorm ranking (NewestReleaseFirst sorting still applies).
-func bypassScoredResults(raw []models.NZBResult, newestFirst, includeScoreBreakdown bool) []models.ScoredNZBResult {
+func bypassScoredResults(raw []models.NZBResult, newestFirst, includeScoreBreakdown bool, preferred ...string) []models.ScoredNZBResult {
 	scored := make([]models.ScoredNZBResult, len(raw))
 	for i, r := range raw {
 		scored[i] = models.ScoredNZBResult{
@@ -2488,6 +2489,14 @@ func bypassScoredResults(raw []models.NZBResult, newestFirst, includeScoreBreakd
 					RankValue: int64(points),
 					Reason:    "source-reported release time",
 				}}
+			}
+		}
+	}
+	if len(preferred) > 0 {
+		prioritizeExplicitAudioScored(scored, preferred[0])
+		if includeScoreBreakdown {
+			for i := range scored {
+				scored[i].ScoreBreakdown = append(explicitAudioBreakdown(scored[i].NZBResult, preferred[0]), scored[i].ScoreBreakdown...)
 			}
 		}
 	}

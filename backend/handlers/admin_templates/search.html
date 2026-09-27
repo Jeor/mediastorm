@@ -704,10 +704,12 @@
 
     function rankingBreakdownParts(result) {
         const breakdown = Array.isArray(result?.scoreBreakdown) ? result.scoreBreakdown : [];
+        const audio = breakdown.find(item => item.criterion === 'Preferred Audio Language');
         const country = breakdown.find(item => item.criterion === 'Country Match');
         const year = breakdown.find(item => item.criterion === 'Year Match');
         const download = breakdown.find(item => item.criterion === 'Download Preferred Terms');
         const criteria = breakdown.filter(item =>
+            item.criterion !== 'Preferred Audio Language' &&
             item.criterion !== 'Country Match' &&
             item.criterion !== 'Year Match' &&
             item.criterion !== 'Download Preferred Terms'
@@ -719,7 +721,7 @@
         const context = year && result?.attributes?.episodeYearPriority !== 'true'
             ? [{ ...year, kind: 'context' }]
             : [];
-        return { gates, rules, context };
+        return { audio, gates, rules, context };
     }
 
     function includedRank(result) {
@@ -743,6 +745,7 @@
     function rankingComparisonEntries(result) {
         const parts = rankingBreakdownParts(result);
         return [
+            ...(parts.audio ? [parts.audio] : []),
             {
                 criterion: 'Country Match',
                 points: result?.attributes?.countryMatch === 'true' ? 1 : 0,
@@ -801,7 +804,7 @@
                 <div class="ranking-explanation-note">${escAttr(result.filterReason || 'This result did not pass the active filters.')}</div>
             </div>`;
         }
-		if (result?.attributes?.ranking_bypassed === 'true') {
+		if (result?.attributes?.ranking_bypassed === 'true' && !rankingBreakdownParts(result).audio) {
 			return `<div class="ranking-explanation">
 				<div class="ranking-explanation-summary">MediaStorm ranking was bypassed</div>
 				<div class="ranking-explanation-note">The enabled external scraper supplied this order. No MediaStorm ranking rules or overall score were applied.</div>
@@ -810,12 +813,13 @@
 
         const parts = rankingBreakdownParts(result);
         const rows = [];
+        if (parts.audio) rows.push({ label: 'Priority 1', item: parts.audio });
         parts.gates.forEach(item => rows.push({ label: 'Gate', item }));
-        parts.rules.forEach((item, index) => rows.push({ label: `Priority ${index + 1}`, item }));
+        parts.rules.forEach((item, index) => rows.push({ label: `Priority ${index + (parts.audio ? 2 : 1)}`, item }));
         parts.context.forEach(item => rows.push({ label: 'Context', item }));
         return `<div class="ranking-explanation">
             <div class="ranking-explanation-summary">${explainIncludedRank(result, rank)}</div>
-            <div class="ranking-explanation-note"><strong>How ranking works:</strong> gates apply first, then priority rules are evaluated from top to bottom. The first rule that differs decides the order; lower-priority values are only tiebreakers. These values are not added into an overall score.</div>
+            <div class="ranking-explanation-note"><strong>How ranking works:</strong> your explicit audio language applies first, followed by identity gates and the remaining priority rules. The first rule that differs decides the order; lower-priority values are only tiebreakers. These values are not added into an overall score.</div>
             <div>
                 ${rows.map(({ label, item }) => `<div class="ranking-rule">
                     <span class="ranking-rule-order">${label}</span>

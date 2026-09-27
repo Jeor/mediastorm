@@ -2410,7 +2410,7 @@ func (h *MetadataHandler) GetAISimilar(w http.ResponseWriter, r *http.Request) {
 	// will cancel the HTTP connection before it finishes. Use a background
 	// context with a generous timeout so the result is always cached even
 	// if the client navigates away.
-	aiCtx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	aiCtx, cancel := context.WithTimeout(context.Background(), 210*time.Second)
 	defer cancel()
 	items, err := service.GetAISimilar(aiCtx, seedTitle, mediaType)
 	if err != nil {

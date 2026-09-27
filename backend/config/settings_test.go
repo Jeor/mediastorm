@@ -1261,3 +1261,23 @@ func TestNormalizeHardwareAcceleration(t *testing.T) {
 		t.Fatal("expected unsupported hardware acceleration value to fail")
 	}
 }
+
+func TestOllamaPreservesKeylessSettings(t *testing.T) {
+	settings := MetadataSettings{AIProvider: " Ollama ", AIModel: "local:8b", AIBaseURL: "http://local:11434", GeminiAPIKey: "legacy"}
+	settings.NormalizeAISettings()
+	if settings.AIProvider != "ollama" || settings.AIAPIKey != "" || settings.AIModel != "local:8b" {
+		t.Fatalf("unexpected normalized provider: %q", settings.AIProvider)
+	}
+	data, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored MetadataSettings
+	if err := json.Unmarshal(data, &restored); err != nil {
+		t.Fatal(err)
+	}
+	restored.NormalizeAISettings()
+	if restored.AIProvider != "ollama" || restored.AIAPIKey != "" || restored.AIBaseURL != settings.AIBaseURL {
+		t.Fatal("keyless Ollama did not round-trip")
+	}
+}

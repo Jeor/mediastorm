@@ -6495,6 +6495,12 @@
         if (fieldKey.startsWith('config.') && typeof value === 'boolean') {
             value = value ? 'true' : 'false';
         }
+        if (basePath === 'metadata' && fieldKey === 'aiProvider' && currentSettings.metadata?.aiProvider !== value && (value === 'ollama' || currentSettings.metadata?.aiProvider === 'ollama')) {
+            setValue('metadata.aiApiKey', '');
+            setValue('metadata.geminiApiKey', '');
+            setValue('metadata.aiModel', '');
+            setValue('metadata.aiBaseUrl', '');
+        }
         setValue(basePath ? basePath+'.'+fieldKey : fieldKey, value);
 
         if (basePath && basePath.startsWith('usenetEngines.') && fieldKey === 'enabled' && value === true) {
@@ -6599,6 +6605,10 @@
     }
 
     function renderAdditionalFieldHint(sectionKey, fieldKey, item) {
+        if (sectionKey === 'metadata' && currentSettings.metadata?.aiProvider === 'ollama') {
+            if (fieldKey === 'aiModel') return '<p class="form-hint">Required: enter a model already installed on your Ollama server. Test Connection checks model availability.</p>';
+            if (fieldKey === 'aiApiKey') return '<p class="form-hint">Leave blank for a standard Ollama server.</p>';
+        }
         if (isExplicitEmptyArrayOverride(sectionKey, fieldKey) && (selectedUserId || selectedClientId)) {
             const info = getInheritanceInfo(sectionKey + '.' + fieldKey);
             const scopeLabel = selectedClientId ? 'device' : 'profile';
@@ -13781,6 +13791,7 @@
                     aiProvider: sectionData.aiProvider || '',
                     aiApiKey: sectionData.aiApiKey || '',
                     aiBaseUrl: sectionData.aiBaseUrl || '',
+                    aiModel: sectionData.aiModel || '',
                     geminiApiKey: sectionData.geminiApiKey || ''
                 };
                 break;

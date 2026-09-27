@@ -41,7 +41,7 @@ Features include multi-profile watch history and recommendations, kids profiles,
 | Lists and scrobbling | Trakt, Simkl, MDBList, Letterboxd |
 | Subtitles | Embedded tracks, OpenSubtitles, SubDL |
 | Metadata | TMDB, optional TVDB and MDBList enrichment |
-| AI recommendations | Gemini, OpenAI, Anthropic, OpenRouter, NanoGPT, LinkAPI |
+| AI recommendations | Gemini, OpenAI, Anthropic, OpenRouter, NanoGPT, LinkAPI, Ollama |
 
 Not every integration is required. A typical installation needs TMDB plus at least one content path, such as Usenet, debrid, a media library, or Live TV.
 
@@ -166,9 +166,19 @@ Without TVDB, TMDB continues to provide normal movie and TV metadata. Alternate 
 
 ### AI Recommendations
 
-AI-powered **Recommended For You** shelves are optional. Supported providers are Gemini, OpenAI, Anthropic, OpenRouter, NanoGPT, and LinkAPI; the provider, model, API key, and compatible base URL are configurable under **Settings → Metadata**.
+AI-powered **Recommended For You** shelves are optional. Supported providers are Gemini, OpenAI, Anthropic, OpenRouter, NanoGPT, LinkAPI, and Ollama; the provider, model, API key, and compatible base URL are configurable under **Settings → Metadata**.
 
 Without an AI provider, mediastorm still provides TMDB-based recommendations such as **Because You Watched**. AI recommendation results are cached per user. Availability, pricing, model names, and quotas are determined by the selected provider, so consult that provider's current documentation.
+
+#### Self-hosted Ollama
+
+In **Settings → Metadata**, select **Ollama**, enter an installed **AI Model** name (including its tag), and set **AI Base URL** to your Ollama server. Both `http://server:11434` and `http://server:11434/v1` are accepted. Leave **AI API Key** blank unless your own proxy requires a bearer token. Changing to or from Ollama clears the previous AI connection fields; enter and save the new connection details.
+
+The default is `http://localhost:11434/v1`, suitable when the backend and Ollama run on the same host outside Docker. From a Docker backend, use a reachable Ollama service name or host address; `localhost` points to the backend container. For a separate server, configure Ollama to listen on a reachable private interface using `OLLAMA_HOST` and permit access from the backend. Keep the service on your private network/VPN.
+
+Pull the model on the Ollama server before using **Test Connection**. That test verifies reachability and model availability; recommendation quality depends on the selected model. Cold model loads have a bounded three-minute inference budget. TMDB title resolution and other metadata services still require their normal configuration. MediaStorm does not download models or make the rest of the application offline.
+
+See [Ollama setup](https://docs.ollama.com/faq) and [API compatibility](https://docs.ollama.com/api/openai-compatibility).
 
 ## Troubleshooting
 

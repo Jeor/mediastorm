@@ -487,3 +487,25 @@ func TestRedactedEffectivePlaylistURL(t *testing.T) {
 		t.Fatalf("empty effective URL = %q", got)
 	}
 }
+
+func TestSwitchToOllamaDoesNotReuseHostedKey(t *testing.T) {
+	existing := config.Settings{Metadata: config.MetadataSettings{AIProvider: "openai", AIAPIKey: "hosted-key"}}
+	for _, incomingKey := range []string{redactedPlaceholder, "hosted-key", "", "new-proxy-key"} {
+		incoming := config.Settings{Metadata: config.MetadataSettings{AIProvider: "ollama", AIAPIKey: incomingKey}}
+		preserveRedactedFields(&incoming, &existing)
+		want := ""
+		if incomingKey == "new-proxy-key" {
+			want = incomingKey
+		}
+		if incoming.Metadata.AIAPIKey != want {
+			t.Fatal("switch reused a hosted credential")
+		}
+	}
+	existing.Metadata.AIProvider = "ollama"
+	incoming := existing
+	incoming.Metadata.AIAPIKey = redactedPlaceholder
+	preserveRedactedFields(&incoming, &existing)
+	if incoming.Metadata.AIAPIKey != existing.Metadata.AIAPIKey {
+		t.Fatal("existing proxy credential was lost")
+	}
+}

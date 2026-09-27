@@ -6550,7 +6550,7 @@ func discoverTitleDedupeKey(mediaType string, title models.Title) string {
 // based on the user's watched titles. Results are cached for 24 hours per user.
 func (s *Service) GetAIRecommendations(ctx context.Context, watchedTitles []string, mediaTypes []string, userID string) ([]models.TrendingItem, error) {
 	if s.ai == nil || !s.ai.isConfigured() {
-		return nil, fmt.Errorf("AI provider API key not configured")
+		return nil, fmt.Errorf("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	if len(watchedTitles) == 0 {
@@ -6621,7 +6621,7 @@ func (s *Service) GetAIRecommendations(ctx context.Context, watchedTitles []stri
 // GetAISimilar generates recommendations similar to a specific title using the configured AI provider.
 func (s *Service) GetAISimilar(ctx context.Context, seedTitle string, mediaType string) ([]models.TrendingItem, error) {
 	if s.ai == nil || !s.ai.isConfigured() {
-		return nil, fmt.Errorf("AI provider API key not configured")
+		return nil, fmt.Errorf("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	language := ""
@@ -6629,7 +6629,7 @@ func (s *Service) GetAISimilar(ctx context.Context, seedTitle string, mediaType 
 		language = s.client.language
 	}
 	providerLabel := s.ai.providerLabel()
-	cacheID := cacheKey("ai", s.ai.provider, s.ai.modelName(), "similar", mediaType, seedTitle, language)
+	cacheID := cacheKey("ai", s.ai.provider, s.ai.cacheModelKey(), "similar", mediaType, seedTitle, language)
 	var cached []models.TrendingItem
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
 		log.Printf("[metadata] AI similar cache hit seed=%q count=%d", seedTitle, len(cached))
@@ -6699,7 +6699,7 @@ func (s *Service) fetchAISimilarRecommendations(ctx context.Context, seedTitle, 
 // GetAICustomRecommendations generates recommendations from a free-text user query using the configured AI provider.
 func (s *Service) GetAICustomRecommendations(ctx context.Context, query string) ([]models.TrendingItem, error) {
 	if s.ai == nil || !s.ai.isConfigured() {
-		return nil, fmt.Errorf("AI provider API key not configured")
+		return nil, fmt.Errorf("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	language := ""
@@ -6707,7 +6707,7 @@ func (s *Service) GetAICustomRecommendations(ctx context.Context, query string) 
 		language = s.client.language
 	}
 	providerLabel := s.ai.providerLabel()
-	cacheID := cacheKey("ai", s.ai.provider, s.ai.modelName(), "custom", fmt.Sprintf("%x", sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))), language)
+	cacheID := cacheKey("ai", s.ai.provider, s.ai.cacheModelKey(), "custom", fmt.Sprintf("%x", sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))), language)
 	var cached []models.TrendingItem
 	if ok, _ := s.cache.get(cacheID, &cached); ok && len(cached) > 0 {
 		log.Printf("[metadata] AI custom cache hit query=%q count=%d", query, len(cached))
@@ -6777,7 +6777,7 @@ func (s *Service) fetchAICustomRecommendations(ctx context.Context, query, provi
 // Not cached — each call produces a different result.
 func (s *Service) GetAISurprise(ctx context.Context, decade, mediaType string) (*models.TrendingItem, error) {
 	if s.ai == nil || !s.ai.isConfigured() {
-		return nil, fmt.Errorf("AI provider API key not configured")
+		return nil, fmt.Errorf("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	providerLabel := s.ai.providerLabel()

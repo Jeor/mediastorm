@@ -438,6 +438,7 @@ async function runAllTests() {
                     aiProvider: settings.metadata?.aiProvider || '',
                     aiApiKey: settings.metadata?.aiApiKey || '',
                     aiBaseUrl: settings.metadata?.aiBaseUrl || '',
+                    aiModel: settings.metadata?.aiModel || '',
                     geminiApiKey: settings.metadata?.geminiApiKey || ''
                 }).then(result => ({
                     result,

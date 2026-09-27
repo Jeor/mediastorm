@@ -1201,11 +1201,12 @@ var SettingsSchema = map[string]interface{}{
 					{"value": "openrouter", "label": "OpenRouter"},
 					{"value": "nanogpt", "label": "NanoGPT"},
 					{"value": "linkapi", "label": "LinkAPI"},
+					{"value": "ollama", "label": "Ollama (self-hosted)"},
 				},
 			},
-			"aiApiKey":  map[string]interface{}{"type": "password", "label": "AI API Key", "description": "API key for the selected AI provider", "order": 3, "globalOnly": true},
-			"aiModel":   map[string]interface{}{"type": "text", "label": "AI Model", "description": "Optional. Leave blank to use the default model for the selected provider.", "order": 4, "globalOnly": true},
-			"aiBaseUrl": map[string]interface{}{"type": "text", "label": "AI Base URL", "description": "Optional OpenAI-compatible base URL override for providers that need a custom endpoint.", "order": 5, "globalOnly": true},
+			"aiApiKey":  map[string]interface{}{"type": "password", "label": "AI API Key", "description": "API key for the selected AI provider. Optional for Ollama; only needed for an authenticated proxy.", "order": 3, "globalOnly": true},
+			"aiModel":   map[string]interface{}{"type": "text", "label": "AI Model", "description": "Required for Ollama: enter an installed model name. Other providers can use their default model.", "order": 4, "globalOnly": true},
+			"aiBaseUrl": map[string]interface{}{"type": "text", "label": "AI Base URL", "description": "Ollama: server address reached from the backend (default http://localhost:11434/v1). In Docker, use a reachable host or service address. Other providers: optional base URL override.", "order": 5, "globalOnly": true},
 			"allowAdultSearch": map[string]interface{}{
 				"type":        "boolean",
 				"label":       "Allow Adult Search Results",
@@ -9226,6 +9227,7 @@ type TestMetadataRequest struct {
 	AIProvider   string `json:"aiProvider"`
 	AIApiKey     string `json:"aiApiKey"`
 	AIBaseURL    string `json:"aiBaseUrl"`
+	AIModel      string `json:"aiModel"`
 	GeminiApiKey string `json:"geminiApiKey"`
 }
 
@@ -9248,7 +9250,7 @@ func normalizeAdminAIProvider(provider string) string {
 	}
 }
 
-func buildAIValidationRequest(provider, apiKey, baseURL string) (string, *http.Request) {
+func buildAIValidationRequest(provider, apiKey, baseURL string) (string, *http.Request, error) {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	providerName := "AI"
 	endpoint := ""
@@ -9296,11 +9298,14 @@ func buildAIValidationRequest(provider, apiKey, baseURL string) (string, *http.R
 		endpoint = "https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey
 	}
 
-	req, _ := http.NewRequest(http.MethodGet, endpoint, nil)
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return providerName, nil, fmt.Errorf("invalid AI server URL")
+	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	return providerName, req
+	return providerName, req, nil
 }
 
 // TestMetadata tests metadata provider API keys by making lightweight validation requests
@@ -9313,12 +9318,12 @@ func (h *AdminUIHandler) TestMetadata(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if req.AIApiKey == "" && req.GeminiApiKey != "" {
+	if req.AIApiKey == "" && req.GeminiApiKey != "" && normalizeAdminAIProvider(req.AIProvider) == "gemini" {
 		req.AIProvider = "gemini"
 		req.AIApiKey = req.GeminiApiKey
 	}
 
-	if req.TVDBApiKey == "" && req.TMDBApiKey == "" && req.AIApiKey == "" {
+	if req.TVDBApiKey == "" && req.TMDBApiKey == "" && req.AIApiKey == "" && normalizeAdminAIProvider(req.AIProvider) != "ollama" {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   "No API keys configured",
@@ -9379,11 +9384,22 @@ func (h *AdminUIHandler) TestMetadata(w http.ResponseWriter, r *http.Request) {
 		results = append(results, providerResult{Provider: "TMDB", Success: true, Message: "Not configured"})
 	}
 
-	// Test AI provider key
-	if req.AIApiKey != "" {
+	// Ollama uses model availability rather than an API-key requirement.
+	if normalizeAdminAIProvider(req.AIProvider) == "ollama" {
+		err := validateOllama(r.Context(), client, req.AIBaseURL, req.AIModel, req.AIApiKey)
+		result := providerResult{Provider: "Ollama", Success: err == nil, Message: "Server reachable; model available"}
+		if err != nil {
+			result.Error = err.Error()
+			allSuccess = false
+		}
+		results = append(results, result)
+	} else if req.AIApiKey != "" {
 		aiProvider := normalizeAdminAIProvider(req.AIProvider)
-		providerName, aiReq := buildAIValidationRequest(aiProvider, req.AIApiKey, req.AIBaseURL)
-		resp, err := apiusage.Do(client, providerName, "Credential validation", aiReq)
+		providerName, aiReq, err := buildAIValidationRequest(aiProvider, req.AIApiKey, req.AIBaseURL)
+		var resp *http.Response
+		if err == nil {
+			resp, err = apiusage.Do(client, providerName, "Credential validation", aiReq.WithContext(r.Context()))
+		}
 		if err != nil {
 			results = append(results, providerResult{Provider: providerName, Success: false, Error: err.Error()})
 			allSuccess = false

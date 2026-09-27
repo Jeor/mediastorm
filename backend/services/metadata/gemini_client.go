@@ -3,6 +3,7 @@ package metadata
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,12 +14,14 @@ import (
 	"sync"
 	"time"
 
+	"novastream/internal/aiprovider"
 	"novastream/internal/apiusage"
 )
 
 const geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta"
 
 const (
+	aiProviderOllama     = "ollama"
 	aiProviderGemini     = "gemini"
 	aiProviderOpenAI     = "openai"
 	aiProviderAnthropic  = "anthropic"
@@ -54,10 +57,14 @@ func newGeminiClient(apiKey string, httpc *http.Client, cache *fileCache) *gemin
 }
 
 func newAIClient(cfg AIConfig, httpc *http.Client, cache *fileCache) *geminiClient {
-	if httpc == nil {
-		httpc = &http.Client{Timeout: 30 * time.Second}
-	}
 	provider := normalizeMetadataAIProvider(cfg.Provider, cfg.APIKey)
+	if httpc == nil {
+		timeout := 30 * time.Second
+		if provider == aiProviderOllama {
+			timeout = aiprovider.OllamaTimeout
+		}
+		httpc = &http.Client{Timeout: timeout}
+	}
 	httpc = apiusage.TrackClient(httpc, metadataAIProviderLabel(provider), "Metadata AI")
 	return &geminiClient{
 		provider:    provider,
@@ -72,6 +79,8 @@ func newAIClient(cfg AIConfig, httpc *http.Client, cache *fileCache) *geminiClie
 
 func metadataAIProviderLabel(provider string) string {
 	switch provider {
+	case aiProviderOllama:
+		return "Ollama"
 	case aiProviderGemini:
 		return "Gemini"
 	case aiProviderOpenAI:
@@ -90,7 +99,13 @@ func metadataAIProviderLabel(provider string) string {
 }
 
 func (c *geminiClient) isConfigured() bool {
-	return c != nil && c.apiKey != "" && c.provider != ""
+	if c == nil || c.provider == "" {
+		return false
+	}
+	if c.provider == aiProviderOllama {
+		return c.model != ""
+	}
+	return c.apiKey != ""
 }
 
 func normalizeMetadataAIProvider(provider, apiKey string) string {
@@ -100,6 +115,8 @@ func normalizeMetadataAIProvider(provider, apiKey string) string {
 			return ""
 		}
 		return aiProviderGemini
+	case "ollama":
+		return aiProviderOllama
 	case "gemini", "google", "google-gemini":
 		return aiProviderGemini
 	case "openai", "chatgpt", "gpt":
@@ -119,6 +136,8 @@ func normalizeMetadataAIProvider(provider, apiKey string) string {
 
 func (c *geminiClient) providerLabel() string {
 	switch c.provider {
+	case aiProviderOllama:
+		return "Ollama"
 	case aiProviderOpenAI:
 		return "OpenAI"
 	case aiProviderAnthropic:
@@ -136,6 +155,8 @@ func (c *geminiClient) providerLabel() string {
 
 func (c *geminiClient) defaultModel() string {
 	switch c.provider {
+	case aiProviderOllama:
+		return ""
 	case aiProviderOpenAI:
 		return "gpt-5.5"
 	case aiProviderAnthropic:
@@ -174,6 +195,10 @@ func (c *geminiClient) defaultBaseURL() string {
 }
 
 func (c *geminiClient) resolvedBaseURL() string {
+	if c.provider == aiProviderOllama {
+		base, _ := aiprovider.OllamaBaseURL(c.baseURL)
+		return base
+	}
 	if c.baseURL != "" {
 		return c.baseURL
 	}
@@ -181,6 +206,17 @@ func (c *geminiClient) resolvedBaseURL() string {
 }
 
 const aiSingleflightTimeout = 90 * time.Second
+
+func (c *geminiClient) inferenceTimeout() time.Duration {
+	if c.provider == aiProviderOllama {
+		return aiprovider.OllamaTimeout
+	}
+	return aiSingleflightTimeout
+}
+
+func (c *geminiClient) cacheModelKey() string {
+	return fmt.Sprintf("%s-%x", c.modelName(), sha256.Sum256([]byte(c.resolvedBaseURL())))
+}
 
 func (c *geminiClient) singleflight(ctx context.Context, key string, fetch func(context.Context) (any, error)) (any, error) {
 	if c == nil {
@@ -204,7 +240,7 @@ func (c *geminiClient) singleflight(ctx context.Context, key string, fetch func(
 
 	// Detach from the caller so an aborted duplicate request cannot cancel
 	// the shared provider call that other waiters still need.
-	fetchCtx, cancel := context.WithTimeout(context.Background(), aiSingleflightTimeout)
+	fetchCtx, cancel := context.WithTimeout(context.Background(), c.inferenceTimeout())
 	defer cancel()
 	value, err := fetch(fetchCtx)
 	call.value = value
@@ -282,6 +318,7 @@ type openAIChatRequest struct {
 	Messages    []openAIChatMessage `json:"messages"`
 	Temperature float64             `json:"temperature,omitempty"`
 	MaxTokens   int                 `json:"max_tokens,omitempty"`
+	Stream      bool                `json:"stream"`
 }
 
 type openAIChatMessage struct {
@@ -291,7 +328,8 @@ type openAIChatMessage struct {
 
 type openAIChatResponse struct {
 	Choices []struct {
-		Message struct {
+		FinishReason string `json:"finish_reason"`
+		Message      struct {
 			Content string `json:"content"`
 		} `json:"message"`
 	} `json:"choices"`
@@ -334,9 +372,17 @@ type GeminiRecommendation struct {
 
 func (c *geminiClient) completeRecommendations(ctx context.Context, prompt string, temperature float64, maxTokens int, label string) ([]GeminiRecommendation, error) {
 	if !c.isConfigured() {
-		return nil, fmt.Errorf("%s api key not configured", strings.ToLower(c.providerLabel()))
+		return nil, fmt.Errorf("%s is not configured (Ollama requires a model; hosted providers require an API key)", c.providerLabel())
 	}
 
+	if c.provider == aiProviderOllama {
+		if _, err := aiprovider.OllamaBaseURL(c.baseURL); err != nil {
+			return nil, err
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.inferenceTimeout())
+		defer cancel()
+	}
 	c.throttleMu.Lock()
 	wait := c.minInterval - time.Since(c.lastRequest)
 	if wait > 0 {
@@ -347,13 +393,15 @@ func (c *geminiClient) completeRecommendations(ctx context.Context, prompt strin
 	}
 	c.throttleMu.Unlock()
 	if wait > 0 {
-		time.Sleep(wait)
+		if err := waitAIContext(ctx, wait); err != nil {
+			return nil, err
+		}
 	}
 
 	var responseText string
 	var err error
 	switch c.provider {
-	case aiProviderOpenAI, aiProviderOpenRouter, aiProviderNanoGPT, aiProviderLinkAPI:
+	case aiProviderOllama, aiProviderOpenAI, aiProviderOpenRouter, aiProviderNanoGPT, aiProviderLinkAPI:
 		responseText, err = c.completeOpenAICompatible(ctx, prompt, temperature, maxTokens, label)
 	case aiProviderAnthropic:
 		responseText, err = c.completeAnthropic(ctx, prompt, temperature, maxTokens, label)
@@ -409,7 +457,10 @@ func (c *geminiClient) completeOpenAICompatible(ctx context.Context, prompt stri
 	if err != nil {
 		return "", fmt.Errorf("marshal %s request: %w", c.providerLabel(), err)
 	}
-	headers := map[string]string{"Authorization": "Bearer " + c.apiKey}
+	headers := map[string]string{}
+	if c.apiKey != "" {
+		headers["Authorization"] = "Bearer " + c.apiKey
+	}
 	if c.provider == aiProviderOpenRouter {
 		headers["HTTP-Referer"] = "https://github.com/godver3/mediastorm"
 		headers["X-OpenRouter-Title"] = "mediastorm"
@@ -423,6 +474,12 @@ func (c *geminiClient) completeOpenAICompatible(ctx context.Context, prompt stri
 		return "", fmt.Errorf("%s API error: %s", c.providerLabel(), chatResp.Error.Message)
 	}
 	if len(chatResp.Choices) == 0 {
+		return "", fmt.Errorf("%s returned empty response", c.providerLabel())
+	}
+	if chatResp.Choices[0].FinishReason == "length" {
+		return "", fmt.Errorf("%s response was truncated; try a smaller request or a different model", c.providerLabel())
+	}
+	if strings.TrimSpace(chatResp.Choices[0].Message.Content) == "" {
 		return "", fmt.Errorf("%s returned empty response", c.providerLabel())
 	}
 	return chatResp.Choices[0].Message.Content, nil
@@ -467,6 +524,9 @@ func (c *geminiClient) doJSONWithRetry(ctx context.Context, method, endpoint str
 	var lastErr error
 	backoff := 500 * time.Millisecond
 	for attempt := 0; attempt < 3; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewReader(bodyBytes))
 		if err != nil {
 			return fmt.Errorf("create %s request: %w", logPrefix, err)
@@ -480,7 +540,9 @@ func (c *geminiClient) doJSONWithRetry(ctx context.Context, method, endpoint str
 		if err != nil {
 			lastErr = err
 			log.Printf("[%s] %s http error (attempt %d/3): %v", logPrefix, label, attempt+1, err)
-			time.Sleep(backoff)
+			if err := waitAIContext(ctx, backoff); err != nil {
+				return err
+			}
 			backoff *= 2
 			continue
 		}
@@ -489,7 +551,9 @@ func (c *geminiClient) doJSONWithRetry(ctx context.Context, method, endpoint str
 			resp.Body.Close()
 			lastErr = fmt.Errorf("%s request failed: status %d", logPrefix, resp.StatusCode)
 			log.Printf("[%s] %s retryable status (attempt %d/3): %d", logPrefix, label, attempt+1, resp.StatusCode)
-			time.Sleep(backoff)
+			if err := waitAIContext(ctx, backoff); err != nil {
+				return err
+			}
 			backoff *= 2
 			continue
 		}
@@ -526,7 +590,7 @@ func parseAIRecommendations(responseText, providerLabel, label string) ([]Gemini
 // getRecommendations asks the configured AI provider for personalized recommendations based on watched titles.
 func (c *geminiClient) getRecommendations(ctx context.Context, watchedTitles []string, mediaTypes []string) ([]GeminiRecommendation, error) {
 	if !c.isConfigured() {
-		return nil, errors.New("AI provider API key not configured")
+		return nil, errors.New("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	if len(watchedTitles) == 0 {
@@ -583,7 +647,7 @@ Respond with ONLY a JSON array, no other text. Each object must have exactly the
 // getSimilarRecommendations asks the configured AI provider for recommendations similar to a specific title.
 func (c *geminiClient) getSimilarRecommendations(ctx context.Context, seedTitle string, mediaType string) ([]GeminiRecommendation, error) {
 	if !c.isConfigured() {
-		return nil, errors.New("AI provider API key not configured")
+		return nil, errors.New("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	prompt := fmt.Sprintf(`You are a movie and TV show recommendation engine. A user loved "%s" (%s). Recommend exactly 15 movies and TV shows they would enjoy based on this title.
@@ -608,7 +672,7 @@ Respond with ONLY a JSON array, no other text. Each object must have exactly the
 // getCustomRecommendations asks the configured AI provider for recommendations based on a free-text user query.
 func (c *geminiClient) getCustomRecommendations(ctx context.Context, query string) ([]GeminiRecommendation, error) {
 	if !c.isConfigured() {
-		return nil, errors.New("AI provider API key not configured")
+		return nil, errors.New("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	prompt := fmt.Sprintf(`You are a movie and TV show recommendation engine. A user has made the following request:
@@ -632,7 +696,7 @@ Respond with ONLY a JSON array, no other text. Each object must have exactly the
 // Uses high temperature and randomized prompt elements to avoid repetitive answers.
 func (c *geminiClient) getSurpriseRecommendation(ctx context.Context, preferredDecade, preferredMediaType string) ([]GeminiRecommendation, error) {
 	if !c.isConfigured() {
-		return nil, errors.New("AI provider API key not configured")
+		return nil, errors.New("AI provider not configured: select a provider and supply its required model or API key")
 	}
 
 	// Randomized category seeds to push Gemma toward variety
@@ -681,4 +745,15 @@ Constraints:
 	[{"title": "exact TMDB title", "year": 1234, "mediaType": "%s"}]`, mediaTypeConstraint, vibe, decade, mediaTypeConstraint, mediaTypeExample)
 
 	return c.completeRecommendations(ctx, prompt, 1.5, 256, "surprise")
+}
+
+func waitAIContext(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

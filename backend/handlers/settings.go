@@ -773,7 +773,11 @@ func preserveRedactedFields(incoming *config.Settings, existing *config.Settings
 	// Metadata
 	restore(&incoming.Metadata.TVDBAPIKey, existing.Metadata.TVDBAPIKey)
 	restore(&incoming.Metadata.TMDBAPIKey, existing.Metadata.TMDBAPIKey)
-	restore(&incoming.Metadata.AIAPIKey, existing.Metadata.AIAPIKey)
+	if strings.EqualFold(strings.TrimSpace(incoming.Metadata.AIProvider), "ollama") && !strings.EqualFold(strings.TrimSpace(existing.Metadata.AIProvider), "ollama") && (incoming.Metadata.AIAPIKey == redactedPlaceholder || incoming.Metadata.AIAPIKey == existing.Metadata.AIAPIKey) {
+		incoming.Metadata.AIAPIKey = ""
+	} else {
+		restore(&incoming.Metadata.AIAPIKey, existing.Metadata.AIAPIKey)
+	}
 	restore(&incoming.Metadata.GeminiAPIKey, existing.Metadata.GeminiAPIKey)
 	restore(&incoming.Playback.YouTubeProxyURL, existing.Playback.YouTubeProxyURL)
 	restore(&incoming.Playback.Thumbnails.SeekrAPIKey, existing.Playback.Thumbnails.SeekrAPIKey)

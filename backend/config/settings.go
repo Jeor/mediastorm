@@ -325,6 +325,8 @@ func normalizeAIProvider(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "", "none":
 		return ""
+	case "ollama":
+		return "ollama"
 	case "gemini", "google", "google-gemini":
 		return "gemini"
 	case "openai", "chatgpt", "gpt":

@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -2920,4 +2921,33 @@ func multipartWriter(t *testing.T, body *bytes.Buffer, fieldName, fileName, cont
 	part.Write([]byte(content))
 	writer.Close()
 	return writer
+}
+
+func TestSettingsPageVersionsHomeEditorByContent(t *testing.T) {
+	handler, tmpDir := setupAdminUIHandler(t)
+	sessionsService, err := sessions.NewService(tmpDir, sessions.DefaultSessionDuration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.SetSessionsService(sessionsService)
+	session, err := sessionsService.Create("master", true, "test", "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/admin/settings", nil)
+	req.AddCookie(&http.Cookie{Name: "strmr_admin_session", Value: session.Token})
+	rec := httptest.NewRecorder()
+	handler.RequireMasterAuth(handler.SettingsPage)(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("settings status: %d", rec.Code)
+	}
+	script, err := os.ReadFile("static/admin-home-views-v1.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(script)
+	version := fmt.Sprintf("%x", sum)[:12]
+	if !strings.Contains(rec.Body.String(), "admin-home-views-v1.js?v="+version) {
+		t.Fatal("Home editor URL must change with script content, independent of BuildID")
+	}
 }

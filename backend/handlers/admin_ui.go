@@ -1742,6 +1742,7 @@ func (h *AdminUIHandler) SetNotificationService(service *notifications.Service) 
 // NewAdminUIHandler creates a new admin UI handler
 func NewAdminUIHandler(settingsPath, logFile string, hlsManager *HLSManager, usersService *users.Service, userSettingsService *user_settings.Service, configManager *config.Manager) *AdminUIHandler {
 	funcMap := template.FuncMap{
+		"staticAssetVersion": staticAssetVersion,
 		"json": func(v interface{}) template.JS {
 			b, _ := json.Marshal(v)
 			return template.JS(b)

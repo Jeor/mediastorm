@@ -2606,7 +2606,7 @@
 
 {{define "scripts"}}
 {{if not .NoProfiles}}
-<script src="{{.ServerBasePath}}/api/static/admin-home-views-v1.js?v={{.BuildID}}-1"></script>
+<script src="{{.ServerBasePath}}/api/static/admin-home-views-v1.js?v={{staticAssetVersion "admin-home-views-v1.js"}}"></script>
 <script>
     let currentSettings = {{json .Settings}};
     let schema = {{json .Schema}};

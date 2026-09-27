@@ -7,12 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"novastream/config"
 	"novastream/handlers"
 	"novastream/models"
 	"novastream/services/customlists"
 	"novastream/services/playback"
 	"novastream/services/users"
 	"novastream/services/watchlist"
+	"path/filepath"
 
 	"github.com/gorilla/mux"
 )
@@ -159,7 +161,15 @@ func TestDisplayListHomeViewFiltersBeforePagination(t *testing.T) {
 		}
 	}
 	h := handlers.NewDisplayListHandler(wl, custom, userSvc)
-	for _, view := range []string{"movies", "shows"} {
+	manager := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	if err := manager.Save(config.Settings{HomeShelves: config.HomeShelvesSettings{Views: map[string]config.HomeViewSettings{
+		"page-films":  {Mode: "inherit", MediaFilter: "movies"},
+		"page-series": {Mode: "custom", MediaFilter: "shows"},
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	h.SetMetadataHandler(handlers.NewMetadataHandler(nil, manager))
+	for _, view := range []string{"movies", "shows", "page-films", "page-series"} {
 		req := httptest.NewRequest(http.MethodGet, "/display-list?source=watchlist&homeView="+view+"&limit=1&offset=1", nil)
 		req = mux.SetURLVars(req, map[string]string{"userID": userID})
 		rec := httptest.NewRecorder()
@@ -175,7 +185,7 @@ func TestDisplayListHomeViewFiltersBeforePagination(t *testing.T) {
 			t.Fatal(err)
 		}
 		total, kind := 3, "movie"
-		if view == "shows" {
+		if view == "shows" || view == "page-series" {
 			total, kind = 2, "series"
 		}
 		if got.Total != total || len(got.Items) != 1 || got.Items[0].MediaType != kind {

@@ -6387,14 +6387,15 @@
                     '</div>';
             case 'checkboxes':
                 const selectedValues = Array.isArray(value) ? value : [];
-                const checkboxesHtml = (fieldDef.options || []).map(opt => {
+                const checkboxOptions = fieldKey === 'navigationTabVisibility' ? homePageNavigationOptions(fieldDef.options) : (fieldDef.options || []);
+                const checkboxesHtml = checkboxOptions.map(opt => {
                     const optValue = typeof opt === 'object' ? opt.value : opt;
                     const optLabel = typeof opt === 'object' ? opt.label : opt;
                     const isDisabled = typeof opt === 'object' && opt.disabled;
                     const isChecked = selectedValues.includes(optValue) ? 'checked' : '';
                     const disabledAttr = isDisabled ? 'disabled' : '';
                     const disabledClass = isDisabled ? ' checkbox-option-disabled' : '';
-                    return '<label class="checkbox-option'+disabledClass+'"><input type="checkbox" value="'+optValue+'" '+isChecked+' '+disabledAttr+' onchange="handleCheckboxChange(\''+basePath+'\', \''+fieldKey+'\', \''+optValue+'\', this.checked)"><span>'+optLabel+'</span></label>';
+                    return '<label class="checkbox-option'+disabledClass+'"><input type="checkbox" value="'+optValue+'" '+isChecked+' '+disabledAttr+' onchange="handleCheckboxChange(\''+basePath+'\', \''+fieldKey+'\', \''+optValue+'\', this.checked)"><span>'+escapeHtml(optLabel)+'</span></label>';
                 }).join('');
                 return '<div class="checkboxes-group'+invalidClass+'" id="'+id+'_container">'+checkboxesHtml+'</div>';
             case 'multiselect':
@@ -6824,7 +6825,7 @@
 
     function resolveMultiselectValueLabel(fieldDef, value) {
         if (fieldDef?.optionsFrom === 'navigationTabs') {
-            return (fieldDef.options || []).find(option => option.value === value)?.label || value;
+            return homePageNavigationOptions(fieldDef.options).find(option => option.value === value)?.label || value;
         }
         if (fieldDef?.optionsFrom === 'profiles') {
             const profile = profilesData.find(p => p.id === value);
@@ -6909,7 +6910,7 @@
             }));
             renderMultiselectOptions();
         } else if (optionsFrom === 'navigationTabs') {
-            multiselectState.options = schema.display.fields.navigationTabVisibility.options;
+            multiselectState.options = homePageNavigationOptions(schema.display.fields.navigationTabVisibility.options);
             renderMultiselectOptions();
         } else if (optionsFrom === 'homeShelves') {
             const shelves = ensureBuiltInHomeShelfConfig(getValue('homeShelves.shelves') || []);
@@ -9581,8 +9582,9 @@
 
         shelves = ensureBuiltInHomeShelfConfig(shelves);
 
+        if (isCustomHomePage(editingHomeView) && !customHomePageIds().includes(editingHomeView)) editingHomeView = 'all';
         if (editingHomeView !== 'all') {
-            shelves = effectiveHomeView().shelves;
+            shelves = effectiveHomeView().shelves || [];
             isInherited = isAlternateHomeViewInherited();
         }
         const viewControls = renderHomeViewControls();

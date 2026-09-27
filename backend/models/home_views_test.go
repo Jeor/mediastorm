@@ -28,3 +28,21 @@ func TestResolveHomeViewInheritanceAndReplacement(t *testing.T) {
 		t.Fatal("unknown view must use Home")
 	}
 }
+
+func TestResolveNamedHomeView(t *testing.T) {
+	empty := []config.ShelfConfig{}
+	home := HomeShelvesSettings{Shelves: []ShelfConfig{{ID: "watchlist", Enabled: true}}, Views: map[string]config.HomeViewSettings{
+		"page-empty":     {Name: "Empty", Mode: "custom", Shelves: &empty},
+		"page-inherited": {Name: "Inherited", Mode: "inherit", MediaFilter: "shows"},
+		"page-deleted":   {Mode: "custom", Shelves: &empty, Deleted: true},
+	}}
+	resolved := ResolveHomeView(home, "page-empty")
+	if len(resolved.Shelves) != 0 || resolved.TVTopShelfMode != "disabled" {
+		t.Fatalf("empty page: %+v", resolved)
+	}
+	for _, id := range []string{"page-inherited", "page-deleted", "page-missing"} {
+		if ResolveHomeView(home, id).Shelves[0].ID != "watchlist" {
+			t.Fatalf("%s did not inherit", id)
+		}
+	}
+}

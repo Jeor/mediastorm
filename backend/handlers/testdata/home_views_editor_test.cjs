@@ -18,6 +18,8 @@ function fixture() {
     selectedUserId: null,
     renderSettings() {},
     escapeHtml: String,
+    crypto: { randomUUID: () => "test-page" },
+    confirm: () => true,
   });
   vm.runInContext(source, context);
   return { context, run: (code) => vm.runInContext(code, context) };
@@ -91,4 +93,54 @@ test("alternate layout fields use standard full-width form controls and associat
     assert.ok(html.includes('for="home-view-' + id + '"'));
     assert.ok(html.includes('id="home-view-' + id + '"'));
   }
+});
+
+test("named pages inherit Home, keep identity on reset, and expose navigation options", () => {
+  const { run } = fixture();
+  run(
+    "createHomePage();setHomePageMetadata('name','Documentaries');setHomePageMetadata('mediaFilter','movies')",
+  );
+  assert.equal(run("editingHomeView"), "page-test-page");
+  assert.equal(run("homePageDefinitions()[editingHomeView].mode"), "inherit");
+  assert.equal(run("effectiveHomeView().shelves[0].name"), "Saved");
+  run("setHomeViewMode('custom');editableAlternateHomeView().shelves=[]");
+  assert.equal(run("effectiveHomeView().shelves.length"), 0);
+  run("setHomeViewMode('inherit')");
+  assert.equal(
+    run("homePageDefinitions()[editingHomeView].name"),
+    "Documentaries",
+  );
+  assert.equal(
+    run("homePageDefinitions()[editingHomeView].mediaFilter"),
+    "movies",
+  );
+  assert.equal(run("homePageNavigationOptions([])[0].value"), "page-test-page");
+  assert.equal(run("effectiveHomeView().shelves[0].name"), "Saved");
+  run("deleteHomePage()");
+  assert.equal(run("customHomePageIds().length"), 0);
+  assert.equal(run("editingHomeView"), "all");
+});
+test("a profile can hide an inherited page without deleting the global page", () => {
+  const { run } = fixture();
+  run(
+    "createHomePage();selectedUserId='profile';userSettings={};deleteHomePage()",
+  );
+  assert.equal(run("customHomePageIds().length"), 0);
+  assert.equal(
+    run("currentSettings.homeShelves.views['page-test-page'].name"),
+    "New page",
+  );
+});
+
+test("page creation works on private HTTP origins without randomUUID", () => {
+  const { run, context } = fixture();
+  context.crypto = {
+    getRandomValues: (bytes) => {
+      bytes.fill(12);
+      return bytes;
+    },
+  };
+  run("createHomePage()");
+  assert.equal(run("editingHomeView"), "page-" + "0c".repeat(16));
+  assert.equal(run("customHomePageIds().length"), 1);
 });

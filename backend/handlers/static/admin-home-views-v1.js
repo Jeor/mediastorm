@@ -1,3 +1,160 @@
+// Named pages reuse the alternate layout editor. IDs never change on rename.
+function isCustomHomePage(id) {
+  return /^page-[a-zA-Z0-9-]{1,80}$/.test(id);
+}
+function homePageDefinitions() {
+  const global = currentSettings.homeShelves?.views || {};
+  const profile = selectedUserId ? userSettings?.homeShelves?.views || {} : {};
+  const result = { ...global };
+  for (const [id, view] of Object.entries(profile)) {
+    result[id] = {
+      ...view,
+      name: view.name || global[id]?.name,
+      icon: view.icon || global[id]?.icon,
+      mediaFilter: view.mediaFilter || global[id]?.mediaFilter,
+    };
+  }
+  return result;
+}
+function customHomePageIds() {
+  const views = homePageDefinitions();
+  return Object.keys(views)
+    .filter((id) => isCustomHomePage(id) && !views[id].deleted)
+    .sort(
+      (a, b) =>
+        (views[a].name || "Home page").localeCompare(
+          views[b].name || "Home page",
+        ) || a.localeCompare(b),
+    );
+}
+function homePageNavigationOptions(options) {
+  const views = homePageDefinitions();
+  return [
+    ...(options || []).filter((opt) => !isCustomHomePage(opt.value)),
+    ...customHomePageIds().map((id) => ({
+      value: id,
+      label: views[id].name || "Home page",
+    })),
+  ];
+}
+function createHomePage() {
+  const owner = homeViewOwner();
+  owner.homeShelves ||= {};
+  owner.homeShelves.views ||= {};
+  const uniqueId = crypto.randomUUID
+    ? crypto.randomUUID()
+    : Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
+  const id = "page-" + uniqueId;
+  owner.homeShelves.views[id] = {
+    name: "New page",
+    icon: "home-variant",
+    mediaFilter: "all",
+    mode: "inherit",
+  };
+  editingHomeView = id;
+  renderSettings();
+}
+function setHomePageMetadata(field, value) {
+  if (!isCustomHomePage(editingHomeView)) return;
+  const owner = homeViewOwner();
+  owner.homeShelves ||= {};
+  owner.homeShelves.views ||= {};
+  // Editing metadata on a global page preserves its effective layout.
+  owner.homeShelves.views[editingHomeView] ||= JSON.parse(
+    JSON.stringify(
+      homePageDefinitions()[editingHomeView] || { mode: "inherit" },
+    ),
+  );
+  if (field === "name") value = value.trim().slice(0, 80) || "Home page";
+  if (field === "mediaFilter" && !["all", "movies", "shows"].includes(value))
+    return;
+  if (!["name", "icon", "mediaFilter"].includes(field)) return;
+  owner.homeShelves.views[editingHomeView][field] = value;
+  renderSettings();
+}
+function deleteHomePage() {
+  if (!isCustomHomePage(editingHomeView) || !confirm("Delete this home page?"))
+    return;
+  const owner = homeViewOwner();
+  owner.homeShelves ||= {};
+  owner.homeShelves.views ||= {};
+  if (selectedUserId && currentSettings.homeShelves?.views?.[editingHomeView]) {
+    owner.homeShelves.views[editingHomeView] = {
+      mode: "inherit",
+      deleted: true,
+    };
+  } else delete owner.homeShelves.views[editingHomeView];
+  if (owner.display?.navigationTabVisibility) {
+    owner.display.navigationTabVisibility =
+      owner.display.navigationTabVisibility.filter(
+        (id) => id !== editingHomeView,
+      );
+  }
+  editingHomeView = "all";
+  renderSettings();
+}
+function renderHomePageMetadata() {
+  if (!isCustomHomePage(editingHomeView)) return "";
+  const view = homePageDefinitions()[editingHomeView] || {};
+  const icons = [
+    "home-variant",
+    "movie-open",
+    "television-classic",
+    "star",
+    "heart",
+    "animation",
+    "popcorn",
+    "compass-outline",
+  ];
+  const iconLabels = [
+    "Home",
+    "Movie",
+    "Television",
+    "Star",
+    "Heart",
+    "Animation",
+    "Popcorn",
+    "Discover",
+  ];
+  return (
+    '<div class="form-group"><label class="form-label" for="home-page-name">Page name</label>' +
+    '<input class="form-input" id="home-page-name" maxlength="80" value="' +
+    escapeHtml(view.name || "Home page").replace(/"/g, "&quot;") +
+    '" onchange="setHomePageMetadata(\'name\',this.value)"></div>' +
+    '<div class="form-group"><label class="form-label" for="home-page-icon">Icon</label><select class="form-select" id="home-page-icon" onchange="setHomePageMetadata(\'icon\',this.value)">' +
+    icons
+      .map(
+        (icon, i) =>
+          '<option value="' +
+          icon +
+          '"' +
+          ((view.icon || "home-variant") === icon ? " selected" : "") +
+          ">" +
+          iconLabels[i] +
+          "</option>",
+      )
+      .join("") +
+    "</select></div>" +
+    '<div class="form-group"><label class="form-label" for="home-page-filter">Content</label><select class="form-select" id="home-page-filter" onchange="setHomePageMetadata(\'mediaFilter\',this.value)">' +
+    ["all", "movies", "shows"]
+      .map(
+        (filter, i) =>
+          '<option value="' +
+          filter +
+          '"' +
+          ((view.mediaFilter || "all") === filter ? " selected" : "") +
+          ">" +
+          ["All", "Movies only", "Shows only"][i] +
+          "</option>",
+      )
+      .join("") +
+    "</select></div>" +
+    '<p class="form-hint">Enable this page in App Navigation to show it as a tab or left-menu item.</p>' +
+    '<button type="button" class="btn btn-secondary" onclick="deleteHomePage()">Delete page</button>'
+  );
+}
 // Alternate Home layouts share the existing shelf editor and save transaction.
 let editingHomeView = "all";
 function homeViewOwner() {
@@ -39,6 +196,7 @@ function editableAlternateHomeView() {
   if (view?.mode !== "custom") {
     const effective = effectiveHomeView();
     view = {
+      ...homePageDefinitions()[editingHomeView],
       mode: "custom",
       shelves: JSON.parse(JSON.stringify(effective.shelves || [])),
     };
@@ -68,7 +226,16 @@ function setHomeViewMode(mode) {
     owner.homeShelves ||= {};
     owner.homeShelves.views ||= {};
     if (mode === "global") delete owner.homeShelves.views[editingHomeView];
-    else owner.homeShelves.views[editingHomeView] = { mode: "inherit" };
+    else {
+      const { name, icon, mediaFilter } =
+        homePageDefinitions()[editingHomeView] || {};
+      owner.homeShelves.views[editingHomeView] = {
+        name,
+        icon,
+        mediaFilter,
+        mode: "inherit",
+      };
+    }
   }
   renderSettings();
 }
@@ -94,7 +261,7 @@ function setHomeViewLayoutNumber(field, value) {
   renderSettings();
 }
 function renderHomeViewControls() {
-  const tabs = ["all", "movies", "shows"]
+  const tabs = ["all", "movies", "shows", ...customHomePageIds()]
     .map(
       (view) =>
         '<button type="button" class="btn ' +
@@ -102,11 +269,19 @@ function renderHomeViewControls() {
         '" onclick="setEditingHomeView(\'' +
         view +
         "')\">" +
-        { all: "All", movies: "Movies", shows: "Shows" }[view] +
+        escapeHtml(
+          { all: "All", movies: "Movies", shows: "Shows" }[view] ||
+            homePageDefinitions()[view]?.name ||
+            "Home page",
+        ) +
         "</button>",
     )
     .join(" ");
-  let content = '<div style="margin-bottom:16px">' + tabs;
+  let content =
+    '<div style="margin-bottom:16px">' +
+    tabs +
+    ' <button type="button" class="btn btn-secondary" onclick="createHomePage()">Add page</button>' +
+    renderHomePageMetadata();
   if (editingHomeView !== "all") {
     const view = homeViewOwner().homeShelves?.views?.[editingHomeView];
     content +=
@@ -114,7 +289,7 @@ function renderHomeViewControls() {
       (view?.mode === "custom"
         ? "Custom layout. Only matching titles appear."
         : view?.mode === "inherit"
-          ? "Inheriting this profile’s Home layout."
+          ? "Inheriting Home layout."
           : "Using inherited layout settings.") +
       "</p>";
     content +=

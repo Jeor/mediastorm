@@ -969,7 +969,7 @@ func buildStartupHomeShelvesWithHandler(ctx context.Context, sourceReq *http.Req
 		if !ok {
 			continue
 		}
-		if view := sourceReq.URL.Query().Get("homeView"); homeViewMediaType(view) != "" {
+		if view := sourceReq.URL.Query().Get("homeView"); config.IsHomeViewID(view) {
 			query.Set("homeView", view)
 		}
 		pending[shelf.ID] = true

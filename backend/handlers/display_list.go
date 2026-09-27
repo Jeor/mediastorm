@@ -84,8 +84,17 @@ func (h *DisplayListHandler) SetPrequeueStore(store persistentPrequeueStore) {
 }
 
 func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if homeViewMediaType(r.URL.Query().Get("homeView")) != "" {
-		h.getHomeView(w, r)
+	view := r.URL.Query().Get("homeView")
+	filter := view
+	if view != "movies" && view != "shows" && config.IsHomeViewID(view) {
+		userID, ok := h.requireUser(w, r)
+		if !ok {
+			return
+		}
+		filter = config.HomeViewFilter(h.homeViewSettings(userID).Views, view)
+	}
+	if homeViewMediaType(filter) != "" {
+		h.getHomeView(w, r, filter)
 		return
 	}
 	h.get(w, r)
@@ -449,30 +458,7 @@ func (h *DisplayListHandler) watchTMDBShelfOverrides(userID, shelfID string, vie
 	if len(views) > 0 {
 		view = views[0]
 	}
-	home := models.HomeShelvesSettings{}
-	if h.MetadataHandler.CfgManager != nil {
-		if settings, err := h.MetadataHandler.CfgManager.Load(); err == nil {
-			home.Shelves = convertShelves(settings.HomeShelves.Shelves)
-			home.Views = settings.HomeShelves.Views
-		}
-	}
-	if h.MetadataHandler.UserSettings != nil {
-		if settings, err := h.MetadataHandler.UserSettings.Get(userID); err == nil && settings != nil {
-			// Prefer profile definitions; retain global sources not overridden by ID.
-			ids := map[string]bool{}
-			shelves := append([]models.ShelfConfig(nil), settings.HomeShelves.Shelves...)
-			for _, shelf := range shelves {
-				ids[shelf.ID] = true
-			}
-			for _, shelf := range home.Shelves {
-				if !ids[shelf.ID] {
-					shelves = append(shelves, shelf)
-				}
-			}
-			home.Shelves = shelves
-			home.Views = config.MergeHomeViews(home.Views, settings.HomeShelves.Views)
-		}
-	}
+	home := h.homeViewSettings(userID)
 	home = models.ResolveHomeView(home, view)
 	for _, shelf := range home.Shelves {
 		if shelf.ID == shelfID && strings.EqualFold(strings.TrimSpace(shelf.Type), "tmdb") {

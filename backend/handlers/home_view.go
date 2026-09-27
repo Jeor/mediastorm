@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"novastream/config"
+	"novastream/models"
 	"strconv"
 	"strings"
 )
@@ -31,8 +33,11 @@ func matchesHomeView(mediaType, view string) bool {
 // getHomeView filters the source index before taking the requested page. Some
 // provider handlers understand filterMediaType; the final guard also covers
 // providers that do not. Discovery uses the existing 500-title browse window.
-func (h *DisplayListHandler) getHomeView(w http.ResponseWriter, r *http.Request) {
+func (h *DisplayListHandler) getHomeView(w http.ResponseWriter, r *http.Request, filters ...string) {
 	view := r.URL.Query().Get("homeView")
+	if len(filters) > 0 {
+		view = filters[0]
+	}
 	limit, offset := parseLimitOffset(r)
 	query := r.URL.Query()
 	query.Set("filterMediaType", homeViewMediaType(view))
@@ -98,4 +103,35 @@ func (h *DisplayListHandler) getHomeView(w http.ResponseWriter, r *http.Request)
 	payload["items"] = filtered
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func (h *DisplayListHandler) homeViewSettings(userID string) models.HomeShelvesSettings {
+	if h.MetadataHandler == nil {
+		return models.HomeShelvesSettings{}
+	}
+	home := models.HomeShelvesSettings{}
+	if h.MetadataHandler.CfgManager != nil {
+		if settings, err := h.MetadataHandler.CfgManager.Load(); err == nil {
+			home.Shelves = convertShelves(settings.HomeShelves.Shelves)
+			home.Views = settings.HomeShelves.Views
+		}
+	}
+	if h.MetadataHandler.UserSettings != nil {
+		if settings, err := h.MetadataHandler.UserSettings.Get(userID); err == nil && settings != nil {
+			// Prefer profile definitions; retain global sources not overridden by ID.
+			ids := map[string]bool{}
+			shelves := append([]models.ShelfConfig(nil), settings.HomeShelves.Shelves...)
+			for _, shelf := range shelves {
+				ids[shelf.ID] = true
+			}
+			for _, shelf := range home.Shelves {
+				if !ids[shelf.ID] {
+					shelves = append(shelves, shelf)
+				}
+			}
+			home.Shelves = shelves
+			home.Views = config.MergeHomeViews(home.Views, settings.HomeShelves.Views)
+		}
+	}
+	return home
 }

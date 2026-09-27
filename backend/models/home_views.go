@@ -1,12 +1,15 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"novastream/config"
+)
 
 // ResolveHomeView applies explicit view fields to an already resolved Home layout.
 // User/device restrictions are applied by callers independently of this layout.
 func ResolveHomeView(home HomeShelvesSettings, view string) HomeShelvesSettings {
 	override, ok := home.Views[view]
-	if !ok || override.Mode != "custom" || (view != "movies" && view != "shows") {
+	if !ok || override.Mode != "custom" || (!config.IsHomeViewID(view) || override.Deleted) {
 		return home
 	}
 	// The shared config view uses the same JSON shelf schema as profile settings.

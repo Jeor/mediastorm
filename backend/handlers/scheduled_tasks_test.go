@@ -755,3 +755,26 @@ func TestValidateScrobHistorySyncConfig(t *testing.T) {
 		t.Fatal("expected invalid direction error")
 	}
 }
+
+func TestRunTaskNowRejectsInvalidFullSync(t *testing.T) {
+	for _, value := range []string{"invalid", "true"} {
+		t.Run(value, func(t *testing.T) {
+			h := newTestScheduledTasksHandler(t)
+			settings, err := h.configManager.Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			settings.ScheduledTasks.Tasks = []config.ScheduledTask{{ID: "backup", Type: config.ScheduledTaskTypeBackup}}
+			if err := h.configManager.Save(settings); err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodPost, "/admin/api/scheduled-tasks/backup/run?fullSync="+value, nil)
+			req = mux.SetURLVars(req, map[string]string{"taskID": "backup"})
+			rec := httptest.NewRecorder()
+			h.RunTaskNow(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}

@@ -514,7 +514,7 @@ func (s *Service) updateTaskStatus(taskID string, err error, result SyncResult) 
 }
 
 // RunTaskNow triggers immediate execution of a task
-func (s *Service) RunTaskNow(taskID string) error {
+func (s *Service) RunTaskNow(taskID string, fullSync ...bool) error {
 	settings, err := s.configManager.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load settings: %w", err)
@@ -522,6 +522,13 @@ func (s *Service) RunTaskNow(taskID string) error {
 
 	for _, task := range settings.ScheduledTasks.Tasks {
 		if task.ID == taskID {
+			if len(fullSync) > 0 && fullSync[0] {
+				var err error
+				task, err = prepareFullSync(task)
+				if err != nil {
+					return err
+				}
+			}
 			// Check if already running
 			s.taskMu.RLock()
 			if s.taskRunning[taskID] {
@@ -2119,7 +2126,10 @@ func (s *Service) syncTraktHistoryToLocal(task config.ScheduledTask, traktAccoun
 	lastFull, ok := s.lastFullSyncTimes[task.ID]
 	s.lastFullSyncTimesMu.Unlock()
 
-	if !ok || time.Since(lastFull) >= fullSyncInterval {
+	if task.Config["fullSync"] == "true" {
+		// A manual full sync includes all history, including watches older than a year.
+		isFullSync = true
+	} else if !ok || time.Since(lastFull) >= fullSyncInterval {
 		// Full sync: fetch all history from the past year
 		since = time.Now().UTC().AddDate(-1, 0, 0)
 		isFullSync = true
@@ -2786,7 +2796,7 @@ func (s *Service) syncLocalHistoryToSimkl(task config.ScheduledTask, simklAccoun
 	var toSync, toRemove []models.WatchHistoryItem
 	for _, item := range items {
 		if !item.Watched {
-			if !removalSince.IsZero() && item.UpdatedAt.After(removalSince) {
+			if task.Config["fullSync"] == "true" || (!removalSince.IsZero() && item.UpdatedAt.After(removalSince)) {
 				toRemove = append(toRemove, item)
 			}
 			continue
@@ -5189,6 +5199,11 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 			return result, fmt.Errorf("fetch MDBList history: %w", err)
 		}
 
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return result, fmt.Errorf("MDBList history request failed (HTTP %d, offset %d)", resp.StatusCode, offset)
+		}
+
 		var page struct {
 			Movies     []json.RawMessage `json:"movies"`
 			Episodes   []json.RawMessage `json:"episodes"`
@@ -5412,7 +5427,7 @@ func (s *Service) syncLocalHistoryToMDBList(task config.ScheduledTask, account *
 			if since.IsZero() || item.WatchedAt.After(since) {
 				toSync = append(toSync, item)
 			}
-		} else if !removalSince.IsZero() && item.UpdatedAt.After(removalSince) {
+		} else if task.Config["fullSync"] == "true" || (!removalSince.IsZero() && item.UpdatedAt.After(removalSince)) {
 			toRemove = append(toRemove, item)
 		}
 	}

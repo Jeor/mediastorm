@@ -644,7 +644,17 @@ func (h *ScheduledTasksHandler) RunTaskNow(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := h.schedulerService.RunTaskNow(taskID); err != nil {
+	fullSync := false
+	if value := r.URL.Query().Get("fullSync"); value != "" {
+		var err error
+		fullSync, err = strconv.ParseBool(value)
+		if err != nil {
+			writeJSONError(w, "fullSync must be a boolean", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if err := h.schedulerService.RunTaskNow(taskID, fullSync); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{

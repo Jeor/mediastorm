@@ -5793,6 +5793,7 @@
                                 </svg>
                                 ${task.lastStatus === 'running' ? 'Running...' : 'Run Now'}
                             </button>
+                            ${task.type.endsWith('_sync') ? `<button class="btn btn-sm btn-secondary" onclick="runScheduledTaskNow('${task.id}', true)" title="Sync all items, ignoring the previous run. Uses this automation's direction and dry-run setting." ${task.lastStatus === 'running' ? 'disabled' : ''}>Full sync</button>` : ''}
                             ${task.type !== 'prewarm' ? `<button class="btn btn-sm btn-secondary" onclick="showEditScheduledTaskModal('${task.id}')">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -6616,9 +6617,9 @@
         }
     }
 
-    async function runScheduledTaskNow(taskId) {
+    async function runScheduledTaskNow(taskId, fullSync = false) {
         try {
-            const response = await fetch(`${basePath}/api/scheduled-tasks/${taskId}/run`, {
+            const response = await fetch(`${basePath}/api/scheduled-tasks/${taskId}/run${fullSync ? '?fullSync=true' : ''}`, {
                 method: 'POST'
             });
 
@@ -6627,7 +6628,7 @@
                 throw new Error(data.error || 'Failed to start automation');
             }
 
-            showToast('Automation started', 'success');
+            showToast(fullSync ? 'Full sync started' : 'Automation started', 'success');
 
             // Poll for status updates
             setTimeout(async () => {

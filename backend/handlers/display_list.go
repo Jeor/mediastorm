@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"novastream/config"
 	"novastream/models"
 	"novastream/services/customlists"
 	"novastream/services/playback"
@@ -83,6 +84,14 @@ func (h *DisplayListHandler) SetPrequeueStore(store persistentPrequeueStore) {
 }
 
 func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
+	if homeViewMediaType(r.URL.Query().Get("homeView")) != "" {
+		h.getHomeView(w, r)
+		return
+	}
+	h.get(w, r)
+}
+
+func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.requireUser(w, r)
 	if !ok {
 		return
@@ -168,7 +177,7 @@ func (h *DisplayListHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	case "mdblist", "mdblist-url", "mdblist-shelf", "seasonal":
 		if shelfID, ok := watchTMDBShelfID(r.URL.Query().Get("url")); ok {
-			overrides, found := h.watchTMDBShelfOverrides(userID, shelfID)
+			overrides, found := h.watchTMDBShelfOverrides(userID, shelfID, r.URL.Query().Get("homeView"))
 			if !found {
 				http.Error(w, "TMDB shelf is unavailable", http.StatusNotFound)
 				return
@@ -432,40 +441,42 @@ func watchTMDBShelfID(listURL string) (string, bool) {
 	return shelfID, shelfID != ""
 }
 
-func (h *DisplayListHandler) watchTMDBShelfOverrides(userID, shelfID string) (map[string]string, bool) {
+func (h *DisplayListHandler) watchTMDBShelfOverrides(userID, shelfID string, views ...string) (map[string]string, bool) {
 	if h.MetadataHandler == nil {
 		return nil, false
 	}
-	if h.MetadataHandler.UserSettings != nil {
-		if settings, err := h.MetadataHandler.UserSettings.Get(userID); err == nil && settings != nil {
-			for i := range settings.HomeShelves.Shelves {
-				shelf := settings.HomeShelves.Shelves[i]
-				if shelf.ID == shelfID && strings.EqualFold(strings.TrimSpace(shelf.Type), "tmdb") {
-					return tmdbShelfQueryOverrides(
-						shelf.TMDBSourceType,
-						shelf.TMDBSourceID,
-						shelf.TMDBMediaType,
-						shelf.Sort,
-						shelf.TMDBDiscoverQuery,
-					), true
-				}
-			}
-		}
+	view := ""
+	if len(views) > 0 {
+		view = views[0]
 	}
+	home := models.HomeShelvesSettings{}
 	if h.MetadataHandler.CfgManager != nil {
 		if settings, err := h.MetadataHandler.CfgManager.Load(); err == nil {
-			for i := range settings.HomeShelves.Shelves {
-				shelf := settings.HomeShelves.Shelves[i]
-				if shelf.ID == shelfID && strings.EqualFold(strings.TrimSpace(shelf.Type), "tmdb") {
-					return tmdbShelfQueryOverrides(
-						shelf.TMDBSourceType,
-						shelf.TMDBSourceID,
-						shelf.TMDBMediaType,
-						shelf.Sort,
-						shelf.TMDBDiscoverQuery,
-					), true
+			home.Shelves = convertShelves(settings.HomeShelves.Shelves)
+			home.Views = settings.HomeShelves.Views
+		}
+	}
+	if h.MetadataHandler.UserSettings != nil {
+		if settings, err := h.MetadataHandler.UserSettings.Get(userID); err == nil && settings != nil {
+			// Prefer profile definitions; retain global sources not overridden by ID.
+			ids := map[string]bool{}
+			shelves := append([]models.ShelfConfig(nil), settings.HomeShelves.Shelves...)
+			for _, shelf := range shelves {
+				ids[shelf.ID] = true
+			}
+			for _, shelf := range home.Shelves {
+				if !ids[shelf.ID] {
+					shelves = append(shelves, shelf)
 				}
 			}
+			home.Shelves = shelves
+			home.Views = config.MergeHomeViews(home.Views, settings.HomeShelves.Views)
+		}
+	}
+	home = models.ResolveHomeView(home, view)
+	for _, shelf := range home.Shelves {
+		if shelf.ID == shelfID && strings.EqualFold(strings.TrimSpace(shelf.Type), "tmdb") {
+			return tmdbShelfQueryOverrides(shelf.TMDBSourceType, shelf.TMDBSourceID, shelf.TMDBMediaType, shelf.Sort, shelf.TMDBDiscoverQuery), true
 		}
 	}
 	return nil, false

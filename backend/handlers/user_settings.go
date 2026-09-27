@@ -296,6 +296,7 @@ func (h *UserSettingsHandler) getDefaultsFromGlobal() models.UserSettings {
 			MaxResultsPerResolution:    models.IntPtr(globalSettings.Playback.MaxResultsPerResolution),
 		},
 		HomeShelves: models.HomeShelvesSettings{
+			Views:                           globalSettings.HomeShelves.Views,
 			Shelves:                         shelves,
 			ExploreCardPosition:             string(globalSettings.HomeShelves.ExploreCardPosition),
 			ItemCap:                         globalSettings.HomeShelves.ItemCap,

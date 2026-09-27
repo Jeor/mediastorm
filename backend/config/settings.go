@@ -849,11 +849,12 @@ const (
 
 // HomeShelvesSettings controls which shelves appear on the home screen and their order.
 type HomeShelvesSettings struct {
-	Shelves                     []ShelfConfig       `json:"shelves"`
-	ExploreCardPosition         ExploreCardPosition `json:"exploreCardPosition,omitempty"`         // "front" or "end" (default)
-	ItemCap                     int                 `json:"itemCap,omitempty"`                     // Max items shown per home shelf before Explore card (default 20)
-	ExcludeUpcomingFromContinue bool                `json:"excludeUpcomingFromContinue,omitempty"` // Move unreleased next-up episodes out of Continue Watching
-	HomeShelfFocusModel         string              `json:"homeShelfFocusModel,omitempty"`         // "left" (default), "center", or "right"
+	Views                       map[string]HomeViewSettings `json:"views,omitempty"`
+	Shelves                     []ShelfConfig               `json:"shelves"`
+	ExploreCardPosition         ExploreCardPosition         `json:"exploreCardPosition,omitempty"`         // "front" or "end" (default)
+	ItemCap                     int                         `json:"itemCap,omitempty"`                     // Max items shown per home shelf before Explore card (default 20)
+	ExcludeUpcomingFromContinue bool                        `json:"excludeUpcomingFromContinue,omitempty"` // Move unreleased next-up episodes out of Continue Watching
+	HomeShelfFocusModel         string                      `json:"homeShelfFocusModel,omitempty"`         // "left" (default), "center", or "right"
 	// PopularOnServerWindowDays is the lookback window in days for the
 	// "Popular on This Server" shelf.
 	// Valid range: 7-365. Default 90.

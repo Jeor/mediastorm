@@ -2554,6 +2554,15 @@ func selectTopTenResponseItems(items []models.TrendingItem, mediaType string) []
 		if title.TMDBID <= 0 && title.TVDBID <= 0 && strings.TrimSpace(title.IMDBID) == "" {
 			continue
 		}
+		if mediaType != "" && mediaType != "all" {
+			view := "shows"
+			if mediaType == "movie" {
+				view = "movies"
+			}
+			if !matchesHomeView(title.MediaType, view) {
+				continue
+			}
+		}
 		eligible = append(eligible, item)
 	}
 	items = eligible

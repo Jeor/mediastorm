@@ -133,3 +133,53 @@ func TestDisplayListCustomListRequiresListID(t *testing.T) {
 		t.Fatalf("expected status 400, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestDisplayListHomeViewFiltersBeforePagination(t *testing.T) {
+	dir := t.TempDir()
+	wl, err := watchlist.NewService(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom, err := customlists.NewService(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	userSvc, err := users.NewService(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID := userSvc.ListAll()[0].ID
+	for _, item := range []models.WatchlistUpsert{
+		{ID: "m1", MediaType: "movie", Name: "A"}, {ID: "s1", MediaType: "series", Name: "B"},
+		{ID: "m2", MediaType: "movie", Name: "C"}, {ID: "s2", MediaType: "series", Name: "D"},
+		{ID: "m3", MediaType: "movie", Name: "E"},
+	} {
+		if _, err := wl.AddOrUpdate(userID, item); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := handlers.NewDisplayListHandler(wl, custom, userSvc)
+	for _, view := range []string{"movies", "shows"} {
+		req := httptest.NewRequest(http.MethodGet, "/display-list?source=watchlist&homeView="+view+"&limit=1&offset=1", nil)
+		req = mux.SetURLVars(req, map[string]string{"userID": userID})
+		rec := httptest.NewRecorder()
+		h.Get(rec, req)
+		if rec.Code != 200 {
+			t.Fatalf("%s: %d %s", view, rec.Code, rec.Body.String())
+		}
+		var got struct {
+			Items []models.WatchlistItem `json:"items"`
+			Total int                    `json:"total"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		total, kind := 3, "movie"
+		if view == "shows" {
+			total, kind = 2, "series"
+		}
+		if got.Total != total || len(got.Items) != 1 || got.Items[0].MediaType != kind {
+			t.Fatalf("%s: %+v", view, got)
+		}
+	}
+}

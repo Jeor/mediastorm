@@ -2606,6 +2606,7 @@
 
 {{define "scripts"}}
 {{if not .NoProfiles}}
+<script src="{{.ServerBasePath}}/api/static/admin-home-views-v1.js?v={{.BuildID}}-1"></script>
 <script>
     let currentSettings = {{json .Settings}};
     let schema = {{json .Schema}};
@@ -9580,11 +9581,12 @@
 
         shelves = ensureBuiltInHomeShelfConfig(shelves);
 
-        if (!shelves.length) return '<p class="form-hint">No shelves configured.</p>';
+        if (editingHomeView !== 'all') shelves = effectiveHomeView().shelves;
+        const viewControls = renderHomeViewControls();
 
         // Build inheritance badge for section
         let inheritanceBadgeHtml = '';
-        if (selectedUserId) {
+        if (selectedUserId && editingHomeView === 'all') {
             if (isInherited) {
                 inheritanceBadgeHtml = '<span class="inheritance-badge inherited" title="Using global default" style="margin-left:8px;font-size:11px;padding:2px 8px;background:rgba(100,100,100,0.3);border-radius:4px;color:#aaa;">From Global</span>';
             } else {
@@ -9993,7 +9995,7 @@
             ? ' shelves-layout-debug'
             : '';
 
-        return styles+
+        return styles+viewControls+
             '<div class="shelves-wrapper'+inheritedClass+layoutDebugClass+'">'+
             '<div style="display:flex;align-items:center;margin-bottom:8px;"><p class="form-hint" style="margin:0;">Drag to reorder. Toggle to show/hide shelves on the home screen.</p>'+inheritanceBadgeHtml+'</div>'+
             '<div class="shelves-container" id="shelvesContainer">'+rows+'</div>'+
@@ -10037,15 +10039,7 @@
 
     // Toggle shelf enabled state
     function toggleShelfEnabled(shelfId, enabled) {
-        const isPerUserSection = perUserSections.includes('homeShelves.shelves');
-        let shelves;
-        if (selectedUserId && userSettings && isPerUserSection) {
-            // Ensure profile has its own shelves before editing
-            ensureProfileShelves();
-            shelves = userSettings.homeShelves?.shelves || [];
-        } else {
-            shelves = currentSettings.homeShelves?.shelves || [];
-        }
+        const shelves = getEditableHomeShelves();
 
         const shelf = shelves.find(s => s.id === shelfId);
         if (shelf) {
@@ -11060,16 +11054,7 @@
         const limit = parseInt(limitInput?.value || '0', 10) || 0;
         const hideUnreleased = hideUnreleasedInput?.checked || false;
 
-        const isPerUserSection = perUserSections.includes('homeShelves.shelves');
-        let shelves;
-        if (selectedUserId && userSettings && isPerUserSection) {
-            ensureProfileShelves();
-            shelves = userSettings.homeShelves.shelves;
-        } else {
-            if (!currentSettings.homeShelves) currentSettings.homeShelves = {};
-            if (!currentSettings.homeShelves.shelves) currentSettings.homeShelves.shelves = [];
-            shelves = currentSettings.homeShelves.shelves;
-        }
+        const shelves = getEditableHomeShelves();
 
         const builtInActivityShelves = {
             'popular-on-server': 'Popular on This Server',
@@ -11519,15 +11504,7 @@
 
     // Delete custom shelf
     function deleteCustomShelf(shelfId) {
-        const isPerUserSection = perUserSections.includes('homeShelves.shelves');
-        let shelves;
-        if (selectedUserId && userSettings && isPerUserSection) {
-            // Ensure profile has its own shelves before deleting
-            ensureProfileShelves();
-            shelves = userSettings.homeShelves?.shelves || [];
-        } else {
-            shelves = currentSettings.homeShelves?.shelves || [];
-        }
+        const shelves = getEditableHomeShelves();
 
         const index = shelves.findIndex(s => s.id === shelfId);
         if (index !== -1) {
@@ -11554,6 +11531,7 @@
     }
 
     function getEditableHomeShelves() {
+        if (editingHomeView !== 'all') return editableAlternateHomeView().shelves;
         const isPerUserSection = perUserSections.includes('homeShelves.shelves');
         if (selectedUserId && userSettings && isPerUserSection) {
             ensureProfileShelves();
@@ -12198,14 +12176,7 @@
 
     // Edit custom/configurable shelf.
     function editCustomShelf(shelfId) {
-        const isPerUserSection = perUserSections.includes('homeShelves.shelves');
-        let shelves;
-        if (selectedUserId && userSettings && isPerUserSection) {
-            ensureProfileShelves();
-            shelves = ensureBuiltInHomeShelfConfig(userSettings.homeShelves?.shelves || []);
-        } else {
-            shelves = ensureBuiltInHomeShelfConfig(currentSettings.homeShelves?.shelves || []);
-        }
+        const shelves = getEditableHomeShelves();
 
         const shelf = shelves.find(s => s.id === shelfId);
         if (!shelf) return;
@@ -12547,14 +12518,7 @@
         const limit = parseInt(limitInput?.value || '0', 10) || 0;
         const hideUnreleased = hideUnreleasedInput?.checked || false;
 
-        const isPerUserSection = perUserSections.includes('homeShelves.shelves');
-        let shelves;
-        if (selectedUserId && userSettings && isPerUserSection) {
-            ensureProfileShelves();
-            shelves = ensureBuiltInHomeShelfConfig(userSettings.homeShelves?.shelves || []);
-        } else {
-            shelves = ensureBuiltInHomeShelfConfig(currentSettings.homeShelves?.shelves || []);
-        }
+        const shelves = getEditableHomeShelves();
 
         const shelf = shelves.find(s => s.id === shelfId);
         if (!shelf) return;
@@ -13466,15 +13430,7 @@
     }
 
     function reorderShelves(fromIndex, toIndex) {
-        const isPerUserSection = perUserSections.includes('homeShelves.shelves');
-        let shelves;
-        if (selectedUserId && userSettings && isPerUserSection) {
-            // Ensure profile has its own shelves before reordering
-            ensureProfileShelves();
-            shelves = userSettings.homeShelves?.shelves || [];
-        } else {
-            shelves = currentSettings.homeShelves?.shelves || [];
-        }
+        const shelves = getEditableHomeShelves();
 
         // Only visible shelf rows participate in drag ordering. Hidden
         // experimental shelves keep their slot in the complete sequence.

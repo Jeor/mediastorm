@@ -222,6 +222,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			},
 		},
 		HomeShelves: models.HomeShelvesSettings{
+			Views:                           g.HomeShelves.Views,
 			Shelves:                         configShelvesToModel(g.HomeShelves.Shelves),
 			ExploreCardPosition:             string(g.HomeShelves.ExploreCardPosition),
 			ItemCap:                         g.HomeShelves.ItemCap,
@@ -613,6 +614,7 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 
 	// HomeShelves
+	eff.HomeShelves.Views = config.MergeHomeViews(g.HomeShelves.Views, eff.HomeShelves.Views)
 	if len(eff.HomeShelves.Shelves) == 0 {
 		eff.HomeShelves.Shelves = configShelvesToModel(g.HomeShelves.Shelves)
 	} else {

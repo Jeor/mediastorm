@@ -186,6 +186,7 @@ func (h *StartupHandler) GetHomeManifest(w http.ResponseWriter, r *http.Request)
 	resp := HomeManifestResponse{GeneratedAt: time.Now().UTC()}
 	defaults := h.getDefaultsFromGlobal()
 	settings, err := h.userSettings.GetWithDefaults(userID, defaults)
+	settings.HomeShelves = models.ResolveHomeView(settings.HomeShelves, r.URL.Query().Get("homeView"))
 	if err != nil {
 		log.Printf("[home-manifest] user settings error for %s: %v", userID, err)
 	} else {
@@ -264,6 +265,7 @@ func (h *StartupHandler) GetStartup(w http.ResponseWriter, r *http.Request) {
 	resp := StartupResponse{}
 	defaults := h.getDefaultsFromGlobal()
 	settings, err := h.userSettings.GetWithDefaults(userID, defaults)
+	settings.HomeShelves = models.ResolveHomeView(settings.HomeShelves, r.URL.Query().Get("homeView"))
 	if err != nil {
 		log.Printf("[startup] user settings error for %s: %v", userID, err)
 	} else {
@@ -967,6 +969,9 @@ func buildStartupHomeShelvesWithHandler(ctx context.Context, sourceReq *http.Req
 		if !ok {
 			continue
 		}
+		if view := sourceReq.URL.Query().Get("homeView"); homeViewMediaType(view) != "" {
+			query.Set("homeView", view)
+		}
 		pending[shelf.ID] = true
 		go func(id string, query url.Values) {
 			select {
@@ -1562,6 +1567,7 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			MaxResultsPerResolution:       models.IntPtr(globalSettings.Playback.MaxResultsPerResolution),
 		},
 		HomeShelves: models.HomeShelvesSettings{
+			Views:                           globalSettings.HomeShelves.Views,
 			Shelves:                         shelves,
 			ExploreCardPosition:             string(globalSettings.HomeShelves.ExploreCardPosition),
 			ItemCap:                         globalSettings.HomeShelves.ItemCap,

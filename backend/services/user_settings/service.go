@@ -457,6 +457,7 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Display.Appearance.ReduceOverlays == nil {
 			settings.Display.Appearance.ReduceOverlays = defaults.Display.Appearance.ReduceOverlays
 		}
+		settings.HomeShelves.Views = config.MergeHomeViews(defaults.HomeShelves.Views, settings.HomeShelves.Views)
 		settings.HomeShelves.Shelves = mergeShelvesWithDefaults(settings.HomeShelves.Shelves, defaults.HomeShelves.Shelves)
 		if settings.HomeShelves.ExploreCardPosition == "" {
 			settings.HomeShelves.ExploreCardPosition = string(defaults.HomeShelves.ExploreCardPosition)
@@ -796,6 +797,7 @@ func isSettingsEmpty(s models.UserSettings) bool {
 		s.HomeShelves.DisableTvLandscapeCardExpansion != nil ||
 		s.HomeShelves.HomeShelfScale != nil ||
 		s.HomeShelves.HomeHeroScale != nil ||
+		len(s.HomeShelves.Views) > 0 ||
 		s.HomeShelves.ExcludeUpcomingFromContinue != nil {
 		return false
 	}

@@ -1,0 +1,1633 @@
+{
+  "header": {
+    "id": "401857566",
+    "uid": "s:20~l:37~e:401857566",
+    "season": {
+      "year": 2026,
+      "current": true,
+      "type": 3
+    },
+    "timeValid": true,
+    "competitions": [
+      {
+        "id": "401857566",
+        "uid": "s:20~l:37~e:401857566~c:401857566",
+        "date": "2026-06-13T19:00Z",
+        "dateValid": true,
+        "neutralSite": true,
+        "conferenceCompetition": false,
+        "boxscoreAvailable": true,
+        "commentaryAvailable": false,
+        "liveAvailable": false,
+        "onWatchESPN": true,
+        "recent": false,
+        "wallclockAvailable": false,
+        "boxscoreSource": "full",
+        "playByPlaySource": "none",
+        "competitors": [
+          {
+            "id": "132262",
+            "uid": "s:20~l:37~t:132262",
+            "order": 0,
+            "homeAway": "home",
+            "winner": true,
+            "team": {
+              "id": "132262",
+              "guid": "579753f1-3af1-30e3-ab27-6555ceb4cc76",
+              "uid": "s:20~l:37~t:132262",
+              "location": "Louisville",
+              "name": "Kings",
+              "abbreviation": "LOU",
+              "displayName": "Louisville Kings",
+              "color": "06190a",
+              "alternateColor": "97d700",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/lou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/lou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:27Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/scoreboard/lou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard"
+                  ],
+                  "lastUpdated": "2026-03-06T19:27Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/lou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/579753f1-3af1-30e3-ab27-6555ceb4cc76/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                }
+              ],
+              "links": []
+            },
+            "score": "27",
+            "linescores": [
+              {
+                "displayValue": "0"
+              },
+              {
+                "displayValue": "7"
+              },
+              {
+                "displayValue": "6"
+              },
+              {
+                "displayValue": "14"
+              }
+            ],
+            "record": [
+              {
+                "type": "total",
+                "summary": "6-4",
+                "displayValue": "6-4"
+              }
+            ],
+            "possession": false
+          },
+          {
+            "id": "112646",
+            "uid": "s:20~l:37~t:112646",
+            "order": 1,
+            "homeAway": "away",
+            "winner": false,
+            "team": {
+              "id": "112646",
+              "guid": "48f48fbd-8277-3d4f-898a-34d05d873124",
+              "uid": "s:20~l:37~t:112646",
+              "location": "DC",
+              "name": "Defenders",
+              "abbreviation": "DC",
+              "displayName": "DC Defenders",
+              "color": "c8102e",
+              "alternateColor": "ffffff",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/dc.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/dc.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:27Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/scoreboard/dc.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard"
+                  ],
+                  "lastUpdated": "2026-03-06T19:27Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/dc.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/48f48fbd-8277-3d4f-898a-34d05d873124/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:38Z"
+                }
+              ],
+              "links": []
+            },
+            "score": "20",
+            "linescores": [
+              {
+                "displayValue": "3"
+              },
+              {
+                "displayValue": "13"
+              },
+              {
+                "displayValue": "0"
+              },
+              {
+                "displayValue": "4"
+              }
+            ],
+            "record": [
+              {
+                "type": "total",
+                "summary": "5-5",
+                "displayValue": "5-5"
+              }
+            ],
+            "possession": false
+          }
+        ],
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          }
+        },
+        "broadcasts": [
+          {
+            "type": {
+              "id": "1",
+              "shortName": "TV"
+            },
+            "market": {
+              "id": "1",
+              "type": "National"
+            },
+            "media": {
+              "shortName": "ABC"
+            },
+            "lang": "en",
+            "region": "us",
+            "isNational": true
+          }
+        ],
+        "boxscoreMinutes": true
+      }
+    ],
+    "week": 2,
+    "league": {
+      "id": "37",
+      "uid": "s:20~l:37",
+      "name": "United Football League",
+      "abbreviation": "UFL",
+      "slug": "ufl",
+      "isTournament": false,
+      "links": [
+        {
+          "rel": [
+            "index",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/ufl/",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "index",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:37",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "standings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/ufl/standings",
+          "text": "Standings"
+        },
+        {
+          "rel": [
+            "standings",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:37&section=standings",
+          "text": "Standings"
+        },
+        {
+          "rel": [
+            "rankings",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:37&section=rankings",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "scores",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/ufl/scoreboard",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "scores",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:37&section=scores",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "stats",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:37&section=stats",
+          "text": "Stats"
+        }
+      ],
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/ufl.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        },
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/ufl.png",
+          "rel": [
+            "full",
+            "dark"
+          ]
+        }
+      ]
+    },
+    "gameNote": "United Bowl"
+  },
+  "gameInfo": {
+    "venue": {
+      "id": "6274",
+      "guid": "aacedd43-a5b1-3469-8295-b56343d25a47",
+      "fullName": "Audi Field",
+      "address": {
+        "city": "Washington",
+        "state": "DC",
+        "zipCode": "20024",
+        "country": "USA"
+      },
+      "grass": true
+    },
+    "attendance": 0
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "112646",
+          "uid": "s:20~l:37~t:112646",
+          "slug": "dc-defenders",
+          "location": "DC",
+          "name": "Defenders",
+          "abbreviation": "DC",
+          "displayName": "DC Defenders",
+          "shortDisplayName": "Defenders",
+          "color": "c8102e",
+          "alternateColor": "ffffff",
+          "logo": "https://a.espncdn.com/i/teamlogos/ufl/500/dc.png"
+        },
+        "statistics": [],
+        "displayOrder": 1,
+        "homeAway": "away"
+      },
+      {
+        "team": {
+          "id": "132262",
+          "uid": "s:20~l:37~t:132262",
+          "slug": "louisville-kings",
+          "location": "Louisville",
+          "name": "Kings",
+          "abbreviation": "LOU",
+          "displayName": "Louisville Kings",
+          "shortDisplayName": "Kings",
+          "color": "06190a",
+          "alternateColor": "97d700",
+          "logo": "https://a.espncdn.com/i/teamlogos/ufl/500/lou.png"
+        },
+        "statistics": [],
+        "displayOrder": 2,
+        "homeAway": "home"
+      }
+    ],
+    "players": [
+      {
+        "team": {
+          "id": "112646",
+          "uid": "s:20~l:37~t:112646",
+          "slug": "dc-defenders",
+          "location": "DC",
+          "name": "Defenders",
+          "abbreviation": "DC",
+          "displayName": "DC Defenders",
+          "shortDisplayName": "Defenders",
+          "color": "c8102e",
+          "alternateColor": "ffffff",
+          "logo": "https://a.espncdn.com/i/teamlogos/ufl/500/dc.png"
+        },
+        "statistics": [
+          {
+            "name": "passing",
+            "keys": [
+              "completions/passingAttempts",
+              "passingYards",
+              "yardsPerPassAttempt",
+              "passingTouchdowns",
+              "interceptions",
+              "adjQBR"
+            ],
+            "text": "DC Passing",
+            "labels": [
+              "C/ATT",
+              "YDS",
+              "AVG",
+              "TD",
+              "INT"
+            ],
+            "descriptions": [
+              "Completions/Attempts",
+              "Yards",
+              "Yards Per Pass Attempt",
+              "Touchdowns",
+              "Interceptions"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "rushing",
+            "keys": [
+              "rushingAttempts",
+              "rushingYards",
+              "yardsPerRushAttempt",
+              "rushingTouchdowns",
+              "longRushing"
+            ],
+            "text": "DC Rushing",
+            "labels": [
+              "CAR",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG"
+            ],
+            "descriptions": [
+              "Rushing Attempts",
+              "Yards",
+              "Yards Per Rushing Attempt",
+              "Touchdowns",
+              "Longest Run"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "receiving",
+            "keys": [
+              "receptions",
+              "receivingYards",
+              "yardsPerReception",
+              "receivingTouchdowns",
+              "longReception",
+              "receivingTargets"
+            ],
+            "text": "DC Receiving",
+            "labels": [
+              "REC",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG",
+              "TGTS"
+            ],
+            "descriptions": [
+              "Receptions",
+              "Yards",
+              "Yards Per Reception",
+              "Touchdowns",
+              "Longest Reception",
+              "Receiving Targets"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "fumbles",
+            "keys": [
+              "fumbles",
+              "fumblesLost",
+              "fumblesRecovered"
+            ],
+            "text": "DC Fumbles",
+            "labels": [
+              "FUM",
+              "LOST",
+              "REC"
+            ],
+            "descriptions": [
+              "Fumbles",
+              "Fumbles Lost",
+              "Fumbles Recovered"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "defensive",
+            "keys": [
+              "totalTackles",
+              "soloTackles",
+              "sacks",
+              "tacklesForLoss",
+              "passesDefended",
+              "hurries",
+              "defensiveTouchdowns"
+            ],
+            "text": "DC Defense",
+            "labels": [
+              "TOT",
+              "SOLO",
+              "SACKS",
+              "TFL",
+              "PD",
+              "QB HUR",
+              "TD"
+            ],
+            "descriptions": [
+              "Tackles",
+              "Solo Tackles",
+              "Sacks",
+              "Tackles For Loss",
+              "Passes Defended",
+              "Quarterback Hurries",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "interceptions",
+            "keys": [
+              "interceptions",
+              "interceptionYards",
+              "interceptionTouchdowns"
+            ],
+            "text": "DC Interceptions",
+            "labels": [
+              "INT",
+              "YDS",
+              "TD"
+            ],
+            "descriptions": [
+              "Interceptions",
+              "Yards",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "kickReturns",
+            "keys": [
+              "kickReturns",
+              "kickReturnYards",
+              "yardsPerKickReturn",
+              "longKickReturn",
+              "kickReturnTouchdowns"
+            ],
+            "text": "DC Kick Returns",
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Kick Returns",
+              "Yards",
+              "Yards Per Kick Return",
+              "Longest Kick Return",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "puntReturns",
+            "keys": [
+              "puntReturns",
+              "puntReturnYards",
+              "yardsPerPuntReturn",
+              "longPuntReturn",
+              "puntReturnTouchdowns"
+            ],
+            "text": "DC Punt Returns",
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Punt Returns",
+              "Yards",
+              "Yards Per Punt Return",
+              "Longest Punt Return",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "kicking",
+            "keys": [
+              "fieldGoalsMade/fieldGoalAttempts",
+              "fieldGoalPct",
+              "longFieldGoalMade",
+              "extraPointsMade/extraPointAttempts",
+              "totalKickingPoints"
+            ],
+            "text": "DC Kicking",
+            "labels": [
+              "FG",
+              "PCT",
+              "LONG",
+              "XP",
+              "PTS"
+            ],
+            "descriptions": [
+              "Field Goals Made/Attempts",
+              "Field Goal Percentage",
+              "Longest Field Goal Made",
+              "Extra Points Made/Attempts",
+              "Kicking Points"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "punting",
+            "keys": [
+              "punts",
+              "puntYards",
+              "grossAvgPuntYards",
+              "touchbacks",
+              "puntsInside20",
+              "longPunt"
+            ],
+            "text": "DC Punting",
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "TB",
+              "In 20",
+              "LONG"
+            ],
+            "descriptions": [
+              "Punts",
+              "Yards",
+              "Average Punt Yards",
+              "Touchbacks",
+              "Punts Inside 20",
+              "Longest Punt"
+            ],
+            "athletes": [],
+            "totals": []
+          }
+        ],
+        "displayOrder": 1
+      },
+      {
+        "team": {
+          "id": "132262",
+          "uid": "s:20~l:37~t:132262",
+          "slug": "louisville-kings",
+          "location": "Louisville",
+          "name": "Kings",
+          "abbreviation": "LOU",
+          "displayName": "Louisville Kings",
+          "shortDisplayName": "Kings",
+          "color": "06190a",
+          "alternateColor": "97d700",
+          "logo": "https://a.espncdn.com/i/teamlogos/ufl/500/lou.png"
+        },
+        "statistics": [
+          {
+            "name": "passing",
+            "keys": [
+              "completions/passingAttempts",
+              "passingYards",
+              "yardsPerPassAttempt",
+              "passingTouchdowns",
+              "interceptions",
+              "adjQBR"
+            ],
+            "text": "Louisville Passing",
+            "labels": [
+              "C/ATT",
+              "YDS",
+              "AVG",
+              "TD",
+              "INT"
+            ],
+            "descriptions": [
+              "Completions/Attempts",
+              "Yards",
+              "Yards Per Pass Attempt",
+              "Touchdowns",
+              "Interceptions"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "rushing",
+            "keys": [
+              "rushingAttempts",
+              "rushingYards",
+              "yardsPerRushAttempt",
+              "rushingTouchdowns",
+              "longRushing"
+            ],
+            "text": "Louisville Rushing",
+            "labels": [
+              "CAR",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG"
+            ],
+            "descriptions": [
+              "Rushing Attempts",
+              "Yards",
+              "Yards Per Rushing Attempt",
+              "Touchdowns",
+              "Longest Run"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "receiving",
+            "keys": [
+              "receptions",
+              "receivingYards",
+              "yardsPerReception",
+              "receivingTouchdowns",
+              "longReception",
+              "receivingTargets"
+            ],
+            "text": "Louisville Receiving",
+            "labels": [
+              "REC",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG",
+              "TGTS"
+            ],
+            "descriptions": [
+              "Receptions",
+              "Yards",
+              "Yards Per Reception",
+              "Touchdowns",
+              "Longest Reception",
+              "Receiving Targets"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "fumbles",
+            "keys": [
+              "fumbles",
+              "fumblesLost",
+              "fumblesRecovered"
+            ],
+            "text": "Louisville Fumbles",
+            "labels": [
+              "FUM",
+              "LOST",
+              "REC"
+            ],
+            "descriptions": [
+              "Fumbles",
+              "Fumbles Lost",
+              "Fumbles Recovered"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "defensive",
+            "keys": [
+              "totalTackles",
+              "soloTackles",
+              "sacks",
+              "tacklesForLoss",
+              "passesDefended",
+              "hurries",
+              "defensiveTouchdowns"
+            ],
+            "text": "Louisville Defense",
+            "labels": [
+              "TOT",
+              "SOLO",
+              "SACKS",
+              "TFL",
+              "PD",
+              "QB HUR",
+              "TD"
+            ],
+            "descriptions": [
+              "Tackles",
+              "Solo Tackles",
+              "Sacks",
+              "Tackles For Loss",
+              "Passes Defended",
+              "Quarterback Hurries",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "interceptions",
+            "keys": [
+              "interceptions",
+              "interceptionYards",
+              "interceptionTouchdowns"
+            ],
+            "text": "Louisville Interceptions",
+            "labels": [
+              "INT",
+              "YDS",
+              "TD"
+            ],
+            "descriptions": [
+              "Interceptions",
+              "Yards",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "kickReturns",
+            "keys": [
+              "kickReturns",
+              "kickReturnYards",
+              "yardsPerKickReturn",
+              "longKickReturn",
+              "kickReturnTouchdowns"
+            ],
+            "text": "Louisville Kick Returns",
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Kick Returns",
+              "Yards",
+              "Yards Per Kick Return",
+              "Longest Kick Return",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "puntReturns",
+            "keys": [
+              "puntReturns",
+              "puntReturnYards",
+              "yardsPerPuntReturn",
+              "longPuntReturn",
+              "puntReturnTouchdowns"
+            ],
+            "text": "Louisville Punt Returns",
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Punt Returns",
+              "Yards",
+              "Yards Per Punt Return",
+              "Longest Punt Return",
+              "Touchdowns"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "kicking",
+            "keys": [
+              "fieldGoalsMade/fieldGoalAttempts",
+              "fieldGoalPct",
+              "longFieldGoalMade",
+              "extraPointsMade/extraPointAttempts",
+              "totalKickingPoints"
+            ],
+            "text": "Louisville Kicking",
+            "labels": [
+              "FG",
+              "PCT",
+              "LONG",
+              "XP",
+              "PTS"
+            ],
+            "descriptions": [
+              "Field Goals Made/Attempts",
+              "Field Goal Percentage",
+              "Longest Field Goal Made",
+              "Extra Points Made/Attempts",
+              "Kicking Points"
+            ],
+            "athletes": [],
+            "totals": []
+          },
+          {
+            "name": "punting",
+            "keys": [
+              "punts",
+              "puntYards",
+              "grossAvgPuntYards",
+              "touchbacks",
+              "puntsInside20",
+              "longPunt"
+            ],
+            "text": "Louisville Punting",
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "TB",
+              "In 20",
+              "LONG"
+            ],
+            "descriptions": [
+              "Punts",
+              "Yards",
+              "Average Punt Yards",
+              "Touchbacks",
+              "Punts Inside 20",
+              "Longest Punt"
+            ],
+            "athletes": [],
+            "totals": []
+          }
+        ],
+        "displayOrder": 2
+      }
+    ]
+  },
+  "leaders": [
+    {
+      "team": {
+        "id": "132262",
+        "uid": "s:20~l:37~t:132262",
+        "displayName": "Louisville Kings",
+        "abbreviation": "LOU",
+        "logo": "https://a.espncdn.com/i/teamlogos/ufl/500/lou.png",
+        "logos": [
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500/lou.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "default"
+            ],
+            "lastUpdated": "2026-03-06T19:26Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/lou.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "dark"
+            ],
+            "lastUpdated": "2026-03-06T19:27Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500/scoreboard/lou.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "scoreboard"
+            ],
+            "lastUpdated": "2026-03-06T19:27Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/lou.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "scoreboard",
+              "dark"
+            ],
+            "lastUpdated": "2026-03-06T19:28Z"
+          }
+        ]
+      },
+      "leaders": []
+    },
+    {
+      "team": {
+        "id": "112646",
+        "uid": "s:20~l:37~t:112646",
+        "displayName": "DC Defenders",
+        "abbreviation": "DC",
+        "logo": "https://a.espncdn.com/i/teamlogos/ufl/500/dc.png",
+        "logos": [
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500/dc.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "default"
+            ],
+            "lastUpdated": "2026-03-06T19:26Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/dc.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "dark"
+            ],
+            "lastUpdated": "2026-03-06T19:27Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500/scoreboard/dc.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "scoreboard"
+            ],
+            "lastUpdated": "2026-03-06T19:27Z"
+          },
+          {
+            "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/dc.png",
+            "width": 500,
+            "height": 500,
+            "alt": "",
+            "rel": [
+              "full",
+              "scoreboard",
+              "dark"
+            ],
+            "lastUpdated": "2026-03-06T19:28Z"
+          }
+        ]
+      },
+      "leaders": []
+    }
+  ],
+  "standings": {
+    "fullViewLink": {
+      "text": "Full Standings",
+      "href": "https://www.espn.com/ufl/standings"
+    },
+    "header": "2026 UFL Standings",
+    "groups": [
+      {
+        "standings": {
+          "entries": [
+            {
+              "team": "Orlando",
+              "id": "132263",
+              "uid": "s:20~l:37~t:132263",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/orl.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/orl.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                }
+              ]
+            },
+            {
+              "team": "St. Louis",
+              "id": "112651",
+              "uid": "s:20~l:37~t:112651",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/stl.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/stl.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                }
+              ]
+            },
+            {
+              "team": "Louisville",
+              "id": "132262",
+              "uid": "s:20~l:37~t:132262",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/lou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/lou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                }
+              ]
+            },
+            {
+              "team": "DC",
+              "id": "112646",
+              "uid": "s:20~l:37~t:112646",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/dc.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/dc.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                }
+              ]
+            },
+            {
+              "team": "Houston",
+              "id": "126075",
+              "uid": "s:20~l:37~t:126075",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/hou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/hou.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                }
+              ]
+            },
+            {
+              "team": "Birmingham",
+              "id": "126073",
+              "uid": "s:20~l:37~t:126073",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/bham.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/bham.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:27Z"
+                }
+              ]
+            },
+            {
+              "team": "Dallas",
+              "id": "112647",
+              "uid": "s:20~l:37~t:112647",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/dal.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-27T20:50Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/dal.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-27T20:51Z"
+                }
+              ]
+            },
+            {
+              "team": "Columbus",
+              "id": "132261",
+              "uid": "s:20~l:37~t:132261",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500/clb.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-03-06T19:26Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ufl/500-dark/scoreboard/clb.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-06T19:28Z"
+                }
+              ]
+            }
+          ]
+        },
+        "header": "2026 UFL Standings",
+        "href": "https://www.espn.com/ufl/standings/_/group/1"
+      }
+    ]
+  },
+  "format": {
+    "regulation": {
+      "periods": 4,
+      "displayName": "Quarter",
+      "slug": "quarter",
+      "clock": 900.0
+    }
+  }
+}

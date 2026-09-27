@@ -1,0 +1,195 @@
+[
+  {
+    "target": "cfl-fixtures",
+    "url": "https://api.stats.cfl.ca/fixtures/2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "dict",
+    "sha256": "1a0491f93eb7b7dce83e5c0167f70906aee73d1a49536f88ab780ec069564269",
+    "items": 7,
+    "sampleKeys": [
+      "year",
+      "seasonWeeks",
+      "preseason",
+      "season",
+      "semiFinals",
+      "finals",
+      "fixturesByTeam"
+    ]
+  },
+  {
+    "target": "cfl-teams",
+    "url": "https://api.stats.cfl.ca/teams",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "2129eee8ad75999c77517852b7a72c7885ecdf835be1d29a55007b57d2fa0851",
+    "items": 9,
+    "sampleKeys": null
+  },
+  {
+    "target": "cfl-standings",
+    "url": "https://api.stats.cfl.ca/standings/2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "dict",
+    "sha256": "0e1e92fad1817073bbef94c185c0a3cb700ae4e460fd56860f5b297abfa85408",
+    "items": 1,
+    "sampleKeys": [
+      "data"
+    ]
+  },
+  {
+    "target": "motogp-seasons",
+    "url": "https://api.motogp.pulselive.com/motogp/v1/results/seasons",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "a2951a61f1a4f39193ebef322ee7f5aea0c3df76b0349a0612f19f082f98b8fc",
+    "items": 79,
+    "sampleKeys": null,
+    "currentSeason": "e88b4e43-2209-47aa-8e83-0e0b1cedde6e"
+  },
+  {
+    "target": "boxing",
+    "url": "https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=2026-09-24&l=4445",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "dict",
+    "sha256": "ac165cc3ca836b25ed26ebe6dfb1cff2f68fec04d6ac91ab21201daf29526f15",
+    "items": 1,
+    "sampleKeys": [
+      "events"
+    ]
+  },
+  {
+    "target": "racecenter.letour.fr",
+    "url": "https://racecenter.letour.fr/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "8b809b2b15db2f40602907c28354aefb8969bd7b469abd0ff9456c81e28cdbf1",
+    "items": 21,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.lavuelta.es",
+    "url": "https://racecenter.lavuelta.es/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "27210af3e8c459af22656ba84cb9c08d0d3ddde5cca037f04a708484af636cdd",
+    "items": 21,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.letourfemmes.fr",
+    "url": "https://racecenter.letourfemmes.fr/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "82ccf362c86957f46abd3859f95722150d3e4621e0893c417a1328a6d54baf1a",
+    "items": 9,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.paris-nice.fr",
+    "url": "https://racecenter.paris-nice.fr/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "4149a260bfce37ee119fe55ab6b4c059b226fc46eb3a3e7bd598a0039aadf722",
+    "items": 8,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.lavueltafemenina.es",
+    "url": "https://racecenter.lavueltafemenina.es/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "baf3fcf7fd82065576c0d3dcf164220d4e296a69c8ee6442cd7504ea1786a967",
+    "items": 7,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.paris-roubaix.fr",
+    "url": "https://racecenter.paris-roubaix.fr/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "5053ab13bec61d8db1c11e577ec07a39c35588c96ecd0a0ac0099cad486a951d",
+    "items": 1,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.paris-roubaix-femmes.fr",
+    "url": "https://racecenter.paris-roubaix-femmes.fr/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "34fe6f8d7b4384b517ba2c2bc0edb841daed1c4ea881650a0c4e129e6548d3dd",
+    "items": 1,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.liege-bastogne-liege.be",
+    "url": "https://racecenter.liege-bastogne-liege.be/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "601c738361ea2629b9bc2d259403dd6bcaf0a8be272f5279e8f7c8b8bf630b5a",
+    "items": 1,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.liege-bastogne-liege-femmes.be",
+    "url": "https://racecenter.liege-bastogne-liege-femmes.be/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "4957a006faa6efa693316d8a3596d2faa0ee6c0f7a72aa801cce1057e9a83e58",
+    "items": 1,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.la-fleche-wallonne.be",
+    "url": "https://racecenter.la-fleche-wallonne.be/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "8e27fd2a42fdfd73e4d1e09650adf4230c76935ed8c3f201247b476e68623692",
+    "items": 1,
+    "sampleKeys": null
+  },
+  {
+    "target": "racecenter.la-fleche-wallonne-femmes.be",
+    "url": "https://racecenter.la-fleche-wallonne-femmes.be/api/stage-2026",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "5291f69392ba95df1698510bb9a05ce6f18422388bec317b5d3eaaab90ef737a",
+    "items": 1,
+    "sampleKeys": null
+  },
+  {
+    "target": "motogp-categories",
+    "url": "https://api.motogp.pulselive.com/motogp/v1/results/categories?seasonUuid=e88b4e43-2209-47aa-8e83-0e0b1cedde6e",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "09b4652e3ee49874dd8461731c01731e3f29015ca963f0c5bb30454910d69244",
+    "items": 3,
+    "sampleKeys": null
+  },
+  {
+    "target": "motogp-events",
+    "url": "https://api.motogp.pulselive.com/motogp/v1/results/events?seasonUuid=e88b4e43-2209-47aa-8e83-0e0b1cedde6e",
+    "checkedAt": "2026-09-24T21:41:25.350873+00:00",
+    "httpStatus": 200,
+    "jsonType": "list",
+    "sha256": "0d5c65c81cf6b3a729cff5de609d27b5fabb81b4ada61f07f2f5d29720fd76f6",
+    "items": 29,
+    "sampleKeys": null
+  }
+]

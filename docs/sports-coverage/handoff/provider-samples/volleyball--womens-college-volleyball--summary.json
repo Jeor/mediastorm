@@ -1,0 +1,789 @@
+{
+  "header": {
+    "id": "401890102",
+    "uid": "s:400~l:402~e:401890102",
+    "season": {
+      "year": 2026,
+      "current": true,
+      "type": 2
+    },
+    "timeValid": true,
+    "competitions": [
+      {
+        "id": "401890102",
+        "uid": "s:400~l:402~e:401890102~c:401890102",
+        "date": "2026-09-24T22:00Z",
+        "neutralSite": false,
+        "conferenceCompetition": false,
+        "boxscoreAvailable": false,
+        "commentaryAvailable": false,
+        "liveAvailable": false,
+        "onWatchESPN": true,
+        "recent": true,
+        "wallclockAvailable": false,
+        "boxscoreSource": "none",
+        "playByPlaySource": "none",
+        "competitors": [
+          {
+            "id": "2116",
+            "uid": "s:400~l:402~t:2116",
+            "order": 0,
+            "homeAway": "home",
+            "team": {
+              "id": "2116",
+              "guid": "47fc76f2-66c2-32e3-a25c-6ce61598f289",
+              "uid": "s:400~l:402~t:2116",
+              "location": "UCF",
+              "name": "Knights",
+              "nickname": "UCF",
+              "abbreviation": "UCF",
+              "displayName": "UCF Knights",
+              "color": "000000",
+              "alternateColor": "b4a269",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2116.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2116.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/47fc76f2-66c2-32e3-a25c-6ce61598f289/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:45Z"
+                }
+              ],
+              "links": []
+            },
+            "record": [
+              {
+                "type": "total",
+                "summary": "8-2",
+                "displayValue": "8-2"
+              },
+              {
+                "type": "home",
+                "summary": "5-0",
+                "displayValue": "5-0"
+              }
+            ],
+            "possession": false
+          },
+          {
+            "id": "2306",
+            "uid": "s:400~l:402~t:2306",
+            "order": 1,
+            "homeAway": "away",
+            "team": {
+              "id": "2306",
+              "guid": "65c4317b-4549-3aaf-bef4-1e5986e46c78",
+              "uid": "s:400~l:402~t:2306",
+              "location": "Kansas State",
+              "name": "Wildcats",
+              "nickname": "Kansas St",
+              "abbreviation": "KSU",
+              "displayName": "Kansas State Wildcats",
+              "color": "633194",
+              "alternateColor": "e2e3e4",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2306.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2306.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/65c4317b-4549-3aaf-bef4-1e5986e46c78/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-23T17:30Z"
+                }
+              ],
+              "links": []
+            },
+            "record": [
+              {
+                "type": "total",
+                "summary": "8-0",
+                "displayValue": "8-0"
+              },
+              {
+                "type": "road",
+                "summary": "3-0",
+                "displayValue": "3-0"
+              }
+            ],
+            "possession": false
+          }
+        ],
+        "status": {
+          "type": {
+            "id": "1",
+            "name": "STATUS_SCHEDULED",
+            "state": "pre",
+            "completed": false,
+            "description": "Scheduled",
+            "detail": "Thu, September 24th at 6:00 PM EDT",
+            "shortDetail": "9/24 - 6:00 PM EDT"
+          }
+        },
+        "boxscoreMinutes": false
+      }
+    ],
+    "week": 6,
+    "league": {
+      "id": "402",
+      "uid": "s:400~l:402",
+      "name": "NCAA Women's Volleyball",
+      "abbreviation": "NCAA Women's Volleyball",
+      "shortName": "NCAA Women's Volleyball",
+      "midsizeName": "NCAA Women's Volleyball",
+      "slug": "womens-college-volleyball",
+      "isTournament": false,
+      "links": [
+        {
+          "rel": [
+            "schedule",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/scoreboard",
+          "text": "Schedule"
+        },
+        {
+          "rel": [
+            "schedule",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:400~l:402&section=scores",
+          "text": "Schedule"
+        },
+        {
+          "rel": [
+            "standings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/standings",
+          "text": "Standings"
+        },
+        {
+          "rel": [
+            "standings",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:400~l:402&section=standings",
+          "text": "Standings"
+        },
+        {
+          "rel": [
+            "rankings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/college-sports/rankings/_/pollId/89/sportId/18530000",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "rankings",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:400~l:402&section=rankings",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "scores",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/scoreboard",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "scores",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:400~l:402&section=scores",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "stats",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/statistics",
+          "text": "Stats"
+        },
+        {
+          "rel": [
+            "stats",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:400~l:402&section=stats",
+          "text": "Stats"
+        },
+        {
+          "rel": [
+            "teams",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/teams",
+          "text": "Teams"
+        },
+        {
+          "rel": [
+            "athletes",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/players",
+          "text": "Players"
+        },
+        {
+          "rel": [
+            "injuries",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/womens-college-volleyball/injuries",
+          "text": "Injuries"
+        }
+      ],
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/sports-volleyball-solid.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        }
+      ]
+    }
+  },
+  "gameInfo": {
+    "venue": {
+      "id": "2074",
+      "guid": "b9a46060-f760-3c9c-a4db-6f66321f0c6b",
+      "fullName": "The Venue at UCF",
+      "address": {
+        "city": "Orlando",
+        "state": "Florida"
+      },
+      "grass": false,
+      "images": []
+    }
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "2306",
+          "uid": "s:400~l:402~t:2306",
+          "slug": "kansas-state-wildcats",
+          "location": "Kansas State",
+          "name": "Wildcats",
+          "abbreviation": "KSU",
+          "displayName": "Kansas State Wildcats",
+          "shortDisplayName": "Kansas St",
+          "color": "633194",
+          "alternateColor": "e2e3e4",
+          "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2306.png"
+        },
+        "displayOrder": 1,
+        "homeAway": "away"
+      },
+      {
+        "team": {
+          "id": "2116",
+          "uid": "s:400~l:402~t:2116",
+          "slug": "ucf-knights",
+          "location": "UCF",
+          "name": "Knights",
+          "abbreviation": "UCF",
+          "displayName": "UCF Knights",
+          "shortDisplayName": "UCF",
+          "color": "000000",
+          "alternateColor": "b4a269",
+          "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2116.png"
+        },
+        "displayOrder": 2,
+        "homeAway": "home"
+      }
+    ]
+  },
+  "standings": {
+    "fullViewLink": {
+      "text": "Full Standings",
+      "href": "https://www.espn.com/womens-college-volleyball/standings"
+    },
+    "groups": [
+      {
+        "standings": {
+          "entries": [
+            {
+              "team": "Kansas",
+              "id": "2305",
+              "uid": "s:400~l:402~t:2305",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2305.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            },
+            {
+              "team": "Iowa State",
+              "id": "66",
+              "uid": "s:400~l:402~t:66",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/66.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            },
+            {
+              "team": "UCF",
+              "id": "2116",
+              "uid": "s:400~l:402~t:2116",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2116.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            },
+            {
+              "team": "West Virginia",
+              "id": "277",
+              "uid": "s:400~l:402~t:277",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/277.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            },
+            {
+              "team": "Texas Tech",
+              "id": "2641",
+              "uid": "s:400~l:402~t:2641",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2641.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-07-01T04:35Z"
+                }
+              ]
+            },
+            {
+              "team": "TCU",
+              "id": "2628",
+              "uid": "s:400~l:402~t:2628",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2628.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            },
+            {
+              "team": "Baylor",
+              "id": "239",
+              "uid": "s:400~l:402~t:239",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/239.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            },
+            {
+              "team": "Kansas State",
+              "id": "2306",
+              "uid": "s:400~l:402~t:2306",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/2306.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2025-12-23T01:44Z"
+                }
+              ]
+            }
+          ]
+        },
+        "header": "2026 Big 12 Conference Standings",
+        "href": "https://www.espn.com/womens-college-volleyball/standings/_/group/51"
+      }
+    ]
+  },
+  "format": {
+    "regulation": {
+      "periods": 5,
+      "displayName": "Set",
+      "slug": "set"
+    }
+  }
+}

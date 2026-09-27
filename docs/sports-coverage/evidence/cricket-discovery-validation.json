@@ -1,0 +1,25 @@
+[
+  {
+    "label": "page2",
+    "url": "https://site.api.espn.com/apis/site/v2/leagues/dropdown?region=us&lang=en&sport=cricket&page=2",
+    "status": 200,
+    "count": 500,
+    "first": "Summer Olympics Women's Cricket Competition 2028",
+    "last": "The Pacific-France Women Championship",
+    "sha256": "cec235d432aa6ffd819afc7d514787a47745bddc50c0b08dca85fe6c1de7c2a5"
+  },
+  {
+    "label": "year2026",
+    "url": "https://site.api.espn.com/apis/site/v2/leagues/dropdown?region=us&lang=en&sport=cricket&year=2026",
+    "status": 200,
+    "count": 500,
+    "first": "Summer Olympics Women's Cricket Competition 2028",
+    "last": "The Pacific-France Women Championship",
+    "sha256": "cec235d432aa6ffd819afc7d514787a47745bddc50c0b08dca85fe6c1de7c2a5"
+  },
+  {
+    "label": "selector",
+    "url": "https://stats.espncricinfo.com/sachinat20/engine/stats/index.html?class=6;filter=advanced;filter_box=season;filter_box=team;filter_box=trophy;type=team",
+    "error": "HTTP Error 403: Forbidden"
+  }
+]

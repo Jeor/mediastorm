@@ -1,0 +1,4505 @@
+{
+  "date": "20260924",
+  "results": [
+    {
+      "id": "pga",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "be1eb43090ae6b999af9d7d48d41e73d754db9404a9533ade930c9e9533f3246",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "1106",
+          "slug": "pga",
+          "name": "PGA TOUR"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "cricket-8048",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/8048/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5a1f073dc7938d12ec4eeeb752a0259522511874b8dd7daa040859ef0de3b53a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8048",
+          "slug": "8048",
+          "name": "Indian Premier League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "nfl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "56b522055041004768d0e4d468590426adb6b657c1cae92f72023388eb95bddd",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "28",
+          "slug": "nfl",
+          "name": "National Football League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "college-football",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=200&dates=20260924&groups=90",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "3214c2eb31b46711c4333c74510fc51fa8340f08f4df1df6fae22fdd2988c920",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "23",
+          "slug": "college-football",
+          "name": "NCAA - Football"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "nba",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "3f8b32ff894b51481ae0de00b489f1d0895d1b49727b9bedd6b75424ca7648a9",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "46",
+          "slug": "nba",
+          "name": "National Basketball Association"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "mens-college-basketball",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=200&dates=20260924&groups=50",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5f6101fde428152a57e16b77c67af31d2cb84bbba667a676e44b3bf1a68e641e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "41",
+          "slug": "mens-college-basketball",
+          "name": "NCAA Men's Basketball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "womens-college-basketball",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?limit=200&dates=20260924&groups=50",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ee998511f21c1340d5480f472c377a3d642f0f6191cb1c1599b9bfef47afc636",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "54",
+          "slug": "womens-college-basketball",
+          "name": "NCAA Women's Basketball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "wnba",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "abbdc897f7a79e9c61c8c645cb20e273f8e4f148055097373df09198f90e9ed2",
+      "eventCount": 5,
+      "returnedLeagues": [
+        {
+          "id": "59",
+          "slug": "wnba",
+          "name": "Women's National Basketball Association"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "mlb",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5843be2dda532b16622601efd265294cb9086e548130a633dea879ad860da12c",
+      "eventCount": 12,
+      "returnedLeagues": [
+        {
+          "id": "10",
+          "slug": "mlb",
+          "name": "Major League Baseball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "nhl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "11db9a953d7d0c135e840094c4942880ab1be8443bd39b70c5f514d13b231fbd",
+      "eventCount": 11,
+      "returnedLeagues": [
+        {
+          "id": "90",
+          "slug": "nhl",
+          "name": "National Hockey League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-fifa.world",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "48ff9e320c96792aac6350092516d90e966ee23b528a44750cad5bb4c9b94cb9",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "606",
+          "slug": "fifa.world",
+          "name": "FIFA World Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-fifa.wwc",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.wwc/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5d06adf9aa7223c901b74407062175e290814657f30b6c1e9714a41140b274d2",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "795",
+          "slug": "fifa.wwc",
+          "name": "FIFA Women's World Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-eng.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "57e18c687bf21abd795e68e9cdcd961cbeba98d5c583cc5a81e60abbeb8f544a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "700",
+          "slug": "eng.1",
+          "name": "English Premier League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-eng.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e8d80ce036708e50e5c4614f12b1cb661d73e060d825cd7748cd98d56da30ac4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3914",
+          "slug": "eng.2",
+          "name": "English League Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-esp.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a29f58f6e60408ef34e471dee1a58b6e588bcb830086aa2044020bb8edc751cf",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "740",
+          "slug": "esp.1",
+          "name": "Spanish LALIGA"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-ger.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5024345334f53ad151b1400af0ba34b0d56deb5f7d6859a5380d3639547cd788",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "720",
+          "slug": "ger.1",
+          "name": "German Bundesliga"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-ita.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ddabd80d14f5039748bb853d43ee0d391a0996464352a22f5a557f4d9fd1f3db",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "730",
+          "slug": "ita.1",
+          "name": "Italian Serie A"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-fra.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "080c474de21b3b88edb5e409b43ada4627317e7e19905d7474802bad4493c425",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "710",
+          "slug": "fra.1",
+          "name": "French Ligue 1"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-usa.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a5d74e45c06e0ac17da11dc73d297d33de6e1b3cd1d7c3b8d636057ea26a89f4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "770",
+          "slug": "usa.1",
+          "name": "MLS"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-usa.nwsl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "82a2544e9a9148946dcb34c4f4b9dfeaea33db9d93b94669653837164ff5bd3a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8301",
+          "slug": "usa.nwsl",
+          "name": "NWSL"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-usa.nwsl.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "161f94c86186a4306ffd9e65e179a881edd482d10b3d6489ed17235b0f28bcfa",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19868",
+          "slug": "usa.nwsl.cup",
+          "name": "NWSL Challenge Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-uefa.champions",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0a74e0ff565268e9bba896aa280e4e1327015cfae3f09087c2f944aa70dfe321",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "775",
+          "slug": "uefa.champions",
+          "name": "UEFA Champions League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-uefa.europa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "aed9a304d6471e0835fddd2225c56064da3518a1c80256d20392cc03bc52f390",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "776",
+          "slug": "uefa.europa",
+          "name": "UEFA Europa League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-uefa.europa.conf",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa.conf/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "129bdcddd3421cf0054c548fafe0e356c7adae8bc38a1c0e4e0c4e255d3944aa",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20296",
+          "slug": "uefa.europa.conf",
+          "name": "UEFA Conference League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-mex.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "37b4d7f2019c4d2c3ef6d7be60e503dc81e1379d5445902fa308fed2ea956e6c",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "760",
+          "slug": "mex.1",
+          "name": "Mexican Liga BBVA MX"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-ned.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "25d3b29889170daa3757cc1e58fcbb9867bf09f0558d1a85b861ca5e68860155",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "725",
+          "slug": "ned.1",
+          "name": "Dutch Eredivisie"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "soccer-por.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/por.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "33184b8b12c166f2f54d1fb9f2257e51c73842ae5a5245492b84d6d381e5e1c7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "715",
+          "slug": "por.1",
+          "name": "Portuguese Primeira Liga"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "ufc",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "bb70e7c1989c94ca0a703be65a1b8cde5bfb0e800347fd00e1eedbd651702371",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3321",
+          "slug": "ufc",
+          "name": "Ultimate Fighting Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "atp",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "db0cd7c67049e41a6239ba7bb73fc3176cc30f261e9298cfe48392b09d258716",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "851",
+          "slug": "atp",
+          "name": "ATP"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "wta",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "eeae3badbac656770ac59ada4e5844d46639a5af120ceaeeabc09178ab814430",
+      "eventCount": 5,
+      "returnedLeagues": [
+        {
+          "id": "900",
+          "slug": "wta",
+          "name": "WTA"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "f1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/racing/f1/scoreboard",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4f38307cc4dec9b57a06e1116f60f401ffc888bd3bc4877f04ebaa40551b8c5e",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "2030",
+          "slug": "f1",
+          "name": "Formula 1"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "nascar",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-premier/scoreboard",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "22559485748662f701cf5475a76c53f31d1a404d80be238d9f1684270c30befa",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "2021",
+          "slug": "nascar-premier",
+          "name": "NASCAR Cup Series"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "indycar",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/racing/irl/scoreboard",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "77252b28c03326fcf154222fa1639958acd0b9394e8f80d98b53225b25dc5fe2",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "2040",
+          "slug": "irl",
+          "name": "IndyCar Series"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "rugby-180659",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/180659/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c8e33796eecf39301620532aff8dc7e897fa74026ed640b963d05dc07912b95d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8323",
+          "slug": "180659",
+          "name": "Six Nations"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "rugby-164205",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/164205/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "8d813a7c5beb80728adaf41541509044b7a6b6e5192ca791002b39a2fc33cf5e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8337",
+          "slug": "164205",
+          "name": "Rugby World Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "rugby-267979",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/267979/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e704bbaf420a71cb8cf1c06b521a0ec34117c21dc85638bc6c0c01304434ac88",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8007",
+          "slug": "267979",
+          "name": "Gallagher Prem"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "rugby-242041",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/242041/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e6a9811a39b540260bd7f1b6a4e6c89224eedb11363cedd87e29055715e2ac10",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8326",
+          "slug": "242041",
+          "name": "Super Rugby Pacific"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "rugby-270559",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/270559/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "26a44afc6c6838f946700fac29b0eee439a6cfa9ec9ea949fbbef825157ff36d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8005",
+          "slug": "270559",
+          "name": "French Top 14"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "rugby-league-3",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby-league/3/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "85e5cd05005b1e14a3ea864dcbc01a73946ee6cdb39ca5712e73e36b6bfb5623",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8370",
+          "slug": "3",
+          "name": "Rugby League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:australian-football:afl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a60694807d88e48091cd5b405210c7902c124c27a46246c24a2ff1d312803395",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "35",
+          "slug": "afl",
+          "name": "AFL"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:baseball:caribbean-series",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/caribbean-series/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "86e321510f66db5c5b50153e9024a7642a06ca85a907102b958f09c290ce399c",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "17",
+          "slug": "caribbean-series",
+          "name": "Caribbean Series"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:baseball:college-baseball",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4d0d85d89114520034d52a63cec0b4cb6f1e79114af750ed617578989829f6da",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "14",
+          "slug": "college-baseball",
+          "name": "NCAA Baseball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:baseball:college-softball",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "481ab5f5d7497501a4d3cbad34e84a8898c0dcb03db22e0f3568931f5d33e05e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "102",
+          "slug": "college-softball",
+          "name": "NCAA Softball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:baseball:llb",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/llb/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "2a0e8487bd930ecbbc707495ba0bfa8e106820afd13bc3efacc113f68c1aebb0",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "2",
+          "slug": "llb",
+          "name": "Little League Baseball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:baseball:lls",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/lls/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a8d8634588b907ccc6fd56eedbb96b13638add44a97f1cd65c0fa9d515f82ed1",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "105",
+          "slug": "lls",
+          "name": "Little League Softball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:baseball:world-baseball-classic",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/baseball/world-baseball-classic/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c5c0f5dc000e0dcb2d76287dd3c8a9a9fdd09e3260ccee4a8333c23551bc805f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3454",
+          "slug": "world-baseball-classic",
+          "name": "World Baseball Classic"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:basketball:fiba",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/fiba/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "1dd76df9c2f1fcdd36e85514d92d93819187f59bfca3b216ead1303a58429220",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "53",
+          "slug": "fiba",
+          "name": "FIBA World Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:basketball:nba-development",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-development/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "099ee58c391efd877e06f9956f539c80fd3d13dc88c5ba0ab4e20d3c99a01791",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "69",
+          "slug": "nba-development",
+          "name": "NBA G League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:basketball:nba-summer-california",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-summer-california/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "add36af759017d8daccf9def6ab88155030b9f53ba17e79ccf99f2131d6b1248",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23170",
+          "slug": "nba-summer-california",
+          "name": "NBA California Classic Summer League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:basketball:nba-summer-las-vegas",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-summer-las-vegas/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5bc49c199c8795124633fbe570ecc135e5e807f3c88ae603b6ac22729e923f5e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "63",
+          "slug": "nba-summer-las-vegas",
+          "name": "Las Vegas Summer League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:basketball:nba-summer-utah",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba-summer-utah/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "236cc398a0b3b4d45632ba5c666e5c9252fe3d93eaeebfc4c497313e442e1c16",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "64",
+          "slug": "nba-summer-utah",
+          "name": "Salt Lake City Summer League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:basketball:nbl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nbl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0d6d97408989deb04aaef207aeccb8a16ecfa282cd3b0e9fe958c2bdb7d0abf8",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "55",
+          "slug": "nbl",
+          "name": "National Basketball League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:field-hockey:womens-college-field-hockey",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/field-hockey/womens-college-field-hockey/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e86427e5e083307d8a37aae2f0207f4454896f3459e216988c1eb9f73366c9be",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "802",
+          "slug": "womens-college-field-hockey",
+          "name": "NCAA Women's Field Hockey"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:football:ufl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/football/ufl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4bbc8639637c1701f74107998794994e3fb49dc495eb3a8f3029959271f4d845",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "37",
+          "slug": "ufl",
+          "name": "United Football League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:golf:champions-tour",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/champions-tour/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f5769edcf8480d072395cd031d8c1d3e9171193827c18e6e1a5f4e58335df2e1",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "1105",
+          "slug": "champions-tour",
+          "name": "PGA Tour Champions"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:golf:eur",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/eur/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "10490c0acad6a6b144cd952496f94584d5ac1892793efdfb683753229e713a00",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "7002",
+          "slug": "eur",
+          "name": "DP World Tour"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:golf:liv",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/liv/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "fdb7a483263781a0b1dc49313ba5a816071cf2f1722a20e0a3dd0949f878bcaa",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "1109",
+          "slug": "liv",
+          "name": "LIV Golf Invitational Series"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:golf:lpga",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/lpga/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b3f632d5b4d41e32570b487a9cecba240728050d8dfa0589b172d88009b5f370",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "1107",
+          "slug": "lpga",
+          "name": "Ladies Pro Golf Association"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:golf:ntw",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/ntw/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0c870f945eea8ebf7cfb0e9882b9cd3248665be34e455d6c0125628ce9d5e661",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "7001",
+          "slug": "ntw",
+          "name": "Korn Ferry Tour"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:golf:tgl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/golf/tgl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c1f848311bb3e72da1d6c01210c812ad6598f7c359c25f7196c2c5c4b566ca1b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "1111",
+          "slug": "tgl",
+          "name": "TGL"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:hockey:mens-college-hockey",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "77c521bbdb571decc1a9babed9bf1a4aab46e44449e3c84ef126297b0291a163",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "91",
+          "slug": "mens-college-hockey",
+          "name": "NCAA Men's Ice Hockey"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:hockey:olympics-mens-ice-hockey",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/olympics-mens-ice-hockey/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "7a30113ce4d36a04c39b8fdb0703e46dbdd1681157b300fc08aec600870d4948",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20146",
+          "slug": "olympics-mens-ice-hockey",
+          "name": "Men's Ice Hockey"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:hockey:olympics-womens-ice-hockey",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/olympics-womens-ice-hockey/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "27d4c831cf2abb6b921cf15791eb5ffa9b0e6d9ba0edd4a51b93819835e33134",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20147",
+          "slug": "olympics-womens-ice-hockey",
+          "name": "Women's Ice Hockey"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:hockey:womens-college-hockey",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/hockey/womens-college-hockey/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5016b11a0361f8c8e3699068b7dbe6eea4cd43d16492f0cdc3adc9da567306a9",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "92",
+          "slug": "womens-college-hockey",
+          "name": "NCAA Women's Hockey"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:lacrosse:mens-college-lacrosse",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/mens-college-lacrosse/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0691ca89e2d8923ff24f237c7f22ddcc9785a0763d41d23d1b68317560319b62",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "502",
+          "slug": "mens-college-lacrosse",
+          "name": "NCAA Men's Lacrosse"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:lacrosse:nll",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/nll/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "abc7179261936aa7b0d50cee9c7bb6c02f094f402522c5e18f6ac4ac562e1938",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "501",
+          "slug": "nll",
+          "name": "National Lacrosse League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:lacrosse:pll",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/pll/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f39581e92e62a76f2efb31696af730aa11d1b25e271dd52dea32afaba7e6b088",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20813",
+          "slug": "pll",
+          "name": "Premier Lacrosse League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:lacrosse:womens-college-lacrosse",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/lacrosse/womens-college-lacrosse/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "09a05547f55662ff4c9e2a8b6017860a53551dc8feef54e64c3ec0a7ae2409d7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "503",
+          "slug": "womens-college-lacrosse",
+          "name": "NCAA Women's Lacrosse"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:mma:absolute",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/absolute/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a21673e3be089272c7e8b3d43193adb4f66b150a46de84218c99e2a500da5820",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3358",
+          "slug": "absolute",
+          "name": "Absolute Championship Berkut"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:mma:lfa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/lfa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "3388ea833a9f7ede588ab1b95012d6ae092fa9f37b1879aa59d6981466cabff4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3355",
+          "slug": "lfa",
+          "name": "Legacy Fighting Alliance"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:mma:mvp",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/mvp/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5c31a4256a6f041299a682a6bb4642bfaee22b353a967c99901b2fb94d1de0b8",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "17427",
+          "slug": "mvp",
+          "name": "MVP"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:mma:ofc",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ofc/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "8e503acb95a7aa967232d4009b7ac7e5413dde8805ff52244d04497c4f1f125c",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3352",
+          "slug": "ofc",
+          "name": "One Fighting Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:mma:other",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/other/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4263bce0584b11e24405f64779fff8f1c70fb7682a4294d65dc0378afbeb6426",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3359",
+          "slug": "other",
+          "name": "Other"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:mma:pfl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/mma/pfl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d4393d1fa551f7c8bfeb79aa8f7e511003e981f6ff15ff7193199ab1866eba19",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3347",
+          "slug": "pfl",
+          "name": "Professional Fighters League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:racing:nascar-secondary",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-secondary/scoreboard",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d91fe76c310ad5128de6b1838faaee5f7c7de8996b81e9a145e95ae477c43c9b",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "2022",
+          "slug": "nascar-secondary",
+          "name": "NASCAR O'Reilly Auto Parts Series"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:racing:nascar-truck",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/racing/nascar-truck/scoreboard",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9b911924907c5b37c9237ee8b4d8e8dd4ab3b97893aa1a0e782a6d5cf9155552",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "2023",
+          "slug": "nascar-truck",
+          "name": "NASCAR Truck Series"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:271937",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/271937/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "1452e507f60dae30e95f9071d57327be4c0689c54574688db675f13be9554b6c",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8329",
+          "slug": "271937",
+          "name": "European Rugby Champions Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:272073",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/272073/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "546dadf192c97c4fbdb69b2a368f616327459e30d0e0a4de3d68f78b1fc3cbb5",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8010",
+          "slug": "272073",
+          "name": "European Rugby Challenge Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:270557",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/270557/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "dbcdc207206a25f80c6e2308c2292a7b01a11120ca0bfa0a31d7ebb65ca1ef3b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8331",
+          "slug": "270557",
+          "name": "United Rugby Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:2009",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/2009/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "096acd4c12009c62b38e1eb5ce7f14c95fb450bd9624aabfcfc0e7ecc548bae2",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "4001",
+          "slug": "2009",
+          "name": "URBA Primera A"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:17567",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/17567/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c50ce6572158da69a0aacf5c8f299cea7e9c7742ddd6f1784038a2352ba0803e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24400",
+          "slug": "17567",
+          "name": "Nations Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:289279",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289279/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a82117cad627c584493125ab9aa8a90aebcd5fc8420f565360bfc5c7fbe8f3bf",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20113",
+          "slug": "289279",
+          "name": "URBA Top 14"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:270563",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/270563/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "7066dfd6906913165111becbf556edf6f4447a93632c6585aa55d2e67d02f785",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "8004",
+          "slug": "270563",
+          "name": "Mitre 10 Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:289262",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289262/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6a68844c0c6b4fa443b923b961f5e0038865f088eb25810a6184e95bc29f466b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19114",
+          "slug": "289262",
+          "name": "Major League Rugby"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:rugby:289234",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/rugby/289234/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "dc856246c4289307f85b52cde7f72e31266e620f07360a57a4acdef8396bd983",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "10659",
+          "slug": "289234",
+          "name": "International Test Match"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.fa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.fa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "bb76a96f4f718b351cd595d6a46d0c4b6174018596c73ffd332b01b0238bd74e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3918",
+          "slug": "eng.fa",
+          "name": "English FA Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.league_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.league_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f983e84f665f6244314a6d1801cd2efc52dedf473748f77d4436f2e08a700926",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3920",
+          "slug": "eng.league_cup",
+          "name": "English Carabao Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.charity",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.charity/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b42b852311bc7b9e1619003f4777c9dfd33f9b8085a4dd1e2f19278fe231e207",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5329",
+          "slug": "eng.charity",
+          "name": "English FA Community Shield"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.nations",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.nations/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "cacc05280946e212e70ed039a710a0e2051b25fab5ad6ebd5274305054daf589",
+      "eventCount": 8,
+      "returnedLeagues": [
+        {
+          "id": "2395",
+          "slug": "uefa.nations",
+          "name": "UEFA Nations League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.friendly",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.friendly/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ebea6b4bcd09783032fdd20e1f2a3693479a7dc37b42bf74fc3ddf3b9980e8ea",
+      "eventCount": 7,
+      "returnedLeagues": [
+        {
+          "id": "3922",
+          "slug": "fifa.friendly",
+          "name": "International Friendly"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:esp.super_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.super_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a6592755275e9f05fd3524983f1ab7a46e00276506bf9037a017f94f6e68145f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8102",
+          "slug": "esp.super_cup",
+          "name": "Spanish Supercopa"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:esp.copa_del_rey",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.copa_del_rey/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0fbcf6020862abd67b3a632ef8f0912773e5006981d0ce61e79ef4ac07ac249a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3951",
+          "slug": "esp.copa_del_rey",
+          "name": "Spanish Copa del Rey"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:concacaf.leagues.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/concacaf.leagues.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b93be713d6fc67c9323b9e3acfbf3192f7e098d79dde918e65ab3e521016d3ff",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19425",
+          "slug": "concacaf.leagues.cup",
+          "name": "Leagues Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:campeones.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/campeones.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "8cba3391c38e3973406c827770eaa4b97299622e758d4f3a528de1c38580c72c",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "18771",
+          "slug": "campeones.cup",
+          "name": "Campeones Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.shebelieves",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.shebelieves/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5cee17d9c735522d7b55715997de5df5d3a2a1eb92902492bc80d708d1e51c1e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19728",
+          "slug": "fifa.shebelieves",
+          "name": "SheBelieves Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.w.champions_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.w.champions_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ed177bf36443ce23d98d971f46a15cf74927082141d17247eb34a38f8f9e50a4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24081",
+          "slug": "fifa.w.champions_cup",
+          "name": "FIFA Women's Champions Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.wchampions",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.wchampions/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "200aba675f614fc8fa70cdf1bd85f5335b7ec73e2fc732a9e3fb36b9a6041228",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19483",
+          "slug": "uefa.wchampions",
+          "name": "UEFA Women's Champions League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ger.playoff.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.playoff.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "7a1d30907fcea082e8718afb8985fc8a1450f83f634f884f750e3108cf388738",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8304",
+          "slug": "ger.playoff.relegation",
+          "name": "German Bundesliga Promotion/Relegation Playoff"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ger.dfb_pokal",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.dfb_pokal/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b5984cfffd7ef4904f2cdae0bc46feca617ba0bacf9c8423576f81a341a44627",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3954",
+          "slug": "ger.dfb_pokal",
+          "name": "German Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ita.coppa_italia",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.coppa_italia/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "53e2cd505b302e93d5890fb13527334bce2edfe4f284ffe870023f49e306fdbb",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3956",
+          "slug": "ita.coppa_italia",
+          "name": "Coppa Italia"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fra.super_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.super_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "58295ace94798a7f8350a4877c229dbc3ebfe7efee15cdbbbe7389e69012521f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8357",
+          "slug": "fra.super_cup",
+          "name": "French Trophee des Champions"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ger.super_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.super_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b571c1c5293ee77f026158961124319c98fecd026d812fe4b2ee9b8d27debe9e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8101",
+          "slug": "ger.super_cup",
+          "name": "German Supercup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.w.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.w.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "07fa9eef7b058e8f7897ab4d515c8677d95fb789685972500365953eb7dd78c3",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8097",
+          "slug": "eng.w.1",
+          "name": "English Women's Super League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.w.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.w.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "94ce8a83d7ecd809302254695b04d0e2c0be35b565e95de87d4f6c234994641d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24405",
+          "slug": "eng.w.promotion.relegation",
+          "name": "English Women's Super League Promotion/Relegation Playoff"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fra.coupe_de_france",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.coupe_de_france/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4421ed0a49bab422638a0d2e6b900fd3b9dafb6752d15bc64c98400f638c84ba",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3952",
+          "slug": "fra.coupe_de_france",
+          "name": "Coupe de France"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.open",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d56afcad02baad804ef552d276082d6c6e40dcdad5cdf7e212cc65fd4cb81cd5",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5337",
+          "slug": "usa.open",
+          "name": "U.S. Open Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ksa.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ksa.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "447575c1bdea79e775cfc024fa3d88baeb463a9697996c03184193e8f439b2eb",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "21231",
+          "slug": "ksa.1",
+          "name": "Saudi Pro League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:concacaf.nations.league",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/concacaf.nations.league/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0f9d815c9c0c86c1da716f17921a8d278cc090f2a00f6a225b46dabbba5e9782",
+      "eventCount": 5,
+      "returnedLeagues": [
+        {
+          "id": "19267",
+          "slug": "concacaf.nations.league",
+          "name": "Concacaf Nations League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:conmebol.libertadores",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.libertadores/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "49ea6f78b1557bcacd3ab7cd210f5f7519a4220cef96f38a2b902d3851b4b197",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "783",
+          "slug": "conmebol.libertadores",
+          "name": "CONMEBOL Libertadores"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:concacaf.champions",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/concacaf.champions/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "fa466132a7f1518219f37dbafae72a5367b62cfacb7bfcdefbc6f6ee72c57f70",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5699",
+          "slug": "concacaf.champions",
+          "name": "Concacaf Champions Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.worldq.uefa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldq.uefa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "11040ea156aff82b590a6e20338dd30a6840a1d299eb762a9aa794f8b1165aae",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "786",
+          "slug": "fifa.worldq.uefa",
+          "name": "FIFA World Cup Qualifying - UEFA"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.wcq.ply",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.wcq.ply/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0d4bf346f433d8473189b54aa7003bf97dc929f0730f1955b40d74691f3077b7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23449",
+          "slug": "fifa.wcq.ply",
+          "name": "FIFA World Cup Qualifying - Playoff Tournament"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.friendly.w",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.friendly.w/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9c411b80685709290ef4987d84de2748ecd3e1b02436ddebbf13f799d1e103a8",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3923",
+          "slug": "fifa.friendly.w",
+          "name": "Women's International Friendly"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.wworldq.uefa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.wworldq.uefa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4ff285c7c4a1e97485eb55c3ce8cecbc02815a9f8bf3b26e0845636aafe6d55f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20649",
+          "slug": "fifa.wworldq.uefa",
+          "name": "FIFA Women's World Cup Qualifying - UEFA"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.w.usl.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.w.usl.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "bf15ae3e4965cebc915bde10cdf0ae78776084e72b711e161c1713981f5e3c2d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23633",
+          "slug": "usa.w.usl.1",
+          "name": "USL Super League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.champions_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "88da02c6a682c42d554771c2abb8004878780865c33b083ac1cc4c13e526d831",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19874",
+          "slug": "uefa.champions_qual",
+          "name": "UEFA Champions League Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.wchampions_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.wchampions_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4163e96f8ea5080eefb4446f1d2433b17a343becf2a41d8ecaba610c24de72cd",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24458",
+          "slug": "uefa.wchampions_qual",
+          "name": "UEFA Women's Champions League Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.w.fa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.w.fa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "683a1befc4f8b76fb521a2c73fa9ea0e1213dc26921a5a2732b1d1a06bd25c24",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20226",
+          "slug": "eng.w.fa",
+          "name": "English Women's FA Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.w.league_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.w.league_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "78156ac2ce3418902a8b7e965d61f03e5986fd825cd893a552c192bb00be09f8",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23390",
+          "slug": "eng.w.league_cup",
+          "name": "English WSL Players Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:esp.w.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.w.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c4ee10ba811d2d426bcbae9a2dd899cd9d01dd05dcf1a68da3517ad9d053f61a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20956",
+          "slug": "esp.w.1",
+          "name": "Spanish Liga F"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:esp.copa_de_la_reina",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.copa_de_la_reina/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "890d2217a38510e555324edc647a9ff55e3867013b694a5d309b1f14f7a8a251",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20381",
+          "slug": "esp.copa_de_la_reina",
+          "name": "Spanish Copa de la Reina"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fra.w.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.w.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9c63e2c48e4a2cf49d686a98e26a90f168ceddb720e2fb6de0a5edbe5ec8f02a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20955",
+          "slug": "fra.w.1",
+          "name": "French Premi\u00e8re Ligue"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4af7f3c02ea127140e4a8a0cbaa5862230c9a324b691e42293a3041fe7eb45c4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3957",
+          "slug": "ned.cup",
+          "name": "Dutch KNVB Beker"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ed0b74f1002fd8b2421a0164c8d9c465b7dbd8d76cd4185e7265d78d60c60219",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "735",
+          "slug": "sco.1",
+          "name": "Scottish Premiership"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.tennents",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.tennents/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d06c7d931ccac64865647257ff904326c78203d0908eefe41a67c219dbd3b9b4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3959",
+          "slug": "sco.tennents",
+          "name": "Scottish Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.cis",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.cis/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "71b1a02331fd3132894815a677b22c86160df3499794c5837c44159c4a1ca9f1",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5330",
+          "slug": "sco.cis",
+          "name": "Scottish League Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:aus.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/aus.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "2aaa1fecf367dadead922bd7631a0559d00f29e708cbf66fecdb400bfdbcaaa2",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3906",
+          "slug": "aus.1",
+          "name": "Australian A-League Men"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:aus.w.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/aus.w.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4ac51fdaab4105f2c594518e6a6858e0650f9dbdbd0efc41cf92654c6c6d3264",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "18992",
+          "slug": "aus.w.1",
+          "name": "Australian A-League Women"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ksa.kings.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ksa.kings.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "08f36259566524045a587f2502ff378c1d427847f4de0abfd1095f10dd44101a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "22057",
+          "slug": "ksa.kings.cup",
+          "name": "Saudi King's Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:por.taca.portugal",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/por.taca.portugal/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "08ed11d8a60a58b706396e2b3bcc07fb501874cd1a20220b867dfacc47475973",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20922",
+          "slug": "por.taca.portugal",
+          "name": "Taca de Portugal"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:tur.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5458099979fbe6ba33a76a0c84839a005efd555ef1cdbf4617daf1addd17816d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3946",
+          "slug": "tur.1",
+          "name": "Turkish Super Lig"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:caf.nations",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/caf.nations/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d17ff10d0e0b42a506030995fa983d76e73df90c39a9f8a59e05f4b3123ba58d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3908",
+          "slug": "caf.nations",
+          "name": "Africa Cup of Nations"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.champions",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.champions/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "7986dd0b297c0373d8bdc5e59c23e03bdaffd4daf09b1d70790b2fc3f2238842",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3902",
+          "slug": "afc.champions",
+          "name": "AFC Champions League Elite"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:caf.nations_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/caf.nations_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6b2b1a423dbc96b3164d988e0f5f0fca3d45fe0cc705d739888a08537296ae4c",
+      "eventCount": 8,
+      "returnedLeagues": [
+        {
+          "id": "8315",
+          "slug": "caf.nations_qual",
+          "name": "Africa Cup of Nations Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "dc7571702cab8c9516ae6efed81040b14f2aece4bd1ebb9cac749b355a707c74",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "2466",
+          "slug": "afc.cup",
+          "name": "AFC Champions League Two"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:concacaf.w.champions_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/concacaf.w.champions_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "3d10c31cd258033bd9c7ea8de82535120636dcea336956ee2d23a059da741223",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "22946",
+          "slug": "concacaf.w.champions_cup",
+          "name": "Concacaf W Champions Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:concacaf.womens.championship",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/concacaf.womens.championship/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "7b5cb2278874653cac92332470ef84beb670245979676b0c3d9003d76d96078b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "18969",
+          "slug": "concacaf.womens.championship",
+          "name": "Concacaf W Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.super_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.super_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a89542166852aab79fa4454474aced32582ae476399248e19300af6e4c19e0fc",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5462",
+          "slug": "uefa.super_cup",
+          "name": "UEFA Super Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.usl.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.usl.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0e702df9feb06c6628c60feb3413f3742268c87e669f684ed3cb1fc707d653ea",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "4002",
+          "slug": "usa.usl.1",
+          "name": "USL Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.usl.l1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.usl.l1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6da76fdc23a8743aa49cf9ddad98af6cc44f8768bad00ac63cdaf8cdfd6f6299",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19915",
+          "slug": "usa.usl.l1",
+          "name": "USL League One"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.usl.l1.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.usl.l1.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "633a06e0a384e65dafa6b93928ee3049851d56a552daec963707bf906c7eaef3",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "22059",
+          "slug": "usa.usl.l1.cup",
+          "name": "USL Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:mex.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/mex.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "04809811c8118c837ec015339c8b95c9c17310c94144714c344bde26a51fe830",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "3932",
+          "slug": "mex.2",
+          "name": "Mexican Liga de Expansi\u00f3n MX"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:global.finalissima",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/global.finalissima/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "64ad709ad9452cf4a8e7dab81844e951bfc2261e1448ea4918aa10124867b992",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20704",
+          "slug": "global.finalissima",
+          "name": "CONMEBOL-UEFA Cup of Champions"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:global.u20.intercontinental_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/global.u20.intercontinental_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "edfb505c1ff793a33986c83c5e92a65a97f3df4399a9de0e63b3ee94f93c2083",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "22781",
+          "slug": "global.u20.intercontinental_cup",
+          "name": "CONMEBOL-UEFA U20 Intercontinental Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.asian.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.asian.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f6df44e1a240af9fc96c28ca72f4be478cf525f9eb2b4521825650ad31228e6a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20219",
+          "slug": "afc.asian.cup",
+          "name": "AFC Asian Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.w.asian.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.w.asian.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d65cb393bce57106652849bf6a927448a488c2b24de7b994e1ec9e5eb19517d8",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23537",
+          "slug": "afc.w.asian.cup",
+          "name": "AFC Women's Asian Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.cupq",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.cupq/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "886a18a2a5f8251494bace8d9f051bc99696eb8c149f168ed8a4c5d95cf14c55",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5662",
+          "slug": "afc.cupq",
+          "name": "AFC Asian Cup Qualifiers"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:aff.championship",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/aff.championship/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "82e0877abb6b082ca59fb812850f20300dcdcf224de8eb564b1659f536aa30ee",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5672",
+          "slug": "aff.championship",
+          "name": "ASEAN Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:caf.w.nations",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/caf.w.nations/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "1d20486517c33c8f9acbde6ebe9dcf40e74b609b2467f210f5f7f890b4fabacf",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23523",
+          "slug": "caf.w.nations",
+          "name": "Women's Africa Cup of Nations"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:can.w.nsl",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/can.w.nsl/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "19e629cd29d2124d1d037843444511e69887da702bb6e4e953743c9720cf52c0",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23286",
+          "slug": "can.w.nsl",
+          "name": "Northern Super League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.europa_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "3d764bbe5138d93ca59f8ed3474b23fbc46254aea899b49d7a10da36ba216b9f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19887",
+          "slug": "uefa.europa_qual",
+          "name": "UEFA Europa League Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.europa.conf_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa.conf_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d3313d59d3f49d49d1fbcf941ef01fb8e31e566e258514d35cd643d16f491344",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20221",
+          "slug": "uefa.europa.conf_qual",
+          "name": "UEFA Conference League Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.w.europa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.w.europa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e465284af13f4f186fbd23ec914360e137611fd2f68c6bd132530eb9e68d2a3f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24079",
+          "slug": "uefa.w.europa",
+          "name": "UEFA Women's Europa Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.intercontinental_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.intercontinental_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a885ca354d8e6e41a32edbfdb42bd6cf5dab382da0ff00c223d4f55056540b48",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "22902",
+          "slug": "fifa.intercontinental_cup",
+          "name": "FIFA Intercontinental Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.champions_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.champions_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "11ee72b79377fbd3b579c8ad786cc5945bc38d10048075d4f29b26dc2aeab424",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24452",
+          "slug": "afc.champions_qual",
+          "name": "AFC Champions League Elite Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:afc.cup_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/afc.cup_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "02a12e1a6e1d0a8630d9f53615beb026c93f3972fd2829de9043e526d7c4da81",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24455",
+          "slug": "afc.cup_qual",
+          "name": "AFC Champions League Two Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:club.friendly",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/club.friendly/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "3c6586cbaee61a15a633fbc6e1c2df4897ad7086a2d25aa5e908186c8a1023b9",
+      "eventCount": 8,
+      "returnedLeagues": [
+        {
+          "id": "19834",
+          "slug": "club.friendly",
+          "name": "Club Friendly"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:rus.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/rus.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e5fb45c4f1cd5045da3ee83f922ef7e5c3b4c3b283daed13d003c2a83fb072a0",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3939",
+          "slug": "rus.1",
+          "name": "Russian Premier League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:rus.1.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/rus.1.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "328034c5f7f714d76d0bfbebf942d63dbb32ebfa61b6108e285aac81d8f16d7a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20731",
+          "slug": "rus.1.promotion.relegation",
+          "name": "Russian Premier League Relegation/Promotion Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bel.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bel.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "42bf7b79119c0227db00cd0d3c20c9bd252265a0176d6625da7fd6f2a495adcd",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3901",
+          "slug": "bel.1",
+          "name": "Belgian Pro League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bel.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bel.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "58c9cbb0dee509098e3172633354220f2c687260c2798ae7ae72fe26dad5f377",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20116",
+          "slug": "bel.promotion.relegation",
+          "name": "Belgian Pro League Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:esp.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6103b42f76f66bbaab7fa70e269cd1f52a8d644a09f1a803d67022088f66a488",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3921",
+          "slug": "esp.2",
+          "name": "Spanish LALIGA 2"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ger.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4a3f8a8816587468833cfef6c1fa8ad19a6eb05e6d98bed1268e72d3a75ab60d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3927",
+          "slug": "ger.2",
+          "name": "German 2. Bundesliga"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ita.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9d0344e29c892af6f031d96ffd5e7804eba5da91600edc433fc1fcb424d3b302",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3931",
+          "slug": "ita.2",
+          "name": "Italian Serie B"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fra.1.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9c0820191575d00b20de67085598eadf4df0ac103979ce5985094e512b0383a2",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20159",
+          "slug": "fra.1.promotion.relegation",
+          "name": "French Ligue 1 Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fra.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a86777c8a1e5bef98941e062b0e525cada0bbe7d0244fb02d88c93faac265571",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3926",
+          "slug": "fra.2",
+          "name": "French Ligue 2"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:por.1.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/por.1.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0fb3aca5b30014cd746e5880a986fb630ef20104cb4ea7559db67cd036b8de8a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20186",
+          "slug": "por.1.promotion.relegation",
+          "name": "Portuguese Primeira Liga Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:aut.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/aut.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6d164802f032fcf616afe93e4413ec9420af30cb716b5e328d4f97957c62953d",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3907",
+          "slug": "aut.1",
+          "name": "Austrian Bundesliga"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:gre.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/gre.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6ac7f52cd8f2f6b926cc3c5bef6479c88ccb8f66b24383f8d9b22ffe714eb9fb",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3955",
+          "slug": "gre.1",
+          "name": "Greek Super League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:chn.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/chn.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0f55a4dfd0dbf7475ce345f4a5a4325f56e13a66ae09661adf8413553be89a5a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8376",
+          "slug": "chn.1",
+          "name": "Chinese Super League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.supercup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.supercup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "33366d2ce725f94d6cc2e90b77e391e6297a3bb5a5f6f0c1612ebc42d51e1505",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "10749",
+          "slug": "ned.supercup",
+          "name": "Dutch Johan Cruyff Shield"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:friendly.emirates_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/friendly.emirates_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c4ea46900dbae437129a9b7ec986bfed8fb7934d0d33fed075e4adf4dc89fb0f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "11108",
+          "slug": "friendly.emirates_cup",
+          "name": "Emirates Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:esp.joan_gamper",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.joan_gamper/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "dd4338e62f26267e4606970a987d24894ddb42b87cd88e887a7a0af72763eab7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "17929",
+          "slug": "esp.joan_gamper",
+          "name": "Trofeo Joan Gamper"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.world.u17",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world.u17/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "aec2f9eacb8b1d5d5da0ef5cc49fae04ee964b3d4d12ec947f3053b6b59c0741",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5697",
+          "slug": "fifa.world.u17",
+          "name": "FIFA Under-17 World Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.wworld.u17",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.wworld.u17/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "43dddb38aebf39d05dbca727263a414816548c78210eedb5ea4cc782b055bdb3",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20865",
+          "slug": "fifa.wworld.u17",
+          "name": "FIFA Under-17 Women's World Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.euro_u21_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.euro_u21_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "bdf53004f003fcbb6f26cdb80b1657d8cf3f253cbebd4288812a32b09b50c410",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "20114",
+          "slug": "uefa.euro_u21_qual",
+          "name": "UEFA European Under-21 Championship Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uefa.euro.u19",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.euro.u19/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "8887acf9e1f637a615efdd7a60721d226dfddb61bd35f9e7effa0c35c2e10bad",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5698",
+          "slug": "uefa.euro.u19",
+          "name": "UEFA European Under-19 Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:fifa.friendly_u21",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.friendly_u21/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "73f6fcd7d3358650b01266faf5a1c7210714a0d87e88dfbc7ca49317510666a0",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20132",
+          "slug": "fifa.friendly_u21",
+          "name": "Under-21 International Friendly"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ger.2.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.2.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "4b1f9c6410036986e2bc334ebab0ad18b8bfe0fdb14a338d9e295d6e37f3bfa7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19871",
+          "slug": "ger.2.promotion.relegation",
+          "name": "German Bundesliga 2. Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.trophy",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.trophy/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c04ef7920536c2eec89270e4ad2308000d65f52229b165a9d791a4b5f38e2b4a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "18481",
+          "slug": "eng.trophy",
+          "name": "English EFL Trophy"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.3",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.3/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c3d8381bc80645a7e53a6ab935654357f1aba9217eaa6ea6d2eacb8099290077",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3915",
+          "slug": "eng.3",
+          "name": "English League One"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.4",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.4/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ce247b4a978705ca36877ba90cf506a707a513e1144fa3084fa85eedd5a8808e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3916",
+          "slug": "eng.4",
+          "name": "English League Two"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.5",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.5/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "dea7ff979de06171c3e7ca7289962ab92c2a79d52aa7a47cdcfdbe5525058667",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3917",
+          "slug": "eng.5",
+          "name": "English National League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:eng.fa_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.fa_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "8f492865abef84ab25aa3dd1c0157ffd942269e1fd618f6ec238e21bd2a6734e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23480",
+          "slug": "eng.fa_qual",
+          "name": "English FA Cup Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.1.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.1.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "69e363bfc890d6be5f88f539006f5b26d79f5a104ed0038972fa59ea26f9c5d8",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20133",
+          "slug": "sco.1.promotion.relegation",
+          "name": "Scottish Premiership Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d91a9d91ca84a63e6b1784e96db17bde036c550877c0ad6b4ea43c9918c2dc5b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3940",
+          "slug": "sco.2",
+          "name": "Scottish Championship"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.2.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.2.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f8ca4c3d230e3329a246c1a7928d523b8602bbc6cbce4031e6e8dbefc281602e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20134",
+          "slug": "sco.2.promotion.relegation",
+          "name": "Scottish Championship Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.challenge",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.challenge/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "2db05f5a3b52f22c35119e40e0a9ced3948bf218e094c6681b55c867fc25ae9a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5331",
+          "slug": "sco.challenge",
+          "name": "Scottish League Challenge Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:sco.tennents_qual",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/sco.tennents_qual/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "1d9c29687bd22e2f436901aeab98802afb09938f5c22619a051d512f1afa00df",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24457",
+          "slug": "sco.tennents_qual",
+          "name": "Scottish Cup Qualifying"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.playoff.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.playoff.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d69684ff883bf42a8c2a8f644336e673e6a22863a5f0a4d6f4325c831e2f6d96",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8305",
+          "slug": "ned.playoff.relegation",
+          "name": "Dutch Eredivisie Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "aafa9dc27cd8f47872b7bda4c07d7c8530647b4253f071bf096acf0f9f80462b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3933",
+          "slug": "ned.2",
+          "name": "Dutch Keuken Kampioen Divisie"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.3.promotion.relegation",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.3.promotion.relegation/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9da2ab3d9d82bd89d9887dba9272761c3d1c1d8d4a2a8cd3c5dc604bdc319fbd",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20798",
+          "slug": "ned.3.promotion.relegation",
+          "name": "Dutch Tweede Divisie Promotion/Relegation Playoffs"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.w.knvb_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.w.knvb_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "93981106d95e62a95fcd86b15c5816d4e45eda3f59cd762da6bd0dee18a053fb",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "20115",
+          "slug": "ned.w.knvb_cup",
+          "name": "Dutch KNVB Beker Vrouwen"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ned.w.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.w.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0155ed5b2ae7b85101479baf722494e31483f5d6c4f72455104b5b72ba8fa114",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19945",
+          "slug": "ned.w.1",
+          "name": "Dutch Vrouwen Eredivisie"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:swe.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/swe.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ffe72030eeb65e8087cd4f06db0b667f278399915dde411222a7cd345a3ccfa7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3945",
+          "slug": "swe.1",
+          "name": "Swedish Allsvenskan"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:den.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/den.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "96e3a00fdddeaf97c2a9e7ca9a2ca4ac5825292d28bef0d1bedad07c0c032151",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3913",
+          "slug": "den.1",
+          "name": "Danish Superliga"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:nor.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/nor.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f772d698dc2f42782795d520f823fadf7eaf12af16d6096237ef5ac2cefc0352",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3960",
+          "slug": "nor.1",
+          "name": "Norwegian Eliteserien"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:conmebol.sudamericana",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.sudamericana/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "82003c63e376e46c87dbef54c09ce3b2e031e05d1f12964d353927b39fef30c9",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "5454",
+          "slug": "conmebol.sudamericana",
+          "name": "CONMEBOL Sudamericana"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:conmebol.recopa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.recopa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "70c599bd4cb0b62bed929367da4aa056c4adcf2b87229cf6ea485cf80fd319b6",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8333",
+          "slug": "conmebol.recopa",
+          "name": "CONMEBOL Recopa"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:arg.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "65dc01bab8c4d29d585570b59be06eb303f9cefc991635ae6494c827eaa0f1e8",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "745",
+          "slug": "arg.1",
+          "name": "Argentine Liga Profesional de F\u00fatbol"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:arg.copa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.copa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "41a719091cb69cebec24a23f1670f64255b98a343c353b720840a8ff14a4616a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8107",
+          "slug": "arg.copa",
+          "name": "Copa Argentina"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:arg.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "afa21248d3b38d334fb4600f2d74967c3e6bf0a61e3366eec8fee2805326173a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3903",
+          "slug": "arg.2",
+          "name": "Argentine Nacional B"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:arg.supercopa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.supercopa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "865173c10c04cec9bf27d852a31c9988fdb701f1228f8ce878efc104aca8d899",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8346",
+          "slug": "arg.supercopa",
+          "name": "Argentine Supercopa"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:arg.supercopa.internacional",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.supercopa.internacional/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "2f58c8217ad2328c4aa0fd5e549e774f0835b51122355beb912fcd5ae34a1733",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23348",
+          "slug": "arg.supercopa.internacional",
+          "name": "Argentine Supercopa Internacional"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:arg.3",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.3/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e8bba6512404c3e7f6938da0d96b842b205d211a8198e02436608ec8305400ba",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3904",
+          "slug": "arg.3",
+          "name": "Argentine Primera B"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.supercopa_do_brazil",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.supercopa_do_brazil/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "8c090abccbbe521afe5047a20af8ed080af8dae874bbe6e07a6f88004a82716f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19721",
+          "slug": "bra.supercopa_do_brazil",
+          "name": "Brazilian Supercopa Rei"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "44ae8f0d2294d341c13067bc5bd30efb78d868c90370ec6d35511f93180e5bbb",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "630",
+          "slug": "bra.1",
+          "name": "Brazilian Serie A"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.2",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.2/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c6a45a4cbc25d82990247fd4ae075b8a470a2862a1b8c6de137d71ea66fb9c3c",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "4007",
+          "slug": "bra.2",
+          "name": "Brazilian Serie B"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.copa_do_brazil",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.copa_do_brazil/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a0ef279ebfa44125e7154566c75ae9a27273b8125f4534b45f18059811959117",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8306",
+          "slug": "bra.copa_do_brazil",
+          "name": "Copa do Brasil"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.camp.carioca",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.camp.carioca/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c66b8baf502881101499e96eab42f981450f30a5af9a32db443f974a54af9049",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "2265",
+          "slug": "bra.camp.carioca",
+          "name": "Brazilian Campeonato Carioca"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.camp.paulista",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.camp.paulista/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "dc581157662eed24834be1ff2928737ca41526a1a696da3164625e554c223f66",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8207",
+          "slug": "bra.camp.paulista",
+          "name": "Brazilian Campeonato Paulista"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.camp.gaucho",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.camp.gaucho/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ac6ea69a93e59c38559079f0d4cc5b1b0ba1c4f07a9dc6c15560290d19b9c720",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "2272",
+          "slug": "bra.camp.gaucho",
+          "name": "Brazilian Campeonato Gaucho"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bra.camp.mineiro",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.camp.mineiro/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a29819b7e8d34c3894d6765f0a870322edcaf41724d6143502ceaf5cd148b29a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "10872",
+          "slug": "bra.camp.mineiro",
+          "name": "Brazilian Campeonato Mineiro"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:chi.super_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/chi.super_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "5e103fa1ccc90673e6bf90f04e88a06f45809a79f00334aae9a19bcdf4564bb3",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8364",
+          "slug": "chi.super_cup",
+          "name": "Chilean Supercopa"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:chi.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/chi.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b436e779b4bc4fa3172a3193946ff68ba93e0b568545a98db1d93e708acc8f05",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "640",
+          "slug": "chi.1",
+          "name": "Chilean Primera Divisi\u00f3n"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:chi.copa_chi",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/chi.copa_chi/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "089517acd0aa79170d09c22873ef25773eb2e3f12730d35fccf37dc09a4b2ca4",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "8312",
+          "slug": "chi.copa_chi",
+          "name": "Copa Chile"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:uru.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uru.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c62a1d535cfe5cd05af917879c465269a6720d0e3d536d2f6576ed4810703394",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "680",
+          "slug": "uru.1",
+          "name": "Liga AUF Uruguaya"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:col.superliga",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/col.superliga/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c6d492484ab043c6486abec1f30e1d8130296a0efbf2e88b1c88dcaef4fc5567",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "19112",
+          "slug": "col.superliga",
+          "name": "Colombian Superliga"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:col.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/col.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c943192eef2d63629db04a4efe8aae57c7bd8125bf553de9ab50f2d85fb83f50",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "650",
+          "slug": "col.1",
+          "name": "Colombian Primera A"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:col.copa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/col.copa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "cd363501038eba8dd7dc595ce64de404999e0d1f965d2c0e0736153b27ea4acf",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8313",
+          "slug": "col.copa",
+          "name": "Copa Colombia"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:per.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/per.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f2a6a69e9e2905e6a4207732961f26de1b524a33b46f1865fe9b573dcf8b7c6a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "670",
+          "slug": "per.1",
+          "name": "Peruvian Liga 1"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:par.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/par.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "b4a9b1383a245a10f0bf047839db862ba6daa97fd7c9d306ee7ed6c7a5b18372",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3934",
+          "slug": "par.1",
+          "name": "Paraguayan Primera Divisi\u00f3n"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ecu.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ecu.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9fcea5db6bb2c19c18dcc66c09e9b3bb47051d2e3290353bfeb60128519a5517",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "660",
+          "slug": "ecu.1",
+          "name": "LigaPro Ecuador"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ven.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ven.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "41f3546a3e6406fe055e87d99706be2e20a0f2f853aeda492bccf9da4e2c380e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3949",
+          "slug": "ven.1",
+          "name": "Venezuelan Primera Divisi\u00f3n"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bol.copa",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bol.copa/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a24f7b2cad91cde2b7b0f5c1d2028a88d82defe876c563004fc371f4537c76ee",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23284",
+          "slug": "bol.copa",
+          "name": "Copa Bolivia"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:bol.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/bol.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "1c45471b1faa5081f2da3fc2d30fb001ad80c61cb6aeeb90185e781a67631dfa",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "620",
+          "slug": "bol.1",
+          "name": "Bolivian Liga Profesional"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:jpn.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/jpn.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a23621383386aa5b0c1f747984f3546af73b72b397ac2e55f479a861356f146a",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "750",
+          "slug": "jpn.1",
+          "name": "Japanese J.League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:mex.campeon",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/mex.campeon/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "95f4a646f71db4a31a3af0ecdb436f1f7cc759c40fb174e3e499555d67810cfc",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "17893",
+          "slug": "mex.campeon",
+          "name": "Mexican Campeon de Campeones"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:concacaf.central.american.cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/concacaf.central.american.cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "7dde7eca4200a684a182bf074e30483c8273af2892c0eac8fee322b8598cf18e",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "22947",
+          "slug": "concacaf.central.american.cup",
+          "name": "Concacaf Central American Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:hon.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/hon.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d781aeb8c954df5a909575fd1b601431082ac6f3173ae4b7b2571cc555063b50",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3929",
+          "slug": "hon.1",
+          "name": "Honduran Liga Nacional"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:crc.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/crc.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d59f0a3a74a744e717b3ccc059b372cef343e445039723178ed1b7c42ae14353",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "4005",
+          "slug": "crc.1",
+          "name": "Costa Rican Primera Division"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:gua.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/gua.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e1efff56f17848ab6d4d11af6a1504633124a5631bf8b6dc93c339a422151f0c",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "3928",
+          "slug": "gua.1",
+          "name": "Guatemalan Liga Nacional"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:slv.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/slv.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "23d119388af0bc53c7a1bb6d2e2a1532b126b7540e7ad5691009dad1c793f776",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3943",
+          "slug": "slv.1",
+          "name": "Salvadoran Primera Division"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:ind.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ind.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "d6dac03f0589d14444f740711cd5786c347c226dc0a1d32dacf86e840b920f23",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "8316",
+          "slug": "ind.1",
+          "name": "Indian Super League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:global.gulf_cup",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/global.gulf_cup/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "015a859d9ad65f8622dddb9e8a8cd8f59ff42e2db7c87b82dfd37e64242a061f",
+      "eventCount": 2,
+      "returnedLeagues": [
+        {
+          "id": "23107",
+          "slug": "global.gulf_cup",
+          "name": "Arabian Gulf Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:caf.champions",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/caf.champions/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "a8d1ad679119d57658177bad351cead134e99d9500f808b4bb6986e509942237",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "2391",
+          "slug": "caf.champions",
+          "name": "CAF Champions League"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:caf.confed",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/caf.confed/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "e03606425f75785b4f159a13d98e40e461269def573ddc15ae9a3524a1bdf703",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "18000",
+          "slug": "caf.confed",
+          "name": "CAF Confederation Cup"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:rsa.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/rsa.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c486c910287e212aac383969c23b4380dab678fbaed25d1cd5ccd9908f0f3e06",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "3937",
+          "slug": "rsa.1",
+          "name": "South African Premiership"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.ncaa.m.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.ncaa.m.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "03a764b82696d66b8205c90c7925ae9bfc0958dda515b8b776024157012ba00e",
+      "eventCount": 1,
+      "returnedLeagues": [
+        {
+          "id": "5487",
+          "slug": "usa.ncaa.m.1",
+          "name": "NCAA Men's Soccer"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:soccer:usa.ncaa.w.1",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.ncaa.w.1/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "f3d1fbd5e5e81a6ec874934c5b4e4fddca070daff1dce08e9167d961cc640ffd",
+      "eventCount": 86,
+      "returnedLeagues": [
+        {
+          "id": "5499",
+          "slug": "usa.ncaa.w.1",
+          "name": "NCAA Women's Soccer"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:volleyball:mens-college-volleyball",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "c399ee27556c21235f907d99ae25823d520faf4d24787cd971b69da5f2c6c102",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "401",
+          "slug": "mens-college-volleyball",
+          "name": "NCAA Men's Volleyball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:volleyball:womens-college-volleyball",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "ad6f25887b225d59a7c2117b64b66ce93de11118b54d059fdff7d91c77e17615",
+      "eventCount": 41,
+      "returnedLeagues": [
+        {
+          "id": "402",
+          "slug": "womens-college-volleyball",
+          "name": "NCAA Women's Volleyball"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:water-polo:womens-college-water-polo",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/water-polo/womens-college-water-polo/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "2bdebc77eeca60e3af8f81906eab27948e744705eb2c1b5dd3db86cf471f8956",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "1926",
+          "slug": "womens-college-water-polo",
+          "name": "NCAA Women's Water Polo"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:23805",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/23805/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "9382b9f0ae968087a41cb9c22348411a1bee79c560c5b7a9400dc5ffbd9f66d4",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "23805",
+          "slug": "23805",
+          "name": "Pakistan in England Test Series 2026"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:24200",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24200/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "0a784463b678675a45f49f2aea63e1cef29b9f60d4aaa2a7d3ac8a93efd4c1c3",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24200",
+          "slug": "24200",
+          "name": "Bangladesh in South Africa Test Series 2026/27"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:24627",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24627/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "6d26872c13e439169da26ec930faaf822ed611642ec5ac5bc860d9ef08174e55",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24627",
+          "slug": "24627",
+          "name": "The Ashes 2027"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:24619",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24619/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "83317ff08685b04df0436115ff1b40360fe63ea02da266ac63b78883854bf8b7",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24619",
+          "slug": "24619",
+          "name": "Bangladesh Women in England ODI Series 2027"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:24620",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24620/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "27eaa1e56ac04069b9e9a0023ecb4464ab328ee1bc884c9407bd3d58612cec1b",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24620",
+          "slug": "24620",
+          "name": "New Zealand in England ODI Series 2027"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:24621",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24621/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "84d61f987a1d2a82288c3787cbf178f9ebe0c1dcc5543c1e3e6908010dd3d2f0",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24621",
+          "slug": "24621",
+          "name": "Bangladesh Women in England T20I Series 2027"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    },
+    {
+      "id": "espn:cricket:24623",
+      "url": "https://site.api.espn.com/apis/site/v2/sports/cricket/24623/scoreboard?limit=200&dates=20260924",
+      "checkedAt": "2026-09-24T21:37:05.918882+00:00",
+      "httpStatus": 200,
+      "sha256": "cf662e02c717c2475f7b0bee81eb3e6fc5bac7c52f8b67a398654bd7e30bd89f",
+      "eventCount": 0,
+      "returnedLeagues": [
+        {
+          "id": "24623",
+          "slug": "24623",
+          "name": "New Zealand in England T20I Series 2027"
+        }
+      ],
+      "count": null,
+      "pageCount": null,
+      "identityMatches": true
+    }
+  ]
+}

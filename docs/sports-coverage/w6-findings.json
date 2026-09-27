@@ -1,0 +1,155 @@
+{
+  "checkedAt": "2026-09-24",
+  "scope": "Official/reference and documented interface investigation; no authenticated source or production adapter certified",
+  "targets": [
+    {
+      "id": "espn:football:cfl",
+      "status": "limited",
+      "references": [
+        {
+          "url": "https://stats.cfl.ca/",
+          "observation": "Official statistics page includes September2026 transactions; current CFL existence established separately from stale ESPN2022 feed."
+        },
+        {
+          "url": "https://geniussports.atlassian.net/wiki/spaces/BID/pages/3990454841/Statistics%2BAPI",
+          "observation": "Documented Statistics API lists CFL in live push v2 coverage. No credentials/entitlements supplied; no authenticated response exercised."
+        },
+        {
+          "url": "https://stats.cfl.ca/",
+          "observation": "Public runtime config identifies https://api.stats.cfl.ca; explicitly linked client assets request seasons, teams, fixtures and standings without credentials."
+        },
+        {
+          "url": "https://api.stats.cfl.ca/fixtures/2026?view=summary",
+          "observation": "HTTP 200; dated 2026 fixtures with stable game and team IDs. Full projection validated separately by cricket/CFL implementer."
+        },
+        {
+          "url": "https://api.stats.cfl.ca/teams",
+          "observation": "HTTP 200; names, region labels, colors and logo URLs."
+        },
+        {
+          "url": "https://api.stats.cfl.ca/standings/2026",
+          "observation": "HTTP 200; actual east/west rows with 2026 season, games played, wins and points."
+        }
+      ],
+      "nextAction": "Integrate tested official public CFL adapter; preserve legacy manifest canonical ID and record undocumented-interface limitation. ESPN feed remains stale."
+    },
+    {
+      "id": "additional:wrestling",
+      "status": "blocked",
+      "references": [
+        {
+          "url": "https://www.ncaa.com/sports/wrestling-men/d1",
+          "observation": "Automated open returned JavaScript human-verification page; did not bypass."
+        },
+        {
+          "url": "https://www.ncaa.com/sports/wrestling-women",
+          "observation": "Automated open returned verification page."
+        },
+        {
+          "url": "https://www.ncaa.org/media-center-ncaa-adds-womens-wrestling-as-91st-championship/",
+          "observation": "Official source establishes distinct women's championship beginning2026."
+        },
+        {
+          "url": "https://www.ncaa.com/live-updates/wrestling-men/d1/2026-ncaa-wrestling-championships-brackets-results",
+          "observation": "Indexed official page reports men's2026 championship results; editorial reference, no API contract."
+        }
+      ],
+      "nextAction": "Obtain authorized results interface with men's/women's, weight class, bout and team identities."
+    },
+    {
+      "id": "additional:gymnastics",
+      "status": "blocked",
+      "references": [
+        {
+          "url": "https://www.ncaa.com/sports/gymnastics-women/d1",
+          "observation": "Automated open returned verification page."
+        },
+        {
+          "url": "https://www.ncaa.com/sports/gymnastics-men",
+          "observation": "Automated open returned verification page."
+        },
+        {
+          "url": "https://www.ncaa.com/news/gymnastics-men/article/2026-04-17/stanford-wins-2026-ncaa-mens-gymnastics-championship",
+          "observation": "Indexed official2026 results article; no machine-readable feed certified."
+        }
+      ],
+      "nextAction": "Resolve authorized meet/apparatus/team/athlete result source and decimal precision before adapter."
+    },
+    {
+      "id": "additional:swimming-diving",
+      "status": "blocked",
+      "references": [
+        {
+          "url": "https://www.ncaa.com/sports/swimming-men/d1",
+          "observation": "Automated open returned verification page."
+        },
+        {
+          "url": "https://www.ncaa.com/sports/swimming-women/d1",
+          "observation": "Automated open returned verification page; indexed navigation includes Live Results."
+        },
+        {
+          "url": "https://ncaa.soutronglobal.net/Public/Default/en-US/RecordView/Index/59311",
+          "observation": "Official archive indexes2026 men's championship results; archival reference not a live feed."
+        }
+      ],
+      "nextAction": "Resolve authorized swim/dive results, units, lanes/heats and gender/division mappings."
+    },
+    {
+      "id": "additional:track-field",
+      "status": "blocked",
+      "references": [
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/index.htm",
+          "observation": "Accessible official NCAA indoor championship results index March13\u201314,2026; lists men's/women's track/field and combined-event result links. HTML reference only, no documented authorized machine-readable interface established."
+        },
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/js/status.js",
+          "observation": "Public client loads status.csv; update_leaderboard.js loads mleader.htm and wleader.htm. These are meet-specific HTML endpoints, not an all-meet discovery API."
+        },
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/status.csv",
+          "observation": "HTTP 200; despite .csv suffix content is HTML span elements mapping event-round IDs to Official/Scored. No schedule or participant records in this response."
+        },
+        {
+          "url": "https://flashresults.ncaa.com/Indoor/2026/021-2_compiled.htm",
+          "observation": "Official result HTML contains 2026 women mile final table with places, named athletes, schools, time strings and millisecond tie-breaking precision. No generic JSON feed or cross-meet season discovery established."
+        }
+      ],
+      "nextAction": "Obtain partner-supported meet discovery/results access or scope an HTML adapter separately; present evidence covers one indoor championship, not outdoor/full college schedules."
+    },
+    {
+      "id": "additional:volleyball",
+      "status": "blocked",
+      "references": [
+        {
+          "url": "https://api-sports.io/documentation/volleyball/v1",
+          "observation": "Official documentation URL opened but extraction returned no content; no authenticated exact professional-league fixture validated."
+        },
+        {
+          "url": "https://pagebuilder-fe-api.volleyballworld.com/",
+          "observation": "Public API root indexed with frontend service banner only; no league/schedule contract or authorization validated."
+        }
+      ],
+      "nextAction": "Choose exact professional leagues and obtain authorized data; generic volleyball endpoint is insufficient evidence."
+    },
+    {
+      "id": "additional:boxing",
+      "status": "blocked",
+      "references": [
+        {
+          "url": "https://www.thesportsdb.com/documentation",
+          "observation": "Official docs allow public test key123, restrict free methods and reserve v2/live-score methods for premium. Free quota30requests/minute. Existing limited schedule contract remains; no paid access acquired."
+        },
+        {
+          "url": "https://www.thesportsdb.com/api/v1/json/123/lookupleague.php?id=4445",
+          "observation": "HTTP 200; league 4445 identifies Boxing / Fighting."
+        },
+        {
+          "url": "https://www.thesportsdb.com/api/v1/json/123/eventsseason.php?id=4445&s=2026",
+          "observation": "HTTP 200; only 15 events returned, starting January 2026; examples have null scores and inconsistent status. This does not establish complete 2026 coverage or live results."
+        }
+      ],
+      "nextAction": "Validate complete dated boxing schedules and results with authorized source before widening existing limited capability."
+    }
+  ]
+}

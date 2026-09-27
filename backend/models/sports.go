@@ -4,6 +4,7 @@ import "time"
 
 // SportsTeam represents one side in a scheduled or in-progress game.
 type SportsTeam struct {
+	Seed             int    `json:"seed,omitempty"`
 	StandingSummary  string `json:"standingSummary,omitempty"`
 	Color            string `json:"color,omitempty"`
 	AlternateColor   string `json:"alternateColor,omitempty"`
@@ -32,6 +33,13 @@ const (
 
 // SportsGame represents a single scheduled, live, or completed game.
 type SportsGame struct {
+	Combat          *SportsCombatContext `json:"combat,omitempty"`
+	CourtName       string               `json:"courtName,omitempty"`
+	BestOf          int                  `json:"bestOf,omitempty"`
+	NeutralSite     *bool                `json:"neutralSite,omitempty"`
+	ProviderEventID string               `json:"providerEventId,omitempty"`
+	ParentEventID   string               `json:"parentEventId,omitempty"`
+
 	EventContext      string                   `json:"eventContext,omitempty"`
 	EndTime           time.Time                `json:"endTime,omitempty"`
 	FootballSituation *SportsFootballSituation `json:"footballSituation,omitempty"`
@@ -56,6 +64,17 @@ type SportsGame struct {
 
 // SportsLeague identifies a supported league/competition.
 type SportsLeague struct {
+	Provider             string   `json:"provider,omitempty"`
+	ProviderSport        string   `json:"providerSport,omitempty"`
+	ProviderLeague       string   `json:"providerLeague,omitempty"`
+	ApplicationSport     string   `json:"applicationSport,omitempty"`
+	College              bool     `json:"college"`
+	Adapter              string   `json:"adapter,omitempty"`
+	ImplementationStatus string   `json:"implementationStatus,omitempty"`
+	Capabilities         []string `json:"capabilities"`
+	Aliases              []string `json:"aliases,omitempty"`
+	CoverageNote         string   `json:"coverageNote,omitempty"`
+
 	ID            string `json:"id"` // e.g. "mlb"
 	Name          string `json:"name"`
 	Sport         string `json:"sport"`
@@ -272,4 +291,21 @@ type SportsFootballSituation struct {
 	FieldPosition string `json:"fieldPosition"`
 	AwayTimeouts  *int   `json:"awayTimeouts,omitempty"`
 	HomeTimeouts  *int   `json:"homeTimeouts,omitempty"`
+}
+
+// SportsCombatContext preserves the provider card order without guessing main/prelim sections.
+type SportsCombatContext struct {
+	CardName        string             `json:"cardName,omitempty"`
+	Division        string             `json:"division,omitempty"`
+	ScheduledRounds int                `json:"scheduledRounds,omitempty"`
+	Bouts           []SportsCombatBout `json:"bouts,omitempty"`
+}
+type SportsCombatBout struct {
+	ID       string           `json:"id"`
+	Away     SportsTeam       `json:"away"`
+	Home     SportsTeam       `json:"home"`
+	Division string           `json:"division,omitempty"`
+	Status   SportsGameStatus `json:"status"`
+	Period   string           `json:"period,omitempty"`
+	Clock    string           `json:"clock,omitempty"`
 }

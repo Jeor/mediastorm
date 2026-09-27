@@ -48,6 +48,12 @@ type raceCompetition struct {
 }
 
 func racingSlug(league string) string {
+	for _, l := range LeagueCatalog {
+		if l.ID == league && l.Sport == "racing" && l.active() {
+			return l.Slug
+		}
+	}
+
 	switch league {
 	case "f1":
 		return "f1"
@@ -88,7 +94,7 @@ func normalizeRaceBoard(raw raceScoreboard, league string, now time.Time) []mode
 			if label == "" {
 				label = "Race"
 			}
-			session := models.SportsEvent{ID: parent.ID + ":" + c.ID, ProviderEventID: event.ID, SessionID: c.ID, SessionType: label, Title: label, League: league, Sport: "racing", EventKind: "race-session", StartTime: parseESPNDate(c.Date), Status: espnStatusToGameStatus(c.Status.Type), StatusDetail: c.Status.Type.Detail, UpdatedAt: now, Participants: []models.SportsParticipant{}}
+			session := models.SportsEvent{ID: parent.ID + ":" + c.ID, ProviderEventID: event.ID, SessionID: c.ID, SessionType: label, Title: event.Name, League: league, Sport: "racing", EventKind: "race-session", StartTime: parseESPNDate(c.Date), Status: espnStatusToGameStatus(c.Status.Type), StatusDetail: c.Status.Type.Detail, UpdatedAt: now, Participants: []models.SportsParticipant{}}
 			if c.Venue != nil {
 				session.VenueName = c.Venue.FullName
 			}
@@ -120,6 +126,9 @@ func normalizeRaceBoard(raw raceScoreboard, league string, now time.Time) []mode
 		parent.StatusDetail = main.StatusDetail
 		parent.VenueName = main.VenueName
 		attachRaceCircuit(&parent)
+		for i := range parent.SubEvents {
+			parent.SubEvents[i].Circuit = parent.Circuit
+		}
 		events = append(events, parent)
 	}
 	return events

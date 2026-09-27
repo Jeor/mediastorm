@@ -1,0 +1,985 @@
+{
+  "header": {
+    "id": "401919201",
+    "uid": "s:500~l:20813~e:401919201",
+    "season": {
+      "year": 2026,
+      "current": true,
+      "type": 2
+    },
+    "timeValid": true,
+    "competitions": [
+      {
+        "id": "401919201",
+        "uid": "s:500~l:20813~e:401919201~c:401919201",
+        "date": "2026-09-20T16:30Z",
+        "neutralSite": false,
+        "boxscoreAvailable": false,
+        "commentaryAvailable": false,
+        "liveAvailable": false,
+        "onWatchESPN": true,
+        "recent": false,
+        "wallclockAvailable": false,
+        "boxscoreSource": "none",
+        "playByPlaySource": "none",
+        "competitors": [
+          {
+            "id": "127637",
+            "uid": "s:500~l:20813~t:127637",
+            "order": 0,
+            "homeAway": "home",
+            "winner": true,
+            "team": {
+              "id": "127637",
+              "guid": "cc09f9f8-c7b5-3502-8e10-200127770f57",
+              "uid": "s:500~l:20813~t:127637",
+              "location": "Philadelphia",
+              "name": "Waterdogs",
+              "nickname": "Waterdogs",
+              "abbreviation": "WAT",
+              "displayName": "Philadelphia Waterdogs",
+              "color": "000000",
+              "alternateColor": "6c20c4",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127637.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-05-01T03:00Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/127637.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T03:01Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/scoreboard/127637.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard"
+                  ],
+                  "lastUpdated": "2026-05-01T03:00Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127637.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T03:01Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/cc09f9f8-c7b5-3502-8e10-200127770f57/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                }
+              ],
+              "links": []
+            },
+            "score": "14",
+            "linescores": [
+              {
+                "displayValue": "7"
+              },
+              {
+                "displayValue": "3"
+              },
+              {
+                "displayValue": "1"
+              },
+              {
+                "displayValue": "3"
+              }
+            ],
+            "record": [
+              {
+                "type": "total",
+                "summary": "11-3",
+                "displayValue": "11-3"
+              }
+            ],
+            "possession": false
+          },
+          {
+            "id": "122896",
+            "uid": "s:500~l:20813~t:122896",
+            "order": 1,
+            "homeAway": "away",
+            "winner": false,
+            "team": {
+              "id": "122896",
+              "guid": "a814273e-786a-3097-b59c-ea1adaeb6273",
+              "uid": "s:500~l:20813~t:122896",
+              "location": "Denver",
+              "name": "Outlaws",
+              "nickname": "Outlaws",
+              "abbreviation": "OUT",
+              "displayName": "Denver Outlaws",
+              "color": "ff4d00",
+              "alternateColor": "b3b3b3",
+              "logos": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/122896.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-05-01T02:22Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/122896.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T02:22Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/scoreboard/122896.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard"
+                  ],
+                  "lastUpdated": "2026-05-01T02:22Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/122896.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T02:22Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/primary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/primary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/primary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/primary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/primary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/primary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "primary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/secondary_logo_on_white_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_white_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/secondary_logo_on_black_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_black_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/secondary_logo_on_primary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_primary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/secondary_logo_on_secondary_color.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_on_secondary_color"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/secondary_logo_black.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_black"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/guid/a814273e-786a-3097-b59c-ea1adaeb6273/logos/secondary_logo_white.png",
+                  "width": 4096,
+                  "height": 4096,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "secondary_logo_white"
+                  ],
+                  "lastUpdated": "2026-07-22T20:37Z"
+                }
+              ],
+              "links": []
+            },
+            "score": "4",
+            "linescores": [
+              {
+                "displayValue": "3"
+              },
+              {
+                "displayValue": "1"
+              },
+              {
+                "displayValue": "0"
+              },
+              {
+                "displayValue": "0"
+              }
+            ],
+            "record": [
+              {
+                "type": "total",
+                "summary": "8-7",
+                "displayValue": "8-7"
+              }
+            ],
+            "possession": false
+          }
+        ],
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          }
+        },
+        "boxscoreMinutes": false
+      }
+    ],
+    "links": [
+      {
+        "rel": [
+          "videos",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/pll/video?gameId=401919201",
+        "text": "Videos",
+        "shortText": "Videos",
+        "isExternal": false,
+        "isPremium": false
+      }
+    ],
+    "league": {
+      "id": "20813",
+      "uid": "s:500~l:20813",
+      "name": "Premier Lacrosse League",
+      "abbreviation": "PLL",
+      "shortName": "PLL",
+      "slug": "pll",
+      "isTournament": false,
+      "links": [
+        {
+          "rel": [
+            "index",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/pll/",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "index",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:500~l:20813",
+          "text": "Index"
+        },
+        {
+          "rel": [
+            "schedule",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/pll/schedule",
+          "text": "Schedule"
+        },
+        {
+          "rel": [
+            "schedule",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:500~l:20813&section=scores",
+          "text": "Schedule"
+        },
+        {
+          "rel": [
+            "standings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/pll/standings",
+          "text": "Standings"
+        },
+        {
+          "rel": [
+            "standings",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:500~l:20813&section=standings",
+          "text": "Standings"
+        },
+        {
+          "rel": [
+            "rankings",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/pll/rankings",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "rankings",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:500~l:20813&section=rankings",
+          "text": "Rankings"
+        },
+        {
+          "rel": [
+            "scores",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/pll/scoreboard",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "scores",
+            "sportscenter",
+            "app",
+            "league"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:500~l:20813&section=scores",
+          "text": "Scores"
+        },
+        {
+          "rel": [
+            "teams",
+            "desktop",
+            "league"
+          ],
+          "href": "https://www.espn.com/pll/teams",
+          "text": "Teams"
+        }
+      ],
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/pll.png",
+          "rel": [
+            "full",
+            "default"
+          ]
+        },
+        {
+          "href": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/pll.png",
+          "rel": [
+            "full",
+            "dark"
+          ]
+        }
+      ]
+    }
+  },
+  "gameInfo": {},
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "122896",
+          "uid": "s:500~l:20813~t:122896",
+          "slug": "denver-outlaws",
+          "location": "Denver",
+          "name": "Outlaws",
+          "abbreviation": "OUT",
+          "displayName": "Denver Outlaws",
+          "shortDisplayName": "Outlaws",
+          "color": "ff4d00",
+          "alternateColor": "b3b3b3",
+          "logo": "https://a.espncdn.com/i/teamlogos/pll/500/122896.png"
+        },
+        "displayOrder": 1,
+        "homeAway": "away"
+      },
+      {
+        "team": {
+          "id": "127637",
+          "uid": "s:500~l:20813~t:127637",
+          "slug": "philadelphia-waterdogs",
+          "location": "Philadelphia",
+          "name": "Waterdogs",
+          "abbreviation": "WAT",
+          "displayName": "Philadelphia Waterdogs",
+          "shortDisplayName": "Waterdogs",
+          "color": "000000",
+          "alternateColor": "6c20c4",
+          "logo": "https://a.espncdn.com/i/teamlogos/pll/500/127637.png"
+        },
+        "displayOrder": 2,
+        "homeAway": "home"
+      }
+    ],
+    "players": [
+      {
+        "team": {
+          "id": "122896",
+          "uid": "s:500~l:20813~t:122896",
+          "slug": "denver-outlaws",
+          "location": "Denver",
+          "name": "Outlaws",
+          "abbreviation": "OUT",
+          "displayName": "Denver Outlaws",
+          "shortDisplayName": "Outlaws",
+          "color": "ff4d00",
+          "alternateColor": "b3b3b3",
+          "logo": "https://a.espncdn.com/i/teamlogos/pll/500/122896.png"
+        },
+        "displayOrder": 1
+      },
+      {
+        "team": {
+          "id": "127637",
+          "uid": "s:500~l:20813~t:127637",
+          "slug": "philadelphia-waterdogs",
+          "location": "Philadelphia",
+          "name": "Waterdogs",
+          "abbreviation": "WAT",
+          "displayName": "Philadelphia Waterdogs",
+          "shortDisplayName": "Waterdogs",
+          "color": "000000",
+          "alternateColor": "6c20c4",
+          "logo": "https://a.espncdn.com/i/teamlogos/pll/500/127637.png"
+        },
+        "displayOrder": 2
+      }
+    ]
+  },
+  "standings": {
+    "fullViewLink": {
+      "text": "Full Standings",
+      "href": "https://www.espn.com/pll/standings"
+    },
+    "groups": [
+      {
+        "standings": {
+          "entries": [
+            {
+              "team": "Philadelphia",
+              "id": "127637",
+              "uid": "s:500~l:20813~t:127637",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127637.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-05-01T03:00Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127637.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T03:01Z"
+                }
+              ]
+            },
+            {
+              "team": "Utah",
+              "id": "127631",
+              "uid": "s:500~l:20813~t:127631",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127631.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2024-05-01T17:31Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127631.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2024-05-24T19:48Z"
+                }
+              ]
+            },
+            {
+              "team": "Boston",
+              "id": "122997",
+              "uid": "s:500~l:20813~t:122997",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/122997.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2024-05-24T20:06Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/122997.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2024-05-24T20:05Z"
+                }
+              ]
+            },
+            {
+              "team": "California",
+              "id": "127636",
+              "uid": "s:500~l:20813~t:127636",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127636.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2024-05-01T17:31Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127636.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-03-20T19:36Z"
+                }
+              ]
+            },
+            {
+              "team": "Denver",
+              "id": "122896",
+              "uid": "s:500~l:20813~t:122896",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/122896.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-05-01T02:22Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/122896.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T02:22Z"
+                }
+              ]
+            },
+            {
+              "team": "Maryland",
+              "id": "127638",
+              "uid": "s:500~l:20813~t:127638",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127638.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2026-05-01T03:06Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127638.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2026-05-01T03:06Z"
+                }
+              ]
+            },
+            {
+              "team": "Carolina",
+              "id": "127634",
+              "uid": "s:500~l:20813~t:127634",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127634.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2024-05-01T17:31Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127634.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2024-05-24T19:48Z"
+                }
+              ]
+            },
+            {
+              "team": "New York",
+              "id": "127632",
+              "uid": "s:500~l:20813~t:127632",
+              "stats": [],
+              "logo": [
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500/127632.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "default"
+                  ],
+                  "lastUpdated": "2024-05-01T17:31Z"
+                },
+                {
+                  "href": "https://a.espncdn.com/i/teamlogos/pll/500-dark/scoreboard/127632.png",
+                  "width": 500,
+                  "height": 500,
+                  "alt": "",
+                  "rel": [
+                    "full",
+                    "scoreboard",
+                    "dark"
+                  ],
+                  "lastUpdated": "2024-05-24T19:48Z"
+                }
+              ]
+            }
+          ]
+        },
+        "header": "2026 Premier Lacrosse League Standings"
+      }
+    ]
+  },
+  "format": {
+    "regulation": {
+      "periods": 4,
+      "displayName": "Quarter",
+      "slug": "quarter",
+      "clock": 720.0
+    },
+    "overtime": {
+      "periods": 1,
+      "displayName": "Quarter",
+      "slug": "quarter",
+      "clock": 720.0
+    },
+    "suddenDeath": {
+      "periods": 1,
+      "clock": 720.0
+    }
+  }
+}

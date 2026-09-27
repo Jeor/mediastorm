@@ -1,0 +1,688 @@
+{
+  "leagues": [
+    {
+      "id": "19483",
+      "uid": "s:600~l:19483",
+      "name": "UEFA Women's Champions League",
+      "abbreviation": "UEFA Women's Champions League",
+      "midsizeName": "UEFA.WCHAMPIONS",
+      "slug": "uefa.wchampions",
+      "season": {
+        "year": 2026,
+        "startDate": "2026-07-01T04:00Z",
+        "endDate": "2027-07-01T03:59Z",
+        "displayName": "2026-27 UEFA Women's Champions League",
+        "type": {
+          "id": "1",
+          "type": 14551,
+          "name": "League Phase",
+          "abbreviation": "League Phase"
+        }
+      },
+      "logos": [
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/soccer/500/2408.png",
+          "width": 500,
+          "height": 500,
+          "alt": "",
+          "rel": [
+            "full",
+            "default"
+          ],
+          "lastUpdated": "2021-05-21T14:46Z"
+        },
+        {
+          "href": "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2408.png",
+          "width": 500,
+          "height": 500,
+          "alt": "",
+          "rel": [
+            "full",
+            "dark"
+          ],
+          "lastUpdated": "2021-05-21T14:49Z"
+        }
+      ],
+      "calendarType": "list",
+      "calendarIsWhitelist": true,
+      "calendarStartDate": "2026-07-01T04:00Z",
+      "calendarEndDate": "2027-07-01T03:59Z",
+      "calendar": [
+        {
+          "label": "UEFA Women's Champions League",
+          "startDate": "2026-07-01T04:00Z",
+          "endDate": "2027-07-01T03:59Z",
+          "entries": [
+            {
+              "label": "League Phase",
+              "detail": "Sep 22-Dec 16",
+              "value": "1",
+              "startDate": "2026-09-21T07:00Z",
+              "endDate": "2026-12-18T07:59Z"
+            },
+            {
+              "label": "Knockout Round Playoffs",
+              "detail": "Dec 18-Feb 12",
+              "value": "2",
+              "startDate": "2026-12-18T08:00Z",
+              "endDate": "2027-02-13T07:59Z"
+            },
+            {
+              "label": "Quarterfinals",
+              "detail": "Feb 13-Apr 2",
+              "value": "3",
+              "startDate": "2027-02-13T08:00Z",
+              "endDate": "2027-04-03T06:59Z"
+            },
+            {
+              "label": "Semifinals",
+              "detail": "Apr 3-May 10",
+              "value": "4",
+              "startDate": "2027-04-03T07:00Z",
+              "endDate": "2027-05-11T06:59Z"
+            },
+            {
+              "label": "Final",
+              "detail": "May 11-31",
+              "value": "5",
+              "startDate": "2027-05-11T07:00Z",
+              "endDate": "2027-06-01T06:59Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "season": {
+    "type": 14551,
+    "year": 2026
+  },
+  "events": [
+    {
+      "id": "401917013",
+      "uid": "s:600~l:19483~e:401917013",
+      "date": "2026-09-23T16:45Z",
+      "name": "Roma at Oud-Heverlee Leuven",
+      "shortName": "ROMA @ OHL",
+      "season": {
+        "year": 2026,
+        "type": 14551,
+        "slug": "league-phase"
+      },
+      "competitions": [
+        {
+          "id": "401917013",
+          "uid": "s:600~l:19483~e:401917013~c:401917013",
+          "date": "2026-09-23T16:45Z",
+          "startDate": "2026-09-23T16:45Z",
+          "attendance": 1484,
+          "timeValid": true,
+          "recent": false,
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+7'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "venue": {
+            "id": "4704",
+            "fullName": "King Power at Den Dreef Stadion",
+            "address": {
+              "city": "Leuven",
+              "country": "Belgium"
+            }
+          },
+          "format": {
+            "regulation": {
+              "periods": 2
+            }
+          },
+          "altGameNote": "UEFA Women's Champions League, League Phase",
+          "notes": [],
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "ESPN Deportes",
+                "logo": "https://a.espncdn.com/guid/58f5b8d0-704b-35dc-b6a6-b32e0e123050/logos/default.png",
+                "darkLogo": "https://a.espncdn.com/guid/58f5b8d0-704b-35dc-b6a6-b32e0e123050/logos/default-dark.png"
+              },
+              "lang": "en",
+              "region": "us"
+            },
+            {
+              "type": {
+                "id": "4",
+                "shortName": "STREAMING"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "Paramount+"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ESPN Deportes",
+                "Paramount+"
+              ]
+            }
+          ],
+          "broadcast": "",
+          "competitors": [
+            {
+              "id": "131423",
+              "uid": "s:600~t:131423",
+              "type": "team",
+              "order": 0,
+              "homeAway": "home",
+              "winner": false,
+              "form": "DWWWW",
+              "score": "0",
+              "records": [
+                {
+                  "name": "All Splits",
+                  "type": "total",
+                  "summary": "0-1-0",
+                  "abbreviation": "Total"
+                }
+              ],
+              "team": {
+                "id": "131423",
+                "uid": "s:600~t:131423",
+                "abbreviation": "OHL",
+                "displayName": "OH Leuven",
+                "shortDisplayName": "OH Leuven",
+                "name": "Oud-Heverlee Leuven",
+                "location": "Oud-Heverlee Leuven",
+                "color": "601870",
+                "alternateColor": "0b6623",
+                "isActive": true,
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131423.png",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/club/_/id/131423/oud-heverlee-leuven",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/team/stats/_/id/131423/oud-heverlee-leuven",
+                    "text": "Stats",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~t:131423&section=stats",
+                    "text": "Stats",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/team/fixtures/_/id/131423/oud-heverlee-leuven",
+                    "text": "Fixtures",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~t:131423&section=scores",
+                    "text": "Fixtures",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "squad",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/team/squad/_/id/131423/oud-heverlee-leuven",
+                    "text": "Squad",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "squad",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~t:131423&section=squad",
+                    "text": "Squad",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  }
+                ]
+              },
+              "statistics": [
+                {
+                  "name": "appearances",
+                  "abbreviation": "APP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "foulsCommitted",
+                  "abbreviation": "FC",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "wonCorners",
+                  "abbreviation": "CW",
+                  "displayValue": "3"
+                },
+                {
+                  "name": "goalAssists",
+                  "abbreviation": "A",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "possessionPct",
+                  "abbreviation": "PP",
+                  "displayValue": "47.3"
+                },
+                {
+                  "name": "shotAssists",
+                  "abbreviation": "SHAST",
+                  "displayValue": "7"
+                },
+                {
+                  "name": "shotsOnTarget",
+                  "abbreviation": "SOG",
+                  "displayValue": "6"
+                },
+                {
+                  "name": "totalGoals",
+                  "abbreviation": "G",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "totalShots",
+                  "abbreviation": "SHOT",
+                  "displayValue": "12"
+                }
+              ]
+            },
+            {
+              "id": "21685",
+              "uid": "s:600~t:21685",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "winner": false,
+              "form": "DWLDL",
+              "score": "0",
+              "records": [
+                {
+                  "name": "All Splits",
+                  "type": "total",
+                  "summary": "0-1-0",
+                  "abbreviation": "Total"
+                }
+              ],
+              "team": {
+                "id": "21685",
+                "uid": "s:600~t:21685",
+                "abbreviation": "ROMA",
+                "displayName": "Roma",
+                "shortDisplayName": "Roma",
+                "name": "Roma",
+                "location": "Roma",
+                "color": "990a2c",
+                "alternateColor": "eae9e7",
+                "isActive": true,
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21685.png",
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/club/_/id/21685/roma",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/team/stats/_/id/21685/roma",
+                    "text": "Stats",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~t:21685&section=stats",
+                    "text": "Stats",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/team/fixtures/_/id/21685/roma",
+                    "text": "Fixtures",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~t:21685&section=scores",
+                    "text": "Fixtures",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "squad",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/soccer/team/squad/_/id/21685/roma",
+                    "text": "Squad",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  },
+                  {
+                    "rel": [
+                      "squad",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:600~t:21685&section=squad",
+                    "text": "Squad",
+                    "isExternal": false,
+                    "isPremium": false,
+                    "isHidden": false
+                  }
+                ]
+              },
+              "statistics": [
+                {
+                  "name": "appearances",
+                  "abbreviation": "APP",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "foulsCommitted",
+                  "abbreviation": "FC",
+                  "displayValue": "10"
+                },
+                {
+                  "name": "wonCorners",
+                  "abbreviation": "CW",
+                  "displayValue": "4"
+                },
+                {
+                  "name": "goalAssists",
+                  "abbreviation": "A",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "possessionPct",
+                  "abbreviation": "PP",
+                  "displayValue": "52.7"
+                },
+                {
+                  "name": "shotAssists",
+                  "abbreviation": "SHAST",
+                  "displayValue": "13"
+                },
+                {
+                  "name": "shotsOnTarget",
+                  "abbreviation": "SOG",
+                  "displayValue": "5"
+                },
+                {
+                  "name": "totalGoals",
+                  "abbreviation": "G",
+                  "displayValue": "0"
+                },
+                {
+                  "name": "totalShots",
+                  "abbreviation": "SHOT",
+                  "displayValue": "16"
+                }
+              ]
+            }
+          ],
+          "details": [
+            {
+              "type": {
+                "id": "94",
+                "text": "Yellow Card"
+              },
+              "clock": {
+                "value": 2782.0,
+                "displayValue": "47'"
+              },
+              "team": {
+                "id": "21685"
+              },
+              "scoreValue": 0,
+              "scoringPlay": false,
+              "redCard": false,
+              "yellowCard": true,
+              "penaltyKick": false,
+              "ownGoal": false,
+              "shootout": false,
+              "athletesInvolved": [
+                {
+                  "id": "320262",
+                  "displayName": "Giada Greggi",
+                  "shortName": "G. Greggi",
+                  "fullName": "Giada Greggi",
+                  "jersey": "20",
+                  "team": {
+                    "id": "21685"
+                  },
+                  "links": [
+                    {
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/soccer/player/_/id/320262/giada-greggi",
+                      "isHidden": false
+                    }
+                  ],
+                  "position": "LM"
+                }
+              ]
+            },
+            {
+              "type": {
+                "id": "94",
+                "text": "Yellow Card"
+              },
+              "clock": {
+                "value": 4175.0,
+                "displayValue": "70'"
+              },
+              "team": {
+                "id": "21685"
+              },
+              "scoreValue": 0,
+              "scoringPlay": false,
+              "redCard": false,
+              "yellowCard": true,
+              "penaltyKick": false,
+              "ownGoal": false,
+              "shootout": false,
+              "athletesInvolved": [
+                {
+                  "id": "260456",
+                  "displayName": "Martina Piemonte",
+                  "shortName": "M. Piemonte",
+                  "fullName": "Martina Piemonte",
+                  "jersey": "18",
+                  "team": {
+                    "id": "21685"
+                  },
+                  "links": [
+                    {
+                      "rel": [
+                        "playercard",
+                        "desktop",
+                        "athlete"
+                      ],
+                      "href": "https://www.espn.com/soccer/player/_/id/260456/martina-piemonte",
+                      "isHidden": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "odds": [
+            null
+          ],
+          "wasSuspended": false,
+          "playByPlayAvailable": true,
+          "playByPlayAthletes": true
+        }
+      ],
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+7'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "venue": {
+        "displayName": "King Power at Den Dreef Stadion"
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401917013/roma-oud-heverlee-leuven",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401917013",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/matchstats/_/gameId/401917013",
+          "text": "Statistics",
+          "shortText": "Statistics",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ]
+    }
+  ]
+}

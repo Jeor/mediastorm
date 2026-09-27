@@ -28,6 +28,9 @@ func TestRaceCapturedWeekendAndClassification(t *testing.T) {
 	}
 	e := events[0]
 	race := e.SubEvents[4]
+	if race.Title != e.Title || race.Circuit == nil || race.Circuit.ID != "it-1922" {
+		t.Fatal("session lost verified weekend title or circuit")
+	}
 	if race.SessionID != "401839102" || !e.StartTime.Equal(race.StartTime) || e.ID == race.ID {
 		t.Fatal("weekend/session identity or date lost")
 	}

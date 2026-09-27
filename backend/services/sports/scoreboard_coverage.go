@@ -10,7 +10,7 @@ import (
 // Tennis groups matches beneath tournaments; MMA puts every bout in competitions.
 // Keep their individual identities and start times instead of the tournament/card date.
 func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
-	if league.Sport != "tennis" && league.Sport != "mma" {
+	if league.Sport != "tennis" && league.Sport != "mma" && league.Slug != "tgl" {
 		if game, ok := espnEventToGame(event, league); ok {
 			return []models.SportsGame{game}
 		}
@@ -25,6 +25,12 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 	for _, competition := range competitions {
 		if competition.ID == "" || seen[competition.ID] || len(competition.Competitors) != 2 {
 			continue
+		}
+		if league.Slug == "tgl" {
+			// Athlete head-to-head holes belong inside the team match, not separate hub cards.
+			if competition.Competitors[0].Athlete != nil || competition.Competitors[1].Athlete != nil {
+				continue
+			}
 		}
 		seen[competition.ID] = true
 		// Unknown set results stay unknown; never invent a 0–0 result for a future match.
@@ -57,6 +63,14 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 		}
 		match.Competitions = []espnCompetition{competition}
 		if game, ok := espnEventToGame(match, league); ok {
+			if league.Sport == "mma" {
+				game.Combat = &models.SportsCombatContext{CardName: strings.TrimSpace(event.Name), Division: strings.TrimSpace(competition.Type.Abbreviation)}
+				if rounds := competition.Format.Regulation.Periods; rounds == 3 || rounds == 5 {
+					game.Combat.ScheduledRounds = rounds
+				}
+			}
+			game.ParentEventID = event.ID
+			game.ProviderEventID = competition.ID
 			if league.Sport == "tennis" {
 				parts := []string{}
 				for _, value := range []string{event.Name, competition.Type.Text, competition.Round.DisplayName} {
@@ -75,6 +89,15 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 				game.Title = parent + ": " + game.Title
 			}
 			games = append(games, game)
+		}
+	}
+	if league.Sport == "mma" {
+		bouts := []models.SportsCombatBout{}
+		for _, g := range games {
+			bouts = append(bouts, models.SportsCombatBout{ID: g.ID, Away: g.AwayTeam, Home: g.HomeTeam, Division: g.Combat.Division, Status: g.Status, Period: g.Period, Clock: g.Clock})
+		}
+		for i := range games {
+			games[i].Combat.Bouts = bouts
 		}
 	}
 	return games

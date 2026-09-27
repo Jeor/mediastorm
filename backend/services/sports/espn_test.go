@@ -77,3 +77,24 @@ func TestCompetitorTeamPreservesAlternateColor(t *testing.T) {
 		t.Fatalf("alternate missing from API: %s", encoded)
 	}
 }
+
+func TestESPNNeutralSitePreserved(t *testing.T) {
+	for _, flag := range []string{"true", "false", "null"} {
+		var event espnEvent
+		err := json.Unmarshal([]byte(`{"id":"test","date":"2026-09-24T20:00Z","competitions":[{"neutralSite":`+flag+`,"competitors":[{"homeAway":"home","team":{"id":"1","displayName":"Home"}},{"homeAway":"away","team":{"id":"2","displayName":"Away"}}]}]}`), &event)
+		if err != nil {
+			t.Fatal(err)
+		}
+		game, ok := espnEventToGame(event, League{ID: "nfl"})
+		if !ok {
+			t.Fatal("expected game")
+		}
+		if flag == "null" {
+			if game.NeutralSite != nil {
+				t.Fatal("unknown venue must remain unknown")
+			}
+		} else if game.NeutralSite == nil || *game.NeutralSite != (flag == "true") {
+			t.Fatalf("lost neutral-site flag: %s", flag)
+		}
+	}
+}

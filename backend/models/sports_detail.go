@@ -5,15 +5,16 @@ import "time"
 // SportsGameDetail is additive to the legacy game response. Empty data never
 // implies a zero statistic; capability flags describe verified available panels.
 type SportsGameDetail struct {
-	BasketballShots []SportsBasketballShot      `json:"basketballShots,omitempty"`
-	WinProbability  []SportsWinProbabilityPoint `json:"winProbability,omitempty"`
-	FighterProfiles []SportsPlayerGameStats     `json:"fighterProfiles,omitempty"`
-	Shots           []SportsHockeyShot          `json:"shots,omitempty"`
-	Leaderboard     []SportsGolfEntry           `json:"leaderboard,omitempty"`
-	Innings         []SportsCricketInnings      `json:"innings,omitempty"`
-	CoverageNote    string                      `json:"coverageNote,omitempty"`
-	Pregame         *SportsPregame              `json:"pregame,omitempty"`
-	PlayerStats     []SportsPlayerGameStats     `json:"playerStats,omitempty"`
+	CricketScorecards []SportsCricketScorecard    `json:"cricketScorecards,omitempty"`
+	BasketballShots   []SportsBasketballShot      `json:"basketballShots,omitempty"`
+	WinProbability    []SportsWinProbabilityPoint `json:"winProbability,omitempty"`
+	FighterProfiles   []SportsPlayerGameStats     `json:"fighterProfiles,omitempty"`
+	Shots             []SportsHockeyShot          `json:"shots,omitempty"`
+	Leaderboard       []SportsGolfEntry           `json:"leaderboard,omitempty"`
+	Innings           []SportsCricketInnings      `json:"innings,omitempty"`
+	CoverageNote      string                      `json:"coverageNote,omitempty"`
+	Pregame           *SportsPregame              `json:"pregame,omitempty"`
+	PlayerStats       []SportsPlayerGameStats     `json:"playerStats,omitempty"`
 	// TournamentContext is the literal soccer provider season/round label, not inferred progression.
 	TournamentContext string                   `json:"tournamentContext,omitempty"`
 	ScoreHistory      *SportsScoreHistory      `json:"scoreHistory,omitempty"`
@@ -31,9 +32,13 @@ type SportsGameDetail struct {
 	Capabilities      SportsDetailCapabilities `json:"capabilities"`
 }
 type SportsPeriodScore struct {
-	Label string `json:"label"`
-	Away  string `json:"away"`
-	Home  string `json:"home"`
+	AwayTiebreak *int   `json:"awayTiebreak,omitempty"`
+	HomeTiebreak *int   `json:"homeTiebreak,omitempty"`
+	AwayWinner   *bool  `json:"awayWinner,omitempty"`
+	HomeWinner   *bool  `json:"homeWinner,omitempty"`
+	Label        string `json:"label"`
+	Away         string `json:"away"`
+	Home         string `json:"home"`
 }
 type SportsPlayParticipant struct {
 	ID   string `json:"id"`
@@ -201,6 +206,9 @@ type SportsGolfHole struct {
 	ToPar   string `json:"toPar,omitempty"`
 }
 type SportsCricketInnings struct {
+	Score       string `json:"score,omitempty"`
+	Target      *int   `json:"target,omitempty"`
+	Batting     *bool  `json:"batting,omitempty"`
 	TeamID      string `json:"teamId"`
 	Number      int    `json:"number"`
 	Runs        *int   `json:"runs,omitempty"`
@@ -245,4 +253,24 @@ type SportsWinProbabilityPoint struct {
 	PeriodLabel string  `json:"periodLabel"`
 	Clock       string  `json:"clock"`
 	Home        float64 `json:"home"`
+}
+
+type SportsCricketScorecard struct {
+	Kind     string                `json:"kind"`
+	Innings  int                   `json:"innings"`
+	TeamID   string                `json:"teamId,omitempty"`
+	TeamName string                `json:"teamName"`
+	Extras   string                `json:"extras,omitempty"`
+	Players  []SportsCricketPlayer `json:"players"`
+}
+type SportsCricketPlayer struct {
+	HeadshotURL string              `json:"headshotUrl,omitempty"`
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	Dismissal   string              `json:"dismissal,omitempty"`
+	Stats       []SportsCricketStat `json:"stats"`
+}
+type SportsCricketStat struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
 }

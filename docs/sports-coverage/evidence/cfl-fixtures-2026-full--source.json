@@ -1,0 +1,16 @@
+{
+  "url": "https://api.stats.cfl.ca/fixtures/2026",
+  "http_status": 200,
+  "captured_at": "2026-09-24T21:10:07.436925+00:00",
+  "sha256": "e3174a87dcac93001f3127a96e0aeb9d877ad7aab7c8087be84e6dbb3042c5f6",
+  "source_discovery": "Official stats.cfl.ca apiUrl configuration and /fixtures/${season}?view=summary client route; full response obtained by omitting summary projection. No authentication or access bypass.",
+  "capabilities": [
+    "schedule",
+    "final-result"
+  ],
+  "limitations": [
+    "No live game status observed; no live-score capability claimed.",
+    "Some past preseason fixtures have scores without explicit status; no final or winner inferred.",
+    "No period, venue, standings or play-by-play enrichment in this adapter."
+  ]
+}

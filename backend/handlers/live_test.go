@@ -1158,6 +1158,17 @@ func TestGetCategoriesSourceIndexIsolatesOtherSources(t *testing.T) {
 	}
 
 	otherFails.Store(false)
+	// Metadata failures now have an endpoint-specific backoff, even after recovery.
+	if status, _ := get(""); status != http.StatusBadGateway {
+		t.Fatal("failure backoff was bypassed")
+	}
+	h.discovery.mu.Lock()
+	for _, entry := range h.discovery.entries {
+		if entry.code >= 500 {
+			entry.expires = time.Now().Add(-time.Second)
+		}
+	}
+	h.discovery.mu.Unlock()
 	status, response = get("")
 	if status != http.StatusOK || len(response.Categories) != 2 {
 		t.Fatalf("unscoped status = %d, categories = %+v, want merged categories", status, response.Categories)
@@ -1300,5 +1311,21 @@ func TestGetFavoriteChannelsSkipsUnrelatedProviders(t *testing.T) {
 	}
 	if len(response.Sources) != 2 {
 		t.Fatalf("source choices lost: %+v", response.Sources)
+	}
+}
+
+func TestAddonLookupAllowsSlowerHeadersWithoutChangingPlaybackTimeout(t *testing.T) {
+	h := &LiveHandler{}
+	lookup := h.liveStreamHTTPClientWithTimeout("", 30*time.Second)
+	transport, ok := lookup.Transport.(*http.Transport)
+	if !ok || transport.ResponseHeaderTimeout != 30*time.Second {
+		t.Fatal("addon lookup did not retain its longer header timeout")
+	}
+	playback := h.liveStreamHTTPClient("")
+	if playback.Transport.(*http.Transport).ResponseHeaderTimeout != defaultStreamOpenTimeout {
+		t.Fatal("changed playback connection timeout")
+	}
+	if lookup.CheckRedirect == nil {
+		t.Fatal("lost outbound redirect validation")
 	}
 }

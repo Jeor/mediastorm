@@ -9,6 +9,7 @@ import (
 )
 
 type espnLineScore struct {
+	Tiebreak     *int            `json:"tiebreak"`
 	Winner       *bool           `json:"winner"`
 	Period       int             `json:"period"`
 	Value        json.RawMessage `json:"value"`
@@ -22,6 +23,8 @@ type espnLineScore struct {
 	Overs       json.RawMessage `json:"overs"`
 	IsBatting   bool            `json:"isBatting"`
 	Description string          `json:"description"`
+	Target      *int            `json:"target"`
+	IsCurrent   json.RawMessage `json:"isCurrent"`
 }
 
 // Cricket uses quoted booleans while other ESPN sports use JSON booleans.
@@ -35,7 +38,11 @@ func (c *espnCompetitor) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	c.Winner = string(raw.Winner) == "true" || string(raw.Winner) == `"true"`
+	winner, err := parseESPNBoolean(raw.Winner)
+	if err != nil {
+		return fmt.Errorf("competitor winner: %w", err)
+	}
+	c.Winner = winner != nil && *winner
 	return nil
 }
 
@@ -60,6 +67,9 @@ func applyScoreboardDetail(g *models.SportsGame, comp espnCompetition, league Le
 		}
 		d.Capabilities.Plays = len(d.Plays) > 0
 	case "golf":
+		if league.Slug == "tgl" {
+			return
+		}
 		g.HomeTeam = models.SportsTeam{}
 		g.AwayTeam = models.SportsTeam{}
 		g.EventKind = "tournament"
@@ -106,18 +116,16 @@ func applyScoreboardDetail(g *models.SportsGame, comp espnCompetition, league Le
 		if comp.Status.Summary != "" {
 			g.StatusDetail = comp.Status.Summary
 		}
-		for _, c := range comp.Competitors {
-			for _, inn := range c.Linescores {
-				// Feed includes non-batting placeholders for the opponent's innings.
-				if !inn.IsBatting || inn.Period < 1 {
-					continue
-				}
-				d.Innings = append(d.Innings, models.SportsCricketInnings{TeamID: competitorTeam(c).ID, Number: inn.Period, Runs: inn.Runs, Wickets: inn.Wickets, Overs: espnScore(inn.Overs), Description: inn.Description})
-			}
-		}
-		sort.SliceStable(d.Innings, func(i, j int) bool { return d.Innings[i].Number < d.Innings[j].Number })
+		d.Innings = normalizeCricketInnings(comp)
 		d.Capabilities.Stats = len(d.Innings) > 0
 	case "tennis":
+		if comp.Venue != nil {
+			g.CourtName = comp.Venue.Court
+		}
+		if n := comp.Format.Regulation.Periods; n == 3 || n == 5 {
+			g.BestOf = n
+		}
+
 		if g.Status == models.SportsGameScheduled {
 			g.Detail = d
 			return
@@ -138,8 +146,16 @@ func applyScoreboardDetail(g *models.SportsGame, comp espnCompetition, league Le
 				}
 				if competitorTeam(c).ID == g.AwayTeam.ID {
 					rows[n].Away = value
+					rows[n].AwayWinner = set.Winner
+					if set.Tiebreak != nil && *set.Tiebreak >= 0 {
+						rows[n].AwayTiebreak = set.Tiebreak
+					}
 				} else {
 					rows[n].Home = value
+					rows[n].HomeWinner = set.Winner
+					if set.Tiebreak != nil && *set.Tiebreak >= 0 {
+						rows[n].HomeTiebreak = set.Tiebreak
+					}
 				}
 			}
 		}

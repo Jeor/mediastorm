@@ -1,0 +1,56 @@
+ID,Name,Sport,Slug,Category,EventKind
+pga,PGA Tour,golf,pga,golf,tournament
+boxing,Boxing,boxing,,boxing,fight-card
+cricket-8048,Indian Premier League,cricket,8048,cricket,matchup
+nfl,NFL,football,nfl,football,matchup
+college-football,NCAAF,football,college-football,football,matchup
+nba,NBA,basketball,nba,basketball,matchup
+mens-college-basketball,NCAAM,basketball,mens-college-basketball,basketball,matchup
+womens-college-basketball,NCAAW,basketball,womens-college-basketball,basketball,matchup
+wnba,WNBA,basketball,wnba,basketball,matchup
+mlb,MLB,baseball,mlb,baseball,matchup
+nhl,NHL,hockey,nhl,hockey,matchup
+soccer-fifa.world,FIFA World Cup,soccer,fifa.world,soccer,matchup
+soccer-fifa.wwc,FIFA Women's World Cup,soccer,fifa.wwc,soccer,matchup
+soccer-eng.1,Premier League,soccer,eng.1,soccer,matchup
+soccer-eng.2,Championship,soccer,eng.2,soccer,matchup
+soccer-esp.1,La Liga,soccer,esp.1,soccer,matchup
+soccer-ger.1,Bundesliga,soccer,ger.1,soccer,matchup
+soccer-ita.1,Serie A,soccer,ita.1,soccer,matchup
+soccer-fra.1,Ligue 1,soccer,fra.1,soccer,matchup
+soccer-usa.1,MLS,soccer,usa.1,soccer,matchup
+soccer-usa.nwsl,NWSL,soccer,usa.nwsl,soccer,matchup
+soccer-usa.nwsl.cup,NWSL Challenge Cup,soccer,usa.nwsl.cup,soccer,matchup
+soccer-uefa.champions,Champions League,soccer,uefa.champions,soccer,matchup
+soccer-uefa.europa,Europa League,soccer,uefa.europa,soccer,matchup
+soccer-uefa.europa.conf,Conference League,soccer,uefa.europa.conf,soccer,matchup
+soccer-mex.1,Liga MX,soccer,mex.1,soccer,matchup
+soccer-ned.1,Eredivisie,soccer,ned.1,soccer,matchup
+soccer-por.1,Primeira Liga,soccer,por.1,soccer,matchup
+ufc,UFC,mma,ufc,mma,fight-card
+atp,ATP Tour,tennis,atp,tennis,matchup
+wta,WTA Tour,tennis,wta,tennis,matchup
+f1,Formula 1,racing,f1,racing,race
+nascar,NASCAR Cup,racing,nascar-premier,racing,race
+motogp,MotoGP,racing,,racing,race
+indycar,IndyCar,racing,irl,racing,race
+rugby-180659,Six Nations,rugby,180659,rugby,matchup
+rugby-164205,Rugby World Cup,rugby,164205,rugby,matchup
+rugby-267979,Premiership,rugby,267979,rugby,matchup
+rugby-242041,Super Rugby,rugby,242041,rugby,matchup
+rugby-270559,Top 14,rugby,270559,rugby,matchup
+rugby-league-3,NRL,rugby-league,3,rugby-league,matchup
+aso:tour,Tour de France,cycling,,cycling,race
+aso:vuelta,La Vuelta,cycling,,cycling,race
+aso:tour-femmes,Tour de France Femmes,cycling,,cycling,race
+aso:paris-nice,Paris-Nice,cycling,,cycling,race
+aso:vuelta-femenina,La Vuelta Femenina,cycling,,cycling,race
+aso:paris-roubaix,Paris-Roubaix,cycling,,cycling,race
+aso:paris-roubaix-femmes,Paris-Roubaix Femmes,cycling,,cycling,race
+aso:liege-bastogne-liege,Liège-Bastogne-Liège,cycling,,cycling,race
+aso:liege-bastogne-liege-femmes,Liège-Bastogne-Liège Femmes,cycling,,cycling,race
+aso:fleche-wallonne,La Flèche Wallonne,cycling,,cycling,race
+aso:fleche-wallonne-femmes,La Flèche Wallonne Femmes,cycling,,cycling,race
+rcs:giro,Giro d’Italia,cycling,,cycling,race
+cro:cro-race,CRO Race,cycling,,cycling,race
+uci:road-worlds,UCI Road World Championships,cycling,,cycling,race

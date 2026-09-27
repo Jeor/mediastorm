@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -43,13 +44,13 @@ func (s *Service) enrichContinueWatchingAirtime(ctx context.Context, title model
 	}
 	s.mu.Lock()
 	if s.airtimeClient == nil {
-		s.airtimeClient = &tvmazeAirtimeClient{baseURL: "https://api.tvmaze.com", http: &http.Client{Timeout: 3 * time.Second}}
+		s.airtimeClient = &tvmazeAirtimeClient{baseURL: "https://api.tvmaze.com", http: &http.Client{Timeout: 15 * time.Second}}
 	}
 	client := s.airtimeClient
 	s.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
-	if stamp := client.airtime(ctx, imdb, *ep); stamp != "" {
+	if stamp := s.resolveAirtime(ctx, client, imdb, *ep); stamp != "" {
 		ep.AirDateTimeUTC = stamp
 		ep.AirTimeEstimated = false
 	}
@@ -151,7 +152,7 @@ func (c *tvmazeAirtimeClient) get(ctx context.Context, path string, ttl time.Dur
 		c.next = time.Now().Add(wait + spacing)
 		c.mu.Unlock()
 		var body []byte
-		cacheTTL := 30 * time.Minute
+		cacheTTL := 30 * time.Second
 		timer := time.NewTimer(wait)
 		defer timer.Stop()
 		select {
@@ -163,6 +164,9 @@ func (c *tvmazeAirtimeClient) get(ctx context.Context, path string, ttl time.Dur
 		if err == nil {
 			req.Header.Set("User-Agent", "MediaStorm/1.0 (continue-watching airtimes)")
 			resp, requestErr := c.http.Do(req)
+			if requestErr != nil {
+				log.Printf("[history] TVmaze airtime request failed path=%s: %v", path, requestErr)
+			}
 			if requestErr == nil {
 				defer resp.Body.Close()
 				if resp.StatusCode == http.StatusOK {
@@ -175,6 +179,8 @@ func (c *tvmazeAirtimeClient) get(ctx context.Context, path string, ttl time.Dur
 					if strings.HasPrefix(path, "/lookup/") {
 						cacheTTL = 24 * time.Hour
 					}
+				} else {
+					log.Printf("[history] TVmaze airtime request failed path=%s status=%d", path, resp.StatusCode)
 				}
 			}
 		}

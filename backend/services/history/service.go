@@ -123,6 +123,7 @@ type Service struct {
 	activePlaybackProgress map[string]map[string]models.PlaybackProgress // userID -> mediaKey -> progress
 	metadataService        MetadataService
 	airtimeClient          *tvmazeAirtimeClient
+	airtimeState           airtimeResolutionState
 	traktScrobbler         TraktScrobbler
 	bulkSyncTail           map[string]<-chan struct{} // protected by mu; preserves bulk action order per user
 	traktRTScrobbler       TraktRealTimeScrobbler
@@ -520,6 +521,7 @@ func (s *Service) RecordEpisode(userID string, payload models.EpisodeWatchPayloa
 	s.mu.Unlock()
 
 	// Build and return current state from watch history
+	generation := s.airtimeGeneration()
 	ctx := context.Background()
 	states, err := s.buildSeriesStatesFromHistory(ctx, userID, true)
 	if err != nil {
@@ -528,11 +530,7 @@ func (s *Service) RecordEpisode(userID string, payload models.EpisodeWatchPayloa
 
 	// Cache the newly built result
 	s.mu.Lock()
-	s.continueWatchingCache[userID] = &cachedContinueWatching{
-		items:     states,
-		cachedAt:  time.Now(),
-		expiresAt: time.Now().Add(s.continueWatchingTTL),
-	}
+	s.cacheContinueWatchingLocked(userID, states, generation)
 	s.mu.Unlock()
 
 	// Find the state for this series
@@ -656,6 +654,7 @@ func (s *Service) ListContinueWatching(userID string) ([]models.SeriesWatchState
 	// Check cache first
 	s.mu.RLock()
 	cached, exists := s.continueWatchingCache[userID]
+	generation := s.airtimeState.generation
 	s.mu.RUnlock()
 
 	if exists && time.Now().Before(cached.expiresAt) {
@@ -672,11 +671,7 @@ func (s *Service) ListContinueWatching(userID string) ([]models.SeriesWatchState
 
 	// Cache the result
 	s.mu.Lock()
-	s.continueWatchingCache[userID] = &cachedContinueWatching{
-		items:     items,
-		cachedAt:  time.Now(),
-		expiresAt: time.Now().Add(s.continueWatchingTTL),
-	}
+	s.cacheContinueWatchingLocked(userID, items, generation)
 	s.mu.Unlock()
 
 	return items, nil
@@ -878,13 +873,14 @@ func (s *Service) GetContinueWatchingRevision(userID string) (string, error) {
 	}
 
 	return fmt.Sprintf(
-		"wh:%d:%d:%x|pp:%d:%d:%d",
+		"wh:%d:%d:%x|pp:%d:%d:%d|air:%d",
 		stats.watchHistoryCount,
 		stats.watchHistoryUpdated.UTC().UnixNano(),
 		watchHistoryIdentityRevision(s.watchHistory[userID]),
 		stats.playbackProgressCount,
 		stats.hiddenCount,
 		stats.playbackUpdated.UTC().UnixNano(),
+		s.airtimeState.generation,
 	), nil
 }
 

@@ -2187,10 +2187,28 @@ func (s *Service) findNextUnwatchedEpisode(
 	// located in season metadata.
 	numbering := newEpisodeNumberingIndex(seriesDetails)
 	lastWatchedSeason, lastWatchedEpisode := numbering.canonical(lastWatched.SeasonNumber, lastWatched.EpisodeNumber)
+	if lastWatchedSeason <= 0 {
+		// Imported specials must not seed a queue of more specials or restart
+		// the regular series. Continue from the newest regular watched episode.
+		var regular *models.WatchHistoryItem
+		for i := range watchedEpisodes {
+			ep := &watchedEpisodes[i]
+			if ep.SeasonNumber > 0 && (regular == nil || ep.WatchedAt.After(regular.WatchedAt)) {
+				regular = ep
+			}
+		}
+		if regular == nil {
+			return nil
+		}
+		lastWatchedSeason, lastWatchedEpisode = numbering.canonical(regular.SeasonNumber, regular.EpisodeNumber)
+	}
 
 	// Build set of watched episodes for O(1) lookup
 	watchedSet := make(map[string]bool)
 	for _, ep := range watchedEpisodes {
+		if ep.SeasonNumber <= 0 {
+			continue
+		}
 		season, episode := numbering.canonical(ep.SeasonNumber, ep.EpisodeNumber)
 		key := episodeKey(season, episode)
 		watchedSet[key] = true
@@ -2206,6 +2224,11 @@ func (s *Service) findNextUnwatchedEpisode(
 
 	for _, season := range seriesDetails.Seasons {
 		for _, ep := range season.Episodes {
+			// Specials remain playable/resumable, but are not automatic next-up
+			// candidates, including when season containers use mixed numbering.
+			if ep.SeasonNumber <= 0 {
+				continue
+			}
 			allEpisodes = append(allEpisodes, orderedEpisode{
 				season:  ep.SeasonNumber,
 				episode: ep.EpisodeNumber,
@@ -2698,7 +2721,7 @@ func newEpisodeNumberingIndex(details *models.SeriesDetails) *episodeNumberingIn
 // returns the input unchanged when it already references a real episode, and only
 // remaps when the episode number matches a known absolute episode number.
 func (idx *episodeNumberingIndex) canonical(season, episode int) (int, int) {
-	if idx == nil || episode <= 0 {
+	if idx == nil || season <= 0 || episode <= 0 {
 		return season, episode
 	}
 	if _, ok := idx.valid[episodeKey(season, episode)]; ok {

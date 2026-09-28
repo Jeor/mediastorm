@@ -756,7 +756,7 @@ func (s *Service) RunOnce(ctx context.Context) (SyncResult, error) {
 
 // RunOnceWithConfig performs a prewarm cycle for the configured home shelves.
 func (s *Service) RunOnceWithConfig(ctx context.Context, taskConfig map[string]string) (SyncResult, error) {
-	if s.historySvc == nil || s.usersSvc == nil || s.workerFn == nil {
+	if s.historySvc == nil || s.usersSvc == nil || (s.workerFn == nil && s.scopedWorkerFn == nil) {
 		return SyncResult{}, fmt.Errorf("prewarm service not fully configured")
 	}
 	selections, err := ParseShelfSelections(taskConfig)
@@ -1331,7 +1331,7 @@ func (s *Service) prequeueExpiry(lastResolve time.Time, entry *playback.Prequeue
 // expires so cleanup cannot create a cold interval between scheduler cycles.
 // Returns the number of entries re-resolved.
 func (s *Service) reResolveExpired(ctx context.Context) int {
-	if s.prequeueStore == nil || s.workerFn == nil {
+	if s.prequeueStore == nil || (s.workerFn == nil && s.scopedWorkerFn == nil) {
 		return 0
 	}
 
@@ -1357,7 +1357,28 @@ func (s *Service) reResolveExpired(ctx context.Context) int {
 			targetEpisode = entry.TargetEpisode
 		}
 
-		newPqID, err := s.workerFn(ctx, entry.TitleID, entry.TitleName, imdbID, entry.MediaType, entry.Year, entry.UserID, targetEpisode)
+		key := entryKey(entry.TitleID, entry.UserID, entry.SettingsScopeKey)
+		s.mu.RLock()
+		if warmEntry := s.entries[key]; warmEntry != nil {
+			imdbID = warmEntry.ImdbID
+		}
+		s.mu.RUnlock()
+
+		// Renew with the same effective preferences as the original entry.
+		var clientID string
+		if s.clientsSvc != nil && entry.SettingsScopeKey != s.scopeKey(entry.UserID, "", entry.TitleID) {
+			for _, client := range s.clientsSvc.ListByUser(entry.UserID) {
+				if s.scopeKey(entry.UserID, client.ID, entry.TitleID) == entry.SettingsScopeKey {
+					clientID = client.ID
+					break
+				}
+			}
+			if clientID == "" {
+				log.Printf("[prewarm] Skipping renewal of %s: settings scope no longer matches a client", entry.ID)
+				continue
+			}
+		}
+		newPqID, err := s.runWorker(ctx, entry.TitleID, entry.TitleName, imdbID, entry.MediaType, entry.Year, entry.UserID, clientID, entry.SettingsScopeKey, targetEpisode)
 		if err != nil {
 			log.Printf("[prewarm] Re-resolve failed for %s (%s): %v", entry.ID, entry.TitleName, err)
 			continue
@@ -1371,7 +1392,6 @@ func (s *Service) reResolveExpired(ctx context.Context) int {
 		}
 
 		// Update warm entry if we have one
-		key := entryKey(entry.TitleID, entry.UserID, entry.SettingsScopeKey)
 		s.mu.Lock()
 		if warmEntry, ok := s.entries[key]; ok {
 			warmEntry.PrequeueID = newPqID

@@ -922,6 +922,7 @@ func (s *PrequeueStore) Update(id string, updateFn func(*PrequeueEntry)) bool {
 	}
 
 	oldValidationKey := streamPathValidationKey(id, entry.StreamPath)
+	wasReady := entry.Status == PrequeueStatusReady
 	updateFn(entry)
 	if entry.Persistent {
 		entry.Reason = ManualPrequeueReason
@@ -939,13 +940,17 @@ func (s *PrequeueStore) Update(id string, updateFn func(*PrequeueEntry)) bool {
 			}
 			s.streamPathValidated[streamPathValidationKey(id, entry.StreamPath)] = time.Now()
 		}
-		dynTTL := entry.DynamicTTL()
-		if dynTTL <= 0 {
-			dynTTL = s.defaultTTL
-		}
-		defaultExpiry := time.Now().Add(dynTTL)
-		if entry.ExpiresAt.Before(defaultExpiry) {
-			entry.ExpiresAt = defaultExpiry
+		// Only starting a newly ready stream earns a fresh TTL. Metadata and
+		// scheduler updates must preserve its renewal deadline.
+		if !wasReady {
+			dynTTL := entry.DynamicTTL()
+			if dynTTL <= 0 {
+				dynTTL = s.defaultTTL
+			}
+			defaultExpiry := time.Now().Add(dynTTL)
+			if entry.ExpiresAt.Before(defaultExpiry) {
+				entry.ExpiresAt = defaultExpiry
+			}
 		}
 		s.saveReadyEntry(entry)
 	}
@@ -967,6 +972,7 @@ func (s *PrequeueStore) UpdateWorker(id string, updateFn func(*PrequeueEntry)) b
 	}
 
 	oldValidationKey := streamPathValidationKey(id, entry.StreamPath)
+	wasReady := entry.Status == PrequeueStatusReady
 	updateFn(entry)
 	if entry.Persistent {
 		entry.Reason = ManualPrequeueReason
@@ -983,13 +989,17 @@ func (s *PrequeueStore) UpdateWorker(id string, updateFn func(*PrequeueEntry)) b
 			}
 			s.streamPathValidated[streamPathValidationKey(id, entry.StreamPath)] = time.Now()
 		}
-		dynTTL := entry.DynamicTTL()
-		if dynTTL <= 0 {
-			dynTTL = s.defaultTTL
-		}
-		defaultExpiry := time.Now().Add(dynTTL)
-		if entry.ExpiresAt.Before(defaultExpiry) {
-			entry.ExpiresAt = defaultExpiry
+		// Only starting a newly ready stream earns a fresh TTL. Metadata and
+		// scheduler updates must preserve its renewal deadline.
+		if !wasReady {
+			dynTTL := entry.DynamicTTL()
+			if dynTTL <= 0 {
+				dynTTL = s.defaultTTL
+			}
+			defaultExpiry := time.Now().Add(dynTTL)
+			if entry.ExpiresAt.Before(defaultExpiry) {
+				entry.ExpiresAt = defaultExpiry
+			}
 		}
 		s.saveReadyEntry(entry)
 	}

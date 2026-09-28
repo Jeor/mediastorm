@@ -176,9 +176,15 @@ exit 1
 	recordingRetryDelay = 10 * time.Millisecond
 	defer func() { recordingRetryDelay = originalDelay }()
 
-	recording := newTestRecording(time.Now().UTC().Add(120 * time.Millisecond))
+	recording := newTestRecording(time.Now().UTC().Add(2 * time.Second))
 	repo := newFakeRecordingRepo(recording)
 	svc := newTestService(repo, script, t.TempDir())
+
+	repairs := 0
+	svc.remuxRecording = func(path string) error {
+		repairs++
+		return os.WriteFile(path, []byte("repaired-partial-media"), 0o644)
+	}
 
 	rootCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -198,6 +204,12 @@ exit 1
 	}
 	if latest.OutputSizeBytes == 0 {
 		t.Fatal("expected partial bytes to remain on disk for inspection")
+	}
+	if repairs != 1 {
+		t.Fatalf("repairs = %d, want 1 even after capture failure", repairs)
+	}
+	if latest.OutputSizeBytes != int64(len("repaired-partial-media")) {
+		t.Fatalf("size = %d, want repaired file size", latest.OutputSizeBytes)
 	}
 }
 

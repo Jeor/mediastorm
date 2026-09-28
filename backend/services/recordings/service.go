@@ -734,11 +734,11 @@ func (s *Service) startRecording(recording models.Recording) {
 	attempt := 0
 	lastErrMsg := ""
 	for {
-		attempt++
 		remaining := time.Until(stopAt)
 		if remaining <= 0 {
 			break
 		}
+		attempt++
 
 		waitErr, errMsg := s.runRecordingAttempt(ctx, recording, remaining, attempt == 1)
 		finishedAt := time.Now().UTC()
@@ -782,10 +782,9 @@ func (s *Service) startRecording(recording models.Recording) {
 		s.finalizeCancelledRecording(latest)
 		return
 	}
-	if attempt > 1 && lastErrMsg == "" {
-		if err := s.remuxRecording(latest.OutputPath); err != nil {
-			lastErrMsg = fmt.Sprintf("repair recording timestamps: %v", err)
-		}
+	// Retry outputs reset timestamps even when the final attempt failed.
+	if attempt > 1 {
+		lastErrMsg = s.repairRecordingOutput(latest, lastErrMsg)
 	}
 
 	if info, err := os.Stat(latest.OutputPath); err == nil {
@@ -898,21 +897,15 @@ func (s *Service) handleInterruptedRecording(id string, ts time.Time) {
 		s.finalizeCancelledRecording(latest)
 		return
 	}
-	s.finalizeFailure(*latest, ts, "recording interrupted before scheduled stop time")
+	msg := s.repairRecordingOutput(latest, "recording interrupted before scheduled stop time")
+	s.finalizeFailure(*latest, ts, msg)
 }
 
 func (s *Service) finalizeCancelledRecording(recording *models.Recording) {
 	if recording == nil {
 		return
 	}
-	if info, err := os.Stat(recording.OutputPath); err == nil && info.Size() > 0 {
-		if err := s.remuxRecording(recording.OutputPath); err != nil {
-			log.Printf("[recordings] remux cancelled recording %s failed: %v", recording.ID, err)
-		}
-		if info, err := os.Stat(recording.OutputPath); err == nil {
-			recording.OutputSizeBytes = info.Size()
-		}
-	}
+	recording.Error = s.repairRecordingOutput(recording, recording.Error)
 	recording.UpdatedAt = time.Now().UTC()
 	if err := s.repo.Update(context.Background(), recording); err != nil {
 		log.Printf("[recordings] update cancelled recording %s failed: %v", recording.ID, err)

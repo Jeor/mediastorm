@@ -63,6 +63,12 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 		}
 		match.Competitions = []espnCompetition{competition}
 		if game, ok := espnEventToGame(match, league); ok {
+			if league.Sport == "mma" {
+				game.Combat = &models.SportsCombatContext{CardName: strings.TrimSpace(event.Name), Division: strings.TrimSpace(competition.Type.Abbreviation)}
+				if rounds := competition.Format.Regulation.Periods; rounds == 3 || rounds == 5 {
+					game.Combat.ScheduledRounds = rounds
+				}
+			}
 			game.ParentEventID = event.ID
 			game.ProviderEventID = competition.ID
 			if league.Sport == "tennis" {
@@ -83,6 +89,15 @@ func scoreboardEventGames(event espnEvent, league League) []models.SportsGame {
 				game.Title = parent + ": " + game.Title
 			}
 			games = append(games, game)
+		}
+	}
+	if league.Sport == "mma" {
+		bouts := []models.SportsCombatBout{}
+		for _, g := range games {
+			bouts = append(bouts, models.SportsCombatBout{ID: g.ID, Away: g.AwayTeam, Home: g.HomeTeam, Division: g.Combat.Division, Status: g.Status, Period: g.Period, Clock: g.Clock})
+		}
+		for i := range games {
+			games[i].Combat.Bouts = bouts
 		}
 	}
 	return games

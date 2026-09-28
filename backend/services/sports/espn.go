@@ -167,12 +167,19 @@ func scoreboardMLBSituation(raw *espnScoreboardSituation, inning string) *models
 }
 
 type espnCompetition struct {
-	EndDate string `json:"endDate"`
-	Round   struct {
+	Format struct {
+		Regulation struct {
+			Periods int `json:"periods"`
+		} `json:"regulation"`
+	} `json:"format"`
+	NeutralSite *bool  `json:"neutralSite"`
+	EndDate     string `json:"endDate"`
+	Round       struct {
 		DisplayName string `json:"displayName"`
 	} `json:"round"`
 	Type struct {
-		Text string `json:"text"`
+		Text         string `json:"text"`
+		Abbreviation string `json:"abbreviation"`
 	} `json:"type"`
 	Details []struct {
 		Type struct {
@@ -260,6 +267,7 @@ type espnBroadcast struct {
 }
 
 type espnVenue struct {
+	Court    string `json:"court"`
 	FullName string `json:"fullName"`
 }
 
@@ -355,6 +363,19 @@ func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {
 			awayTeam.Rank = away.CuratedRank.Current
 		}
 	}
+	if league.Sport == "mma" {
+		applyTeamRecords(&homeTeam, home.Records)
+		applyTeamRecords(&awayTeam, away.Records)
+	}
+	if league.Sport == "tennis" {
+		// Tennis scoreboard curatedRank is the seed within this tournament/draw.
+		if home.CuratedRank.Current > 0 && home.CuratedRank.Current <= 128 {
+			homeTeam.Seed = home.CuratedRank.Current
+		}
+		if away.CuratedRank.Current > 0 && away.CuratedRank.Current <= 128 {
+			awayTeam.Seed = away.CuratedRank.Current
+		}
+	}
 	participants := make([]models.SportsParticipant, 0, len(comp.Competitors))
 	for index, candidate := range comp.Competitors {
 		team := competitorTeam(candidate)
@@ -396,6 +417,7 @@ func espnEventToGame(event espnEvent, league League) (models.SportsGame, bool) {
 		AwayTeam:        awayTeam,
 		Broadcasts:      broadcasts,
 		VenueName:       venue,
+		NeutralSite:     comp.NeutralSite,
 		Participants:    participants,
 	}
 	if strings.HasPrefix(league.ID, "espn:") && !strings.HasPrefix(game.ID, league.ID+":") {
@@ -444,6 +466,8 @@ func periodLabel(period int, sport string) string {
 		return ordinal(period) + " quarter"
 	case "football", "australian-football":
 		return ordinal(period) + " quarter"
+	case "mma", "boxing":
+		return "Round " + strconv.Itoa(period)
 	case "volleyball":
 		return "Set " + strconv.Itoa(period)
 	case "lacrosse", "field-hockey", "water-polo":

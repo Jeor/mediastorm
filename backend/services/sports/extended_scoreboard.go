@@ -9,6 +9,7 @@ import (
 )
 
 type espnLineScore struct {
+	Tiebreak     *int            `json:"tiebreak"`
 	Winner       *bool           `json:"winner"`
 	Period       int             `json:"period"`
 	Value        json.RawMessage `json:"value"`
@@ -118,6 +119,13 @@ func applyScoreboardDetail(g *models.SportsGame, comp espnCompetition, league Le
 		d.Innings = normalizeCricketInnings(comp)
 		d.Capabilities.Stats = len(d.Innings) > 0
 	case "tennis":
+		if comp.Venue != nil {
+			g.CourtName = comp.Venue.Court
+		}
+		if n := comp.Format.Regulation.Periods; n == 3 || n == 5 {
+			g.BestOf = n
+		}
+
 		if g.Status == models.SportsGameScheduled {
 			g.Detail = d
 			return
@@ -138,8 +146,16 @@ func applyScoreboardDetail(g *models.SportsGame, comp espnCompetition, league Le
 				}
 				if competitorTeam(c).ID == g.AwayTeam.ID {
 					rows[n].Away = value
+					rows[n].AwayWinner = set.Winner
+					if set.Tiebreak != nil && *set.Tiebreak >= 0 {
+						rows[n].AwayTiebreak = set.Tiebreak
+					}
 				} else {
 					rows[n].Home = value
+					rows[n].HomeWinner = set.Winner
+					if set.Tiebreak != nil && *set.Tiebreak >= 0 {
+						rows[n].HomeTiebreak = set.Tiebreak
+					}
 				}
 			}
 		}

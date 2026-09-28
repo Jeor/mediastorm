@@ -1,0 +1,166 @@
+{
+  "events": [
+    {
+      "id": "887-2026",
+      "name": "Guadalajara Open presentado por Santander",
+      "groupings": [
+        {
+          "competitions": [
+            {
+              "id": "183804",
+              "uid": "s:850~l:900~e:887-2026~c:183804",
+              "date": "2026-09-16T20:55Z",
+              "startDate": "2026-09-16T20:55Z",
+              "timeValid": true,
+              "recent": false,
+              "status": {
+                "period": 2,
+                "type": {
+                  "id": "3",
+                  "name": "STATUS_FINAL",
+                  "state": "post",
+                  "completed": true,
+                  "description": "Final",
+                  "detail": "Final",
+                  "shortDetail": "Final"
+                }
+              },
+              "venue": {
+                "fullName": "Guadalajara, Mexico",
+                "court": "Estadio Skarch"
+              },
+              "format": {
+                "regulation": {
+                  "periods": 3
+                }
+              },
+              "notes": [
+                {
+                  "text": "(2) Iva Jovic (USA) bt Zeynep Sonmez (TUR) 7-6 (7-5) 6-4",
+                  "type": "event"
+                }
+              ],
+              "geoBroadcasts": [],
+              "broadcasts": [],
+              "broadcast": "",
+              "competitors": [
+                {
+                  "id": "14311",
+                  "uid": "s:850~l:900~a:14311",
+                  "type": "athlete",
+                  "order": 2,
+                  "homeAway": "away",
+                  "winner": true,
+                  "curatedRank": {
+                    "current": 2
+                  },
+                  "linescores": [
+                    {
+                      "value": 7.0,
+                      "tiebreak": 7,
+                      "winner": true
+                    },
+                    {
+                      "value": 6.0,
+                      "winner": true
+                    }
+                  ],
+                  "athlete": {
+                    "guid": "fb4a5abc-e29b-3269-bcec-2da93f349e66",
+                    "displayName": "Iva Jovic",
+                    "shortName": "I. Jovic",
+                    "fullName": "Iva Jovic",
+                    "flag": {
+                      "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+                      "alt": "USA",
+                      "rel": [
+                        "country-flag"
+                      ]
+                    },
+                    "links": [
+                      {
+                        "language": "en-US",
+                        "rel": [
+                          "playercard",
+                          "desktop",
+                          "athlete"
+                        ],
+                        "href": "https://www.espn.com/tennis/player/_/id/14311/iva-jovic",
+                        "text": "Player Card",
+                        "shortText": "Player Card",
+                        "isExternal": false,
+                        "isPremium": false,
+                        "isHidden": false
+                      }
+                    ]
+                  },
+                  "statistics": []
+                },
+                {
+                  "id": "5604",
+                  "uid": "s:850~l:900~a:5604",
+                  "type": "athlete",
+                  "order": 1,
+                  "homeAway": "home",
+                  "winner": false,
+                  "linescores": [
+                    {
+                      "value": 6.0,
+                      "tiebreak": 5,
+                      "winner": false
+                    },
+                    {
+                      "value": 4.0,
+                      "winner": false
+                    }
+                  ],
+                  "athlete": {
+                    "guid": "6622e0f6-f237-3a2d-a338-313771d30b51",
+                    "displayName": "Zeynep Sonmez",
+                    "shortName": "Z. Sonmez",
+                    "fullName": "Zeynep Sonmez",
+                    "flag": {
+                      "href": "https://a.espncdn.com/i/teamlogos/countries/500/tur.png",
+                      "alt": "T\u00fcrkiye",
+                      "rel": [
+                        "country-flag"
+                      ]
+                    },
+                    "links": [
+                      {
+                        "language": "en-US",
+                        "rel": [
+                          "playercard",
+                          "desktop",
+                          "athlete"
+                        ],
+                        "href": "https://www.espn.com/tennis/player/_/id/5604/zeynep-sonmez",
+                        "text": "Player Card",
+                        "shortText": "Player Card",
+                        "isExternal": false,
+                        "isPremium": false,
+                        "isHidden": false
+                      }
+                    ]
+                  },
+                  "statistics": []
+                }
+              ],
+              "tournamentId": 887,
+              "type": {
+                "id": "2",
+                "text": "Women's Singles",
+                "slug": "womens-singles"
+              },
+              "round": {
+                "id": "2",
+                "displayName": "Round 2"
+              },
+              "wasSuspended": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

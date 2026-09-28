@@ -451,6 +451,43 @@ func TestProxyExternalURLStartupExperimentServesRepeatedRangeFromPrefixSpool(t *
 	}
 }
 
+func TestProxyExternalURLStartupProbeDoesNotTruncateLaterRange(t *testing.T) {
+	for _, requestedRange := range []string{"bytes=0-2047", "bytes=0-", "bytes=1-99"} {
+		t.Run(requestedRange, func(t *testing.T) {
+			payload := bytes.Repeat([]byte("matroska"), 256)
+			var upstreamRequests atomic.Int32
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				upstreamRequests.Add(1)
+				http.ServeContent(w, r, "movie.mkv", time.Time{}, bytes.NewReader(payload))
+			}))
+			defer upstream.Close()
+			handler := NewVideoHandler(false, "", "")
+			settings := config.DefaultSettings()
+			settings.Server.AllowedPrivateMediaOrigins = []string{upstream.URL}
+			handler.SetConfigManager(staticVideoConfigProvider{settings: settings})
+			for _, rangeHeader := range []string{"bytes=0-1", requestedRange} {
+				req := httptest.NewRequest(http.MethodGet, "/video/stream?_startupExperiment=1", nil)
+				req.Header.Set("Range", rangeHeader)
+				rec := httptest.NewRecorder()
+				if handled, err := handler.proxyExternalURL(rec, req, upstream.URL+"/movie.mkv"); err != nil || !handled {
+					t.Fatalf("proxy: handled=%t err=%v", handled, err)
+				}
+				want := httptest.NewRecorder()
+				http.ServeContent(want, req, "movie.mkv", time.Time{}, bytes.NewReader(payload))
+				if rec.Code != want.Code || rec.Header().Get("Content-Range") != want.Header().Get("Content-Range") ||
+					rec.Header().Get("Content-Length") != want.Header().Get("Content-Length") || !bytes.Equal(rec.Body.Bytes(), want.Body.Bytes()) {
+					t.Fatalf("range %s: status=%d range=%q length=%q body bytes=%d; want status=%d range=%q length=%q body bytes=%d",
+						rangeHeader, rec.Code, rec.Header().Get("Content-Range"), rec.Header().Get("Content-Length"), rec.Body.Len(),
+						want.Code, want.Header().Get("Content-Range"), want.Header().Get("Content-Length"), want.Body.Len())
+				}
+			}
+			if got := upstreamRequests.Load(); got != 2 {
+				t.Fatalf("upstream requests = %d, want 2 (probe and uncovered range)", got)
+			}
+		})
+	}
+}
+
 func TestExternalUsenetWebDAVAuthHeaderForFFProbe(t *testing.T) {
 	handler := NewVideoHandler(false, "", "")
 	settings := config.DefaultSettings()

@@ -295,11 +295,20 @@ func (s *externalPrefixSpool) get(key, rangeHeader string) (externalPrefixSpoolH
 	if entry == nil || time.Now().After(entry.expiry) || start >= int64(len(entry.data)) {
 		return externalPrefixSpoolHit{}, false
 	}
-	end := int64(len(entry.data)) - 1
-	if hasEnd && requestedEnd < end {
-		end = requestedEnd
+	// A cached prefix is not the end of the resource. Returning it for a
+	// larger range makes AVPlayer reject the response as a range mismatch.
+	// Open-ended requests require a known EOF; finite requests may be clamped
+	// to that EOF, but must otherwise be completely covered by the cache.
+	end := requestedEnd
+	if !hasEnd {
+		if entry.totalSize <= 0 {
+			return externalPrefixSpoolHit{}, false
+		}
+		end = entry.totalSize - 1
+	} else if entry.totalSize > 0 && end >= entry.totalSize {
+		end = entry.totalSize - 1
 	}
-	if end < start {
+	if end < start || end >= int64(len(entry.data)) {
 		return externalPrefixSpoolHit{}, false
 	}
 	data := append([]byte(nil), entry.data[start:end+1]...)

@@ -21,7 +21,7 @@ func TestExternalPrefixSpoolServesOverlappingStartupRange(t *testing.T) {
 	spool.append("https://cdn.example/movie.mkv", 0, prefix[:1024], 10_000, header)
 	spool.append("https://cdn.example/movie.mkv", 1024, prefix[1024:], 10_000, header)
 
-	hit, ok := spool.get("https://cdn.example/movie.mkv", "bytes=337-")
+	hit, ok := spool.get("https://cdn.example/movie.mkv", "bytes=337-2047")
 	if !ok {
 		t.Fatal("expected prefix spool hit")
 	}
@@ -47,6 +47,38 @@ func TestExternalPrefixSpoolHonorsFiniteRange(t *testing.T) {
 	}
 	if hit.start != 100 || hit.end != 199 || len(hit.data) != 100 {
 		t.Fatalf("unexpected finite hit: start=%d end=%d bytes=%d", hit.start, hit.end, len(hit.data))
+	}
+}
+
+func TestExternalPrefixSpoolRequiresCompleteRange(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		total       int64
+		rangeHeader string
+		wantHit     bool
+		wantEnd     int64
+	}{
+		{"probe", 2097826114, "bytes=0-1", true, 1},
+		{"full file after probe", 2097826114, "bytes=0-2097826113", false, 0},
+		{"open range after probe", 2097826114, "bytes=0-", false, 0},
+		{"finite beyond prefix", 4096, "bytes=1-2", false, 0},
+		{"unknown size open range", 0, "bytes=0-", false, 0},
+		{"unknown size covered range", 0, "bytes=0-1", true, 1},
+		{"complete file open range", 2, "bytes=1-", true, 1},
+		{"clamp to known EOF", 2, "bytes=0-99", true, 1},
+		{"start at EOF", 2, "bytes=2-", false, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var spool externalPrefixSpool
+			spool.append("stream", 0, []byte{0x1a, 0x45}, tc.total, make(http.Header))
+			hit, ok := spool.get("stream", tc.rangeHeader)
+			if ok != tc.wantHit {
+				t.Fatalf("hit = %t, want %t", ok, tc.wantHit)
+			}
+			if ok && (hit.end != tc.wantEnd || int64(len(hit.data)) != hit.end-hit.start+1) {
+				t.Fatalf("unexpected cached range: %+v", hit)
+			}
+		})
 	}
 }
 

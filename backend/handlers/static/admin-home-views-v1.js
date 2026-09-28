@@ -277,10 +277,12 @@ function renderHomeViewControls() {
         "</button>",
     )
     .join(" ");
+  // Keep layout inputs out of the form-less password group containing the
+  // hidden PublicMetaDB API key below this editor.
   let content =
-    '<div style="margin-bottom:16px">' +
+    '<form class="home-view-controls" id="home-view-layout-form" autocomplete="off" onsubmit="event.preventDefault()"><div class="home-view-tabs">' +
     tabs +
-    ' <button type="button" class="btn btn-secondary" onclick="createHomePage()">Add page</button>' +
+    ' <button type="button" class="btn btn-secondary" onclick="createHomePage()">Add page</button></div>' +
     renderHomePageMetadata();
   if (editingHomeView !== "all") {
     const view = homeViewOwner().homeShelves?.views?.[editingHomeView];
@@ -311,7 +313,7 @@ function renderHomeViewControls() {
         "</label>" +
         '<input class="form-input" id="home-view-' +
         field +
-        '" type="number" min="' +
+        '" type="number" autocomplete="off" min="' +
         min +
         '" max="' +
         max +
@@ -360,5 +362,5 @@ function renderHomeViewControls() {
         "</select></div>";
     }
   }
-  return content + "</div>";
+  return content + "</form>";
 }

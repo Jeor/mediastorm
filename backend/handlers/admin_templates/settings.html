@@ -4,6 +4,17 @@
 
 {{define "styles"}}
 <style>
+.home-view-controls {
+    margin-bottom: 16px;
+}
+
+.home-view-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
 .color-input {
     width: 44px !important;
     min-width: 44px !important;
@@ -6353,7 +6364,7 @@
                     fieldDef.max !== undefined ? 'max="'+fieldDef.max+'"' : '',
                     fieldDef.step !== undefined ? 'step="'+fieldDef.step+'"' : ''
                 ].filter(Boolean).join(' ');
-                return '<input type="number" class="form-input'+invalidClass+'" id="'+id+'" value="'+numberValue+'" '+numberAttrs+' '+isReadonly+' onchange="handleNumberFieldChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
+                return '<input type="number" autocomplete="off" class="form-input'+invalidClass+'" id="'+id+'" value="'+numberValue+'" '+numberAttrs+' '+isReadonly+' onchange="handleNumberFieldChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';
             case 'color':
                 const colorValue = /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#ffffff';
                 return '<input type="color" class="color-input'+invalidClass+'" id="'+id+'" value="'+colorValue+'" '+isReadonly+' style="width:44px;height:36px;min-width:44px;padding:2px;border-radius:6px;cursor:pointer;" onchange="handleFieldChange(\''+basePath+'\', \''+fieldKey+'\', this.value)">';

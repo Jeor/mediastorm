@@ -1281,3 +1281,25 @@ func TestOllamaPreservesKeylessSettings(t *testing.T) {
 		t.Fatal("keyless Ollama did not round-trip")
 	}
 }
+
+func TestDefaultNavigationDestinations(t *testing.T) {
+	want := []string{"home", "watchlist", "search", "lists", "profiles", "settings"}
+	got := DefaultSettings().Display.NavigationTabVisibility
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("default navigation = %v, want %v", got, want)
+	}
+}
+
+func TestLoadEmptyNavigationUsesCoreDefaults(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"display":{"navigationTabVisibility":[]}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := NewManager(path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(settings.Display.NavigationTabVisibility, DefaultSettings().Display.NavigationTabVisibility) {
+		t.Fatalf("empty navigation restored unexpected defaults: %v", settings.Display.NavigationTabVisibility)
+	}
+}

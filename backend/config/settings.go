@@ -2056,7 +2056,7 @@ func DefaultSettings() Settings {
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                        []string{"watchProgress"},
-			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"},
+			NavigationTabVisibility:                []string{"home", "watchlist", "search", "lists", "profiles", "settings"},
 			WatchStateIconStyle:                    "colored",
 			IncludeUnreleasedMoviesInLists:         true,
 			IncludeUnreleasedShowsInLists:          true,
@@ -2838,7 +2838,7 @@ func (m *Manager) Load() (Settings, error) {
 		s.Display.BadgeVisibility = []string{"watchProgress"}
 	}
 	if len(s.Display.NavigationTabVisibility) == 0 {
-		s.Display.NavigationTabVisibility = []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"}
+		s.Display.NavigationTabVisibility = []string{"home", "watchlist", "search", "lists", "profiles", "settings"}
 	}
 	if s.Display.WatchStateIconStyle == "" {
 		s.Display.WatchStateIconStyle = "colored"

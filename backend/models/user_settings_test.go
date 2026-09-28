@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestMigrateLibraryShelfConfigs(t *testing.T) {
 	shelves := []ShelfConfig{{ID: "local-library-library-123", Type: "local-library"}}
@@ -523,5 +526,12 @@ func TestResolveLiveSource_EPGTimeOffsetNilUsesGlobal(t *testing.T) {
 
 	if r.EPGTimeOffsetMinutes != 30 {
 		t.Errorf("EPGTimeOffsetMinutes = %d, want 30 (global default)", r.EPGTimeOffsetMinutes)
+	}
+}
+
+func TestDefaultUserNavigationDestinations(t *testing.T) {
+	want := []string{"home", "watchlist", "search", "lists", "profiles", "settings"}
+	if got := DefaultUserSettings().Display.NavigationTabVisibility; !reflect.DeepEqual(got, want) {
+		t.Fatalf("default user navigation = %v, want %v", got, want)
 	}
 }

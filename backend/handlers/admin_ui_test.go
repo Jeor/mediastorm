@@ -2972,3 +2972,20 @@ func TestNavigationHomeViewsAreOptional(t *testing.T) {
 		}
 	}
 }
+
+func TestNavigationVisibilitySchemaIncludesCalendarAndRecordings(t *testing.T) {
+	section := handlers.SettingsSchema["display"].(map[string]interface{})
+	fields := section["fields"].(map[string]interface{})
+	options := fields["navigationTabVisibility"].(map[string]interface{})["options"].([]map[string]interface{})
+	for _, key := range []string{"calendar", "recordings"} {
+		found := false
+		for _, option := range options {
+			if option["value"] == key {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("navigation options missing %s", key)
+		}
+	}
+}

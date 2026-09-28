@@ -924,7 +924,7 @@ var SettingsSchema = map[string]interface{}{
 			"navigationTabVisibility": map[string]interface{}{
 				"type":        "checkboxes",
 				"label":       "Navigation Items",
-				"description": "Choose which drawer and tab-bar items are visible for this scope. Items retain their platform-defined order. Selecting none restores the default items. Movies and Shows are off by default on TV and mobile. Admin is web only.",
+				"description": "Choose which drawer and tab-bar items are visible for this scope. Items retain their platform-defined order. Selecting none restores the default items. Defaults are Home, Watchlist, Search, Discovery, Profiles, and Settings. All other destinations are opt-in. Admin is web only.",
 				"order":       1,
 				"optionsFrom": "navigationTabs",
 				"options": []map[string]interface{}{
@@ -934,6 +934,8 @@ var SettingsSchema = map[string]interface{}{
 					{"value": "watchlist", "label": "Watchlist"},
 					{"value": "search", "label": "Search"},
 					{"value": "lists", "label": "Discovery"},
+					{"value": "calendar", "label": "Calendar"},
+					{"value": "recordings", "label": "Recordings"},
 					{"value": "live", "label": "Live"},
 					{"value": "sports", "label": "Sports Hub"},
 					{"value": "profiles", "label": "Profiles"},

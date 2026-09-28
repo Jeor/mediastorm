@@ -1183,7 +1183,7 @@ func DefaultUserSettings() UserSettings {
 		},
 		Display: DisplaySettings{
 			BadgeVisibility:                              []string{"watchProgress"},
-			NavigationTabVisibility:                      []string{"home", "watchlist", "search", "lists", "live", "sports", "profiles", "downloads", "settings", "admin"},
+			NavigationTabVisibility:                      []string{"home", "watchlist", "search", "lists", "profiles", "settings"},
 			NavigationTabVisibilityIncludesSystemTabs:    true,
 			NavigationTabVisibilityIncludesWatchlist:     true,
 			NavigationTabVisibilityIncludesSports:        true,

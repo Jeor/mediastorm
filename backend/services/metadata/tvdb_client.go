@@ -739,7 +739,7 @@ type mdblistItem struct {
 // FetchMDBListCustom fetches items from a custom MDBList URL
 func (c *tvdbClient) FetchMDBListCustom(listURL string) ([]mdblistItem, error) {
 	var items []mdblistItem
-	if err := c.fetchMDBListJSON(listURL, &items); err != nil {
+	if err := c.fetchMDBListJSON(resolveStreamingListURL(listURL), &items); err != nil {
 		return nil, err
 	}
 	return items, nil

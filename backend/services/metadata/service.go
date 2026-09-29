@@ -9910,6 +9910,7 @@ func parseTVDBSearchYear(year string) (int, bool) {
 // Pre-filters watched/unreleased items before enrichment so only displayed items incur full
 // TVDB lookups. Returns (items, filteredTotal, unfilteredTotal, error).
 func (s *Service) GetCustomList(ctx context.Context, listURL string, opts CustomListOptions) ([]models.TrendingItem, int, int, error) {
+	listURL = resolveStreamingListURL(listURL)
 	hideMovies := opts.HideUnreleased || opts.HideUnreleasedMovies
 	hideShows := opts.HideUnreleased || opts.HideUnreleasedShows
 	filterReleases := hideMovies || hideShows
@@ -10458,8 +10459,8 @@ var topTenNetworkLists = []struct {
 	{"paramount-shows", "https://mdblist.com/lists/snoak/paramount-plus-top-10-tv-shows/json"},
 	{"hbo-movies", "https://mdblist.com/lists/snoak/hbo-top-10-movies-2/json"},
 	{"hbo-shows", "https://mdblist.com/lists/snoak/hbo-top-10-tv-shows/json"},
-	{"hulu-movies", "https://mdblist.com/lists/snoak/top-hulu-movies/json"},
-	{"hulu-shows", "https://mdblist.com/lists/snoak/top-tv-shows-hulu/json"},
+	{"hulu-movies", "https://mdblist.com/lists/azodath/top-hulu-movies/json"},
+	{"hulu-shows", "https://mdblist.com/lists/azodath/top-hulu-shows/json"},
 	{"crunchyroll-movies", "https://mdblist.com/lists/snoak/trending-anime-movies/json"},
 	{"crunchyroll-shows", "https://mdblist.com/lists/snoak/trending-anime-shows/json"},
 }

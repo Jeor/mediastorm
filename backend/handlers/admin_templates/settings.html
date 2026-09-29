@@ -10734,7 +10734,7 @@
         appletv:  { name: 'Apple TV+',     logoUrl: 'https://image.tmdb.org/t/p/w780_filter(negate,000,fff)/bngHRFi794mnMq34gfVcm9nDxN1.png', logoScale: 0.9, tintColor: 'rgba(160,160,160,0.15)', movies: 'https://mdblist.com/lists/snoak/apple-tv-top-10-movies/json',      shows: 'https://mdblist.com/lists/snoak/apple-tv-top-10-tv-shows/json' },
         paramount:{ name: 'Paramount+',    logoUrl: 'https://image.tmdb.org/t/p/original/fi83B1oztoS47xxcemFdPMhIzK.png', tintColor: 'rgba(0,104,199,0.18)', movies: 'https://mdblist.com/lists/snoak/paramount-plus-top-10-movies/json',shows: 'https://mdblist.com/lists/snoak/paramount-plus-top-10-tv-shows/json' },
         hbomax:   { name: 'HBO Max',       logoUrl: 'https://cdn.prod.website-files.com/6911e6b4bcc8af690d496a26/6911e6b4bcc8af690d497038_HBO%20Max_White.jpg', logoScale: 1.2, tintColor: 'rgba(28,33,120,0.18)', movies: 'https://mdblist.com/lists/snoak/hbo-top-10-movies-2/json',         shows: 'https://mdblist.com/lists/snoak/hbo-top-10-tv-shows/json' },
-        hulu:     { name: 'Hulu',          logoUrl: 'https://image.tmdb.org/t/p/original/pqUTCleNUiTLAVlelGxUgWn1ELh.png', tintColor: 'rgba(28,231,131,0.18)', movies: 'https://mdblist.com/lists/snoak/top-hulu-movies/json',             shows: 'https://mdblist.com/lists/snoak/top-tv-shows-hulu/json' },
+        hulu:     { name: 'Hulu',          logoUrl: 'https://image.tmdb.org/t/p/original/pqUTCleNUiTLAVlelGxUgWn1ELh.png', tintColor: 'rgba(28,231,131,0.18)', movies: 'https://mdblist.com/lists/azodath/top-hulu-movies/json',           shows: 'https://mdblist.com/lists/azodath/top-hulu-shows/json' },
         crunchyroll: { name: 'Crunchyroll', logoUrl: 'https://image.tmdb.org/t/p/original/qqyXcZlJQKlRmAD1TCKV7mGLQlt.png', logoScale: 1.05, tintColor: 'rgba(244,117,33,0.18)', movies: 'https://mdblist.com/lists/snoak/trending-anime-movies/json', shows: 'https://mdblist.com/lists/snoak/trending-anime-shows/json' },
     };
 
@@ -11583,6 +11583,15 @@
         });
     }
 
+    function resolveStreamingListUrl(url) {
+        const retiredUrls = {
+            'https://mdblist.com/lists/snoak/top-hulu-movies': STREAMING_SERVICES.hulu.movies,
+            'https://mdblist.com/lists/snoak/top-tv-shows-hulu': STREAMING_SERVICES.hulu.shows,
+        };
+        const normalized = (url || '').trim().replace(/\/+$/, '').replace(/\/json$/, '');
+        return retiredUrls[normalized] || url;
+    }
+
     function normalizeStreamingServiceConfig(services, options = {}) {
         const shouldSort = options.sort !== false;
         const source = Array.isArray(services) && services.length ? services : defaultStreamingServices();
@@ -11597,8 +11606,8 @@
                 logoUrl: service.logoUrl || fallback.logoUrl || '',
                 logoScale: service.logoScale || fallback.logoScale || '',
                 tintColor: service.tintColor || fallback.tintColor || 'rgba(148,163,184,0.18)',
-                moviesUrl: lists.find((list) => /movie/i.test(list.title || list.key || ''))?.url || service.movies || fallback.movies || '',
-                showsUrl: lists.find((list) => /show|tv/i.test(list.title || list.key || ''))?.url || service.shows || fallback.shows || '',
+                moviesUrl: resolveStreamingListUrl(lists.find((list) => /movie/i.test(list.title || list.key || ''))?.url || service.movies || fallback.movies || ''),
+                showsUrl: resolveStreamingListUrl(lists.find((list) => /show|tv/i.test(list.title || list.key || ''))?.url || service.shows || fallback.shows || ''),
             };
         });
         return shouldSort ? normalized.sort((a, b) => (a.order || 0) - (b.order || 0)) : normalized;

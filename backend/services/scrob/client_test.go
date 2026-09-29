@@ -37,6 +37,26 @@ func TestGetHistoryPaginatesAndUsesAPIKey(t *testing.T) {
 	}
 }
 
+func TestGetHistoryWithoutPageCountAndLaterPageFailure(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		calls := 0
+		client := NewClientWithHTTPClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			calls++
+			if calls == 2 {
+				if fail {
+					return jsonResponse(500, `{}`), nil
+				}
+				return jsonResponse(200, `{"results":[{"id":101}]}`), nil
+			}
+			return jsonResponse(200, `{"results":[`+strings.Repeat(`{"id":1},`, 99)+`{"id":1}]}`), nil
+		})})
+		items, err := client.GetHistory(context.Background(), "https://scrob.example", "key")
+		if calls != 2 || (fail && (err == nil || items != nil)) || (!fail && (err != nil || len(items) != 101)) {
+			t.Fatalf("fail=%v calls=%d items=%d err=%v", fail, calls, len(items), err)
+		}
+	}
+}
+
 func TestLoginAndAddHistory(t *testing.T) {
 	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {

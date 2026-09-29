@@ -212,7 +212,15 @@ func (c *Client) SyncHistory(clientID, accessToken string, req SyncHistoryReques
 // without applying the not_found safety undo.
 func (c *Client) SyncHistoryDetailed(clientID, accessToken string, req SyncHistoryRequest) (*SyncHistoryResponse, error) {
 	var out SyncHistoryResponse
-	if _, err := c.post(apiCredentials{clientID: clientID, accessToken: accessToken}, "/sync/history", req, &out); err != nil {
+	path := "/sync/history"
+	for _, show := range req.Shows {
+		for _, season := range show.Seasons {
+			if len(season.Episodes) > 0 {
+				path = "/sync/history?skip_auto_watching=yes"
+			}
+		}
+	}
+	if _, err := c.post(apiCredentials{clientID: clientID, accessToken: accessToken}, path, req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -229,8 +237,16 @@ func (c *Client) SyncHistorySafe(clientID, accessToken string, req SyncHistoryRe
 	if err != nil {
 		return resp, err
 	}
-	if undone := c.UndoShowsWithAllEpisodesNotFound(clientID, accessToken, req.Shows, resp); undone > 0 {
-		log.Printf("[simkl] undid %d accidental full-series complete(s) after episode not_found", undone)
+	// With auto-watching suppressed, unmatched episodes must not erase existing
+	// remote watches. Keep the undo only if Simkl reports adding a whole show.
+	if resp.Added.Shows > 0 {
+		undone, undoErr := c.undoShowsWithAllEpisodesNotFound(clientID, accessToken, req.Shows, resp)
+		if undoErr != nil {
+			return resp, undoErr
+		}
+		if undone > 0 {
+			log.Printf("[simkl] undid %d accidental full-series complete(s) after episode not_found", undone)
+		}
 	}
 	return resp, nil
 }
@@ -245,8 +261,16 @@ func (c *Client) RemoveFromHistory(clientID, accessToken string, req SyncHistory
 // requested landed in not_found (Simkl may have completed the whole series).
 // Partial not_found (some episodes matched) does not remove the show.
 func (c *Client) UndoShowsWithAllEpisodesNotFound(clientID, accessToken string, requested []SyncHistoryShow, resp *SyncHistoryResponse) int {
+	undone, err := c.undoShowsWithAllEpisodesNotFound(clientID, accessToken, requested, resp)
+	if err != nil {
+		log.Printf("[simkl] undo full-complete failed: %v", err)
+	}
+	return undone
+}
+
+func (c *Client) undoShowsWithAllEpisodesNotFound(clientID, accessToken string, requested []SyncHistoryShow, resp *SyncHistoryResponse) (int, error) {
 	if c == nil || resp == nil || len(resp.NotFound.Episodes) == 0 || len(requested) == 0 {
-		return 0
+		return 0, nil
 	}
 
 	// Build not_found set per show: "s:e" keys.
@@ -268,7 +292,7 @@ func (c *Client) UndoShowsWithAllEpisodesNotFound(clientID, accessToken string, 
 		notFound = append(notFound, nfShow{ids: nf.IDs, eps: eps})
 	}
 	if len(notFound) == 0 {
-		return 0
+		return 0, nil
 	}
 
 	undone := 0
@@ -314,15 +338,13 @@ func (c *Client) UndoShowsWithAllEpisodesNotFound(clientID, accessToken string, 
 			removeReq.Shows[0].IDs = match.ids
 		}
 		if err := c.RemoveFromHistory(clientID, accessToken, removeReq); err != nil {
-			log.Printf("[simkl] undo full-complete failed for tmdb=%d tvdb=%d imdb=%s: %v",
-				show.IDs.TMDB, show.IDs.TVDB, show.IDs.IMDB, err)
-			continue
+			return undone, fmt.Errorf("undo Simkl accidental full-series complete: %w", err)
 		}
 		log.Printf("[simkl] undid accidental full-series complete (all %d requested episode(s) not_found) tmdb=%d tvdb=%d imdb=%s",
 			len(intended), show.IDs.TMDB, show.IDs.TVDB, show.IDs.IMDB)
 		undone++
 	}
-	return undone
+	return undone, nil
 }
 
 func idsOverlap(a, b IDs) bool {
@@ -356,9 +378,10 @@ func (c *Client) GetInitialSyncItems(clientID, accessToken, bucket string) (*All
 	q := url.Values{}
 	q.Set("extended", "full")
 	q.Set("episode_watched_at", "yes")
+	q.Set("include_all_episodes", "yes")
 
 	var out AllItemsResponse
-	if err := c.get(apiCredentials{clientID: clientID, accessToken: accessToken}, "/sync/"+bucket, q, &out); err != nil {
+	if err := c.get(apiCredentials{clientID: clientID, accessToken: accessToken}, "/sync/all-items/"+bucket, q, &out); err != nil {
 		return nil, err
 	}
 	if len(out.Raw) > 0 && out.Movies == nil && out.Shows == nil && out.Anime == nil {
@@ -541,6 +564,7 @@ func (c *Client) GetAllItemsSince(clientID, accessToken, dateFrom string) (*AllI
 	}
 	q.Set("extended", "full")
 	q.Set("episode_watched_at", "yes")
+	q.Set("include_all_episodes", "yes")
 
 	var out AllItemsResponse
 	if err := c.get(apiCredentials{clientID: clientID, accessToken: accessToken}, "/sync/all-items", q, &out); err != nil {
@@ -708,6 +732,10 @@ func (c *Client) get(creds apiCredentials, path string, extraQuery url.Values, o
 		return fmt.Errorf("read response: %w", err)
 	}
 	if allItems, ok := out.(*AllItemsResponse); ok {
+		body = bytes.TrimSpace(body)
+		if bytes.Equal(body, []byte("null")) {
+			return fmt.Errorf("simkl %s returned null instead of history", path)
+		}
 		allItems.Raw = append(allItems.Raw[:0], body...)
 		if len(body) > 0 && body[0] == '[' {
 			return nil

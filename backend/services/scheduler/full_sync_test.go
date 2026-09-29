@@ -122,7 +122,7 @@ func TestSimklManualFullSyncBypassesActivityCursor(t *testing.T) {
 		return jsonResponse(200, `{}`), nil
 	})})
 	svc := &Service{simklClient: client}
-	task, _ := prepareFullSync(config.ScheduledTask{Type: config.ScheduledTaskTypeSimklHistorySync, Config: map[string]string{"lastSimklActivityAt": "2026-01-01T00:00:00Z"}})
+	task, _ := prepareFullSync(config.ScheduledTask{Type: config.ScheduledTaskTypeSimklHistorySync, Config: map[string]string{"lastSimklActivityAt": "2026-01-01T00:00:00Z", "simklHistoryImportVersion": "2"}})
 	if _, err := svc.syncSimklHistoryToLocal(task, &config.SimklAccount{ClientID: "test", AccessToken: "test"}, "profile", true); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestRunTaskNowFullSyncIsOneRunOnly(t *testing.T) {
 	now := time.Now().UTC()
 	settings := config.DefaultSettings()
 	settings.MDBList.Accounts = []config.MDBListAccount{{ID: "account", APIKey: "test"}}
-	settings.ScheduledTasks.Tasks = []config.ScheduledTask{{ID: "task", Type: config.ScheduledTaskTypeMDBListHistorySync, LastRunAt: &now, Config: map[string]string{"profileId": "profile", "mdblistAccountId": "account", "dryRun": "true"}}}
+	settings.ScheduledTasks.Tasks = []config.ScheduledTask{{ID: "task", Type: config.ScheduledTaskTypeMDBListHistorySync, LastRunAt: &now, Config: map[string]string{"profileId": "profile", "mdblistAccountId": "account"}}}
 	if err := manager.Save(settings); err != nil {
 		t.Fatal(err)
 	}

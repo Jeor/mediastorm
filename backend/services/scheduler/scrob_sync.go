@@ -68,9 +68,9 @@ func (s *Service) executeScrobHistorySync(task config.ScheduledTask) (SyncResult
 		}
 		out, err := s.syncLocalHistoryToScrob(task, account, profileID, dryRun)
 		if err != nil {
-			return out, err
+			return combineHistorySyncResults(in, out), err
 		}
-		return SyncResult{Count: in.Count + out.Count, DryRun: dryRun, ToAdd: append(in.ToAdd, out.ToAdd...), ToRemove: append(in.ToRemove, out.ToRemove...)}, nil
+		return combineHistorySyncResults(in, out), nil
 	default:
 		return SyncResult{}, fmt.Errorf("unknown sync direction: %s", direction)
 	}
@@ -221,9 +221,13 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 		return result, fmt.Errorf("fetch Scrob history for deduplication: %w", err)
 	}
 	remoteByKey := make(map[string][]scrob.Media)
+	completedKeys := make(map[string]bool)
 	for _, event := range remote {
 		if key := scrobRemoteKey(event.Media); key != "" {
 			remoteByKey[key] = appendUniqueScrobMedia(remoteByKey[key], event.Media)
+			if event.Completed {
+				completedKeys[key] = true
+			}
 		}
 	}
 	s.mu.RLock()
@@ -235,10 +239,10 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	s.lastFullSyncTimesMu.Lock()
 	lastFull, haveFull := s.lastFullSyncTimes[exportKey]
 	s.lastFullSyncTimesMu.Unlock()
-	isFull := task.Config["fullExport"] == "true" || !haveFull || time.Since(lastFull) >= 6*time.Hour
+	isFull := task.Config["fullExport"] == "true" || task.Config["fullSync"] == "true" || !haveFull || time.Since(lastFull) >= 6*time.Hour
 	var since time.Time
-	if !isFull && task.LastRunAt != nil {
-		since = task.LastRunAt.Add(-5 * time.Minute)
+	if lastRun := historySyncLastRun(task); !isFull && lastRun != nil {
+		since = lastRun.Add(-5 * time.Minute)
 	}
 	type outbound struct {
 		item             models.WatchHistoryItem
@@ -286,7 +290,7 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	for _, candidate := range candidates {
 		remoteItems := remoteByKey[candidate.key]
 		exists := len(remoteItems) > 0
-		if candidate.item.Watched && !exists {
+		if candidate.item.Watched && !completedKeys[candidate.key] {
 			changes = append(changes, candidate)
 		} else if !candidate.item.Watched && exists {
 			for _, remoteItem := range remoteItems {
@@ -344,8 +348,8 @@ func (s *Service) syncLocalHistoryToScrob(task config.ScheduledTask, account *co
 	firstFailureSet := false
 	firstFailureType, firstFailureName := "", ""
 	presentKeys := make(map[string]struct{}, len(remoteByKey))
-	for key, media := range remoteByKey {
-		if len(media) > 0 {
+	for key, completed := range completedKeys {
+		if completed {
 			presentKeys[key] = struct{}{}
 		}
 	}

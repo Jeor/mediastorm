@@ -463,11 +463,19 @@ func (c *Client) GetAllWatchlist(accessToken string) ([]WatchlistItem, error) {
 // historyType can be "movies", "shows", "episodes", or empty for all
 // Returns items, total item count, and error
 func (c *Client) GetWatchHistory(accessToken string, page, limit int, historyType string) ([]HistoryItem, int, error) {
+	return c.getWatchHistoryPage(accessToken, page, limit, historyType, time.Time{})
+}
+
+// A page owns and closes its response before the next request starts.
+func (c *Client) getWatchHistoryPage(accessToken string, page, limit int, historyType string, since time.Time) ([]HistoryItem, int, error) {
 	url := traktAPIBaseURL + "/users/me/history"
 	if historyType != "" {
 		url += "/" + historyType
 	}
 	url += fmt.Sprintf("?page=%d&limit=%d", page, limit)
+	if !since.IsZero() {
+		url += "&start_at=" + since.UTC().Format(time.RFC3339)
+	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -497,86 +505,33 @@ func (c *Client) GetWatchHistory(accessToken string, page, limit int, historyTyp
 	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
 		return nil, 0, fmt.Errorf("decode response: %w", err)
 	}
+	if items == nil {
+		return nil, 0, errors.New("Trakt returned null instead of history")
+	}
 
 	return items, totalCount, nil
 }
 
-// GetAllWatchHistory retrieves the complete watch history (all pages)
+// GetAllWatchHistory retrieves the complete watch history (all pages).
 func (c *Client) GetAllWatchHistory(accessToken string) ([]HistoryItem, error) {
-	var allItems []HistoryItem
-	page := 1
-	limit := 100 // Max items per page
+	return c.GetWatchHistorySince(accessToken, time.Time{})
+}
 
-	for {
-		items, totalCount, err := c.GetWatchHistory(accessToken, page, limit, "")
+// GetWatchHistorySince retrieves all pages, without a date filter when since is zero.
+func (c *Client) GetWatchHistorySince(accessToken string, since time.Time) ([]HistoryItem, error) {
+	var allItems []HistoryItem
+	const limit = 100
+	for page := 1; ; page++ {
+		items, totalCount, err := c.getWatchHistoryPage(accessToken, page, limit, "", since)
 		if err != nil {
 			return nil, err
 		}
-
 		allItems = append(allItems, items...)
-
-		// Check if we have all items
-		if len(allItems) >= totalCount || len(items) == 0 {
+		if len(items) == 0 || (totalCount > 0 && len(allItems) >= totalCount) ||
+			(totalCount == 0 && len(items) < limit) {
 			break
 		}
-
-		page++
 	}
-
-	return allItems, nil
-}
-
-// GetWatchHistorySince retrieves watch history since the given time (all pages).
-// If since is zero, fetches all history (same as GetAllWatchHistory).
-func (c *Client) GetWatchHistorySince(accessToken string, since time.Time) ([]HistoryItem, error) {
-	var allItems []HistoryItem
-	page := 1
-	limit := 100
-
-	for {
-		url := traktAPIBaseURL + "/users/me/history"
-		url += fmt.Sprintf("?page=%d&limit=%d", page, limit)
-		if !since.IsZero() {
-			url += "&start_at=" + since.UTC().Format(time.RFC3339)
-		}
-
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			return nil, fmt.Errorf("create request: %w", err)
-		}
-
-		c.setTraktHeaders(req, accessToken)
-
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("trakt api request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			respBody, _ := io.ReadAll(resp.Body)
-			return nil, fmt.Errorf("trakt history failed: %s - %s", resp.Status, string(respBody))
-		}
-
-		totalCount := 0
-		if totalHeader := resp.Header.Get("X-Pagination-Item-Count"); totalHeader != "" {
-			totalCount, _ = strconv.Atoi(totalHeader)
-		}
-
-		var items []HistoryItem
-		if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
-			return nil, fmt.Errorf("decode response: %w", err)
-		}
-
-		allItems = append(allItems, items...)
-
-		if len(allItems) >= totalCount || len(items) == 0 {
-			break
-		}
-
-		page++
-	}
-
 	return allItems, nil
 }
 

@@ -23,7 +23,6 @@ import (
 	"novastream/services/history"
 	"novastream/services/jellyfin"
 	"novastream/services/localmedia"
-	"novastream/services/mdblist"
 	"novastream/services/plex"
 	"novastream/services/prewarm"
 	"novastream/services/scrob"
@@ -465,7 +464,7 @@ func (s *Service) updateTaskStatus(taskID string, err error, result SyncResult) 
 		if settings.ScheduledTasks.Tasks[i].ID == taskID {
 			settings.ScheduledTasks.Tasks[i].LastRunAt = &now
 			settings.ScheduledTasks.Tasks[i].ItemsImported = result.Count
-			if result.Config != nil {
+			if err == nil && !result.DryRun && result.Config != nil {
 				if settings.ScheduledTasks.Tasks[i].Config == nil {
 					settings.ScheduledTasks.Tasks[i].Config = make(map[string]string)
 				}
@@ -495,7 +494,7 @@ func (s *Service) updateTaskStatus(taskID string, err error, result SyncResult) 
 				if result.DryRun {
 					log.Printf("[scheduler] Task %s dry run completed: %d items to add, %d items to remove", taskID, len(result.ToAdd), len(result.ToRemove))
 				} else {
-					log.Printf("[scheduler] Task %s completed successfully, imported %d items", taskID, result.Count)
+					log.Printf("[scheduler] Task %s completed successfully, processed %d changes", taskID, result.Count)
 				}
 			}
 
@@ -2129,13 +2128,12 @@ func (s *Service) syncTraktHistoryToLocal(task config.ScheduledTask, traktAccoun
 	if task.Config["fullSync"] == "true" {
 		// A manual full sync includes all history, including watches older than a year.
 		isFullSync = true
-	} else if !ok || time.Since(lastFull) >= fullSyncInterval {
-		// Full sync: fetch all history from the past year
-		since = time.Now().UTC().AddDate(-1, 0, 0)
+	} else if historySyncLastRun(task) == nil || !ok || time.Since(lastFull) >= fullSyncInterval {
+		// Reconcile the entire library, including backdated and older watches.
 		isFullSync = true
 		log.Printf("[scheduler] Performing full Trakt history reconciliation (last full sync: %v)", lastFull)
-	} else if task.LastRunAt != nil {
-		since = task.LastRunAt.Add(-5 * time.Minute)
+	} else if historySyncLastRun(task) != nil {
+		since = historySyncLastRun(task).Add(-5 * time.Minute)
 	}
 
 	log.Printf("[scheduler] Fetching Trakt watch history since=%v (fullSync=%v)", since, isFullSync)
@@ -2225,10 +2223,16 @@ func (s *Service) syncLocalHistoryToTrakt(task config.ScheduledTask, traktAccoun
 	}
 	items = s.enrichAndCollapseHistoryItems(items)
 
-	// Filter to items watched since last run (with 5min safety buffer)
+	// Reconcile older local watches periodically as well as on manual full sync.
+	exportKey := task.ID + ":trakt_export"
+	s.lastFullSyncTimesMu.Lock()
+	lastFull, haveFull := s.lastFullSyncTimes[exportKey]
+	s.lastFullSyncTimesMu.Unlock()
+	isFullExport := task.Config["fullSync"] == "true" || task.Config["fullExport"] == "true" ||
+		!haveFull || time.Since(lastFull) >= 6*time.Hour
 	var since time.Time
-	if task.LastRunAt != nil {
-		since = task.LastRunAt.Add(-5 * time.Minute)
+	if !isFullExport && historySyncLastRun(task) != nil {
+		since = historySyncLastRun(task).Add(-5 * time.Minute)
 	}
 
 	// Fetch existing Trakt history to avoid creating duplicate watch events.
@@ -2352,7 +2356,7 @@ func (s *Service) syncLocalHistoryToTrakt(task config.ScheduledTask, traktAccoun
 				removed++
 			} else if item.MediaType == "episode" {
 				sk, syncIDs, ok := traktShowKeyForItem(item)
-				if !ok || item.SeasonNumber == 0 || item.EpisodeNumber == 0 {
+				if !ok || item.SeasonNumber < 0 || item.EpisodeNumber <= 0 {
 					continue
 				}
 				if dryRun {
@@ -2429,7 +2433,7 @@ func (s *Service) syncLocalHistoryToTrakt(task config.ScheduledTask, traktAccoun
 			exported++
 		} else if item.MediaType == "episode" {
 			sk, syncIDs, ok := traktShowKeyForItem(item)
-			if !ok || item.SeasonNumber == 0 || item.EpisodeNumber == 0 {
+			if !ok || item.SeasonNumber < 0 || item.EpisodeNumber <= 0 {
 				continue
 			}
 
@@ -2509,6 +2513,7 @@ func (s *Service) syncLocalHistoryToTrakt(task config.ScheduledTask, traktAccoun
 			return result, fmt.Errorf("remove from trakt history: %w", err)
 		}
 		log.Printf("[scheduler] Removed from Trakt history: %d movies, %d episodes", resp.Deleted.Movies, resp.Deleted.Episodes)
+		result.Count += resp.Deleted.Movies + resp.Deleted.Episodes
 	}
 
 	shows := buildShows(showEpisodes, showIDs)
@@ -2523,6 +2528,7 @@ func (s *Service) syncLocalHistoryToTrakt(task config.ScheduledTask, traktAccoun
 			return result, fmt.Errorf("add to trakt history: %w", err)
 		}
 		log.Printf("[scheduler] Synced to Trakt: %d movies, %d episodes added", resp.Added.Movies, resp.Added.Episodes)
+		result.Count += resp.Added.Movies + resp.Added.Episodes
 
 		retryEpisodes := make(map[showKey]map[int][]trakt.SyncEpisode)
 		for _, missingShow := range resp.NotFound.Shows {
@@ -2545,14 +2551,17 @@ func (s *Service) syncLocalHistoryToTrakt(task config.ScheduledTask, traktAccoun
 			retryReq := trakt.SyncHistoryRequest{Shows: absoluteShows}
 			retryResp, retryErr := s.traktClient.AddToHistory(traktAccount.AccessToken, retryReq)
 			if retryErr != nil {
-				log.Printf("[scheduler] Trakt absolute episode retry failed: %v", retryErr)
+				return result, fmt.Errorf("Trakt absolute episode retry: %w", retryErr)
 			} else {
 				log.Printf("[scheduler] Trakt absolute episode retry added %d episodes", retryResp.Added.Episodes)
+				result.Count += retryResp.Added.Episodes
 			}
 		}
 	}
 
-	result.Count = exported + removed
+	if isFullExport {
+		s.recordFullHistorySync(exportKey)
+	}
 	return result, nil
 }
 
@@ -2588,7 +2597,7 @@ func (s *Service) syncHistoryBidirectional(task config.ScheduledTask, traktAccou
 	// Then Local → Trakt
 	toTraktResult, err := s.syncLocalHistoryToTrakt(task, traktAccount, profileID, dryRun)
 	if err != nil {
-		return toTraktResult, fmt.Errorf("local to trakt: %w", err)
+		return combineHistorySyncResults(toLocalResult, toTraktResult), fmt.Errorf("local to trakt: %w", err)
 	}
 
 	// Sync playback positions in both directions for bidirectional tasks too.
@@ -2605,453 +2614,8 @@ func (s *Service) syncHistoryBidirectional(task config.ScheduledTask, traktAccou
 	}
 
 	// Combine results
-	combined := SyncResult{
-		Count:  toLocalResult.Count + toTraktResult.Count,
-		DryRun: dryRun,
-		ToAdd:  append(toLocalResult.ToAdd, toTraktResult.ToAdd...),
-	}
+	combined := combineHistorySyncResults(toLocalResult, toTraktResult)
 	return combined, nil
-}
-
-// executeSimklHistorySync syncs watch history between Simkl and local.
-// Live scrobble already uses POST /sync/history; scheduled export heals misses.
-func (s *Service) executeSimklHistorySync(task config.ScheduledTask) (SyncResult, error) {
-	s.mu.RLock()
-	historySvc := s.historyService
-	simklClient := s.simklClient
-	s.mu.RUnlock()
-
-	if historySvc == nil {
-		return SyncResult{}, errors.New("history service not configured")
-	}
-	if simklClient == nil {
-		return SyncResult{}, errors.New("simkl client not configured")
-	}
-
-	simklAccountID := task.Config["simklAccountId"]
-	profileID, err := s.resolveTaskProfileID(task)
-	if simklAccountID == "" || profileID == "" {
-		return SyncResult{}, errors.New("missing simklAccountId or profileId in task config")
-	}
-	if err != nil {
-		return SyncResult{}, err
-	}
-
-	syncDirection := task.Config["syncDirection"]
-	if syncDirection == "" {
-		syncDirection = "simkl_to_local"
-	}
-	dryRun := task.Config["dryRun"] == "true"
-
-	settings, err := s.configManager.Load()
-	if err != nil {
-		return SyncResult{}, fmt.Errorf("load settings: %w", err)
-	}
-	simklAccount := settings.Simkl.GetAccountByID(simklAccountID)
-	if simklAccount == nil {
-		return SyncResult{}, errors.New("simkl account not found")
-	}
-	if simklAccount.ClientID == "" || simklAccount.AccessToken == "" {
-		return SyncResult{}, errors.New("simkl account not authenticated")
-	}
-
-	switch syncDirection {
-	case "simkl_to_local":
-		return s.syncSimklHistoryToLocal(task, simklAccount, profileID, dryRun)
-	case "local_to_simkl":
-		return s.syncLocalHistoryToSimkl(task, simklAccount, profileID, dryRun)
-	case "bidirectional":
-		importResult, err := s.syncSimklHistoryToLocal(task, simklAccount, profileID, dryRun)
-		if err != nil {
-			return importResult, err
-		}
-		exportResult, err := s.syncLocalHistoryToSimkl(task, simklAccount, profileID, dryRun)
-		if err != nil {
-			return exportResult, err
-		}
-		merged := SyncResult{
-			Count:  importResult.Count + exportResult.Count,
-			DryRun: dryRun,
-			ToAdd:  append(importResult.ToAdd, exportResult.ToAdd...),
-			Config: importResult.Config,
-		}
-		return merged, nil
-	default:
-		return SyncResult{}, fmt.Errorf("unknown sync direction: %s", syncDirection)
-	}
-}
-
-// syncSimklHistoryToLocal imports watch history from Simkl into local history.
-func (s *Service) syncSimklHistoryToLocal(task config.ScheduledTask, simklAccount *config.SimklAccount, profileID string, dryRun bool) (SyncResult, error) {
-	s.mu.RLock()
-	historySvc := s.historyService
-	simklClient := s.simklClient
-	s.mu.RUnlock()
-
-	result := SyncResult{DryRun: dryRun}
-
-	activities, err := simklClient.GetActivities(simklAccount.ClientID, simklAccount.AccessToken)
-	if err != nil {
-		return result, fmt.Errorf("fetch simkl activities: %w", err)
-	}
-	latestActivity := latestTimeInSimklActivity(activities)
-	savedActivity := strings.TrimSpace(task.Config["lastSimklActivityAt"])
-	if savedActivity != "" && !latestActivity.IsZero() {
-		savedAt, parseErr := time.Parse(time.RFC3339, savedActivity)
-		if parseErr == nil && !latestActivity.After(savedAt) {
-			log.Printf("[scheduler] Simkl history unchanged since %s; skipping listing calls", savedActivity)
-			return result, nil
-		}
-	}
-
-	var responses []*simkl.AllItemsResponse
-	if savedActivity == "" {
-		log.Printf("[scheduler] Performing initial Simkl history sync using sequential bucket fetches")
-		for _, bucket := range []string{"movies", "shows", "anime"} {
-			resp, err := simklClient.GetInitialSyncItems(simklAccount.ClientID, simklAccount.AccessToken, bucket)
-			if err != nil {
-				return result, fmt.Errorf("fetch simkl %s history: %w", bucket, err)
-			}
-			responses = append(responses, resp)
-		}
-	} else {
-		log.Printf("[scheduler] Fetching Simkl history delta since %s", savedActivity)
-		resp, err := simklClient.GetAllItemsSince(simklAccount.ClientID, simklAccount.AccessToken, savedActivity)
-		if err != nil {
-			return result, fmt.Errorf("fetch simkl history delta: %w", err)
-		}
-		responses = append(responses, resp)
-	}
-
-	watched := true
-	seen := make(map[string]bool)
-	var updates []models.WatchHistoryUpdate
-	for _, resp := range responses {
-		for _, update := range s.simklAllItemsToWatchHistory(resp, &watched) {
-			key := strings.ToLower(update.MediaType) + ":" + strings.ToLower(update.ItemID)
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			if dryRun {
-				result.ToAdd = append(result.ToAdd, config.DryRunItem{Name: update.Name, MediaType: update.MediaType, ID: update.ItemID})
-				continue
-			}
-			updates = append(updates, update)
-		}
-	}
-
-	if dryRun {
-		result.Count = len(result.ToAdd)
-		return result, nil
-	}
-	if len(updates) > 0 {
-		imported, err := historySvc.ImportWatchHistory(profileID, updates)
-		if err != nil {
-			return result, fmt.Errorf("import simkl watch history: %w", err)
-		}
-		result.Count = imported
-	}
-	if !latestActivity.IsZero() {
-		result.Config = map[string]string{"lastSimklActivityAt": latestActivity.UTC().Format(time.RFC3339)}
-	}
-	log.Printf("[scheduler] Imported %d/%d items from Simkl history", result.Count, len(updates))
-	return result, nil
-}
-
-// syncLocalHistoryToSimkl exports local watch history to Simkl via POST /sync/history.
-func (s *Service) syncLocalHistoryToSimkl(task config.ScheduledTask, simklAccount *config.SimklAccount, profileID string, dryRun bool) (SyncResult, error) {
-	result := SyncResult{DryRun: dryRun}
-
-	s.mu.RLock()
-	historySvc := s.historyService
-	simklClient := s.simklClient
-	s.mu.RUnlock()
-
-	items, err := historySvc.ListWatchHistory(profileID)
-	if err != nil {
-		return result, fmt.Errorf("list local history: %w", err)
-	}
-	items = s.enrichAndCollapseHistoryItems(items)
-
-	// Incremental export with periodic full export (heals missed live scrobbles).
-	const fullExportInterval = 6 * time.Hour
-	exportKey := task.ID + ":simkl_export"
-	forceFull := task.Config["fullExport"] == "true"
-
-	s.lastFullSyncTimesMu.Lock()
-	lastFull, ok := s.lastFullSyncTimes[exportKey]
-	s.lastFullSyncTimesMu.Unlock()
-
-	isFullExport := forceFull || !ok || time.Since(lastFull) >= fullExportInterval
-	var since time.Time
-	if !isFullExport && task.LastRunAt != nil {
-		since = task.LastRunAt.Add(-5 * time.Minute)
-	}
-	var removalSince time.Time
-	if task.LastRunAt != nil {
-		removalSince = task.LastRunAt.Add(-5 * time.Minute)
-	}
-
-	var toSync, toRemove []models.WatchHistoryItem
-	for _, item := range items {
-		if !item.Watched {
-			if task.Config["fullSync"] == "true" || (!removalSince.IsZero() && item.UpdatedAt.After(removalSince)) {
-				toRemove = append(toRemove, item)
-			}
-			continue
-		}
-		if since.IsZero() || item.WatchedAt.After(since) {
-			toSync = append(toSync, item)
-		}
-	}
-
-	log.Printf("[scheduler] Found %d watched items to sync and %d recent unwatches to remove from Simkl (since %v fullExport=%v force=%v)",
-		len(toSync), len(toRemove), since, isFullExport, forceFull)
-
-	if len(toSync) == 0 && len(toRemove) == 0 {
-		if isFullExport && !dryRun {
-			s.lastFullSyncTimesMu.Lock()
-			s.lastFullSyncTimes[exportKey] = time.Now().UTC()
-			s.lastFullSyncTimesMu.Unlock()
-		}
-		return result, nil
-	}
-
-	if dryRun {
-		for _, item := range toSync {
-			result.ToAdd = append(result.ToAdd, config.DryRunItem{
-				Name:      item.Name,
-				MediaType: item.MediaType,
-				ID:        item.ItemID,
-			})
-		}
-		for _, item := range toRemove {
-			result.ToRemove = append(result.ToRemove, config.DryRunItem{Name: item.Name, MediaType: item.MediaType, ID: item.ItemID})
-		}
-		result.Count = len(result.ToAdd) + len(result.ToRemove)
-		return result, nil
-	}
-
-	var movies []simkl.SyncHistoryMovie
-	var removeMovies []simkl.SyncHistoryMovie
-	// Group episodes by show ID key so we batch seasons/episodes.
-	type showKey struct {
-		simkl int
-		imdb  string
-		tmdb  int
-		tvdb  int
-	}
-	type epEntry struct {
-		season    int
-		episode   int
-		watchedAt time.Time
-	}
-	showMap := make(map[showKey][]epEntry)
-	var showOrder []showKey
-	removeShowMap := make(map[showKey][]epEntry)
-	var removeShowOrder []showKey
-	skippedNoIDs := 0
-
-	for _, item := range toSync {
-		switch item.MediaType {
-		case "movie":
-			ids := extractSimklIDs(item.MediaType, item.ItemID, "", item.ExternalIDs)
-			if ids.IMDB == "" && ids.TMDB == 0 && ids.TVDB == 0 && ids.Simkl == 0 {
-				skippedNoIDs++
-				continue
-			}
-			m := simkl.SyncHistoryMovie{IDs: ids}
-			if !item.WatchedAt.IsZero() {
-				m.WatchedAt = item.WatchedAt.UTC().Format(time.RFC3339)
-			}
-			if item.Name != "" {
-				m.Title = item.Name
-			}
-			if item.Year > 0 {
-				m.Year = item.Year
-			}
-			movies = append(movies, m)
-		case "episode":
-			seasonNumber, episodeNumber := simklExportEpisodeCoordinates(item)
-			if seasonNumber <= 0 || episodeNumber <= 0 {
-				skippedNoIDs++
-				continue
-			}
-			ids := extractSimklIDs(item.MediaType, item.ItemID, item.SeriesID, item.ExternalIDs)
-			ids, seasonNumber, episodeNumber = simkl.EpisodeIdentity(ids, seasonNumber, episodeNumber)
-			if ids.IMDB == "" && ids.TMDB == 0 && ids.TVDB == 0 && ids.Simkl == 0 {
-				skippedNoIDs++
-				continue
-			}
-			key := showKey{simkl: ids.Simkl, imdb: ids.IMDB, tmdb: ids.TMDB, tvdb: ids.TVDB}
-			if _, exists := showMap[key]; !exists {
-				showOrder = append(showOrder, key)
-			}
-			showMap[key] = append(showMap[key], epEntry{
-				season:    seasonNumber,
-				episode:   episodeNumber,
-				watchedAt: item.WatchedAt,
-			})
-		}
-	}
-	for _, item := range toRemove {
-		switch item.MediaType {
-		case "movie":
-			ids := extractSimklIDs(item.MediaType, item.ItemID, "", item.ExternalIDs)
-			if ids.IMDB == "" && ids.TMDB == 0 && ids.TVDB == 0 && ids.Simkl == 0 {
-				skippedNoIDs++
-				continue
-			}
-			removeMovies = append(removeMovies, simkl.SyncHistoryMovie{IDs: ids})
-		case "episode":
-			seasonNumber, episodeNumber := simklExportEpisodeCoordinates(item)
-			if seasonNumber <= 0 || episodeNumber <= 0 {
-				skippedNoIDs++
-				continue
-			}
-			ids := extractSimklIDs(item.MediaType, item.ItemID, item.SeriesID, item.ExternalIDs)
-			ids, seasonNumber, episodeNumber = simkl.EpisodeIdentity(ids, seasonNumber, episodeNumber)
-			if ids.IMDB == "" && ids.TMDB == 0 && ids.TVDB == 0 && ids.Simkl == 0 {
-				skippedNoIDs++
-				continue
-			}
-			key := showKey{simkl: ids.Simkl, imdb: ids.IMDB, tmdb: ids.TMDB, tvdb: ids.TVDB}
-			if _, exists := removeShowMap[key]; !exists {
-				removeShowOrder = append(removeShowOrder, key)
-			}
-			removeShowMap[key] = append(removeShowMap[key], epEntry{season: seasonNumber, episode: episodeNumber})
-		}
-	}
-
-	var shows []simkl.SyncHistoryShow
-	for _, key := range showOrder {
-		eps := showMap[key]
-		seasonMap := make(map[int][]simkl.SyncHistoryEpisode)
-		for _, ep := range eps {
-			entry := simkl.SyncHistoryEpisode{Number: ep.episode}
-			if !ep.watchedAt.IsZero() {
-				entry.WatchedAt = ep.watchedAt.UTC().Format(time.RFC3339)
-			}
-			seasonMap[ep.season] = append(seasonMap[ep.season], entry)
-		}
-		var seasons []simkl.SyncHistorySeason
-		for sNum, sEps := range seasonMap {
-			seasons = append(seasons, simkl.SyncHistorySeason{Number: sNum, Episodes: sEps})
-		}
-		shows = append(shows, simkl.SyncHistoryShow{
-			IDs:     simkl.IDs{Simkl: key.simkl, IMDB: key.imdb, TMDB: key.tmdb, TVDB: key.tvdb},
-			Seasons: seasons,
-		})
-	}
-	var removeShows []simkl.SyncHistoryShow
-	for _, key := range removeShowOrder {
-		seasonMap := make(map[int][]simkl.SyncHistoryEpisode)
-		for _, ep := range removeShowMap[key] {
-			seasonMap[ep.season] = append(seasonMap[ep.season], simkl.SyncHistoryEpisode{Number: ep.episode})
-		}
-		var seasons []simkl.SyncHistorySeason
-		for season, episodes := range seasonMap {
-			seasons = append(seasons, simkl.SyncHistorySeason{Number: season, Episodes: episodes})
-		}
-		removeShows = append(removeShows, simkl.SyncHistoryShow{
-			IDs: simkl.IDs{Simkl: key.simkl, IMDB: key.imdb, TMDB: key.tmdb, TVDB: key.tvdb}, Seasons: seasons,
-		})
-	}
-
-	syncCount := 0
-	const batchSize = 50
-
-	for i := 0; i < len(movies); i += batchSize {
-		end := i + batchSize
-		if end > len(movies) {
-			end = len(movies)
-		}
-		req := simkl.SyncHistoryRequest{Movies: movies[i:end]}
-		if err := simklClient.SyncHistory(simklAccount.ClientID, simklAccount.AccessToken, req); err != nil {
-			log.Printf("[scheduler] Simkl sync movies batch error: %v", err)
-			continue
-		}
-		syncCount += end - i
-	}
-
-	for i := 0; i < len(shows); i += batchSize {
-		end := i + batchSize
-		if end > len(shows) {
-			end = len(shows)
-		}
-		batch := shows[i:end]
-		req := simkl.SyncHistoryRequest{Shows: batch}
-		// SyncHistorySafe undoes accidental full-series completes when every
-		// requested episode for a show is not_found (Columbo/DBZ numbering).
-		resp, err := simklClient.SyncHistorySafe(simklAccount.ClientID, simklAccount.AccessToken, req)
-		if err != nil {
-			log.Printf("[scheduler] Simkl sync shows batch error: %v", err)
-			continue
-		}
-		intended := 0
-		for _, show := range batch {
-			for _, season := range show.Seasons {
-				intended += len(season.Episodes)
-			}
-		}
-		notFoundEps := 0
-		if resp != nil {
-			for _, nf := range resp.NotFound.Episodes {
-				for _, season := range nf.Seasons {
-					notFoundEps += len(season.Episodes)
-				}
-			}
-		}
-		// Prefer Simkl's added count when present; fall back to intended−not_found.
-		if resp != nil && resp.Added.Episodes > 0 && notFoundEps == 0 {
-			syncCount += resp.Added.Episodes
-		} else {
-			matched := intended - notFoundEps
-			if matched > 0 {
-				syncCount += matched
-			}
-		}
-	}
-	for i := 0; i < len(removeMovies); i += batchSize {
-		end := i + batchSize
-		if end > len(removeMovies) {
-			end = len(removeMovies)
-		}
-		if err := simklClient.RemoveFromHistory(simklAccount.ClientID, simklAccount.AccessToken, simkl.SyncHistoryRequest{Movies: removeMovies[i:end]}); err != nil {
-			log.Printf("[scheduler] Simkl remove movies batch error: %v", err)
-			continue
-		}
-		syncCount += end - i
-	}
-	for i := 0; i < len(removeShows); i += batchSize {
-		end := i + batchSize
-		if end > len(removeShows) {
-			end = len(removeShows)
-		}
-		if err := simklClient.RemoveFromHistory(simklAccount.ClientID, simklAccount.AccessToken, simkl.SyncHistoryRequest{Shows: removeShows[i:end]}); err != nil {
-			log.Printf("[scheduler] Simkl remove shows batch error: %v", err)
-			continue
-		}
-		for _, show := range removeShows[i:end] {
-			for _, season := range show.Seasons {
-				syncCount += len(season.Episodes)
-			}
-		}
-	}
-
-	result.Count = syncCount
-	log.Printf("[scheduler] Synced %d items to Simkl (skippedNoIDs=%d fullExport=%v)",
-		syncCount, skippedNoIDs, isFullExport)
-
-	if isFullExport {
-		s.lastFullSyncTimesMu.Lock()
-		s.lastFullSyncTimes[exportKey] = time.Now().UTC()
-		s.lastFullSyncTimesMu.Unlock()
-		log.Printf("[scheduler] Full Simkl history export complete, next full export in %v", fullExportInterval)
-	}
-
-	return result, nil
 }
 
 // extractSimklIDs builds Simkl show/movie IDs from local history identity fields.
@@ -3130,6 +2694,12 @@ func (s *Service) simklAllItemsToWatchHistory(resp *simkl.AllItemsResponse, watc
 		updates = append(updates, s.simklShowToUpdates(raw, watched)...)
 	}
 	for _, raw := range resp.Anime {
+		if strings.EqualFold(stringFromAny(decodeJSONObject(raw)["anime_type"]), "movie") {
+			if update := simklMovieToUpdate(raw, watched); update != nil {
+				updates = append(updates, *update)
+			}
+			continue
+		}
 		updates = append(updates, s.simklShowToUpdates(raw, watched)...)
 	}
 	return updates
@@ -3141,6 +2711,9 @@ func simklMovieToUpdate(raw json.RawMessage, watched *bool) *models.WatchHistory
 		return nil
 	}
 	movie := nestedObject(obj, "movie")
+	if movie == nil {
+		movie = nestedObject(obj, "show") // Simkl puts anime movies in the anime bucket.
+	}
 	if movie == nil {
 		movie = obj
 	}
@@ -3199,7 +2772,7 @@ func (s *Service) simklShowToUpdates(raw json.RawMessage, watched *bool) []model
 			if episodeNumber == 0 {
 				episodeNumber = intFromAny(episodeObj["episode"])
 			}
-			if seasonNumber == 0 || episodeNumber == 0 {
+			if seasonNumber < 0 || episodeNumber <= 0 {
 				continue
 			}
 			watchedAt := simklFirstTime(episodeObj, "watched_at", "last_watched_at", "completed_at", "last_watched")
@@ -5098,638 +4671,6 @@ func schedulerNormalizeExternalIDs(externalIDs map[string]string) map[string]str
 	return out
 }
 
-// executeMDBListHistorySync syncs watch history between MDBList and local.
-func (s *Service) executeMDBListHistorySync(task config.ScheduledTask) (SyncResult, error) {
-	s.mu.RLock()
-	historySvc := s.historyService
-	s.mu.RUnlock()
-
-	if historySvc == nil {
-		return SyncResult{}, errors.New("history service not configured")
-	}
-
-	mdblistAccountID := task.Config["mdblistAccountId"]
-	profileID, err := s.resolveTaskProfileID(task)
-
-	if mdblistAccountID == "" || profileID == "" {
-		return SyncResult{}, errors.New("missing mdblistAccountId or profileId in task config")
-	}
-	if err != nil {
-		return SyncResult{}, err
-	}
-
-	syncDirection := task.Config["syncDirection"]
-	if syncDirection == "" {
-		syncDirection = "mdblist_to_local"
-	}
-	dryRun := task.Config["dryRun"] == "true"
-
-	// Load settings to get MDBList account
-	settings, err := s.configManager.Load()
-	if err != nil {
-		return SyncResult{}, fmt.Errorf("load settings: %w", err)
-	}
-
-	mdblistAccount := settings.MDBList.GetAccountByID(mdblistAccountID)
-	if mdblistAccount == nil {
-		return SyncResult{}, errors.New("MDBList account not found")
-	}
-
-	if mdblistAccount.APIKey == "" {
-		return SyncResult{}, errors.New("MDBList account has no API key")
-	}
-
-	switch syncDirection {
-	case "mdblist_to_local":
-		return s.syncMDBListHistoryToLocal(task, mdblistAccount, profileID, dryRun)
-	case "local_to_mdblist":
-		return s.syncLocalHistoryToMDBList(task, mdblistAccount, profileID, dryRun)
-	case "bidirectional":
-		// Import first, then export
-		importResult, err := s.syncMDBListHistoryToLocal(task, mdblistAccount, profileID, dryRun)
-		if err != nil {
-			return importResult, err
-		}
-		exportResult, err := s.syncLocalHistoryToMDBList(task, mdblistAccount, profileID, dryRun)
-		if err != nil {
-			return exportResult, err
-		}
-		return SyncResult{
-			Count:  importResult.Count + exportResult.Count,
-			DryRun: dryRun,
-			ToAdd:  append(importResult.ToAdd, exportResult.ToAdd...),
-		}, nil
-	default:
-		return SyncResult{}, fmt.Errorf("unknown sync direction: %s", syncDirection)
-	}
-}
-
-// syncMDBListHistoryToLocal imports watch history from MDBList into local.
-func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *config.MDBListAccount, profileID string, dryRun bool) (SyncResult, error) {
-	result := SyncResult{DryRun: dryRun}
-
-	s.mu.RLock()
-	historySvc := s.historyService
-	s.mu.RUnlock()
-
-	// Determine incremental cursor
-	var since string
-	if task.LastRunAt != nil {
-		since = task.LastRunAt.Add(-5 * time.Minute).UTC().Format(time.RFC3339)
-	}
-
-	// Fetch watched history from MDBList API with pagination
-	apiKey := account.APIKey
-	var allMovies []json.RawMessage
-	var allEpisodes []json.RawMessage
-	offset := 0
-	limit := 500
-
-	for {
-		url := fmt.Sprintf("https://api.mdblist.com/sync/watched?apikey=%s&limit=%d&offset=%d", apiKey, limit, offset)
-		if since != "" {
-			url += "&since=" + since
-		}
-
-		req, _ := http.NewRequest(http.MethodGet, url, nil)
-		req.Header.Set("User-Agent", "mediastorm/1.0")
-		httpClient := &http.Client{Timeout: 30 * time.Second}
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			return result, fmt.Errorf("fetch MDBList history: %w", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			return result, fmt.Errorf("MDBList history request failed (HTTP %d, offset %d)", resp.StatusCode, offset)
-		}
-
-		var page struct {
-			Movies     []json.RawMessage `json:"movies"`
-			Episodes   []json.RawMessage `json:"episodes"`
-			Pagination struct {
-				HasMore bool `json:"has_more"`
-			} `json:"pagination"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
-			resp.Body.Close()
-			return result, fmt.Errorf("decode MDBList history: %w", err)
-		}
-		resp.Body.Close()
-
-		allMovies = append(allMovies, page.Movies...)
-		allEpisodes = append(allEpisodes, page.Episodes...)
-
-		if !page.Pagination.HasMore {
-			break
-		}
-		offset += limit
-	}
-
-	log.Printf("[scheduler] Fetched %d movies + %d episodes from MDBList watch history", len(allMovies), len(allEpisodes))
-
-	// Convert to WatchHistoryUpdate items
-	watched := true
-	var updates []models.WatchHistoryUpdate
-
-	// Parse movies
-	for _, raw := range allMovies {
-		var m struct {
-			LastWatchedAt string `json:"last_watched_at"`
-			Movie         struct {
-				Title string `json:"title"`
-				Year  int    `json:"year"`
-				IDs   struct {
-					IMDB string `json:"imdb"`
-					TMDB int    `json:"tmdb"`
-					TVDB int    `json:"tvdb"`
-				} `json:"ids"`
-			} `json:"movie"`
-		}
-		if err := json.Unmarshal(raw, &m); err != nil {
-			continue
-		}
-
-		watchedAt, _ := time.Parse(time.RFC3339, m.LastWatchedAt)
-		extIDs := make(map[string]string)
-		var itemID string
-		if m.Movie.IDs.IMDB != "" {
-			extIDs["imdb"] = m.Movie.IDs.IMDB
-			itemID = m.Movie.IDs.IMDB
-		}
-		if m.Movie.IDs.TMDB != 0 {
-			extIDs["tmdb"] = strconv.Itoa(m.Movie.IDs.TMDB)
-			if itemID == "" {
-				itemID = strconv.Itoa(m.Movie.IDs.TMDB)
-			}
-		}
-		if itemID == "" {
-			continue
-		}
-
-		if dryRun {
-			result.ToAdd = append(result.ToAdd, config.DryRunItem{
-				Name:      m.Movie.Title,
-				MediaType: "movie",
-				ID:        itemID,
-			})
-			continue
-		}
-
-		updates = append(updates, models.WatchHistoryUpdate{
-			MediaType:   "movie",
-			ItemID:      itemID,
-			Name:        m.Movie.Title,
-			Year:        m.Movie.Year,
-			Watched:     &watched,
-			WatchedAt:   watchedAt,
-			ExternalIDs: extIDs,
-		})
-	}
-
-	// Parse episodes
-	for _, raw := range allEpisodes {
-		var e struct {
-			LastWatchedAt string `json:"last_watched_at"`
-			Episode       struct {
-				Season int    `json:"season"`
-				Number int    `json:"number"`
-				Name   string `json:"name"`
-				Show   struct {
-					Title string `json:"title"`
-					Year  int    `json:"year"`
-					IDs   struct {
-						IMDB string `json:"imdb"`
-						TMDB int    `json:"tmdb"`
-						TVDB int    `json:"tvdb"`
-					} `json:"ids"`
-				} `json:"show"`
-			} `json:"episode"`
-		}
-		if err := json.Unmarshal(raw, &e); err != nil {
-			continue
-		}
-
-		watchedAt, _ := time.Parse(time.RFC3339, e.LastWatchedAt)
-		extIDs := make(map[string]string)
-		var seriesID string
-
-		show := e.Episode.Show
-		if show.IDs.TVDB != 0 {
-			extIDs["tvdb"] = strconv.Itoa(show.IDs.TVDB)
-			seriesID = fmt.Sprintf("tvdb:series:%d", show.IDs.TVDB)
-		}
-		if show.IDs.TMDB != 0 {
-			extIDs["tmdb"] = strconv.Itoa(show.IDs.TMDB)
-			if seriesID == "" {
-				seriesID = fmt.Sprintf("tmdb:tv:%d", show.IDs.TMDB)
-			}
-		}
-		if show.IDs.IMDB != "" {
-			extIDs["imdb"] = show.IDs.IMDB
-		}
-		if seriesID == "" {
-			continue
-		}
-
-		absoluteEpisode := 0
-		if e.Episode.Number >= 1000 {
-			absoluteEpisode = e.Episode.Number
-		}
-		localSeason, localEpisode, localAbsolute, episodeTitle := s.canonicalizeProviderEpisode(
-			"mdblist", extIDs, nil, e.Episode.Season, e.Episode.Number, absoluteEpisode, e.Episode.Name,
-		)
-		if localAbsolute > 0 {
-			extIDs["absoluteEpisode"] = strconv.Itoa(localAbsolute)
-		}
-		itemID := fmt.Sprintf("%s:s%02de%02d", seriesID, localSeason, localEpisode)
-
-		if dryRun {
-			result.ToAdd = append(result.ToAdd, config.DryRunItem{
-				Name:      fmt.Sprintf("%s S%02dE%02d", show.Title, localSeason, localEpisode),
-				MediaType: "episode",
-				ID:        itemID,
-			})
-			continue
-		}
-
-		updates = append(updates, models.WatchHistoryUpdate{
-			MediaType:     "episode",
-			ItemID:        itemID,
-			Name:          episodeTitle,
-			Watched:       &watched,
-			WatchedAt:     watchedAt,
-			ExternalIDs:   extIDs,
-			SeasonNumber:  localSeason,
-			EpisodeNumber: localEpisode,
-			SeriesID:      seriesID,
-			SeriesName:    show.Title,
-		})
-	}
-
-	if dryRun {
-		result.Count = len(result.ToAdd)
-		return result, nil
-	}
-
-	if len(updates) > 0 {
-		imported, err := historySvc.ImportWatchHistory(profileID, updates)
-		if err != nil {
-			return result, fmt.Errorf("import watch history: %w", err)
-		}
-		result.Count = imported
-		log.Printf("[scheduler] Imported %d/%d items from MDBList history", imported, len(updates))
-	}
-
-	return result, nil
-}
-
-// syncLocalHistoryToMDBList exports local watch history to MDBList.
-func (s *Service) syncLocalHistoryToMDBList(task config.ScheduledTask, account *config.MDBListAccount, profileID string, dryRun bool) (SyncResult, error) {
-	result := SyncResult{DryRun: dryRun}
-
-	s.mu.RLock()
-	historySvc := s.historyService
-	s.mu.RUnlock()
-
-	// Get all local watch history for this profile
-	items, err := historySvc.ListWatchHistory(profileID)
-	if err != nil {
-		return result, fmt.Errorf("list local history: %w", err)
-	}
-	items = s.enrichAndCollapseHistoryItems(items)
-
-	// Incremental export uses LastRunAt - 5min. That misses older watches that
-	// never landed on MDBList (sparse-ID scrobble failures). Periodically do a
-	// full export; MDBList /sync/watched is idempotent so re-export is safe.
-	// Force with task config fullExport=true for one-shot healing.
-	const fullExportInterval = 6 * time.Hour
-	exportKey := task.ID + ":mdblist_export"
-	forceFull := task.Config["fullExport"] == "true"
-
-	s.lastFullSyncTimesMu.Lock()
-	lastFull, ok := s.lastFullSyncTimes[exportKey]
-	s.lastFullSyncTimesMu.Unlock()
-
-	isFullExport := forceFull || !ok || time.Since(lastFull) >= fullExportInterval
-	var since time.Time
-	if !isFullExport && task.LastRunAt != nil {
-		since = task.LastRunAt.Add(-5 * time.Minute)
-	}
-	var removalSince time.Time
-	if task.LastRunAt != nil {
-		removalSince = task.LastRunAt.Add(-5 * time.Minute)
-	}
-
-	var toSync, toRemove []models.WatchHistoryItem
-	for _, item := range items {
-		if item.Watched {
-			if since.IsZero() || item.WatchedAt.After(since) {
-				toSync = append(toSync, item)
-			}
-		} else if task.Config["fullSync"] == "true" || (!removalSince.IsZero() && item.UpdatedAt.After(removalSince)) {
-			toRemove = append(toRemove, item)
-		}
-	}
-
-	log.Printf("[scheduler] Found %d watched items to sync and %d recent unwatches to remove from MDBList (since %v fullExport=%v force=%v)",
-		len(toSync), len(toRemove), since, isFullExport, forceFull)
-
-	if len(toSync) == 0 && len(toRemove) == 0 {
-		if isFullExport && !dryRun {
-			s.lastFullSyncTimesMu.Lock()
-			s.lastFullSyncTimes[exportKey] = time.Now().UTC()
-			s.lastFullSyncTimesMu.Unlock()
-		}
-		return result, nil
-	}
-
-	if dryRun {
-		for _, item := range toSync {
-			result.ToAdd = append(result.ToAdd, config.DryRunItem{
-				Name:      item.Name,
-				MediaType: item.MediaType,
-				ID:        item.ItemID,
-			})
-		}
-		for _, item := range toRemove {
-			result.ToRemove = append(result.ToRemove, config.DryRunItem{Name: item.Name, MediaType: item.MediaType, ID: item.ItemID})
-		}
-		result.Count = len(result.ToAdd) + len(result.ToRemove)
-		return result, nil
-	}
-
-	// Build MDBList sync requests batched by type.
-	// MDBList format: movies=[{"ids":{...}, "watched_at":"..."}],
-	//                 shows=[{"ids":{...}, "seasons":[{"number":N, "episodes":[{"number":N, "watched_at":"..."}]}]}]
-	apiKey := account.APIKey
-
-	// Collect movies
-	skippedNoIDs := 0
-	var moviePayloads []map[string]interface{}
-	for _, item := range toSync {
-		if item.MediaType != "movie" {
-			continue
-		}
-		ids := extractMDBListIDs(item.ExternalIDs)
-		if ids.imdb == "" && ids.tmdb == 0 {
-			skippedNoIDs++
-			continue
-		}
-		m := map[string]interface{}{
-			"ids": formatMDBListIDsMap(ids),
-		}
-		if !item.WatchedAt.IsZero() {
-			m["watched_at"] = item.WatchedAt.UTC().Format(time.RFC3339)
-		}
-		moviePayloads = append(moviePayloads, m)
-	}
-
-	// Collect episodes grouped by show
-	type showKey struct {
-		imdb string
-		tmdb int
-	}
-	type epEntry struct {
-		season    int
-		episode   int
-		watchedAt time.Time
-		absolute  int // distinct absoluteEpisode for hybrid retry; 0 if N/A
-	}
-	showMap := make(map[showKey][]epEntry)
-	showOrder := make([]showKey, 0)
-	for _, item := range toSync {
-		if item.MediaType != "episode" {
-			continue
-		}
-		// Enrich sparse rows that only store titleId (e.g. tmdb:tv:82782)
-		// so bidirectional history export can heal MDBList after missed scrobbles.
-		ids := extractMDBListIDs(mediaidentity.EnrichShowExternalIDs(item.SeriesID, item.ItemID, item.ExternalIDs))
-		if ids.imdb == "" && ids.tmdb == 0 {
-			skippedNoIDs++
-			continue
-		}
-		key := showKey{imdb: ids.imdb, tmdb: ids.tmdb}
-		if _, exists := showMap[key]; !exists {
-			showOrder = append(showOrder, key)
-		}
-		// Pure seasonal first. Hybrid absolute retry happens after not_found
-		// responses (absoluteEpisode is common on non-anime shows too).
-		showMap[key] = append(showMap[key], epEntry{
-			season:    item.SeasonNumber,
-			episode:   item.EpisodeNumber,
-			watchedAt: item.WatchedAt,
-			absolute:  mdblist.HybridEpisodeNumber(item.EpisodeNumber, item.ExternalIDs),
-		})
-	}
-
-	var showPayloads []map[string]interface{}
-	for _, key := range showOrder {
-		eps := showMap[key]
-		ids := mdblistIDs{imdb: key.imdb, tmdb: key.tmdb}
-
-		// Group episodes by season
-		seasonMap := make(map[int][]map[string]interface{})
-		for _, ep := range eps {
-			epObj := map[string]interface{}{
-				"number": ep.episode,
-			}
-			if !ep.watchedAt.IsZero() {
-				epObj["watched_at"] = ep.watchedAt.UTC().Format(time.RFC3339)
-			}
-			seasonMap[ep.season] = append(seasonMap[ep.season], epObj)
-		}
-
-		var seasons []map[string]interface{}
-		for sNum, sEps := range seasonMap {
-			seasons = append(seasons, map[string]interface{}{
-				"number":   sNum,
-				"episodes": sEps,
-			})
-		}
-
-		showPayloads = append(showPayloads, map[string]interface{}{
-			"ids":     formatMDBListIDsMap(ids),
-			"seasons": seasons,
-		})
-	}
-
-	// Send batched request
-	syncCount := 0
-	batchSize := 100
-
-	// Sync movies in batches
-	for i := 0; i < len(moviePayloads); i += batchSize {
-		end := i + batchSize
-		if end > len(moviePayloads) {
-			end = len(moviePayloads)
-		}
-		batch := map[string]interface{}{
-			"movies": moviePayloads[i:end],
-		}
-		body, _ := json.Marshal(batch)
-		if err := postToMDBList(apiKey, "/sync/watched", string(body)); err != nil {
-			log.Printf("[scheduler] MDBList sync movies batch error: %v", err)
-			continue
-		}
-		syncCount += end - i
-	}
-
-	// Sync shows in batches (seasonal numbering). Collect not_found for hybrid retry.
-	type hybridRetry struct {
-		key       showKey
-		season    int
-		absolute  int
-		watchedAt time.Time
-	}
-	var hybridRetries []hybridRetry
-
-	for i := 0; i < len(showPayloads); i += batchSize {
-		end := i + batchSize
-		if end > len(showPayloads) {
-			end = len(showPayloads)
-		}
-		batch := map[string]interface{}{
-			"shows": showPayloads[i:end],
-		}
-		body, _ := json.Marshal(batch)
-		respBody, err := postToMDBListBody(apiKey, "/sync/watched", string(body))
-		if err != nil {
-			log.Printf("[scheduler] MDBList sync shows batch error: %v", err)
-			continue
-		}
-		notFound := parseMDBListNotFoundEpisodes(respBody)
-		accepted := 0
-		for _, show := range showPayloads[i:end] {
-			for _, season := range show["seasons"].([]map[string]interface{}) {
-				accepted += len(season["episodes"].([]map[string]interface{}))
-			}
-		}
-		accepted -= len(notFound)
-		if accepted > 0 {
-			syncCount += accepted
-		}
-		// Map not_found seasonal keys back to absolute candidates (scoped by show ids).
-		for _, key := range showOrder {
-			for _, ep := range showMap[key] {
-				if ep.absolute <= 0 {
-					continue
-				}
-				nfKey := mdblistNotFoundKey(key.imdb, key.tmdb, ep.season, ep.episode)
-				if !notFound[nfKey] {
-					continue
-				}
-				hybridRetries = append(hybridRetries, hybridRetry{
-					key:       key,
-					season:    ep.season,
-					absolute:  ep.absolute,
-					watchedAt: ep.watchedAt,
-				})
-			}
-		}
-	}
-
-	if len(hybridRetries) > 0 {
-		log.Printf("[scheduler] MDBList hybrid absolute retry for %d not_found episodes", len(hybridRetries))
-		// Group hybrid retries by show
-		hybridByShow := make(map[showKey][]hybridRetry)
-		var hybridOrder []showKey
-		for _, hr := range hybridRetries {
-			if _, ok := hybridByShow[hr.key]; !ok {
-				hybridOrder = append(hybridOrder, hr.key)
-			}
-			hybridByShow[hr.key] = append(hybridByShow[hr.key], hr)
-		}
-		var hybridPayloads []map[string]interface{}
-		for _, key := range hybridOrder {
-			seasonMap := make(map[int][]map[string]interface{})
-			for _, hr := range hybridByShow[key] {
-				epObj := map[string]interface{}{"number": hr.absolute}
-				if !hr.watchedAt.IsZero() {
-					epObj["watched_at"] = hr.watchedAt.UTC().Format(time.RFC3339)
-				}
-				seasonMap[hr.season] = append(seasonMap[hr.season], epObj)
-			}
-			var seasons []map[string]interface{}
-			for sNum, sEps := range seasonMap {
-				seasons = append(seasons, map[string]interface{}{"number": sNum, "episodes": sEps})
-			}
-			hybridPayloads = append(hybridPayloads, map[string]interface{}{
-				"ids":     formatMDBListIDsMap(mdblistIDs{imdb: key.imdb, tmdb: key.tmdb}),
-				"seasons": seasons,
-			})
-		}
-		for i := 0; i < len(hybridPayloads); i += batchSize {
-			end := i + batchSize
-			if end > len(hybridPayloads) {
-				end = len(hybridPayloads)
-			}
-			batch := map[string]interface{}{"shows": hybridPayloads[i:end]}
-			body, _ := json.Marshal(batch)
-			respBody, err := postToMDBListBody(apiKey, "/sync/watched", string(body))
-			if err != nil {
-				log.Printf("[scheduler] MDBList hybrid sync batch error: %v", err)
-				continue
-			}
-			nf := parseMDBListNotFoundEpisodes(respBody)
-			count := 0
-			for _, show := range hybridPayloads[i:end] {
-				for _, season := range show["seasons"].([]map[string]interface{}) {
-					count += len(season["episodes"].([]map[string]interface{}))
-				}
-			}
-			count -= len(nf)
-			if count > 0 {
-				syncCount += count
-			}
-		}
-	}
-
-	removeMovies, removeShows, removeSkipped := buildMDBListRemovalPayload(toRemove)
-	skippedNoIDs += removeSkipped
-	for i := 0; i < len(removeMovies); i += batchSize {
-		end := i + batchSize
-		if end > len(removeMovies) {
-			end = len(removeMovies)
-		}
-		body, _ := json.Marshal(map[string]interface{}{"movies": removeMovies[i:end]})
-		if err := postToMDBList(apiKey, "/sync/watched/remove", string(body)); err != nil {
-			log.Printf("[scheduler] MDBList remove movies batch error: %v", err)
-			continue
-		}
-		syncCount += end - i
-	}
-	for i := 0; i < len(removeShows); i += batchSize {
-		end := i + batchSize
-		if end > len(removeShows) {
-			end = len(removeShows)
-		}
-		body, _ := json.Marshal(map[string]interface{}{"shows": removeShows[i:end]})
-		if err := postToMDBList(apiKey, "/sync/watched/remove", string(body)); err != nil {
-			log.Printf("[scheduler] MDBList remove shows batch error: %v", err)
-			continue
-		}
-		for _, show := range removeShows[i:end] {
-			for _, season := range show["seasons"].([]map[string]interface{}) {
-				syncCount += len(season["episodes"].([]map[string]interface{}))
-			}
-		}
-	}
-
-	result.Count = syncCount
-	log.Printf("[scheduler] Synced %d/%d changes to MDBList (skippedNoIDs=%d fullExport=%v)",
-		syncCount, len(toSync)+len(toRemove), skippedNoIDs, isFullExport)
-
-	if isFullExport && !dryRun {
-		s.lastFullSyncTimesMu.Lock()
-		s.lastFullSyncTimes[exportKey] = time.Now().UTC()
-		s.lastFullSyncTimesMu.Unlock()
-		log.Printf("[scheduler] Full MDBList history export complete, next full export in %v", fullExportInterval)
-	}
-
-	return result, nil
-}
-
 type mdblistIDs struct {
 	imdb string
 	tmdb int
@@ -5765,13 +4706,17 @@ func postToMDBList(apiKey, path, body string) error {
 
 func postToMDBListBody(apiKey, path, body string) ([]byte, error) {
 	url := fmt.Sprintf("https://api.mdblist.com%s?apikey=%s", path, apiKey)
-	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Post(url, "application/json", strings.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("mdblist %s: %w", path, err)
+		return nil, fmt.Errorf("mdblist %s: %w", path, mdblistRequestError(err))
 	}
 	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
-	if resp.StatusCode >= 400 {
+	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if readErr != nil {
+		return nil, fmt.Errorf("read mdblist %s response: %w", path, readErr)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return respBody, fmt.Errorf("mdblist %s returned %d: %s", path, resp.StatusCode, string(respBody))
 	}
 	return respBody, nil

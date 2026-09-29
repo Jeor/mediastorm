@@ -160,13 +160,24 @@ func (c *Client) GetHistory(ctx context.Context, baseURL, apiKey string) ([]Hist
 		if err != nil {
 			return nil, fmt.Errorf("fetch Scrob history page %d: %w", page, err)
 		}
-		var payload HistoryResponse
+		var payload *HistoryResponse
 		err = decodeResponse(resp, &payload)
 		if err != nil {
 			return nil, fmt.Errorf("fetch Scrob history page %d: %w", page, err)
 		}
+		if payload == nil {
+			return nil, fmt.Errorf("Scrob returned null instead of history at page %d", page)
+		}
 		all = append(all, payload.Results...)
-		if page >= payload.TotalPages || len(payload.Results) == 0 {
+		if len(payload.Results) == 0 {
+			if payload.TotalPages > page || payload.TotalResults > len(all) {
+				return nil, fmt.Errorf("Scrob history ended early at page %d", page)
+			}
+			break
+		}
+		if (payload.TotalPages > 0 && page >= payload.TotalPages) ||
+			(payload.TotalPages == 0 && payload.TotalResults > 0 && len(all) >= payload.TotalResults) ||
+			(payload.TotalPages == 0 && payload.TotalResults == 0 && len(payload.Results) < 100) {
 			break
 		}
 	}

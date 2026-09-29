@@ -224,14 +224,17 @@ func TestGetInitialSyncItemsAcceptsArrayResponses(t *testing.T) {
 	client := NewClient()
 	client.SetHTTPClientForTest(&http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-			if r.URL.Path != "/sync/movies" {
-				t.Fatalf("path = %q, want /sync/movies", r.URL.Path)
+			if r.URL.Path != "/sync/all-items/movies" {
+				t.Fatalf("path = %q, want /sync/all-items/movies", r.URL.Path)
 			}
 			if got := r.URL.Query().Get("extended"); got != "full" {
 				t.Fatalf("extended query = %q", got)
 			}
 			if got := r.URL.Query().Get("episode_watched_at"); got != "yes" {
 				t.Fatalf("episode_watched_at query = %q", got)
+			}
+			if got := r.URL.Query().Get("include_all_episodes"); got != "yes" {
+				t.Fatalf("include_all_episodes query = %q", got)
 			}
 			return &http.Response{
 				StatusCode: http.StatusOK,
@@ -364,6 +367,9 @@ func TestGetAllItemsSinceSendsDateFrom(t *testing.T) {
 			}
 			if got := r.URL.Query().Get("date_from"); got != "2026-05-15T12:00:00Z" {
 				t.Fatalf("date_from query = %q", got)
+			}
+			if r.URL.Query().Get("include_all_episodes") != "yes" {
+				t.Fatal("delta omitted completed episodes")
 			}
 			return &http.Response{
 				StatusCode: http.StatusOK,

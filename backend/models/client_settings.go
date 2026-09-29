@@ -95,6 +95,7 @@ type ClientFilterSettings struct {
 	IgnoreDVCompatibilityCheck        *bool     `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"`
 	CreditsDetectionEnabled           *bool     `json:"creditsDetectionEnabled,omitempty"`
 	CreditsAutoSkip                   *bool     `json:"creditsAutoSkip,omitempty"`
+	ScrobbleStartDelaySeconds         *int      `json:"scrobbleStartDelaySeconds,omitempty"`
 	MatchFrameRate                    *bool     `json:"matchFrameRate,omitempty"`
 	LiveClosedCaptionExtraction       *bool     `json:"liveClosedCaptionExtraction,omitempty"`
 	MaxResultsPerResolution           *int      `json:"maxResultsPerResolution,omitempty"`
@@ -190,6 +191,7 @@ func (c *ClientFilterSettings) IsEmpty() bool {
 		c.IgnoreDVCompatibilityCheck == nil &&
 		c.CreditsDetectionEnabled == nil &&
 		c.CreditsAutoSkip == nil &&
+		c.ScrobbleStartDelaySeconds == nil &&
 		c.MatchFrameRate == nil &&
 		c.LiveClosedCaptionExtraction == nil &&
 		c.MaxResultsPerResolution == nil &&

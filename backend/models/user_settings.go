@@ -501,6 +501,7 @@ type PlaybackSettings struct {
 	IgnoreDVCompatibilityCheck    *bool     `json:"ignoreDolbyVisionCompatibilityCheck,omitempty"` // Skip Android display DV capability check before playback
 	CreditsDetectionEnabled       *bool     `json:"creditsDetectionEnabled,omitempty"`             // Enable on-device credits detection/OCR during playback
 	CreditsAutoSkip               *bool     `json:"creditsAutoSkip,omitempty"`                     // Automatically play the next episode after credits are detected
+	ScrobbleStartDelaySeconds     *int      `json:"scrobbleStartDelaySeconds,omitempty"`           // Active playback time before real-time scrobble events begin
 	CreditsDetection              bool      `json:"creditsDetection,omitempty"`                    // Legacy name for creditsAutoSkip
 	MatchFrameRate                *bool     `json:"matchFrameRate,omitempty"`                      // Request TV display refresh rate matching during playback
 	LiveClosedCaptionExtraction   *bool     `json:"liveClosedCaptionExtraction,omitempty"`         // Extract EIA-608 closed captions from live TV (server-side)

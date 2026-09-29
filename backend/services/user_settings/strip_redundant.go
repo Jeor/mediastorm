@@ -160,6 +160,7 @@ func globalToUserSettings(g config.Settings) models.UserSettings {
 			IgnoreDVCompatibilityCheck:    models.BoolPtr(g.Playback.IgnoreDVCompatibilityCheck),
 			CreditsDetectionEnabled:       models.BoolPtr(g.Playback.CreditsDetectionEnabled),
 			CreditsAutoSkip:               models.BoolPtr(g.Playback.CreditsAutoSkip || g.Playback.CreditsDetection),
+			ScrobbleStartDelaySeconds:     models.IntPtr(g.Playback.ScrobbleStartDelaySeconds),
 			MatchFrameRate:                models.BoolPtr(g.Playback.MatchFrameRate),
 			LiveClosedCaptionExtraction:   models.BoolPtr(g.Playback.LiveClosedCaptionExtraction),
 			MaxResultsPerResolution:       models.IntPtr(g.Playback.MaxResultsPerResolution),
@@ -430,6 +431,9 @@ func mergeWithGlobal(us models.UserSettings, g config.Settings) models.UserSetti
 	}
 	if eff.Playback.CreditsAutoSkip == nil {
 		eff.Playback.CreditsAutoSkip = models.BoolPtr(g.Playback.CreditsAutoSkip || g.Playback.CreditsDetection)
+	}
+	if eff.Playback.ScrobbleStartDelaySeconds == nil {
+		eff.Playback.ScrobbleStartDelaySeconds = models.IntPtr(g.Playback.ScrobbleStartDelaySeconds)
 	}
 	if eff.Playback.DisablePrequeue == nil {
 		eff.Playback.DisablePrequeue = models.BoolPtr(g.Playback.DisablePrequeue)
@@ -816,6 +820,10 @@ func stripPlayback(p *models.PlaybackSettings, g config.PlaybackSettings) bool {
 	}
 	if p.CreditsDetectionEnabled != nil && *p.CreditsDetectionEnabled == g.CreditsDetectionEnabled {
 		p.CreditsDetectionEnabled = nil
+		changed = true
+	}
+	if p.ScrobbleStartDelaySeconds != nil && *p.ScrobbleStartDelaySeconds == g.ScrobbleStartDelaySeconds {
+		p.ScrobbleStartDelaySeconds = nil
 		changed = true
 	}
 	if p.StreamMigrationEnabled != nil && *p.StreamMigrationEnabled == g.StreamMigrationEnabled {
@@ -1321,6 +1329,10 @@ func stripClientSettings(cs *models.ClientFilterSettings, eff models.UserSetting
 	}
 	if cs.CreditsAutoSkip != nil && eff.Playback.CreditsAutoSkip != nil && *cs.CreditsAutoSkip == *eff.Playback.CreditsAutoSkip {
 		cs.CreditsAutoSkip = nil
+		changed = true
+	}
+	if cs.ScrobbleStartDelaySeconds != nil && eff.Playback.ScrobbleStartDelaySeconds != nil && *cs.ScrobbleStartDelaySeconds == *eff.Playback.ScrobbleStartDelaySeconds {
+		cs.ScrobbleStartDelaySeconds = nil
 		changed = true
 	}
 	if cs.StreamMigrationEnabled != nil && eff.Playback.StreamMigrationEnabled != nil && *cs.StreamMigrationEnabled == *eff.Playback.StreamMigrationEnabled {

@@ -589,6 +589,9 @@ func (h *HistoryHandler) UpdatePlaybackProgress(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Device settings are resolved server-side from the authenticated request's
+	// client identity; never accept a client ID from the playback payload.
+	update.ClientID = requestClientID(r)
 
 	// Allow URL params to override body
 	vars := mux.Vars(r)

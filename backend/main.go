@@ -709,9 +709,34 @@ func main() {
 		mdblistRTScrobbler,
 		simklRTScrobbler,
 		scrobRTScrobbler,
-		remotePlaybackReporter,
 	)
 	historyService.SetTraktRealTimeScrobbler(multiRTScrobbler)
+	historyService.SetRealtimePlaybackObserver(remotePlaybackReporter)
+	toScrobbleStartDelay := func(seconds int) time.Duration {
+		if seconds < 0 {
+			seconds = 0
+		} else if seconds > 3600 {
+			seconds = 3600
+		}
+		return time.Duration(seconds) * time.Second
+	}
+	historyService.SetScrobbleStartDelayResolver(func(userID, clientID string) time.Duration {
+		if clientID != "" {
+			if deviceSettings, err := clientSettingsService.Get(clientID, userID); err == nil &&
+				deviceSettings != nil && deviceSettings.ScrobbleStartDelaySeconds != nil {
+				return toScrobbleStartDelay(*deviceSettings.ScrobbleStartDelaySeconds)
+			}
+		}
+		if profileSettings, err := userSettingsService.Get(userID); err == nil &&
+			profileSettings != nil && profileSettings.Playback.ScrobbleStartDelaySeconds != nil {
+			return toScrobbleStartDelay(*profileSettings.Playback.ScrobbleStartDelaySeconds)
+		}
+		globalSettings, err := cfgManager.Load()
+		if err != nil {
+			return 0
+		}
+		return toScrobbleStartDelay(globalSettings.Playback.ScrobbleStartDelaySeconds)
+	})
 	remoteMediaProvider := remotemedia.NewProvider(remoteMediaService)
 
 	// Startup handler bundles multiple API calls for low-power devices

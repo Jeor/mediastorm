@@ -1562,6 +1562,7 @@ func (h *StartupHandler) getDefaultsFromGlobal() models.UserSettings {
 			IgnoreDVCompatibilityCheck:    models.BoolPtr(globalSettings.Playback.IgnoreDVCompatibilityCheck),
 			CreditsDetectionEnabled:       models.BoolPtr(globalSettings.Playback.CreditsDetectionEnabled),
 			CreditsAutoSkip:               models.BoolPtr(globalSettings.Playback.CreditsAutoSkip || globalSettings.Playback.CreditsDetection),
+			ScrobbleStartDelaySeconds:     models.IntPtr(globalSettings.Playback.ScrobbleStartDelaySeconds),
 			MatchFrameRate:                models.BoolPtr(globalSettings.Playback.MatchFrameRate),
 			LiveClosedCaptionExtraction:   models.BoolPtr(globalSettings.Playback.LiveClosedCaptionExtraction),
 			MaxResultsPerResolution:       models.IntPtr(globalSettings.Playback.MaxResultsPerResolution),

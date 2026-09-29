@@ -319,6 +319,9 @@ func (s *Service) GetWithDefaults(userID string, defaults models.UserSettings) (
 		if settings.Playback.CreditsAutoSkip == nil {
 			settings.Playback.CreditsAutoSkip = defaults.Playback.CreditsAutoSkip
 		}
+		if settings.Playback.ScrobbleStartDelaySeconds == nil {
+			settings.Playback.ScrobbleStartDelaySeconds = defaults.Playback.ScrobbleStartDelaySeconds
+		}
 		if settings.Playback.DisablePrequeue == nil {
 			settings.Playback.DisablePrequeue = defaults.Playback.DisablePrequeue
 		}

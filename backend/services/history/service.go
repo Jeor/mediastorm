@@ -75,6 +75,14 @@ type TraktRealTimeScrobbler interface {
 	ClearSession(userID string, update models.PlaybackProgressUpdate)
 }
 
+// RealtimePlaybackObserver mirrors playback state to a source server without
+// participating in external scrobbling delay rules.
+type RealtimePlaybackObserver interface {
+	HandleProgressUpdate(userID string, update models.PlaybackProgressUpdate, percentWatched float64)
+	StopSession(userID string, update models.PlaybackProgressUpdate, percentWatched float64)
+	ClearSession(userID string, update models.PlaybackProgressUpdate)
+}
+
 // cachedSeriesMetadata holds cached series details with expiration.
 type cachedSeriesMetadata struct {
 	details   *models.SeriesDetails
@@ -120,23 +128,26 @@ type Service struct {
 	// dashboard can keep tracking position past the 90% auto-watched threshold
 	// (which clears the row from playbackProgress). Entries are pruned by age on
 	// read. Not persisted — purely in-memory live state.
-	activePlaybackProgress map[string]map[string]models.PlaybackProgress // userID -> mediaKey -> progress
-	metadataService        MetadataService
-	airtimeClient          *tvmazeAirtimeClient
-	airtimeState           airtimeResolutionState
-	traktScrobbler         TraktScrobbler
-	bulkSyncTail           map[string]<-chan struct{} // protected by mu; preserves bulk action order per user
-	traktRTScrobbler       TraktRealTimeScrobbler
-	metadataCache          map[string]*cachedSeriesMetadata // seriesID -> metadata (full details)
-	seriesInfoCache        map[string]*cachedSeriesInfo     // seriesID -> lightweight info
-	movieMetadataCache     map[string]*cachedMovieMetadata  // movieID -> metadata
-	metadataCacheTTL       time.Duration
-	continueWatchingCache  map[string]*cachedContinueWatching // userID -> continue watching
-	continueWatchingTTL    time.Duration
-	changeMu               sync.RWMutex
-	watchStateChanged      func(userID string)
-	playbackProgressGate   chan struct{}
-	playbackProgressOnce   sync.Once
+	activePlaybackProgress     map[string]map[string]models.PlaybackProgress // userID -> mediaKey -> progress
+	metadataService            MetadataService
+	airtimeClient              *tvmazeAirtimeClient
+	airtimeState               airtimeResolutionState
+	traktScrobbler             TraktScrobbler
+	bulkSyncTail               map[string]<-chan struct{} // protected by mu; preserves bulk action order per user
+	traktRTScrobbler           TraktRealTimeScrobbler
+	realtimePlaybackObserver   RealtimePlaybackObserver
+	scrobbleStartDelayResolver func(userID, clientID string) time.Duration
+	scrobbleStartDelaySessions map[string]*scrobbleStartDelaySession // protected by mu
+	metadataCache              map[string]*cachedSeriesMetadata      // seriesID -> metadata (full details)
+	seriesInfoCache            map[string]*cachedSeriesInfo          // seriesID -> lightweight info
+	movieMetadataCache         map[string]*cachedMovieMetadata       // movieID -> metadata
+	metadataCacheTTL           time.Duration
+	continueWatchingCache      map[string]*cachedContinueWatching // userID -> continue watching
+	continueWatchingTTL        time.Duration
+	changeMu                   sync.RWMutex
+	watchStateChanged          func(userID string)
+	playbackProgressGate       chan struct{}
+	playbackProgressOnce       sync.Once
 }
 
 type continueWatchingRevisionStats struct {
@@ -170,17 +181,18 @@ func (s *Service) useDB() bool { return s.store != nil }
 // NewServiceWithStore creates a history service backed by PostgreSQL.
 func NewServiceWithStore(store *datastore.DataStore) (*Service, error) {
 	svc := &Service{
-		store:                  store,
-		states:                 make(map[string]map[string]models.SeriesWatchState),
-		watchHistory:           make(map[string]map[string]models.WatchHistoryItem),
-		playbackProgress:       make(map[string]map[string]models.PlaybackProgress),
-		activePlaybackProgress: make(map[string]map[string]models.PlaybackProgress),
-		metadataCache:          make(map[string]*cachedSeriesMetadata),
-		seriesInfoCache:        make(map[string]*cachedSeriesInfo),
-		movieMetadataCache:     make(map[string]*cachedMovieMetadata),
-		metadataCacheTTL:       24 * time.Hour,
-		continueWatchingCache:  make(map[string]*cachedContinueWatching),
-		continueWatchingTTL:    10 * time.Minute,
+		store:                      store,
+		states:                     make(map[string]map[string]models.SeriesWatchState),
+		watchHistory:               make(map[string]map[string]models.WatchHistoryItem),
+		playbackProgress:           make(map[string]map[string]models.PlaybackProgress),
+		activePlaybackProgress:     make(map[string]map[string]models.PlaybackProgress),
+		scrobbleStartDelaySessions: make(map[string]*scrobbleStartDelaySession),
+		metadataCache:              make(map[string]*cachedSeriesMetadata),
+		seriesInfoCache:            make(map[string]*cachedSeriesInfo),
+		movieMetadataCache:         make(map[string]*cachedMovieMetadata),
+		metadataCacheTTL:           24 * time.Hour,
+		continueWatchingCache:      make(map[string]*cachedContinueWatching),
+		continueWatchingTTL:        10 * time.Minute,
 	}
 
 	if err := svc.loadWatchHistory(); err != nil {
@@ -205,19 +217,20 @@ func NewService(storageDir string) (*Service, error) {
 	}
 
 	svc := &Service{
-		path:                   filepath.Join(storageDir, "watch_history.json"),
-		watchHistPath:          filepath.Join(storageDir, "watched_items.json"),
-		playbackProgressPath:   filepath.Join(storageDir, "playback_progress.json"),
-		states:                 make(map[string]map[string]models.SeriesWatchState),
-		watchHistory:           make(map[string]map[string]models.WatchHistoryItem),
-		playbackProgress:       make(map[string]map[string]models.PlaybackProgress),
-		activePlaybackProgress: make(map[string]map[string]models.PlaybackProgress),
-		metadataCache:          make(map[string]*cachedSeriesMetadata),
-		seriesInfoCache:        make(map[string]*cachedSeriesInfo),
-		movieMetadataCache:     make(map[string]*cachedMovieMetadata),
-		metadataCacheTTL:       24 * time.Hour, // Cache metadata for 24 hours - ensures new episodes are detected daily
-		continueWatchingCache:  make(map[string]*cachedContinueWatching),
-		continueWatchingTTL:    10 * time.Minute, // Cache continue watching response for 10 minutes - reduces frequent rebuilds
+		path:                       filepath.Join(storageDir, "watch_history.json"),
+		watchHistPath:              filepath.Join(storageDir, "watched_items.json"),
+		playbackProgressPath:       filepath.Join(storageDir, "playback_progress.json"),
+		states:                     make(map[string]map[string]models.SeriesWatchState),
+		watchHistory:               make(map[string]map[string]models.WatchHistoryItem),
+		playbackProgress:           make(map[string]map[string]models.PlaybackProgress),
+		activePlaybackProgress:     make(map[string]map[string]models.PlaybackProgress),
+		scrobbleStartDelaySessions: make(map[string]*scrobbleStartDelaySession),
+		metadataCache:              make(map[string]*cachedSeriesMetadata),
+		seriesInfoCache:            make(map[string]*cachedSeriesInfo),
+		movieMetadataCache:         make(map[string]*cachedMovieMetadata),
+		metadataCacheTTL:           24 * time.Hour, // Cache metadata for 24 hours - ensures new episodes are detected daily
+		continueWatchingCache:      make(map[string]*cachedContinueWatching),
+		continueWatchingTTL:        10 * time.Minute, // Cache continue watching response for 10 minutes - reduces frequent rebuilds
 	}
 
 	if err := svc.load(); err != nil {
@@ -284,6 +297,22 @@ func (s *Service) SetTraktRealTimeScrobbler(scrobbler TraktRealTimeScrobbler) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.traktRTScrobbler = scrobbler
+}
+
+// SetRealtimePlaybackObserver installs the source-server playback reporter.
+// It receives heartbeats immediately, independently of external scrobble delay.
+func (s *Service) SetRealtimePlaybackObserver(observer RealtimePlaybackObserver) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.realtimePlaybackObserver = observer
+}
+
+// SetScrobbleStartDelayResolver resolves global, profile, and client playback
+// settings before the history lock is acquired for a progress update.
+func (s *Service) SetScrobbleStartDelayResolver(resolver func(userID, clientID string) time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.scrobbleStartDelayResolver = resolver
 }
 
 // scrobbleWatchedItem syncs a watched item to Trakt if scrobbling is enabled for the user.
@@ -5053,6 +5082,10 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 	// positions but do not feed continue watching, watched history, or scrobble.
 	isUntaggedProgress := !isLiveProgress && isUntaggedMediaProgressUpdate(update)
 	excludeFromHistoryShelves := isLiveProgress || isUntaggedProgress
+	scrobbleStartDelay := time.Duration(0)
+	if !excludeFromHistoryShelves {
+		scrobbleStartDelay = s.resolveRealtimeScrobbleStartDelay(userID, update)
+	}
 
 	if err := s.acquirePlaybackProgressGate(ctx); err != nil {
 		lockWait = time.Since(lockWaitStartedAt)
@@ -5261,6 +5294,7 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 
 	// Grab real-time scrobbler reference while holding the lock
 	rtScrobbler := s.traktRTScrobbler
+	realtimePlaybackObserver := s.realtimePlaybackObserver
 	allowRealtimeScrobble := !excludeFromHistoryShelves && !isLiveTVRecordingProgressUpdate(update)
 	// Disable realtime scrobbling for episodes under a non-official ordering
 	// (season/episode numbers don't match the canonical order used for sync).
@@ -5269,18 +5303,32 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 			allowRealtimeScrobble = false
 		}
 	}
+	realtimeScrobbleStarted := false
+	if rtScrobbler != nil && allowRealtimeScrobble {
+		realtimeScrobbleStarted = s.shouldEmitRealtimeScrobbleLocked(userID, update, scrobbleStartDelay, time.Now())
+	} else if update.PlaybackEnded {
+		s.clearScrobbleStartDelaySessionLocked(userID, update)
+	}
 
 	// Auto-mark as watched if >= 90% complete
 	if !excludeFromHistoryShelves && percentWatched >= 90 {
 		// Local watched-history sync below writes the Trakt watched event. Clear
 		// any active realtime session so we don't also create a scrobble event.
-		if rtScrobbler != nil && allowRealtimeScrobble {
+		if rtScrobbler != nil && allowRealtimeScrobble && realtimeScrobbleStarted {
 			if update.PlaybackEnded {
 				rtScrobbler.StopSession(userID, update, percentWatched)
 			} else {
 				rtScrobbler.ClearSession(userID, update)
 			}
 		}
+		if realtimePlaybackObserver != nil && allowRealtimeScrobble {
+			if update.PlaybackEnded {
+				go realtimePlaybackObserver.StopSession(userID, update, percentWatched)
+			} else {
+				go realtimePlaybackObserver.ClearSession(userID, update)
+			}
+		}
+		s.clearScrobbleStartDelaySessionLocked(userID, update)
 
 		s.mu.Unlock() // Unlock before calling other methods
 		err := s.markAsWatchedFromProgress(userID, update, progress.WatchedSeconds)
@@ -5289,12 +5337,23 @@ func (s *Service) UpdatePlaybackProgressContext(ctx context.Context, userID stri
 			// Log but don't fail the progress update
 			fmt.Printf("Warning: failed to auto-mark as watched: %v\n", err)
 		}
-	} else if rtScrobbler != nil && allowRealtimeScrobble {
+	} else if allowRealtimeScrobble {
 		if update.PlaybackEnded {
-			go rtScrobbler.StopSession(userID, update, percentWatched)
+			if rtScrobbler != nil && realtimeScrobbleStarted {
+				go rtScrobbler.StopSession(userID, update, percentWatched)
+			}
+			if realtimePlaybackObserver != nil {
+				go realtimePlaybackObserver.StopSession(userID, update, percentWatched)
+			}
 		} else {
-			// Below 90%: report real-time progress (start/pause/refresh)
-			go rtScrobbler.HandleProgressUpdate(userID, update, percentWatched)
+			// Mirror source-server playback immediately; external scrobble events
+			// wait until the configured active-playback delay has elapsed.
+			if rtScrobbler != nil && realtimeScrobbleStarted {
+				go rtScrobbler.HandleProgressUpdate(userID, update, percentWatched)
+			}
+			if realtimePlaybackObserver != nil {
+				go realtimePlaybackObserver.HandleProgressUpdate(userID, update, percentWatched)
+			}
 		}
 	}
 

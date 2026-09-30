@@ -6558,9 +6558,13 @@ func TestImportWatchHistory_CrossProviderDedupSkipPreservesItem(t *testing.T) {
 	}
 
 	// The incoming TVDB key must not have been created (attached to TMDB instead).
-	tvdbItem, _ := svc.GetWatchHistoryItem(userID, "movie", "tvdb:movie:370")
-	if tvdbItem != nil {
+	if _, exists := svc.watchHistory[userID]["movie:tvdb:movie:370"]; exists {
 		t.Error("expected no separate TVDB-keyed entry; incoming event should attach to canonical TMDB key")
+	}
+	// Alias-form reads must resolve the single canonical row after ID enrichment.
+	tvdbItem, _ := svc.GetWatchHistoryItem(userID, "movie", "tvdb:movie:370")
+	if tvdbItem == nil || tvdbItem.ItemID != "tmdb:movie:37797" {
+		t.Errorf("TVDB alias did not resolve canonical movie: %+v", tvdbItem)
 	}
 }
 

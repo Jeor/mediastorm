@@ -7,6 +7,7 @@ import (
 	"log"
 	"maps"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,9 +31,19 @@ type episodeSeriesRepairLookup struct {
 // caches. XOR makes the aggregate independent of Go map iteration order.
 func watchHistoryIdentityRevision(items map[string]models.WatchHistoryItem) uint64 {
 	var revision uint64
-	for key := range items {
+	for key, item := range items {
 		h := fnv.New64a()
 		_, _ = h.Write([]byte(key))
+		// Alias enrichment preserves the watch timestamp and storage key but
+		// changes the watched-status keys sent to clients.
+		idTypes := make([]string, 0, len(item.ExternalIDs))
+		for idType := range item.ExternalIDs {
+			idTypes = append(idTypes, idType)
+		}
+		sort.Strings(idTypes)
+		for _, idType := range idTypes {
+			_, _ = fmt.Fprintf(h, "\x00%s=%s", idType, item.ExternalIDs[idType])
+		}
 		revision ^= h.Sum64()
 	}
 	return revision

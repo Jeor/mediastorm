@@ -32,6 +32,9 @@ func TestWatchHistoryUsesShowIdentity(t *testing.T) {
 				var body string
 				switch req.URL.Path {
 				case "/library/metadata/episode":
+					if req.URL.Query().Get("includeGuids") != "1" {
+						t.Error("history metadata request omitted provider GUIDs")
+					}
 					if tc.episodeFails {
 						status = http.StatusNotFound
 					}
@@ -68,6 +71,37 @@ func TestWatchHistoryUsesShowIdentity(t *testing.T) {
 			}
 			if history[1].ExternalIDs["tmdb"] != "42" {
 				t.Fatalf("movie identity changed: %#v", history[1])
+			}
+		})
+	}
+}
+
+func TestWatchHistoryPreservesMovieGUIDsWhenMetadataIsUnavailable(t *testing.T) {
+	for _, unavailable := range []bool{true, false} {
+		t.Run(map[bool]string{true: "deleted movie", false: "metadata without provider IDs"}[unavailable], func(t *testing.T) {
+			original := http.DefaultTransport
+			t.Cleanup(func() { http.DefaultTransport = original })
+			http.DefaultTransport = plexRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Query().Get("includeGuids") != "1" {
+					t.Error("provider GUIDs were not requested")
+				}
+				status, body := 200, `{"MediaContainer":{"Metadata":[{"type":"movie"}]}}`
+				if req.URL.Path == "/status/sessions/history/all" {
+					body = `{"MediaContainer":{"Metadata":[{"ratingKey":"123","type":"movie","guid":"imdb://tt0000042","Guid":[{"id":"tmdb://42"}]}]}}`
+				} else if unavailable {
+					status = 404
+				}
+				return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+			})
+			server := PlexResource{Connections: []PlexConnection{{URI: "https://plex.example", Protocol: "https", Local: true}}}
+			client := NewClient("test")
+			history, err := client.GetServerWatchHistory(server, 5000, 0)
+			if err != nil || len(history) != 1 {
+				t.Fatalf("history=%+v err=%v", history, err)
+			}
+			client.fetchDetailsParallel(server, history, nil)
+			if history[0].ExternalIDs["tmdb"] != "42" || history[0].ExternalIDs["imdb"] != "tt0000042" {
+				t.Fatalf("history lost provider identity: %+v", history[0])
 			}
 		})
 	}

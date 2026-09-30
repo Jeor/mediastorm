@@ -55,6 +55,9 @@ func (s *Service) executeMDBListHistorySync(task config.ScheduledTask) (SyncResu
 	if mdblistAccount.APIKey == "" {
 		return SyncResult{}, errors.New("MDBList account has no API key")
 	}
+	log.Printf("[scheduler] MDBList history configuration task=%q account=%q accountName=%q profile=%q configuredProfile=%q direction=%q dryRun=%v fullSync=%v fullExport=%v",
+		task.ID, mdblistAccount.ID, mdblistAccount.Name, profileID, task.Config["profileId"], syncDirection, dryRun,
+		task.Config["fullSync"] == "true", task.Config["fullExport"] == "true")
 
 	switch syncDirection {
 	case "mdblist_to_local":
@@ -90,6 +93,16 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 	if historySyncLastRun(task) != nil {
 		since = historySyncLastRun(task).Add(-5 * time.Minute).UTC().Format(time.RFC3339)
 	}
+	mode := "full"
+	if since != "" {
+		mode = "incremental"
+	}
+	lastRun := ""
+	if task.LastRunAt != nil {
+		lastRun = task.LastRunAt.UTC().Format(time.RFC3339)
+	}
+	log.Printf("[scheduler] MDBList history import start task=%q account=%q profile=%q mode=%s since=%q previousRun=%q previousStatus=%q dryRun=%v",
+		task.ID, account.ID, profileID, mode, since, lastRun, task.LastStatus, dryRun)
 
 	// Fetch watched history from MDBList API with pagination
 	apiKey := account.APIKey
@@ -97,6 +110,7 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 	var allEpisodes []json.RawMessage
 	offset := 0
 	limit := 500
+	pages := 0
 
 	for {
 		url := fmt.Sprintf("https://api.mdblist.com/sync/watched?apikey=%s&limit=%d&offset=%d", apiKey, limit, offset)
@@ -120,8 +134,13 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 		var page *struct {
 			Movies     []json.RawMessage `json:"movies"`
 			Episodes   []json.RawMessage `json:"episodes"`
+			Shows      []json.RawMessage `json:"shows"`
+			Seasons    []json.RawMessage `json:"seasons"`
 			Pagination struct {
-				HasMore bool `json:"has_more"`
+				HasMore       bool `json:"has_more"`
+				TotalMovies   *int `json:"total_movies"`
+				TotalEpisodes *int `json:"total_episodes"`
+				Limit         int  `json:"limit"`
 			} `json:"pagination"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
@@ -132,6 +151,10 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 		if page == nil {
 			return result, errors.New("MDBList returned null instead of history")
 		}
+		pages++
+		log.Printf("[scheduler] MDBList history page task=%q page=%d offset=%d requestedLimit=%d responseLimit=%d movies=%d episodes=%d shows=%d seasons=%d hasMore=%v apiTotalMovies=%s apiTotalEpisodes=%s",
+			task.ID, pages, offset, limit, page.Pagination.Limit, len(page.Movies), len(page.Episodes), len(page.Shows), len(page.Seasons),
+			page.Pagination.HasMore, mdblistReportedTotal(page.Pagination.TotalMovies), mdblistReportedTotal(page.Pagination.TotalEpisodes))
 
 		allMovies = append(allMovies, page.Movies...)
 		allEpisodes = append(allEpisodes, page.Episodes...)
@@ -142,11 +165,18 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 		offset += limit
 	}
 
-	log.Printf("[scheduler] Fetched %d movies + %d episodes from MDBList watch history", len(allMovies), len(allEpisodes))
+	log.Printf("[scheduler] Fetched %d movies + %d episodes from MDBList watch history (task=%q profile=%q mode=%s pages=%d)",
+		len(allMovies), len(allEpisodes), task.ID, profileID, mode, pages)
+	if len(allMovies) == 0 && since != "" {
+		log.Printf("[scheduler] MDBList history import task=%q: zero movies returned with since=%q; Full sync requests older history without this filter", task.ID, since)
+	}
 
 	// Convert to WatchHistoryUpdate items
 	watched := true
 	var updates []models.WatchHistoryUpdate
+	parsedMovies, parsedEpisodes := 0, 0
+	skippedMalformed, skippedUnwatched, skippedIdentity, skippedCoordinates := 0, 0, 0, 0
+	invalidTimestamps := 0
 
 	// Parse movies
 	for _, raw := range allMovies {
@@ -163,13 +193,18 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 			} `json:"movie"`
 		}
 		if err := json.Unmarshal(raw, &m); err != nil {
+			skippedMalformed++
 			continue
 		}
 
 		if m.LastWatchedAt == "" {
+			skippedUnwatched++
 			continue
 		}
-		watchedAt, _ := time.Parse(time.RFC3339, m.LastWatchedAt)
+		watchedAt, parseErr := time.Parse(time.RFC3339, m.LastWatchedAt)
+		if parseErr != nil {
+			invalidTimestamps++
+		}
 		extIDs := make(map[string]string)
 		var itemID string
 		if m.Movie.IDs.IMDB != "" {
@@ -183,8 +218,10 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 			}
 		}
 		if itemID == "" {
+			skippedIdentity++
 			continue
 		}
+		parsedMovies++
 
 		if dryRun {
 			result.ToAdd = append(result.ToAdd, config.DryRunItem{
@@ -226,13 +263,22 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 			} `json:"episode"`
 		}
 		if err := json.Unmarshal(raw, &e); err != nil {
+			skippedMalformed++
 			continue
 		}
 
-		if e.LastWatchedAt == "" || e.Episode.Season < 0 || e.Episode.Number <= 0 {
+		if e.LastWatchedAt == "" {
+			skippedUnwatched++
 			continue
 		}
-		watchedAt, _ := time.Parse(time.RFC3339, e.LastWatchedAt)
+		if e.Episode.Season < 0 || e.Episode.Number <= 0 {
+			skippedCoordinates++
+			continue
+		}
+		watchedAt, parseErr := time.Parse(time.RFC3339, e.LastWatchedAt)
+		if parseErr != nil {
+			invalidTimestamps++
+		}
 		extIDs := make(map[string]string)
 		var seriesID string
 
@@ -251,8 +297,10 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 			extIDs["imdb"] = show.IDs.IMDB
 		}
 		if seriesID == "" {
+			skippedIdentity++
 			continue
 		}
+		parsedEpisodes++
 
 		absoluteEpisode := 0
 		if e.Episode.Number >= 1000 {
@@ -289,6 +337,8 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 		})
 	}
 
+	log.Printf("[scheduler] MDBList history parsed task=%q profile=%q movies=%d episodes=%d skippedMalformed=%d skippedUnwatched=%d skippedIdentity=%d skippedCoordinates=%d invalidTimestamps=%d dryRun=%v",
+		task.ID, profileID, parsedMovies, parsedEpisodes, skippedMalformed, skippedUnwatched, skippedIdentity, skippedCoordinates, invalidTimestamps, dryRun)
 	if dryRun {
 		result.Count = len(result.ToAdd)
 		return result, nil
@@ -300,8 +350,9 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 			return result, fmt.Errorf("import watch history: %w", err)
 		}
 		result.Count = imported
-		log.Printf("[scheduler] Imported %d/%d items from MDBList history", imported, len(updates))
 	}
+	log.Printf("[scheduler] Imported %d/%d items from MDBList history (task=%q profile=%q movieCandidates=%d episodeCandidates=%d)",
+		result.Count, len(updates), task.ID, profileID, parsedMovies, parsedEpisodes)
 
 	return result, nil
 }
@@ -671,4 +722,11 @@ func mdblistRequestError(err error) error {
 		return requestErr.Err
 	}
 	return err
+}
+
+func mdblistReportedTotal(total *int) string {
+	if total == nil {
+		return "unknown"
+	}
+	return strconv.Itoa(*total)
 }

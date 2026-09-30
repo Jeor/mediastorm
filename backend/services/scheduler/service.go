@@ -4028,6 +4028,8 @@ func (s *Service) executePlexHistorySync(task config.ScheduledTask) (SyncResult,
 	// behavior for existing tasks that predate these config fields.
 	serverID := strings.TrimSpace(task.Config["plexServerId"])
 	serverURL := strings.TrimSpace(task.Config["plexServerUrl"])
+	log.Printf("[scheduler] Plex history configuration task=%q account=%q accountName=%q profile=%q server=%q plexUser=%d dryRun=%v fullSync=%v",
+		task.ID, plexAccount.ID, plexAccount.Name, profileID, serverID, plexUserID, dryRun, task.Config["fullSync"] == "true")
 	var historyItems []plex.WatchHistoryItem
 	if serverID != "" && serverURL != "" {
 		historyItems, err = s.plexClient.GetWatchHistoryForServer(plexAccount.AuthToken, serverID, serverURL, 5000, plexUserID)
@@ -4041,51 +4043,30 @@ func (s *Service) executePlexHistorySync(task config.ScheduledTask) (SyncResult,
 	log.Printf("[scheduler] Fetched %d Plex history items", len(historyItems))
 
 	result := SyncResult{DryRun: dryRun}
-	watched := true
 	var updates []models.WatchHistoryUpdate
 
+	skippedIdentity := 0
 	for _, item := range historyItems {
-		mediaType := plex.NormalizeMediaType(item.Type)
-		itemID := item.RatingKey
-
-		// Prefer TMDB then IMDB
-		if tmdbID, ok := item.ExternalIDs["tmdb"]; ok && tmdbID != "" {
-			itemID = tmdbID
-		} else if imdbID, ok := item.ExternalIDs["imdb"]; ok && imdbID != "" {
-			itemID = imdbID
+		update, ok := plexHistoryUpdate(item)
+		if !ok {
+			skippedIdentity++
+			log.Printf("[scheduler] Plex history: skipping %q (%s): no usable catalog identity or episode coordinates", item.Title, item.Type)
+			continue
 		}
-
 		if dryRun {
-			name := item.Title
-			if item.Type == "episode" && item.GrandparentTitle != "" {
-				name = fmt.Sprintf("%s S%02dE%02d", item.GrandparentTitle, item.ParentIndex, item.Index)
+			name := update.Name
+			if update.MediaType == "episode" && update.SeriesName != "" {
+				name = fmt.Sprintf("%s S%02dE%02d", update.SeriesName, update.SeasonNumber, update.EpisodeNumber)
 			}
 			result.ToAdd = append(result.ToAdd, config.DryRunItem{
-				Name:      name,
-				MediaType: mediaType,
-				ID:        itemID,
+				Name: name, MediaType: update.MediaType, ID: update.ItemID,
 			})
 			continue
 		}
-
-		watchedAt := time.Unix(item.ViewedAt, 0).UTC()
-		update := models.WatchHistoryUpdate{
-			MediaType:   mediaType,
-			ItemID:      itemID,
-			Name:        item.Title,
-			Year:        item.Year,
-			Watched:     &watched,
-			WatchedAt:   watchedAt,
-			ExternalIDs: item.ExternalIDs,
-		}
-
-		if item.Type == "episode" {
-			update.SeasonNumber = item.ParentIndex
-			update.EpisodeNumber = item.Index
-			update.SeriesName = item.GrandparentTitle
-		}
-
 		updates = append(updates, update)
+	}
+	if skippedIdentity > 0 {
+		result.Message = fmt.Sprintf("Skipped %d Plex history items without a usable catalog identity", skippedIdentity)
 	}
 
 	if dryRun {

@@ -831,23 +831,24 @@ type PlexLibraryItem struct {
 
 // WatchHistoryItem represents an item from Plex watch history
 type WatchHistoryItem struct {
-	RatingKey            string `json:"ratingKey"`
-	Key                  string `json:"key"`
-	ParentRatingKey      string `json:"parentRatingKey,omitempty"`
-	GrandparentRatingKey string `json:"grandparentRatingKey,omitempty"`
-	Title                string `json:"title"`
-	GrandparentTitle     string `json:"grandparentTitle,omitempty"`
-	ParentTitle          string `json:"parentTitle,omitempty"`
-	Type                 string `json:"type"` // "movie", "episode"
-	Thumb                string `json:"thumb,omitempty"`
-	GrandparentThumb     string `json:"grandparentThumb,omitempty"`
-	ViewedAt             int64  `json:"viewedAt"`
-	AccountID            int    `json:"accountID"`
-	LibrarySectionID     string `json:"librarySectionID,omitempty"` // String - Plex returns mixed types
-	Index                int    `json:"index,omitempty"`            // Episode number
-	ParentIndex          int    `json:"parentIndex,omitempty"`      // Season number
-	Year                 int    `json:"year,omitempty"`
-	GUID                 string `json:"guid,omitempty"`
+	RatingKey            string     `json:"ratingKey"`
+	Key                  string     `json:"key"`
+	ParentRatingKey      string     `json:"parentRatingKey,omitempty"`
+	GrandparentRatingKey string     `json:"grandparentRatingKey,omitempty"`
+	Title                string     `json:"title"`
+	GrandparentTitle     string     `json:"grandparentTitle,omitempty"`
+	ParentTitle          string     `json:"parentTitle,omitempty"`
+	Type                 string     `json:"type"` // "movie", "episode"
+	Thumb                string     `json:"thumb,omitempty"`
+	GrandparentThumb     string     `json:"grandparentThumb,omitempty"`
+	ViewedAt             int64      `json:"viewedAt"`
+	AccountID            int        `json:"accountID"`
+	LibrarySectionID     string     `json:"librarySectionID,omitempty"` // String - Plex returns mixed types
+	Index                int        `json:"index,omitempty"`            // Episode number
+	ParentIndex          int        `json:"parentIndex,omitempty"`      // Season number
+	Year                 int        `json:"year,omitempty"`
+	GUID                 string     `json:"guid,omitempty"`
+	Guid                 []PlexGuid `json:"Guid,omitempty"`
 	// External IDs (populated after fetching details)
 	ExternalIDs map[string]string `json:"externalIds,omitempty"`
 	// Server info
@@ -1228,6 +1229,7 @@ func (c *Client) GetServerWatchHistory(server PlexResource, limit int, accountID
 	historyURL := fmt.Sprintf("%s/status/sessions/history/all", serverURL)
 	params := url.Values{}
 	params.Set("X-Plex-Token", server.AccessToken)
+	params.Set("includeGuids", "1")
 	if limit > 0 {
 		params.Set("X-Plex-Container-Size", strconv.Itoa(limit))
 	}
@@ -1272,6 +1274,15 @@ func (c *Client) GetServerWatchHistory(server PlexResource, limit int, accountID
 	// Add server name to each item
 	for i := range historyResp.MediaContainer.Metadata {
 		historyResp.MediaContainer.Metadata[i].ServerName = server.Name
+		item := &historyResp.MediaContainer.Metadata[i]
+		if item.Type == "movie" {
+			item.ExternalIDs = ParseGUID(item.GUID)
+			for _, guid := range item.Guid {
+				for provider, id := range ParseGUID(guid.ID) {
+					item.ExternalIDs[provider] = id
+				}
+			}
+		}
 	}
 
 	return historyResp.MediaContainer.Metadata, nil
@@ -1284,7 +1295,8 @@ func (c *Client) GetServerItemDetails(server PlexResource, ratingKey string) (*W
 		return nil, err
 	}
 
-	detailsURL := fmt.Sprintf("%s/library/metadata/%s?X-Plex-Token=%s", serverURL, ratingKey, server.AccessToken)
+	params := url.Values{"X-Plex-Token": {server.AccessToken}, "includeGuids": {"1"}}
+	detailsURL := fmt.Sprintf("%s/library/metadata/%s?%s", serverURL, url.PathEscape(ratingKey), params.Encode())
 
 	req, err := http.NewRequest(http.MethodGet, detailsURL, nil)
 	if err != nil {
@@ -1465,6 +1477,14 @@ func (c *Client) fetchDetailsParallel(server PlexResource, history []WatchHistor
 	for w := 0; w < numWorkers; w++ {
 		go func() {
 			for job := range jobs {
+				// History can retain a provider GUID after an item leaves the library.
+				if job.item.Type == "movie" {
+					ids := ParseGUID(job.item.GUID)
+					for provider, id := range job.item.ExternalIDs {
+						ids[provider] = id
+					}
+					job.item.ExternalIDs = ids
+				}
 				details, err := c.GetServerItemDetails(server, job.item.RatingKey)
 				// Episode provider IDs identify the episode, never its parent show.
 				// Clear them even when either metadata request fails.
@@ -1475,7 +1495,12 @@ func (c *Client) fetchDetailsParallel(server PlexResource, history []WatchHistor
 					job.item.GUID = details.GUID
 					job.item.Year = details.Year
 					if job.item.Type != "episode" {
-						job.item.ExternalIDs = details.ExternalIDs
+						if job.item.ExternalIDs == nil {
+							job.item.ExternalIDs = make(map[string]string)
+						}
+						for provider, id := range details.ExternalIDs {
+							job.item.ExternalIDs[provider] = id
+						}
 					} else if details.GrandparentRatingKey != "" {
 						// History responses can omit this key; library metadata has it.
 						job.item.GrandparentRatingKey = details.GrandparentRatingKey

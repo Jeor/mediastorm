@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -15,6 +16,63 @@ import (
 	"novastream/services/debrid"
 	"novastream/utils/filter"
 )
+
+func TestDevilInSilverSearchTitlesScopeParentAlias(t *testing.T) {
+	opts := SearchOptions{TitleID: "tmdb:tv:323903", Query: "The Terror: Devil in Silver S01E06", MediaType: "series", Year: 2026,
+		AlternateTitles: []string{"The Terror", "Devil in Silver"},
+		Numbering:       &models.EpisodeNumbering{SeriesID: "tmdb:tv:323903", Ordering: "official"}}
+	search, identities, _ := (&Service{}).resolveSearchTitles(t.Context(), opts, "eng", 1)
+	if !reflect.DeepEqual(search, []string{"Devil in Silver"}) || !reflect.DeepEqual(identities, []string{"Devil in Silver"}) {
+		t.Fatalf("parent alias escaped scope or consumed query budget: search=%v identities=%v", search, identities)
+	}
+	queries := buildSearchQueries(opts, debrid.ParseQuery(opts.Query), search)
+	found := false
+	for _, query := range queries {
+		if query == "The Terror S01E06" {
+			t.Fatalf("queried original season: %v", queries)
+		}
+		if query == "The Terror S03E06" {
+			found = true
+			mapped := mappedQueryOptions(opts, query)
+			if mapped.IMDBID != "tt2708480" || mapped.TVDBID != 322191 || mapped.Year != 2018 {
+				t.Fatalf("incorrect mapped search IDs: %+v", mapped)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("missing season 3 query: %v", queries)
+	}
+}
+
+func TestDevilInSilverSearchScoringRejectsOriginalSeason(t *testing.T) {
+	cfg := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	settings.Display.BypassFilteringForAIOStreamsOnly = false
+	if err := cfg.Save(settings); err != nil {
+		t.Fatal(err)
+	}
+	provider := &countingDebridSearchService{results: []models.NZBResult{
+		{Title: "The.Terror.S01E01.1080p.WEB", ServiceType: models.ServiceTypeDebrid},
+		{Title: "The.Terror.S03E01.1080p.WEB", ServiceType: models.ServiceTypeDebrid},
+		{Title: "The.Terror.Devil.in.Silver.S01E01.1080p.WEB", ServiceType: models.ServiceTypeDebrid},
+	}}
+	results, err := NewService(cfg, nil, provider).SearchWithScoring(t.Context(), SearchOptions{
+		TitleID: "tmdb:tv:323903", Query: "The Terror: Devil in Silver S01E01", MediaType: "series", Year: 2026,
+		AlternateTitles: []string{"The Terror"}, IncludeFiltered: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("results=%d, want 3", len(results))
+	}
+	for _, result := range results {
+		wrong := !strings.Contains(result.Title, "Devil") && strings.Contains(result.Title, "S01")
+		if (result.FilterStatus == "filtered") != wrong {
+			t.Errorf("%s: status=%s reason=%s", result.Title, result.FilterStatus, result.FilterReason)
+		}
+	}
+}
 
 const stormRelease = "Stephen.Kings.Storm.of.the.Century.S01E01.1080p.HULU.WEB-DL.AAC2.0.H.264"
 

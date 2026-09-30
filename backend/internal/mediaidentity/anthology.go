@@ -39,7 +39,38 @@ type SeriesCrossMapping struct {
 var seriesCrossMappings = []SeriesCrossMapping{{
 	TitleID: "tmdb:tv:299939", CatalogSeason: 1, FirstEpisode: 1, EpisodeCount: 8,
 	Provider: AnthologyEpisode{IMDBID: "tt13207736", TVDBID: 389492, ReleaseTitle: "Monster", Year: 2022, Season: 4, Episode: 1, SeasonEpisodeCount: 8},
+}, {
+	// Verified 2026-09-30: TMDB 323903 S01E01–06 and Cinemeta
+	// tt2708480 S03E01–06 have the same titles, synopses and weekly air dates
+	// (Cinemeta dates are one day later). TMDB has no episode TVDB IDs or
+	// season Wikidata ID, so automatic cross-provider discovery cannot prove it.
+	TitleID: "tmdb:tv:323903", CatalogSeason: 1, FirstEpisode: 1, EpisodeCount: 6,
+	Provider: AnthologyEpisode{IMDBID: "tt2708480", TVDBID: 322191, ReleaseTitle: "The Terror", Year: 2018, Season: 3, Episode: 1, SeasonEpisodeCount: 6},
 }}
+
+// UnscopedReleaseTitles excludes names whose identity requires mapped episode
+// coordinates. Providers sometimes also publish these names as global aliases.
+// Keep the catalog's own title; only distinct aliases need this restriction.
+func UnscopedReleaseTitles(titles []string, catalogTitle, titleID string, season, episode int, numbering *models.EpisodeNumbering) []string {
+	mappings := ReleaseEpisodeAliases(titleID, season, episode, numbering)
+	if len(mappings) == 0 {
+		return titles
+	}
+	out := make([]string, 0, len(titles))
+	for _, title := range titles {
+		scoped := false
+		for _, m := range mappings {
+			if strings.EqualFold(strings.TrimSpace(title), m.ReleaseTitle) && !strings.EqualFold(strings.TrimSpace(catalogTitle), m.ReleaseTitle) {
+				scoped = true
+				break
+			}
+		}
+		if !scoped {
+			out = append(out, title)
+		}
+	}
+	return out
+}
 
 // KnownAnthologyEpisode performs only an in-memory exact-identity lookup.
 func KnownAnthologyEpisode(titleID string, season, episode int) (AnthologyEpisode, bool) {

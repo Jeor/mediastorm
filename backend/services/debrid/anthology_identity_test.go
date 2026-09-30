@@ -108,3 +108,37 @@ func TestAnthologySearchUsesProviderCoordinates(t *testing.T) {
 		})
 	}
 }
+
+func TestDevilInSilverSearchPreservesSeparateIMDbAndQueriesParentSeason(t *testing.T) {
+	var paths []string
+	client := newStubClient(func(r *http.Request) (*http.Response, error) {
+		paths = append(paths, r.URL.Path)
+		if strings.Contains(r.URL.Path, "tt31186255") {
+			return jsonResponse(http.StatusOK, `{"streams":[]}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{"streams":[{"infoHash":"0123456789012345678901234567890123456789","title":"The.Terror.S03E06.1080p.WEB.mkv","behaviorHints":{"filename":"The.Terror.S03E06.1080p.WEB.mkv"}}]}`), nil
+	})
+	cfg := config.NewManager(filepath.Join(t.TempDir(), "settings.json"))
+	settings := config.DefaultSettings()
+	settings.Streaming.ServiceMode = config.StreamingServiceModeDebrid
+	settings.Streaming.DebridProviders = []config.DebridProviderSettings{{Name: "RealDebrid", Enabled: true, APIKey: "test"}}
+	if err := cfg.Save(settings); err != nil {
+		t.Fatal(err)
+	}
+	text := &anthologyTextScraper{}
+	svc := NewSearchService(cfg, NewTorrentioScraper(client, "", "Torrentio", "https://example.test"), text)
+	results, err := svc.Search(t.Context(), SearchOptions{TitleID: "tmdb:tv:323903", Query: "The Terror: Devil in Silver S01E06",
+		IMDBID: "tt31186255", MediaType: "series", Year: 2026, AlternateTitles: []string{"The Terror"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 2 || !strings.HasSuffix(paths[0], "/stream/series/tt31186255:1:6.json") || !strings.HasSuffix(paths[1], "/stream/series/tt2708480:3:6.json") {
+		t.Fatalf("incorrect stream identities: %v", paths)
+	}
+	if len(text.requests) != 2 || text.requests[1].Query != "The Terror S03E06" {
+		t.Fatalf("incorrect text requests: %+v", text.requests)
+	}
+	if len(results) != 1 || results[0].Attributes["targetSeason"] != "3" || results[0].Attributes["targetEpisode"] != "6" || results[0].Attributes["mappedCatalogEpisode"] != "S01E06" {
+		t.Fatalf("incorrect result selection hints: %+v", results)
+	}
+}

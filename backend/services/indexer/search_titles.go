@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"novastream/internal/mediaidentity"
 	"novastream/services/debrid"
 	"novastream/utils/language"
 )
@@ -41,6 +42,12 @@ func (s *Service) resolveSearchTitles(ctx context.Context, opts SearchOptions, m
 	requiredTitles = combineFilterTitles(requiredTitles)
 	filterTitles = combineFilterTitles(opts.AlternateTitles, requiredTitles, aliases)
 	searchTitles = combineFilterTitles(requiredTitles, aliases)
+	parsed := debrid.ParseQuery(opts.Query)
+	// A parent anthology name must be searched with its mapped season, never
+	// with the standalone catalog season. buildSearchQueries adds that request.
+	searchTitles = mediaidentity.UnscopedReleaseTitles(searchTitles, query, opts.TitleID, parsed.Season, parsed.Episode, opts.Numbering)
+	filterTitles = mediaidentity.UnscopedReleaseTitles(filterTitles, query, opts.TitleID, parsed.Season, parsed.Episode, opts.Numbering)
+	requiredTitles = mediaidentity.UnscopedReleaseTitles(requiredTitles, query, opts.TitleID, parsed.Season, parsed.Episode, opts.Numbering)
 	// English and the profile's metadata title always fit, even when the
 	// configured alternate limit is smaller. Remaining slots go to aliases.
 	budget := maxAlternates

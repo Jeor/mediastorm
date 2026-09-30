@@ -13,6 +13,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 
+	"novastream/internal/mediaidentity"
 	"novastream/internal/mediaresolve"
 	"novastream/models"
 	"novastream/utils/parsett"
@@ -304,6 +305,9 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 	// BATCH PARSING: Parse all titles in one Python subprocess call
 	titles := make([]string, len(results))
 	candidateTitles := normalizeCandidateTitles(opts.ExpectedTitle, opts.AlternateTitles)
+	if !opts.IsMovie {
+		candidateTitles = mediaidentity.UnscopedReleaseTitles(candidateTitles, opts.ExpectedTitle, opts.TitleID, opts.TargetSeason, opts.TargetEpisode, opts.Numbering)
+	}
 
 	for i, result := range results {
 		titles[i] = result.Title

@@ -513,6 +513,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var stremioRequestHeaders map[string]string
+	stremioHLS := false
 
 	// Stremio sources hand us a stream *resource* URL (.../stream/{type}/{id}.json)
 	// rather than a playable URL. Resolve it to a concrete (often expiring) stream
@@ -526,6 +527,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		stremioRequestHeaders = resolved.RequestHeaders
+		stremioHLS = resolved.IsHLS
 		targetURL, err = h.parseRemoteURL(ctx, resolved.URL)
 		if err != nil {
 			log.Printf("[live] resolved stremio stream is invalid %q: %v", resolved.URL, err)
@@ -534,7 +536,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !isWebLiveStreamRequest(r) {
+	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !isWebLiveStreamRequest(r) && !stremioHLS {
 		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL, requestID, requestStartedAt)
 		return
 	}
@@ -550,7 +552,17 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	// web transmux path.
 	var proxyBody io.ReadCloser
 	inputArg := targetURL.String()
-	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" {
+	if stremioHLS {
+		relay, err := startLiveHLSInputRelay(ctx, inputArg, h.resolveProxyURLForStream(r, targetURL), stremioRequestHeaders)
+		if err != nil {
+			http.Error(w, "failed to prepare live HLS input", http.StatusBadGateway)
+			return
+		}
+		defer relay.Close()
+		inputArg = relay.URL
+		stremioRequestHeaders = nil
+	}
+	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !stremioHLS {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 		if err != nil {
 			http.Error(w, "failed to prepare live stream", http.StatusInternalServerError)
@@ -615,6 +627,9 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		)
 		if headerArg := ffmpegHeadersArg(stremioRequestHeaders); headerArg != "" {
 			args = append(args, "-headers", headerArg)
+		}
+		if stremioHLS {
+			args = append(args, "-allowed_extensions", "ALL", "-allowed_segment_extensions", "ALL", "-extension_picky", "0")
 		}
 	}
 

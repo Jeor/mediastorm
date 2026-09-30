@@ -2598,7 +2598,18 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 	// User-Agent and follows redirects) and pipe it into ffmpeg's stdin instead.
 	var proxyBody io.ReadCloser
 	inputArg := session.Path
-	if proxyURL := strings.TrimSpace(session.LiveTuning.ProxyURL); proxyURL != "" {
+	inputHeaders := session.LiveTuning.RequestHeaders
+	if session.LiveProvider == "stremio" && (session.LiveTuning.ForceHLSInput || inputLooksLikeHLS(session.Path)) {
+		relay, err := startLiveHLSInputRelay(ctx, session.Path, session.LiveTuning.ProxyURL, inputHeaders)
+		if err != nil {
+			return fmt.Errorf("create live HLS input relay: %w", err)
+		}
+		defer relay.Close()
+		inputArg = relay.URL
+		inputHeaders = nil
+		log.Printf("[hls] live session %s: using segment-normalizing HLS input relay", session.ID)
+	}
+	if proxyURL := strings.TrimSpace(session.LiveTuning.ProxyURL); proxyURL != "" && inputArg == session.Path {
 		client, err := netproxy.NewHTTPClientWithOptions(netproxy.HTTPClientOptions{ResponseHeaderTimeout: 15 * time.Second}, proxyURL)
 		if err != nil {
 			return fmt.Errorf("create proxied live client: %w", err)
@@ -2653,7 +2664,7 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 	// ffmpeg reads the provider URL directly. On the proxied path the input is
 	// pipe:0 and these options are rejected ("Option reconnect not found").
 	if proxyBody == nil {
-		if !hasRequestHeader(session.LiveTuning.RequestHeaders, "User-Agent") {
+		if !hasRequestHeader(inputHeaders, "User-Agent") {
 			args = append(args, "-user_agent", liveStreamUserAgent)
 		}
 		args = append(args,
@@ -2662,7 +2673,7 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 			"-reconnect_streamed", "1",
 			"-reconnect_delay_max", "5",
 		)
-		if headerArg := ffmpegHeadersArg(session.LiveTuning.RequestHeaders); headerArg != "" {
+		if headerArg := ffmpegHeadersArg(inputHeaders); headerArg != "" {
 			args = append(args, "-headers", headerArg)
 		}
 		// These are HLS-demuxer-private options. Some Stremio/live providers proxy

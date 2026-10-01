@@ -36,7 +36,15 @@ func progressiveShelfRequest(r *http.Request) bool {
 	// Media type can be filtered using the source index. Other filters/sorts
 	// need a full result and keep the established discovery path.
 	query.MediaType = ""
-	return !query.RequiresFullList() && !query.IncludeFacets
+	return !query.RequiresFullList()
+}
+
+func (h *MetadataHandler) progressiveShelfFiltered(r *http.Request, userID string, hideUnreleased, hideWatched bool) bool {
+	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)
+	_, _, kids := h.kidsRatingLimits(userID)
+	hidden, _ := r.Context().Value(progressiveShelfFiltersKey{}).(*progressiveShelfFilters)
+	mediaType := parseDisplayListQuery(r).MediaType
+	return hideUnreleased || hideWatched || kids || !policy.IncludeMovies || !policy.IncludeShows || (hidden != nil && hidden.hasHidden) || (mediaType != "" && mediaType != "all")
 }
 
 // Read ahead only until a visible page exists. Exact filtered totals and rich
@@ -70,6 +78,7 @@ func (h *MetadataHandler) progressiveCuratedShelf(r *http.Request, service metad
 	accepted := make([]models.TrendingItem, 0, limit)
 	selected := make([]metadata.CuratedItem, 0, limit)
 	count, scanned := 0, 0
+	var facetItems []models.TrendingItem
 	batchSize := limit
 	if batchSize < 20 {
 		batchSize = 20
@@ -113,6 +122,9 @@ func (h *MetadataHandler) progressiveCuratedShelf(r *http.Request, service metad
 			cards = visible
 		}
 		cards = h.filterTrendingByKids(r.Context(), userID, service, cards)
+		if query.IncludeFacets {
+			facetItems = append(facetItems, cards...)
+		}
 		for _, card := range cards {
 			if count >= offset && len(accepted) < limit {
 				accepted = append(accepted, card)
@@ -125,7 +137,7 @@ func (h *MetadataHandler) progressiveCuratedShelf(r *http.Request, service metad
 			count++
 		}
 		scanned = end
-		if len(accepted) >= limit && (!filtered || !complete) {
+		if len(accepted) >= limit && (!complete || (!filtered && !query.IncludeFacets)) {
 			break
 		}
 	}
@@ -168,8 +180,8 @@ func (h *MetadataHandler) progressiveCuratedShelf(r *http.Request, service metad
 			accepted = enriched
 		}
 	}
-	enrichTrendingRatings(accepted, service)
-	return &CustomListResponse{Items: accepted, Total: total, UnfilteredTotal: len(candidates), TotalPending: totalPending, MetadataPending: !complete && len(accepted) > 0}, nil
+	accepted, _, _ = h.queryTrendingList(userID, service, accepted, query)
+	return &CustomListResponse{Items: accepted, Total: total, UnfilteredTotal: len(candidates), TotalPending: totalPending, MetadataPending: !complete && len(accepted) > 0, Genres: displayListGenres(facetItems), AlphabetBuckets: displayListAlphabetBuckets(facetItems, query)}, nil
 }
 
 func progressiveShelfSource(source string) bool {

@@ -1822,9 +1822,24 @@ func (h *MetadataHandler) LetterboxdList(w http.ResponseWriter, r *http.Request)
 	hideUnreleased := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("hideUnreleased"))) == "true"
 	hideWatched := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("hideWatched"))) == "true"
 	limit, offset := parseLimitOffset(r)
+	service := h.serviceForUser(userID)
+	if _, ok := service.(shelfCardsService); ok && progressiveShelfRequest(r) && listURL != "" {
+		if h.LetterboxdClient == nil {
+			writeJSONError(w, "letterboxd client unavailable", http.StatusInternalServerError)
+			return
+		}
+		items, err := h.progressiveLetterboxdShelf(r, service, listURL, userID, hideUnreleased, hideWatched, limit, offset)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(items)
+		return
+	}
 
 	maxItems := maxShelfSourceItems(limit, offset)
-	if parseDisplayListQuery(r).RequiresIndex() {
+	if parseDisplayListQuery(r).RequiresIndex() || (progressiveShelfRequest(r) && listID != "") {
 		// Querying must see the complete upstream list before pagination. Both
 		// Letterboxd adapters stop naturally at the end of the list.
 		maxItems = 10000
@@ -1886,7 +1901,7 @@ func (h *MetadataHandler) LetterboxdList(w http.ResponseWriter, r *http.Request)
 	if items == nil {
 		return // error already written
 	}
-	if sourceTotal > items.Total && !hideUnreleased && !hideWatched {
+	if sourceTotal > items.Total && !hideUnreleased && !hideWatched && !items.TotalPending {
 		items.Total = sourceTotal
 	}
 	json.NewEncoder(w).Encode(items)

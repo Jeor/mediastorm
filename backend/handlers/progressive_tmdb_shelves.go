@@ -11,11 +11,8 @@ import (
 // incrementally rather than requesting the entire 500-title browse window when
 // a home shelf has a visibility filter.
 func (h *MetadataHandler) progressiveTMDBShelf(r *http.Request, service metadataService, provider tmdbListService, opts metadata.TMDBListOptions, userID string, hideUnreleased, hideWatched bool, limit, offset int) (*CustomListResponse, error) {
-	policy := resolveUnreleasedVisibilityPolicy(h.CfgManager, h.UserSettings, h.ClientSettings, userID, requestClientID(r), unreleasedVisibilityLists)
-	_, _, kids := h.kidsRatingLimits(userID)
-	hidden, _ := r.Context().Value(progressiveShelfFiltersKey{}).(*progressiveShelfFilters)
 	query := parseDisplayListQuery(r)
-	filtered := hideUnreleased || hideWatched || kids || !policy.IncludeMovies || !policy.IncludeShows || (hidden != nil && hidden.hasHidden) || (query.MediaType != "" && query.MediaType != "all")
+	filtered := h.progressiveShelfFiltered(r, userID, hideUnreleased, hideWatched)
 	complete := r.URL.Query().Get("shelfPhase") == "complete"
 	cardsRequest := r.Clone(r.Context())
 	u := *r.URL
@@ -56,7 +53,7 @@ func (h *MetadataHandler) progressiveTMDBShelf(r *http.Request, service metadata
 			}
 			source = append(source, card)
 		}
-		if complete && filtered {
+		if complete && (filtered || query.IncludeFacets) {
 			continue
 		}
 		response, err = h.progressiveCuratedShelf(cardsRequest, service, source, "TMDB shelf", userID, hideUnreleased, hideWatched, limit, offset)

@@ -153,3 +153,34 @@ func TestShelfSourceCachesMembershipWithoutMetadata(t *testing.T) {
 		t.Fatalf("source refetched %d times", calls)
 	}
 }
+
+func TestCanceledCuratedLoadDoesNotPoisonCaches(t *testing.T) {
+	svc, _ := shelfTestService(t)
+	started := make(chan struct{})
+	cancelMode := true
+	svc.tmdb.httpc = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if cancelMode {
+			close(started)
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"results":[{"id":7,"title":"Movie","release_date":"2020-01-01"}]}`))}, nil
+	})}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	input := []CuratedItem{{Title: "Movie", Year: 2020, MediaType: "movie"}}
+	go func() { _, err := svc.GetCuratedList(ctx, input, "cancelled"); done <- err }()
+	<-started
+	cancel()
+	if err := <-done; err != context.Canceled {
+		t.Fatalf("canceled hydration returned %v", err)
+	}
+	var cached []models.TrendingItem
+	if ok, _ := svc.cache.get(svc.curatedListCacheID(input), &cached); ok {
+		t.Fatal("cached incomplete list after cancellation")
+	}
+	cancelMode = false
+	if id := svc.resolveTMDBMovieByTitleYear(context.Background(), "Movie", 2020); id != 7 {
+		t.Fatalf("canceled lookup poisoned a retry: %d", id)
+	}
+}

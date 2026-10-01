@@ -27,7 +27,7 @@ func (s *progressiveTestService) GetShelfCards(_ context.Context, items []metada
 	s.cards += len(items)
 	out := make([]models.TrendingItem, len(items))
 	for i, item := range items {
-		out[i].Title = models.Title{ID: fmt.Sprint(item.TMDBID), Name: item.Title, TMDBID: item.TMDBID, MediaType: item.MediaType, Certification: "PG"}
+		out[i].Title = models.Title{ID: fmt.Sprint(item.TMDBID), Name: item.Title, TMDBID: item.TMDBID, MediaType: item.MediaType, Certification: "PG", Genres: item.Genres}
 	}
 	return out, nil
 }
@@ -44,7 +44,7 @@ func (s *progressiveTestService) GetCuratedList(_ context.Context, items []metad
 	s.full += len(items)
 	out := make([]models.TrendingItem, len(items))
 	for i, item := range items {
-		out[i].Title = models.Title{ID: "different", TMDBID: item.TMDBID, Name: item.Title, Genres: []string{"Drama"}}
+		out[i].Title = models.Title{ID: "different", TMDBID: item.TMDBID, Name: item.Title, MediaType: item.MediaType, Genres: []string{"Drama"}}
 	}
 	return out, nil
 }
@@ -190,5 +190,38 @@ func TestProgressiveTMDBPagesStopWhenVisibleShelfIsFull(t *testing.T) {
 	response, err := h.progressiveTMDBShelf(r, s, s, metadata.TMDBListOptions{}, "", true, false, 20, 0)
 	if err != nil || len(response.Items) != 20 || s.pages != 2 || !response.TotalPending || response.Items[0].Title.TMDBID != 2 {
 		t.Fatalf("TMDB paging: %+v pages=%d err=%v", response, s.pages, err)
+	}
+}
+
+func TestProgressiveShelfFacetsCompleteWithoutEnrichingWholeList(t *testing.T) {
+	h := &MetadataHandler{}
+	s := &progressiveTestService{}
+	source := progressiveSource(45)
+	for i := range source {
+		source[i].Genres = []string{"Drama"}
+	}
+	source[44].Title = "Zebra"
+	source[44].Genres = []string{"Comedy"}
+	first, err := h.progressiveCuratedShelf(httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20&includeFacets=true", nil), s, source, "test", "", false, false, 20, 0)
+	if err != nil || s.cards != 20 || len(first.Genres) != 1 || first.Genres[0] != "Drama" {
+		t.Fatalf("first page: %+v %v cards=%d", first, err, s.cards)
+	}
+	complete, err := h.progressiveCuratedShelf(httptest.NewRequest("GET", "/?shelfPhase=complete&limit=20&includeFacets=true", nil), s, source, "test", "", false, false, 20, 0)
+	if err != nil || s.cards != 65 || s.full != 20 || len(complete.Genres) != 2 || len(complete.AlphabetBuckets) != 2 || complete.Total != 45 {
+		t.Fatalf("background index: %+v %v cards=%d full=%d", complete, err, s.cards, s.full)
+	}
+}
+
+func TestProgressiveTMDBFacetsReadRemainingSourcePagesInBackground(t *testing.T) {
+	s := &progressiveTMDBTest{}
+	h := &MetadataHandler{}
+	first, err := h.progressiveTMDBShelf(httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20&includeFacets=true", nil), s, s, metadata.TMDBListOptions{}, "", false, false, 20, 0)
+	if err != nil || s.pages != 1 || first.Total != 200 {
+		t.Fatalf("first=%+v pages=%d err=%v", first, s.pages, err)
+	}
+	s.pages = 0
+	full, err := h.progressiveTMDBShelf(httptest.NewRequest("GET", "/?shelfPhase=complete&limit=20&includeFacets=true", nil), s, s, metadata.TMDBListOptions{}, "", false, false, 20, 0)
+	if err != nil || s.pages != 10 || s.full != 20 || full.Total != 200 {
+		t.Fatalf("complete=%+v pages=%d enriched=%d err=%v", full, s.pages, s.full, err)
 	}
 }

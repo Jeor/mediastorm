@@ -9742,6 +9742,9 @@ func releaseYearsClose(expected, actual int) bool {
 }
 
 func (s *Service) resolveTMDBMovieByTitleYear(ctx context.Context, title string, year int) int64 {
+	if ctx.Err() != nil {
+		return 0
+	}
 	if s == nil || s.tmdb == nil || !s.tmdb.isConfigured() {
 		return 0
 	}
@@ -9757,17 +9760,20 @@ func (s *Service) resolveTMDBMovieByTitleYear(ctx context.Context, title string,
 			return cached.TMDBID
 		}
 	}
+	failureCacheID := cacheKey(cacheID, "not-found-v2")
 	if s.cache != nil {
 		var cached cachedTMDBMovieTitleYearResolution
-		if ok, _ := s.cache.getWithMaxAge(cacheID, &cached, tmdbMovieTitleYearFailureTTL); ok && cached.Failed {
+		if ok, _ := s.cache.getWithMaxAge(failureCacheID, &cached, tmdbMovieTitleYearFailureTTL); ok && cached.Failed {
 			return 0
 		}
 	}
 	results, err := s.tmdb.searchTitles(ctx, title, "movie", 5, false)
 	if err != nil {
 		log.Printf("[metadata] tmdb movie title/year fallback search error title=%q year=%d err=%v", title, year, err)
-		if s.cache != nil {
-			_ = s.cache.set(cacheID, cachedTMDBMovieTitleYearResolution{Failed: true})
+		// Transport failures/cancellation are not evidence of an absent title.
+		var status *tmdbHTTPError
+		if errors.As(err, &status) && status.StatusCode == http.StatusNotFound && s.cache != nil {
+			_ = s.cache.set(failureCacheID, cachedTMDBMovieTitleYearResolution{Failed: true})
 		}
 		return 0
 	}
@@ -9775,7 +9781,7 @@ func (s *Service) resolveTMDBMovieByTitleYear(ctx context.Context, title string,
 	if !ok {
 		log.Printf("[metadata] tmdb movie title/year fallback found no exact match title=%q year=%d results=%d", title, year, len(results))
 		if s.cache != nil {
-			_ = s.cache.set(cacheID, cachedTMDBMovieTitleYearResolution{Failed: true})
+			_ = s.cache.set(failureCacheID, cachedTMDBMovieTitleYearResolution{Failed: true})
 		}
 		return 0
 	}
@@ -10126,7 +10132,7 @@ func (s *Service) curatedListCacheID(items []CuratedItem) string {
 			identities[i] = fmt.Sprintf("title:%s:%d", strings.ToLower(strings.TrimSpace(item.Title)), item.Year)
 		}
 	}
-	return cacheKey("curated", "v9", strings.Join(identities, ","), s.client.language)
+	return cacheKey("curated", "v10", strings.Join(identities, ","), s.client.language)
 }
 
 func (s *Service) cachedCuratedList(ctx context.Context, cacheID, label string) ([]models.TrendingItem, bool) {
@@ -10150,6 +10156,9 @@ func (s *Service) GetCuratedList(ctx context.Context, items []CuratedItem, label
 // GetCuratedListWithOptions lets imported lists render base/cached artwork
 // without waiting for optional image requests across the whole list.
 func (s *Service) GetCuratedListWithOptions(ctx context.Context, items []CuratedItem, label string, opts ShelfLoadOptions) ([]models.TrendingItem, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if opts.DeferArtwork {
 		ctx = withDeferredShelfArtwork(ctx)
 	}
@@ -10165,55 +10174,72 @@ func (s *Service) GetCuratedListWithOptions(ctx context.Context, items []Curated
 	// same as for IMDB-keyed MDBList lists.
 	mdbItems := make([]mdblistItem, len(items))
 	identities := make([]string, len(items))
+	var resolveWG sync.WaitGroup
+	resolveSlots := make(chan struct{}, 6)
 	for i, ci := range items {
-		mediaType := curatedItemMediaType(ci.MediaType)
-		tmdbID := ci.TMDBID
-		if tmdbID <= 0 && ci.IMDBID == "" && ci.TVDBID <= 0 && mediaType == "movie" && strings.TrimSpace(ci.Title) != "" {
-			tmdbID = s.resolveTMDBMovieByTitleYear(ctx, ci.Title, ci.Year)
-		}
-		imdbID := ci.IMDBID
-		if imdbID == "" && tmdbID > 0 {
-			tmdbMediaType := "movie"
-			if mediaType == "series" {
-				tmdbMediaType = "tv"
+		resolveWG.Add(1)
+		go func(i int, ci CuratedItem) {
+			defer resolveWG.Done()
+			select {
+			case resolveSlots <- struct{}{}:
+			case <-ctx.Done():
+				return
 			}
-			imdbID = s.getIMDBIDForTMDB(ctx, tmdbMediaType, tmdbID)
-		}
+			defer func() { <-resolveSlots }()
 
-		item := mdblistItem{
-			Rank:        i,
-			IMDBID:      imdbID,
-			Title:       ci.Title,
-			ReleaseYear: ci.Year,
-			MediaType:   ci.MediaType,
-		}
-		if tmdbID > 0 {
-			item.TMDBID = &tmdbID
-		}
-		if ci.TVDBID > 0 {
-			tvdb := ci.TVDBID
-			item.TVDBID = &tvdb
-		}
-		mdbItems[i] = item
+			mediaType := curatedItemMediaType(ci.MediaType)
+			tmdbID := ci.TMDBID
+			if tmdbID <= 0 && ci.IMDBID == "" && ci.TVDBID <= 0 && mediaType == "movie" && strings.TrimSpace(ci.Title) != "" {
+				tmdbID = s.resolveTMDBMovieByTitleYear(ctx, ci.Title, ci.Year)
+			}
+			imdbID := ci.IMDBID
+			if imdbID == "" && tmdbID > 0 {
+				tmdbMediaType := "movie"
+				if mediaType == "series" {
+					tmdbMediaType = "tv"
+				}
+				imdbID = s.getIMDBIDForTMDB(ctx, tmdbMediaType, tmdbID)
+			}
 
-		// Build a per-item identity for the cache key that never collapses to
-		// an empty string (which would collide across distinct TMDB-only lists).
-		switch {
-		case imdbID != "":
-			identities[i] = "imdb:" + imdbID
-		case tmdbID > 0:
-			identities[i] = fmt.Sprintf("tmdb:%s:%d", mediaType, tmdbID)
-		case ci.TVDBID > 0:
-			identities[i] = fmt.Sprintf("tvdb:%s:%d", mediaType, ci.TVDBID)
-		default:
-			identities[i] = fmt.Sprintf("title:%s:%d", strings.ToLower(strings.TrimSpace(ci.Title)), ci.Year)
-		}
+			item := mdblistItem{
+				Rank:        i,
+				IMDBID:      imdbID,
+				Title:       ci.Title,
+				ReleaseYear: ci.Year,
+				MediaType:   ci.MediaType,
+			}
+			if tmdbID > 0 {
+				item.TMDBID = &tmdbID
+			}
+			if ci.TVDBID > 0 {
+				tvdb := ci.TVDBID
+				item.TVDBID = &tvdb
+			}
+			mdbItems[i] = item
+
+			// Build a per-item identity for the cache key that never collapses to
+			// an empty string (which would collide across distinct TMDB-only lists).
+			switch {
+			case imdbID != "":
+				identities[i] = "imdb:" + imdbID
+			case tmdbID > 0:
+				identities[i] = fmt.Sprintf("tmdb:%s:%d", mediaType, tmdbID)
+			case ci.TVDBID > 0:
+				identities[i] = fmt.Sprintf("tvdb:%s:%d", mediaType, ci.TVDBID)
+			default:
+				identities[i] = fmt.Sprintf("title:%s:%d", strings.ToLower(strings.TrimSpace(ci.Title)), ci.Year)
+			}
+		}(i, ci)
+	}
+	resolveWG.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	// Preserve source order in the cache key. Ranked Stremio/curated catalogs can
 	// reorder the same identities without changing their membership.
 	orderedIdentities := strings.Join(identities, ",")
-	cacheID := cacheKey("curated", "v9", orderedIdentities, s.client.language)
+	cacheID := cacheKey("curated", "v10", orderedIdentities, s.client.language)
 
 	if cached, ok := s.cachedCuratedList(ctx, cacheID, label); ok {
 		if rawCacheID != cacheID {
@@ -10235,16 +10261,26 @@ func (s *Service) GetCuratedListWithOptions(ctx context.Context, items []Curated
 		wg.Add(1)
 		go func(idx int, it mdblistItem) {
 			defer wg.Done()
-			sem <- struct{}{}
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 			defer func() { <-sem }()
 			results[idx] = s.enrichCustomListItem(ctx, it, false)
 			s.incrementProgress(progressID)
 		}(i, item)
 	}
 	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	s.enrichShelfArtwork(ctx, results, customListShelfArtworkLimit)
 	ensureTrendingMovieReleaseStatuses(results)
 
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	// Cache results
 	if len(results) > 0 {
 		_ = s.cache.set(cacheID, results)

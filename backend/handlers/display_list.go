@@ -43,6 +43,7 @@ type DisplayListResponse struct {
 	ListID          string      `json:"listId,omitempty"`
 	Items           interface{} `json:"items"`
 	Total           int         `json:"total"`
+	UnfilteredTotal int         `json:"unfilteredTotal,omitempty"`
 	Genres          []string    `json:"genres,omitempty"`
 	AlphabetBuckets []string    `json:"alphabetBuckets,omitempty"`
 }
@@ -111,6 +112,18 @@ func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 	if source == "" {
 		source = "watchlist"
 	}
+	// Use the existing remote-shelf transport so current Watch clients can
+	// render personal list shelves without a frontend update. Resolve locally;
+	// this sentinel must never reach an external MDBList provider.
+	customListShelf := false
+	listID := strings.TrimSpace(r.URL.Query().Get("listId"))
+	if source == "mdblist" || source == "mdblist-url" || source == "mdblist-shelf" {
+		if listURL := strings.TrimSpace(r.URL.Query().Get("url")); strings.HasPrefix(listURL, customListShelfURLPrefix) {
+			source = "custom-list"
+			listID = strings.TrimSpace(strings.TrimPrefix(listURL, customListShelfURLPrefix))
+			customListShelf = true
+		}
+	}
 	metadataSource := source != "watchlist" &&
 		source != "custom-list" &&
 		source != "custom_user_list" &&
@@ -123,7 +136,6 @@ func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	listID := strings.TrimSpace(r.URL.Query().Get("listId"))
 	var items []models.WatchlistItem
 	var err error
 
@@ -256,6 +268,10 @@ func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 		items = h.HiddenItemsService.FilterHiddenWatchlistItems(userID, items)
 	}
 	h.enrich(userID, items, r)
+	unfilteredTotal := 0
+	if customListShelf {
+		unfilteredTotal = len(items)
+	}
 	// Personal watchlists retain explicitly saved titles regardless of release
 	// status. Discovery and other lists still follow release visibility settings.
 	if source != "watchlist" && h.MetadataHandler != nil {
@@ -268,6 +284,20 @@ func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 			unreleasedVisibilityLists,
 		)
 		items = filterWatchlistItemsByUnreleasedVisibility(items, policy)
+	}
+	if customListShelf {
+		if strings.EqualFold(r.URL.Query().Get("hideUnreleased"), "true") {
+			items = filterWatchlistItemsByUnreleasedVisibility(items, unreleasedVisibilityPolicy{})
+		}
+		if strings.EqualFold(r.URL.Query().Get("hideWatched"), "true") {
+			visible := make([]models.WatchlistItem, 0, len(items))
+			for _, item := range items {
+				if item.WatchState != "complete" {
+					visible = append(visible, item)
+				}
+			}
+			items = visible
+		}
 	}
 	items, genres, alphabet := queryWatchlistItems(items, parseDisplayListQuery(r))
 	total := len(items)
@@ -288,7 +318,7 @@ func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 	}
 	logDisplayListWatchlistArtworkTrace(userID, source, items)
 	responseItems := interface{}(items)
-	if source == "permanent-prequeue" {
+	if source == "permanent-prequeue" || customListShelf {
 		responseItems = watchlistItemsToTrending(items)
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -297,6 +327,7 @@ func (h *DisplayListHandler) get(w http.ResponseWriter, r *http.Request) {
 		ListID:          listID,
 		Items:           responseItems,
 		Total:           total,
+		UnfilteredTotal: unfilteredTotal,
 		Genres:          genres,
 		AlphabetBuckets: alphabet,
 	})

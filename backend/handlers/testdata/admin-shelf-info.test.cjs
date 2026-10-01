@@ -69,3 +69,10 @@ test("info buttons safely escape user names in accessible labels and data attrib
   assert.ok(!button.includes("<img"));
   assert.ok(!button.includes('onerror="bad()"'));
 });
+
+
+test("personal list shelf help describes the profile's saved titles", () => {
+  const description = getDescription({ type: "mdblist", listUrl: "mediastorm:custom-list:list-1" });
+  assert.match(description, /selected person’s custom list/);
+  assert.ok(!description.includes("MDBList"));
+});

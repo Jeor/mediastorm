@@ -1345,6 +1345,7 @@ func main() {
 
 	// Profile management endpoints
 	r.HandleFunc("/admin/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.GetProfiles)).Methods(http.MethodGet)
+	r.HandleFunc("/admin/api/profiles/{userID}/custom-lists", adminUIHandler.RequireAuth(adminUIHandler.ProfileCustomLists(customListsHandler))).Methods(http.MethodGet)
 	r.HandleFunc("/admin/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.CreateProfile)).Methods(http.MethodPost)
 	r.HandleFunc("/admin/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.RenameProfile)).Methods(http.MethodPut)
 	r.HandleFunc("/admin/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.DeleteProfile)).Methods(http.MethodDelete)
@@ -1727,6 +1728,7 @@ func main() {
 
 	// Protected account routes - Profile APIs
 	r.HandleFunc("/account/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.GetProfiles)).Methods(http.MethodGet)
+	r.HandleFunc("/account/api/profiles/{userID}/custom-lists", adminUIHandler.RequireAuth(adminUIHandler.ProfileCustomLists(customListsHandler))).Methods(http.MethodGet)
 	r.HandleFunc("/account/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.CreateProfile)).Methods(http.MethodPost)
 	r.HandleFunc("/account/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.RenameProfile)).Methods(http.MethodPut)
 	r.HandleFunc("/account/api/profiles", adminUIHandler.RequireAuth(adminUIHandler.DeleteProfile)).Methods(http.MethodDelete)
@@ -1958,7 +1960,9 @@ func main() {
 
 		addList := func(u, name string) {
 			u = strings.TrimSpace(u)
-			if u != "" && !seen[u] {
+			// Internal personal-list shelves resolve through display-list and must
+			// not enter the external MDBList cache warmer.
+			if u != "" && !strings.HasPrefix(u, "mediastorm:") && !seen[u] {
 				seen[u] = true
 				infos = append(infos, metadata.CustomListInfo{URL: u, Name: name})
 			}

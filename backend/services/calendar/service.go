@@ -1154,7 +1154,8 @@ func (s *Service) collectFromMDBLists(
 
 	var items []models.CalendarItem
 	for _, shelf := range settings.HomeShelves.Shelves {
-		if shelf.Type != "mdblist" || !shelf.Enabled || shelf.ListURL == "" {
+		// Personal-list shelf URLs are resolved by display-list, not MDBList.
+		if shelf.Type != "mdblist" || !shelf.Enabled || shelf.ListURL == "" || strings.HasPrefix(shelf.ListURL, "mediastorm:") {
 			continue
 		}
 		// Check per-shelf calendar setting

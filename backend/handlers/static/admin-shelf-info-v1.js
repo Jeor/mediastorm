@@ -67,7 +67,9 @@
 
   function getDescription(shelf) {
     // IDs are stable even when a shelf is renamed or an old config omits type.
-    let description = builtins[shelf.id] || types[shelf.type];
+    let description = shelf.listUrl?.startsWith("mediastorm:custom-list:")
+      ? "Titles saved to the selected person’s custom list, with the most recently added titles first."
+      : builtins[shelf.id] || types[shelf.type];
     if (!description && shelf.listUrl) description = types.mdblist;
     if (!description)
       description =

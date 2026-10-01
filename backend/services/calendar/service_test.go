@@ -598,6 +598,7 @@ func TestBuildUserCalendar_MDBListPerShelfDisable(t *testing.T) {
 			Shelves: []models.ShelfConfig{
 				{ID: "mdb-1", Name: "My List", Enabled: true, Type: "mdblist", ListURL: "https://mdblist.com/lists/test/list1/json"},
 				{ID: "mdb-2", Name: "Other List", Enabled: true, Type: "mdblist", ListURL: "https://mdblist.com/lists/test/list2/json"},
+				{ID: "custom-list-1", Name: "Personal List", Enabled: true, Type: "mdblist", ListURL: "mediastorm:custom-list:list-1"},
 			},
 		},
 		Calendar: models.CalendarSettings{
@@ -631,6 +632,12 @@ func TestBuildUserCalendar_MDBListPerShelfDisable(t *testing.T) {
 			},
 		},
 	}
+
+	// A compatible personal-list shelf must not be sent to the MDBList provider.
+	personalItems := append([]models.TrendingItem(nil), meta.customLists["https://mdblist.com/lists/test/list2/json"]...)
+	personalItems[0].Title.Name = "Personal List Movie"
+	personalItems[0].Title.TMDBID = 9003
+	meta.customLists["mediastorm:custom-list:list-1"] = personalItems
 
 	svc := New(meta, wl, hist, us, users)
 	items := svc.buildUserCalendar("user1")

@@ -2696,6 +2696,7 @@
 {{define "scripts"}}
 {{if not .NoProfiles}}
 <script src="{{.ServerBasePath}}/api/static/admin-home-views-v1.js?v={{staticAssetVersion "admin-home-views-v1.js"}}"></script>
+<script src="{{.ServerBasePath}}/api/static/admin-custom-list-shelves-v1.js?v={{staticAssetVersion "admin-custom-list-shelves-v1.js"}}"></script>
 <script src="{{.ServerBasePath}}/api/static/admin-shelf-info-v1.js?v={{staticAssetVersion "admin-shelf-info-v1.js"}}"></script>
 <script>
     let currentSettings = {{json .Settings}};
@@ -9716,7 +9717,7 @@
             const isCollectionHub = s.type === 'collection-hub';
             const isLibrary = s.type === 'library' || s.type === 'local-library';
             const isCustom = !!s.listUrl || isLibrary || s.type === 'mdblist' || s.type === 'stremio' || s.type === 'tmdb' || s.type === 'trakt' || s.type === 'publicmetadb' || s.type === 'simkl' || s.type === 'letterboxd' || s.type === 'genre' || s.type === 'decade' || isCollectionHub || (s.id && (s.id.startsWith('mdblist-') || s.id.startsWith('stremio-') || s.id.startsWith('tmdb-') || s.id.startsWith('streaming-service-') || s.id.startsWith('trakt-') || s.id.startsWith('publicmetadb-') || s.id.startsWith('simkl-') || s.id.startsWith('letterboxd-') || s.id.startsWith('genre-') || s.id.startsWith('decade-') || s.id.startsWith('collection-hub-')));
-            const typeLabel = isRecentlyAired ? '<span class="shelf-type-badge">Calendar</span>' : (isCustom ? '<span class="shelf-type-badge">'+getShelfTypeLabel(s.type)+'</span>' : '');
+            const typeLabel = isRecentlyAired ? '<span class="shelf-type-badge">Calendar</span>' : (isCustom ? '<span class="shelf-type-badge">'+homeShelfTypeLabel(s)+'</span>' : '');
             const filterBadge = (isCustom && s.hideUnreleased) ? '<span class="shelf-filter-badge" title="Hide Unreleased enabled">🎬</span>' : '';
             const sourceBadge = isRecentlyAired
                 ? '<span class="shelf-source-badge" title="Sources">'+getCalendarSourceSummary(s)+'</span>'
@@ -9869,6 +9870,7 @@
                     '<label class="form-label" for="newShelfType" style="font-size:12px;margin-bottom:4px;">Type</label>'+
                     '<select id="newShelfType" onchange="onShelfTypeChange()">'+
                         '<option value="mdblist">MDBList</option>'+
+                        '<option value="custom-list" '+(selectedUserId ? '' : 'disabled')+'>Custom List'+(selectedUserId ? '' : ' (choose a person)')+'</option>'+
                         '<option value="popular-on-server">Popular on This Server</option>'+
                         '<option value="recently-watched">Recently Watched</option>'+
                         '<option value="stremio">Stremio Add-on</option>'+
@@ -9883,6 +9885,10 @@
                         '<option value="collection-hub">Collection Hub</option>'+
                         '<option value="streaming-service">Streaming Service</option>'+
                     '</select>'+
+                '</div>'+
+                '<div class="form-group" id="profileCustomListGroup" style="display:none;flex:0 0 260px;">'+
+                    '<label class="form-label" for="newShelfCustomList" style="font-size:12px;margin-bottom:4px;">Custom List</label>'+
+                    '<select id="newShelfCustomList" onchange="onProfileCustomListChange()"><option value="">Choose a list</option></select>'+
                 '</div>'+
                 '<div class="form-group" id="stremioImportModeGroup" style="display:none;flex:0 0 240px;">'+
                     '<label class="form-label" for="newShelfStremioImportMode" style="font-size:12px;margin-bottom:4px;">Import As</label>'+
@@ -10929,6 +10935,9 @@
         const isDecade = type === 'decade';
         const isCollectionHub = type === 'collection-hub';
         const isLibrary = type === 'library';
+        const isProfileCustomList = type === 'custom-list';
+        document.getElementById('profileCustomListGroup').style.display = isProfileCustomList ? '' : 'none';
+        if (isProfileCustomList) loadProfileCustomListOptions('newShelfCustomList');
         document.getElementById('tmdbSourceTypeGroup').style.display = isTMDB ? '' : 'none';
         document.getElementById('tmdbMediaTypeGroup').style.display = isTMDB ? '' : 'none';
         document.getElementById('tmdbSortGroup').style.display = isTMDB ? '' : 'none';
@@ -10961,10 +10970,10 @@
         document.getElementById('newShelfNameGroup').style.display = (isStremio || isBuiltInActivity) ? 'none' : '';
         document.getElementById('newShelfLimitGroup').style.display = isBuiltInActivity ? 'none' : '';
         document.getElementById('newShelfHideUnreleasedGroup').style.display = isBuiltInActivity ? 'none' : '';
-        document.getElementById('mdblistUrlGroup').style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isPublicMetaDB || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary) ? 'none' : '';
+        document.getElementById('mdblistUrlGroup').style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isPublicMetaDB || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary || isProfileCustomList) ? 'none' : '';
         const hint = document.getElementById('shelfFormHint');
         if (hint) {
-            hint.style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isPublicMetaDB || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary) ? 'none' : '';
+            hint.style.display = (isBuiltInActivity || isStremio || isTMDB || isStreaming || isTrakt || isPublicMetaDB || isSimkl || isLetterboxd || isGenre || isDecade || isCollectionHub || isLibrary || isProfileCustomList) ? 'none' : '';
         }
         if (!isLetterboxd) {
             const urlHint = document.getElementById('letterboxdUrlHint');
@@ -11157,6 +11166,7 @@
         const limitInput = document.getElementById('newShelfLimit');
         const hideUnreleasedInput = document.getElementById('newShelfHideUnreleased');
         const shelfType = typeSelect?.value || 'mdblist';
+        if (shelfType === 'custom-list') { addProfileCustomListShelf(); return; }
         const limit = parseInt(limitInput?.value || '0', 10) || 0;
         const hideUnreleased = hideUnreleasedInput?.checked || false;
 
@@ -11948,7 +11958,7 @@
 
     function collectionHubSourceLabel(shelf) {
         if (!shelf) return 'Shelf';
-        const type = shelf.type && shelf.type !== 'builtin' ? ' - ' + getShelfTypeLabel(shelf.type) : '';
+        const type = shelf.type && shelf.type !== 'builtin' ? ' - ' + homeShelfTypeLabel(shelf) : '';
         return `${shelf.name || shelf.id}${type}`;
     }
 
@@ -12306,6 +12316,7 @@
         const isLetterboxdShelf = shelf.type === 'letterboxd';
         const isGenreShelf = shelf.type === 'genre';
         const isDecadeShelf = shelf.type === 'decade';
+        const isProfileCustomList = !!customListShelfId(shelf);
         const isLibraryShelf = shelf.type === 'library' || shelf.type === 'local-library';
         const selectedLibraryId = shelf.libraryId || getLegacyShelfLibraryId(shelf);
         const mediaLibraryOptions = getMediaLibraryOptionsHTML(selectedLibraryId);
@@ -12432,6 +12443,12 @@
                     </div>
                     ${buildTMDBCustomFilterFields('editShelf', shelf.tmdbDiscoverQuery || '', true)}
         `;
+        } else if (isProfileCustomList) {
+            traktSourceFields = `
+                    <div style="margin-bottom:12px;">
+                        <label class="form-label" for="editShelfCustomList" style="font-size:12px;margin-bottom:4px;display:block;">Custom List</label>
+                        <select id="editShelfCustomList" class="form-input" disabled><option value="">Loading lists…</option></select>
+                    </div>`;
         } else if (isLibraryShelf) {
             traktSourceFields = `
                     <div style="margin-bottom:12px;">
@@ -12532,7 +12549,7 @@
         `;
         }
 
-        const modalTitle = isMyUpcomingShelf ? 'Configure My Upcoming Shelf' : isRecentlyAiredShelf ? 'Configure Recently Aired Shelf' : 'Configure ' + getShelfTypeLabel(shelf.type) + ' List';
+        const modalTitle = isMyUpcomingShelf ? 'Configure My Upcoming Shelf' : isRecentlyAiredShelf ? 'Configure Recently Aired Shelf' : 'Configure ' + homeShelfTypeLabel(shelf) + (isProfileCustomList ? ' Shelf' : ' List');
 
         // Create modal HTML
         const modalHtml = `
@@ -12575,6 +12592,7 @@
 
         // Focus the name input
         document.getElementById('editShelfName').focus();
+        if (isProfileCustomList) loadProfileCustomListOptions('editShelfCustomList', customListShelfId(shelf));
         if (isTraktShelf) {
             onEditTraktShelfSourceChange(shelf.traktListId || '');
         }
@@ -12643,6 +12661,7 @@
             alert('Please enter a name');
             return;
         }
+        if (customListShelfId(shelf) && !saveProfileCustomListSource(shelf)) return;
         shelf.name = name;
         if (shelf.id === 'my-upcoming') {
             shelf.sort = document.getElementById('editShelfSort')?.value || defaultMyUpcomingSort();
@@ -12752,7 +12771,7 @@
                 return;
             }
             shelf.id = nextId;
-        } else if (shelf.id !== 'my-recently-aired' && shelf.id !== 'my-upcoming') {
+        } else if (shelf.id !== 'my-recently-aired' && shelf.id !== 'my-upcoming' && !customListShelfId(shelf)) {
             const urlInput = document.getElementById('editShelfUrl');
             let url = urlInput?.value?.trim();
             if (!url || !validateShelfUrl(shelf.type, url)) {

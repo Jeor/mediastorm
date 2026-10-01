@@ -6829,7 +6829,7 @@ func (s *Service) preserveSeriesHiddenMarkerLocked(perUser map[string]models.Pla
 }
 
 // hasMatchingExternalID returns true if two external ID maps share at least one
-// common key+value pair (excluding non-standard keys like "titleId").
+// common provider key+value pair (excluding titleId and episode numbering).
 func hasMatchingExternalID(a, b map[string]string) bool {
 	return mediaidentity.HasMatchingExternalID(a, b)
 }

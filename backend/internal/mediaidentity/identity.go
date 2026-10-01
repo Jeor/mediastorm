@@ -458,6 +458,8 @@ func Equivalent(a, b Identity) bool {
 	return false
 }
 
+// HasMatchingExternalID compares provider IDs, excluding display/numbering
+// metadata. An absolute episode number is only unique within its own series.
 func HasMatchingExternalID(a, b map[string]string) bool {
 	a = NormalizeExternalIDs(a)
 	b = NormalizeExternalIDs(b)
@@ -465,7 +467,7 @@ func HasMatchingExternalID(a, b map[string]string) bool {
 		return false
 	}
 	for key, value := range a {
-		if value == "" || key == "titleId" {
+		if value == "" || key == "titleId" || key == "absoluteEpisode" {
 			continue
 		}
 		if b[key] == value {

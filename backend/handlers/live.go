@@ -377,10 +377,15 @@ func (h *LiveHandler) SetEPGService(service LiveEPGNowPlayingProvider) {
 // The provided client may be nil, in which case a client with sensible
 // defaults will be created. cacheTTLHours specifies how long to cache playlists.
 func NewLiveHandler(client *http.Client, transmuxEnabled bool, ffmpegPath string, cacheTTLHours int, probeSizeMB int, analyzeDurationSec int, lowLatency bool, cfgManager *config.Manager, userSettingsSvc LiveUserSettingsProvider) *LiveHandler {
+	// Source settings can change while this client is alive. Resolve the policy
+	// for each new connection and redirect instead of retaining startup origins.
+	policyProvider := func() requestsecurity.RestrictedHostPolicy {
+		return configuredLiveHostPolicy(cfgManager)
+	}
 	if client == nil {
-		client = requestsecurity.NewSafeHTTPClient(defaultPlaylistTimeout, 10, configuredLiveHostPolicy(cfgManager))
+		client = requestsecurity.NewSafeHTTPClientWithPolicyProvider(defaultPlaylistTimeout, 10, policyProvider)
 	} else {
-		client = secureLiveRedirects(client, configuredLiveHostPolicy(cfgManager))
+		client = secureLiveRedirectsWithPolicyProvider(client, policyProvider)
 	}
 
 	// Ensure cache directory exists
@@ -1714,8 +1719,14 @@ func configuredLiveHostPolicy(manager *config.Manager) requestsecurity.Restricte
 }
 
 func secureLiveRedirects(client *http.Client, policy requestsecurity.RestrictedHostPolicy) *http.Client {
+	return secureLiveRedirectsWithPolicyProvider(client, func() requestsecurity.RestrictedHostPolicy {
+		return policy
+	})
+}
+
+func secureLiveRedirectsWithPolicyProvider(client *http.Client, policyProvider func() requestsecurity.RestrictedHostPolicy) *http.Client {
 	if client == nil {
-		return requestsecurity.NewSafeHTTPClient(defaultPlaylistTimeout, 10, policy)
+		return requestsecurity.NewSafeHTTPClientWithPolicyProvider(defaultPlaylistTimeout, 10, policyProvider)
 	}
 	copyClient := *client
 	previous := copyClient.CheckRedirect
@@ -1723,7 +1734,7 @@ func secureLiveRedirects(client *http.Client, policy requestsecurity.RestrictedH
 		if len(via) >= 10 {
 			return errors.New("too many redirects")
 		}
-		if err := requestsecurity.ValidateOutboundURL(req.Context(), req.URL.String(), policy); err != nil {
+		if err := requestsecurity.ValidateOutboundURL(req.Context(), req.URL.String(), policyProvider()); err != nil {
 			return err
 		}
 		if previous != nil {

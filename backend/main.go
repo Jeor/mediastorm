@@ -933,6 +933,35 @@ func main() {
 
 	// Create EPG service and handler for Electronic Program Guide
 	epgService := epg.NewService(settings.Cache.Directory, cfgManager)
+	epgService.SetProfileHDHomeRunSources(func(current config.Settings) []config.LivePlaylistSource {
+		var result []config.LivePlaylistSource
+		for _, profile := range userService.ListAll() {
+			if preferences, err := userSettingsService.Get(profile.ID); err == nil && preferences != nil {
+				result = append(result, epg.ProfileHDHomeRunSources(preferences.LiveTV, current.Live)...)
+			}
+		}
+		return result
+	})
+	reconcileProfileLiveGuide := func() {
+		if current, err := cfgManager.Load(); err == nil {
+			if settingsHandler.EnsureEPGTaskForGuide(&current, "profile sources changed") {
+				if err := cfgManager.Save(current); err != nil {
+					log.Printf("[main] failed to persist profile guide task: %v", err)
+				}
+			}
+		}
+		if epgService.HDHomeRunRefreshDue() {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+				defer cancel()
+				if err := epgService.Refresh(ctx); err != nil {
+					log.Printf("[epg] profile tuner guide refresh failed: %v", err)
+				}
+			}()
+		}
+	}
+	userSettingsHandler.GuideChanged = reconcileProfileLiveGuide
+
 	epgHandler := handlers.NewEPGHandler(epgService, cfgManager, userSettingsService)
 	liveHandler.SetEPGService(epgService)
 	if recordingsService != nil {
@@ -1145,6 +1174,7 @@ func main() {
 
 	// Register admin UI routes
 	adminUIHandler := handlers.NewAdminUIHandler(configPath, settings.Log.File, videoHandler.GetHLSManager(), userService, userSettingsService, cfgManager)
+	adminUIHandler.GuideChanged = reconcileProfileLiveGuide
 	adminUIHandler.SetUsenetPoolManager(poolManager)
 
 	// Keep stream throughput (Mbps) EWMAs warm in the background so the admin

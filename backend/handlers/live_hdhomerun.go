@@ -10,6 +10,7 @@ import (
 	"novastream/config"
 	"novastream/internal/auth"
 	"novastream/internal/requestsecurity"
+	"novastream/models"
 )
 
 var hdHomeRunChannelPath = regexp.MustCompile(`^/(auto|tuner[0-9]+)/((v[0-9]+(\.[0-9]+)?)|(ch[0-9]+(-[0-9]+)?))$`)
@@ -52,7 +53,13 @@ func authorizeLiveStreamURL(r *http.Request, raw string, manager ConfigProvider,
 		sourceID = strings.TrimSpace(query.Get("liveSourceId"))
 	}
 	eligible := make(map[string]bool)
-	for _, source := range selectM3USources(resolvedLiveSources(buildGlobalLiveSource(settings)), sourceID) {
+	resolved := buildGlobalLiveSource(settings)
+	if resolver, ok := catalog.(interface {
+		resolveProfileLiveSource(*http.Request, config.Settings) models.ResolvedLiveSource
+	}); ok {
+		resolved = resolver.resolveProfileLiveSource(r, settings)
+	}
+	for _, source := range selectM3USources(resolvedLiveSources(resolved), sourceID) {
 		playlist, err := url.Parse(source.PlaylistURL)
 		if err == nil && source.Mode == "m3u" && playlist != nil &&
 			(playlist.Scheme == "http" || playlist.Scheme == "https") && playlist.Path == "/lineup.m3u" &&

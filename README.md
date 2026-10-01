@@ -21,7 +21,7 @@ Features include multi-profile watch history and recommendations, kids profiles,
 
 - **On-demand streaming:** Search multiple Usenet and torrent sources, rank releases, and stream through built-in Usenet or supported debrid providers.
 - **Personal media libraries:** Browse and play local, Plex, and Jellyfin libraries alongside discovered content.
-- **Live TV and DVR:** Use M3U playlists, Xtream Codes, Stalker Portal, or Stremio sources with EPG data and scheduled recordings.
+- **Live TV and DVR:** Use M3U playlists, HDHomeRun tuners, Xtream Codes, Stalker Portal, or Stremio sources with EPG data and scheduled recordings. HDHomeRun automatically downloads its channel lineup and guide (2 days free, or 14 days with a DVR guide subscription).
 - **Profiles and activity:** Maintain per-profile watchlists, playback progress, history, calendars, custom lists, content preferences, and recommendations. Profiles can use PINs, kids restrictions, and source-level access controls.
 - **Playback:** Native playback on mobile and TV, browser playback at `/watch`, offline downloads in the mobile apps, external subtitle search, and Google Cast or DLNA playback on supported clients.
 - **Connected services:** Import lists and synchronize activity with services including Trakt, Simkl, MDBList, and Letterboxd.
@@ -37,7 +37,7 @@ Features include multi-profile watch history and recommendations, kids profiles,
 | Usenet indexers | Newznab, Prowlarr |
 | Torrent and direct-stream sources | Torrentio, Prowlarr, Jackett, Zilean, AIOStreams, Nyaa, Comet, MediaFusion, Internet Archive |
 | Media libraries | Local media, Plex, Jellyfin |
-| Live TV | M3U, Xtream Codes, Stalker Portal, Stremio add-ons, XMLTV EPG |
+| Live TV | M3U, HDHomeRun with automatic guide, Xtream Codes, Stalker Portal, Stremio add-ons, XMLTV EPG |
 | Lists and scrobbling | Trakt, Simkl, MDBList, Letterboxd |
 | Subtitles | Embedded tracks, OpenSubtitles, SubDL |
 | Metadata | TMDB, optional TVDB and MDBList enrichment |

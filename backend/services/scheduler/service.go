@@ -252,6 +252,14 @@ func (s *Service) shouldRun(task config.ScheduledTask) bool {
 		return true
 	}
 
+	if task.Type == config.ScheduledTaskTypeEPGRefresh && task.Frequency != config.ScheduledTaskFrequencyOnce {
+		s.mu.RLock()
+		guide := s.epgService
+		s.mu.RUnlock()
+		if guide != nil && guide.HDHomeRunRefreshDue() {
+			return true
+		}
+	}
 	interval := s.getInterval(task.Type, task.Frequency)
 	return time.Since(*task.LastRunAt) >= interval
 }

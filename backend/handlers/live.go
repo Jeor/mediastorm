@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -385,7 +386,7 @@ func NewLiveHandler(client *http.Client, transmuxEnabled bool, ffmpegPath string
 	// Source settings can change while this client is alive. Resolve the policy
 	// for each new connection and redirect instead of retaining startup origins.
 	policyProvider := func() requestsecurity.RestrictedHostPolicy {
-		return configuredLiveHostPolicy(cfgManager)
+		return configuredProfileLiveHostPolicy(cfgManager, userSettingsSvc)
 	}
 	if client == nil {
 		client = requestsecurity.NewSafeHTTPClientWithPolicyProvider(defaultPlaylistTimeout, 10, policyProvider)
@@ -919,7 +920,7 @@ func (h *LiveHandler) parseRemoteURL(ctx context.Context, raw string) (*url.URL,
 	default:
 		return nil, fmt.Errorf("unsupported url scheme %q", parsed.Scheme)
 	}
-	if err := requestsecurity.ValidateOutboundURL(ctx, parsed.String(), configuredLiveHostPolicy(h.cfgManager)); err != nil {
+	if err := requestsecurity.ValidateOutboundURL(ctx, parsed.String(), configuredProfileLiveHostPolicy(h.cfgManager, h.userSettingsSvc)); err != nil {
 		return nil, errors.New("remote URL is not allowed")
 	}
 
@@ -1176,6 +1177,14 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 		if mode == "" {
 			mode = "m3u"
 		}
+		if mode == "hdhomerun" {
+			lineup, err := config.HDHomeRunURL(candidate.HDHomeRunHost, "/lineup.m3u")
+			if err != nil {
+				continue
+			}
+			candidate.PlaylistURL = lineup
+			mode = "m3u"
+		}
 		if mode == "m3u" && strings.TrimSpace(candidate.PlaylistURL) == "" {
 			continue
 		}
@@ -1238,6 +1247,13 @@ func resolvedLiveSources(src models.ResolvedLiveSource) []resolvedM3USource {
 			HasFilterOverride:   hasFilterOverride,
 			Filter:              filter,
 		})
+	}
+	if len(candidates) == 0 && strings.EqualFold(strings.TrimSpace(src.Mode), "hdhomerun") {
+		lineup, err := config.HDHomeRunURL(src.HDHomeRunHost, "/lineup.m3u")
+		if err != nil {
+			return nil
+		}
+		src.PlaylistURL = lineup
 	}
 	if len(sources) == 0 && strings.TrimSpace(src.PlaylistURL) != "" {
 		sources = append(sources, resolvedM3USource{
@@ -1308,6 +1324,10 @@ func resolvedM3USources(src models.ResolvedLiveSource) []resolvedM3USource {
 }
 
 func liveSourceIdentity(source models.LivePlaylistSource) string {
+	if strings.EqualFold(strings.TrimSpace(source.Mode), "hdhomerun") {
+		lineup, _ := config.HDHomeRunURL(source.HDHomeRunHost, "/lineup.m3u")
+		return lineup
+	}
 	if strings.EqualFold(strings.TrimSpace(source.Mode), "xtream") {
 		return strings.TrimSpace(source.XtreamHost) + "|" + strings.TrimSpace(source.XtreamUsername)
 	}
@@ -1364,6 +1384,19 @@ func tagChannelsWithSource(channels []LiveChannel, source resolvedM3USource, inc
 	}
 	tagged := make([]LiveChannel, len(channels))
 	for i, ch := range channels {
+		// HDHomeRun playlists may omit tvg-id. Give the frontend a guide lookup
+		// key using the tuner callsign; XMLTV display names are indexed as aliases.
+		playlist, _ := url.Parse(source.PlaylistURL)
+		if ch.TvgID == "" && playlist != nil && playlist.Path == "/lineup.m3u" {
+			ch.TvgID = ch.TvgName
+			if ch.TvgID == "" {
+				ch.TvgID = ch.Name
+			}
+			if stream, err := url.Parse(ch.URL); err == nil && isHDHomeRunStreamURL(stream) {
+				number := strings.TrimPrefix(path.Base(stream.Path), "v")
+				ch.TvgID = strings.TrimPrefix(ch.TvgID, number+" ")
+			}
+		}
 		ch.SourceID = source.ID
 		ch.SourceName = source.Name
 		if includeSourceInID && source.ID != "" {
@@ -1713,7 +1746,7 @@ func (h *LiveHandler) liveHTTPClient(proxyURL string) *http.Client {
 		log.Printf("[live] invalid proxy URL %q: %v", proxyURL, err)
 		return h.client
 	}
-	return secureLiveRedirects(client, configuredLiveHostPolicy(h.cfgManager))
+	return secureLiveRedirects(client, configuredProfileLiveHostPolicy(h.cfgManager, h.userSettingsSvc))
 }
 
 func (h *LiveHandler) livePlaylistScanHTTPClient(proxyURL string) *http.Client {
@@ -1726,7 +1759,7 @@ func (h *LiveHandler) livePlaylistScanHTTPClient(proxyURL string) *http.Client {
 			ResponseHeaderTimeout: defaultPlaylistTimeout,
 		}, "")
 	}
-	return secureLiveRedirects(client, configuredLiveHostPolicy(h.cfgManager))
+	return secureLiveRedirects(client, configuredProfileLiveHostPolicy(h.cfgManager, h.userSettingsSvc))
 }
 
 func (h *LiveHandler) liveStreamHTTPClient(proxyURL string) *http.Client {
@@ -1743,7 +1776,7 @@ func (h *LiveHandler) liveStreamHTTPClientWithTimeout(proxyURL string, headerTim
 			ResponseHeaderTimeout: headerTimeout,
 		}, "")
 	}
-	return secureLiveRedirects(client, configuredLiveHostPolicy(h.cfgManager))
+	return secureLiveRedirects(client, configuredProfileLiveHostPolicy(h.cfgManager, h.userSettingsSvc))
 }
 
 func configuredLiveHostPolicy(manager *config.Manager) requestsecurity.RestrictedHostPolicy {
@@ -1795,6 +1828,7 @@ func (h *LiveHandler) WarmPlaylistCache(ctx context.Context) (int, error) {
 	src := models.ResolvedLiveSource{
 		Mode:                settings.Live.Mode,
 		PlaylistURL:         settings.Live.PlaylistURL,
+		HDHomeRunHost:       settings.Live.HDHomeRunHost,
 		ManifestURL:         settings.Live.ManifestURL,
 		ProxyURL:            settings.Live.ProxyURL,
 		XtreamHost:          settings.Live.XtreamHost,
@@ -2123,6 +2157,7 @@ func (h *LiveHandler) resolveProfileLiveSourceForID(profileID string, globalSett
 	global := models.ResolvedLiveSource{
 		Mode:                    globalSettings.Live.Mode,
 		PlaylistURL:             globalSettings.Live.PlaylistURL,
+		HDHomeRunHost:           globalSettings.Live.HDHomeRunHost,
 		ManifestURL:             globalSettings.Live.ManifestURL,
 		Sources:                 configPlaylistSourcesToModel(globalSettings.Live.Sources),
 		PlaylistSources:         configPlaylistSourcesToModel(globalSettings.Live.PlaylistSources),

@@ -6594,6 +6594,9 @@
             setValue('metadata.aiBaseUrl', '');
         }
         setValue(basePath ? basePath+'.'+fieldKey : fieldKey, value);
+        if (fieldKey === 'mode' && value === 'hdhomerun' && (basePath === 'live' || basePath === 'liveTV' || basePath?.startsWith('live.sources.') || basePath?.startsWith('liveTV.sources.'))) {
+            setValue(basePath + '.epg.enabled', true);
+        }
 
         if (basePath && basePath.startsWith('usenetEngines.') && fieldKey === 'enabled' && value === true) {
             allowOnlyOneEnabledUsenetEngine(basePath);
@@ -7729,6 +7732,7 @@
                 payload = {
                     mode: liveRowValue('mode'),
                     playlistUrl: liveRowValue('playlistUrl'),
+                    hdhomerunHost: liveRowValue('hdhomerunHost'),
                     manifestUrl: liveRowValue('manifestUrl'),
                     proxyUrl: liveRowValue('proxyUrl'),
                     xtreamHost: liveRowValue('xtreamHost'),
@@ -9231,7 +9235,9 @@
     }
 
     function liveSourceEndpointSummary(item) {
-		const rawEndpoint = item.mode === 'xtream'
+		const rawEndpoint = item.mode === 'hdhomerun'
+            ? item.hdhomerunHost
+            : item.mode === 'xtream'
             ? item.xtreamHost
             : item.mode === 'stremio'
                 ? item.manifestUrl
@@ -9269,6 +9275,7 @@
         }
         if (groupKey === 'epg') {
             if (!item.epg?.enabled) return 'Disabled';
+            if (item.mode === 'hdhomerun' && !item.epg.xmltvUrl) return 'Automatic HDHomeRun guide · Refresh every 20–28h · Up to 14 days';
             const refresh = item.epg.refreshIntervalHours || 12;
             const retention = item.epg.retentionDays || 7;
             return 'Enabled · Refresh every ' + refresh + 'h · ' + retention + '-day retention';
@@ -9350,6 +9357,10 @@
                 .map(([fieldKey, fieldDef]) => {
                     if ((settingsLevel === 'basic' || settingsLevel === 'essentials') && !searchTerm && advancedArrayFields.has(sectionKey + '.' + fieldKey)) return null;
                     if (!providerTableFieldVisible(item, fieldDef)) return null;
+                    if (item.mode === 'hdhomerun') {
+                        if (!item.epg?.xmltvUrl && ['epg.refreshIntervalHours', 'epg.retentionDays'].includes(fieldKey)) return null;
+                        if (fieldKey === 'epg.enabled') fieldDef = { ...fieldDef, label: 'Automatic HDHomeRun Guide', description: 'Download the tuner’s guide automatically: 2 days free or 14 days with a DVR guide subscription. Refreshes every 20–28 hours; the previous guide is kept if a download fails.' };
+                    }
                     const fieldValue = fieldKey.includes('.')
                         ? fieldKey.split('.').reduce((obj, key) => obj?.[key], item)
                         : item[fieldKey];
@@ -13866,6 +13877,7 @@
                 payload = {
                     mode: getValue(sectionKey + '.mode') || '',
                     playlistUrl: getValue(sectionKey + '.playlistUrl') || '',
+                    hdhomerunHost: getValue(sectionKey + '.hdhomerunHost') || '',
                     manifestUrl: getValue(sectionKey + '.manifestUrl') || '',
                     proxyUrl: getValue(sectionKey + '.proxyUrl') || '',
                     xtreamHost: getValue(sectionKey + '.xtreamHost') || '',

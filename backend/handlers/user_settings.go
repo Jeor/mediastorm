@@ -38,6 +38,7 @@ type localLibraryLister interface {
 }
 
 type UserSettingsHandler struct {
+	GuideChanged  func()
 	Service       userSettingsService
 	Users         userService
 	ConfigManager *config.Manager
@@ -141,6 +142,9 @@ func (h *UserSettingsHandler) PutSettings(w http.ResponseWriter, r *http.Request
 	if oldSettings != nil {
 		previous = *oldSettings
 	}
+	if h.GuideChanged != nil && liveGuideSourcesChanged(previous.LiveTV, settings.LiveTV) {
+		h.GuideChanged()
+	}
 	if !reflect.DeepEqual(previous.Filtering, settings.Filtering) || !reflect.DeepEqual(previous.Ranking, settings.Ranking) {
 		if h.PrequeueStore != nil {
 			log.Printf("[user-settings] ranking/filtering changed for user=%s, clearing prequeue cache", userID)
@@ -202,6 +206,9 @@ func (h *UserSettingsHandler) PatchFrontendSetting(w http.ResponseWriter, r *htt
 	var previous models.UserSettings
 	if current != nil {
 		previous = *current
+	}
+	if h.GuideChanged != nil && liveGuideSourcesChanged(previous.LiveTV, next.LiveTV) {
+		h.GuideChanged()
 	}
 	if !reflect.DeepEqual(previous.Filtering, next.Filtering) || !reflect.DeepEqual(previous.Ranking, next.Ranking) {
 		if h.PrequeueStore != nil {

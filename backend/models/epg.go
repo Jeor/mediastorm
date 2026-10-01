@@ -6,7 +6,7 @@ import (
 
 // EPGProgram represents a single program in the EPG schedule.
 type EPGProgram struct {
-	ChannelID   string    `json:"channelId"`             // Links to LiveChannel.TvgID
+	ChannelID   string    `json:"channelId"` // Links to LiveChannel.TvgID
 	Title       string    `json:"title"`
 	Description string    `json:"description,omitempty"`
 	Start       time.Time `json:"start"`
@@ -19,15 +19,16 @@ type EPGProgram struct {
 
 // EPGChannel represents a channel's metadata from EPG data.
 type EPGChannel struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Icon string `json:"icon,omitempty"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Icon    string   `json:"icon,omitempty"`
+	Aliases []string `json:"aliases,omitempty"` // XMLTV display names, including tuner channel numbers/callsigns
 }
 
 // EPGSchedule holds the complete EPG data for all channels.
 type EPGSchedule struct {
-	Channels    map[string]EPGChannel   `json:"channels"`              // channelId -> channel metadata
-	Programs    map[string][]EPGProgram `json:"programs"`              // channelId -> sorted programs
+	Channels    map[string]EPGChannel   `json:"channels"` // channelId -> channel metadata
+	Programs    map[string][]EPGProgram `json:"programs"` // channelId -> sorted programs
 	LastUpdated time.Time               `json:"lastUpdated"`
 	SourceType  string                  `json:"sourceType"` // "xmltv" or "xtream"
 }

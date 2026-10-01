@@ -33,6 +33,7 @@ func buildGlobalLiveSource(settings config.Settings) models.ResolvedLiveSource {
 	return models.ResolvedLiveSource{
 		Mode:                    settings.Live.Mode,
 		PlaylistURL:             settings.Live.PlaylistURL,
+		HDHomeRunHost:           settings.Live.HDHomeRunHost,
 		ManifestURL:             settings.Live.ManifestURL,
 		ProxyURL:                settings.Live.ProxyURL,
 		Sources:                 configPlaylistSourcesToModel(settings.Live.Sources),
@@ -73,6 +74,7 @@ func configPlaylistSourcesToModel(sources []config.LivePlaylistSource) []models.
 			Name:                  src.Name,
 			Mode:                  src.Mode,
 			PlaylistURL:           src.PlaylistURL,
+			HDHomeRunHost:         src.HDHomeRunHost,
 			ManifestURL:           src.ManifestURL,
 			ProxyURL:              src.ProxyURL,
 			XtreamHost:            src.XtreamHost,

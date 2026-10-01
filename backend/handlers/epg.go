@@ -71,6 +71,9 @@ func (h *EPGHandler) resolveEPGEnabled(r *http.Request, fallback bool) bool {
 
 	summary := summarizeEPGGuideConfig(&settings)
 	enabled := settings.Live.EPG.Enabled || summary.sourceEPGEnabled > 0
+	if h.epgService != nil && h.epgService.HasHDHomeRunGuide() {
+		enabled = true
+	}
 	profileID := r.URL.Query().Get("profileId")
 	if profileID != "" && h.userSettingsSvc != nil {
 		userSettings, err := h.userSettingsSvc.Get(profileID)

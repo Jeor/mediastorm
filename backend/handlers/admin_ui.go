@@ -634,7 +634,8 @@ var SettingsSchema = map[string]interface{}{
 		"order":    2,
 		"testable": true,
 		"fields": map[string]interface{}{
-			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source the IPTV playlist", "order": 0},
+			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "hdhomerun", "label": "HDHomeRun"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source the IPTV playlist", "order": 0},
+			"hdhomerunHost":               map[string]interface{}{"type": "text", "label": "HDHomeRun Tuner Address", "description": "Tuner IP or hostname reachable from the backend (for example 192.168.1.100 or hdhomerun.local). Channels are loaded automatically from the tuner.", "placeholder": "192.168.1.100", "required": true, "showWhen": map[string]interface{}{"field": "mode", "value": "hdhomerun"}, "order": 5, "group": "connection", "groupLabel": "Connection"},
 			"playlistUrl":                 map[string]interface{}{"type": "text", "label": "Playlist URL", "description": "M3U playlist URL", "showWhen": map[string]interface{}{"field": "mode", "value": "m3u"}, "order": 1},
 			"manifestUrl":                 map[string]interface{}{"type": "text", "label": "Manifest URL", "description": "Stremio addon manifest URL (e.g. https://example.com/manifest.json). Channels are built from the addon's catalogs.", "placeholder": "https://example.com/manifest.json", "showWhen": map[string]interface{}{"field": "mode", "value": "stremio"}, "order": 1},
 			"proxyUrl":                    map[string]interface{}{"type": "text", "label": "Proxy URL", "description": "Optional proxy for Live TV provider requests (for example socks5://127.0.0.1:18080).", "placeholder": "socks5://127.0.0.1:18080", "order": 2},
@@ -658,7 +659,7 @@ var SettingsSchema = map[string]interface{}{
 			"filtering.maxChannels":       map[string]interface{}{"type": "number", "label": "Max Total Channels", "description": "Overall channel limit (0 = no limit)", "order": 12},
 			// EPG (Electronic Program Guide) settings
 			"epg.enabled":              map[string]interface{}{"type": "boolean", "label": "Enable EPG", "description": "Enable Electronic Program Guide for live TV channels", "order": 13},
-			"epg.xmltvUrl":             map[string]interface{}{"type": "text", "label": "XMLTV URL", "description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream mode, leave empty to auto-fetch from provider.", "placeholder": "http://example.com/epg.xml.gz", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 14},
+			"epg.xmltvUrl":             map[string]interface{}{"type": "text", "label": "XMLTV URL", "description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream or HDHomeRun, leave empty to fetch the guide automatically. HDHomeRun provides 2 days free or 14 days with a DVR guide subscription, refreshed every 20-28 hours.", "placeholder": "http://example.com/epg.xml.gz", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 14},
 			"epg.refreshIntervalHours": map[string]interface{}{"type": "number", "label": "EPG Refresh Interval (hours)", "description": "How often to refresh EPG data (default: 12)", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 15},
 			"epg.retentionDays":        map[string]interface{}{"type": "number", "label": "EPG Retention (days)", "description": "How many days of EPG data to keep (default: 7)", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 16},
 			"epg.timeOffsetMinutes":    map[string]interface{}{"type": "number", "label": "EPG Time Offset (minutes)", "description": "Shift EPG program times by this many minutes. Use positive values to move programs forward, negative to move them backward.", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 17},
@@ -675,7 +676,7 @@ var SettingsSchema = map[string]interface{}{
 		"fields": map[string]interface{}{
 			"id":      map[string]interface{}{"type": "text", "label": "ID", "description": "Stable source identifier. Leave blank to auto-generate.", "order": 0, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
 			"name":    map[string]interface{}{"type": "text", "label": "Name", "description": "Display name shown in the apps.", "order": 1, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
-			"mode":    map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source this IPTV provider.", "order": 2, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
+			"mode":    map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "hdhomerun", "label": "HDHomeRun"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source this IPTV provider.", "order": 2, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
 			"enabled": map[string]interface{}{"type": "boolean", "label": "Enabled", "description": "Include this source in Live TV.", "order": 3, "group": "source", "groupLabel": "Source", "groupDescription": "Identity and how this provider is sourced."},
 			"allowedProfiles": map[string]interface{}{
 				"type":             "multiselect",
@@ -687,6 +688,7 @@ var SettingsSchema = map[string]interface{}{
 				"groupLabel":       "Source",
 				"groupDescription": "Identity and how this provider is sourced.",
 			},
+			"hdhomerunHost":               map[string]interface{}{"type": "text", "label": "HDHomeRun Tuner Address", "description": "Tuner IP or hostname reachable from the backend (for example 192.168.1.100 or hdhomerun.local). Channels are loaded automatically from the tuner.", "placeholder": "192.168.1.100", "required": true, "showWhen": map[string]interface{}{"field": "mode", "value": "hdhomerun"}, "order": 5, "group": "connection", "groupLabel": "Connection"},
 			"playlistUrl":                 map[string]interface{}{"type": "text", "label": "Playlist URL", "description": "M3U playlist URL.", "showWhen": map[string]interface{}{"field": "mode", "value": "m3u"}, "order": 5, "group": "connection", "groupLabel": "Connection", "groupDescription": "Server, proxy, and credentials for reaching this provider."},
 			"manifestUrl":                 map[string]interface{}{"type": "text", "label": "Manifest URL", "description": "Stremio addon manifest URL (e.g. https://example.com/manifest.json). Channels are built from the addon's catalogs.", "placeholder": "https://example.com/manifest.json", "showWhen": map[string]interface{}{"field": "mode", "value": "stremio"}, "order": 6, "group": "connection", "groupLabel": "Connection", "groupDescription": "Server, proxy, and credentials for reaching this provider."},
 			"proxyUrl":                    map[string]interface{}{"type": "text", "label": "Proxy URL", "description": "Optional proxy for this Live TV source (for example socks5://127.0.0.1:18080).", "placeholder": "socks5://127.0.0.1:18080", "order": 7, "group": "connection", "groupLabel": "Connection", "groupDescription": "Server, proxy, and credentials for reaching this provider."},
@@ -709,7 +711,7 @@ var SettingsSchema = map[string]interface{}{
 			"filtering.enabledCategories": map[string]interface{}{"type": "multiselect", "label": "Enabled Categories", "description": "Only show channels in these categories (empty = show all)", "optionsEndpoint": "/live/categories", "order": 17, "group": "channelFiltering", "groupLabel": "Channel Filtering", "groupDescription": "Which channels from this source are shown."},
 			"filtering.maxChannels":       map[string]interface{}{"type": "number", "label": "Max Total Channels", "description": "Overall channel limit for this source (0 = no limit)", "order": 18, "group": "channelFiltering", "groupLabel": "Channel Filtering", "groupDescription": "Which channels from this source are shown."},
 			"epg.enabled":                 map[string]interface{}{"type": "boolean", "label": "Enable EPG", "description": "Enable Electronic Program Guide for this source", "order": 19, "group": "epg", "groupLabel": "Electronic Program Guide", "groupDescription": "Program guide data for this source's channels."},
-			"epg.xmltvUrl":                map[string]interface{}{"type": "text", "label": "XMLTV URL", "description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream mode, leave empty to auto-fetch from provider.", "placeholder": "http://example.com/epg.xml.gz", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 20, "group": "epg", "groupLabel": "Electronic Program Guide", "groupDescription": "Program guide data for this source's channels."},
+			"epg.xmltvUrl":                map[string]interface{}{"type": "text", "label": "XMLTV URL", "description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream or HDHomeRun, leave empty to fetch the guide automatically. HDHomeRun provides 2 days free or 14 days with a DVR guide subscription, refreshed every 20-28 hours.", "placeholder": "http://example.com/epg.xml.gz", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 20, "group": "epg", "groupLabel": "Electronic Program Guide", "groupDescription": "Program guide data for this source's channels."},
 			"epg.refreshIntervalHours":    map[string]interface{}{"type": "number", "label": "EPG Refresh Interval (hours)", "description": "How often to refresh EPG data (default: 12)", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 21, "group": "epg", "groupLabel": "Electronic Program Guide", "groupDescription": "Program guide data for this source's channels."},
 			"epg.retentionDays":           map[string]interface{}{"type": "number", "label": "EPG Retention (days)", "description": "How many days of EPG data to keep (default: 7)", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 22, "group": "epg", "groupLabel": "Electronic Program Guide", "groupDescription": "Program guide data for this source's channels."},
 			"epg.timeOffsetMinutes":       map[string]interface{}{"type": "number", "label": "EPG Time Offset (minutes)", "description": "Shift EPG program times by this many minutes. Use positive values to move programs forward, negative to move them backward.", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 23, "group": "epg", "groupLabel": "Electronic Program Guide", "groupDescription": "Program guide data for this source's channels."},
@@ -1365,8 +1367,9 @@ var SettingsSchema = map[string]interface{}{
 				"label":       "Source Type",
 				"description": "How to source the IPTV playlist for this profile.",
 				"order":       0,
-				"options":     []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}},
+				"options":     []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "hdhomerun", "label": "HDHomeRun"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}},
 			},
+			"hdhomerunHost": map[string]interface{}{"type": "text", "label": "HDHomeRun Tuner Address", "description": "Tuner IP or hostname reachable from the backend (for example 192.168.1.100 or hdhomerun.local). Channels are loaded automatically from the tuner.", "placeholder": "192.168.1.100", "required": true, "showWhen": map[string]interface{}{"field": "mode", "value": "hdhomerun"}, "order": 5, "group": "connection", "groupLabel": "Connection"},
 			"playlistUrl": map[string]interface{}{
 				"type":        "text",
 				"label":       "Playlist URL",
@@ -1477,7 +1480,7 @@ var SettingsSchema = map[string]interface{}{
 			"epg.xmltvUrl": map[string]interface{}{
 				"type":        "text",
 				"label":       "XMLTV URL",
-				"description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream mode, leave empty to auto-fetch from provider.",
+				"description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream or HDHomeRun, leave empty to fetch the guide automatically. HDHomeRun provides 2 days free or 14 days with a DVR guide subscription, refreshed every 20-28 hours.",
 				"placeholder": "http://example.com/epg.xml.gz",
 				"showWhen":    map[string]interface{}{"field": "epg.enabled", "value": true},
 				"order":       14,
@@ -1517,7 +1520,8 @@ var SettingsSchema = map[string]interface{}{
 		"fields": map[string]interface{}{
 			"id":                          map[string]interface{}{"type": "text", "label": "ID", "description": "Stable source identifier. Leave blank to auto-generate.", "order": 0},
 			"name":                        map[string]interface{}{"type": "text", "label": "Name", "description": "Display name shown in the apps.", "order": 1},
-			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source this IPTV provider.", "order": 2},
+			"mode":                        map[string]interface{}{"type": "select", "label": "Source Type", "options": []map[string]string{{"value": "m3u", "label": "M3U Playlist URL"}, {"value": "hdhomerun", "label": "HDHomeRun"}, {"value": "xtream", "label": "Xtream Codes"}, {"value": "stremio", "label": "Stremio Addon"}, {"value": "stalker", "label": "Stalker Portal"}}, "description": "How to source this IPTV provider.", "order": 2},
+			"hdhomerunHost":               map[string]interface{}{"type": "text", "label": "HDHomeRun Tuner Address", "description": "Tuner IP or hostname reachable from the backend (for example 192.168.1.100 or hdhomerun.local). Channels are loaded automatically from the tuner.", "placeholder": "192.168.1.100", "required": true, "showWhen": map[string]interface{}{"field": "mode", "value": "hdhomerun"}, "order": 5, "group": "connection", "groupLabel": "Connection"},
 			"playlistUrl":                 map[string]interface{}{"type": "text", "label": "Playlist URL", "description": "M3U playlist URL.", "showWhen": map[string]interface{}{"field": "mode", "value": "m3u"}, "order": 3},
 			"manifestUrl":                 map[string]interface{}{"type": "text", "label": "Manifest URL", "description": "Stremio addon manifest URL (e.g. https://example.com/manifest.json). Channels are built from the addon's catalogs.", "placeholder": "https://example.com/manifest.json", "showWhen": map[string]interface{}{"field": "mode", "value": "stremio"}, "order": 3},
 			"proxyUrl":                    map[string]interface{}{"type": "text", "label": "Proxy URL", "description": "Optional proxy for this Live TV source (for example socks5://127.0.0.1:18080).", "placeholder": "socks5://127.0.0.1:18080", "order": 4},
@@ -1540,7 +1544,7 @@ var SettingsSchema = map[string]interface{}{
 			"filtering.enabledCategories": map[string]interface{}{"type": "multiselect", "label": "Enabled Categories", "description": "Only show channels in these categories (empty = show all)", "optionsEndpoint": "/live/categories", "order": 13},
 			"filtering.maxChannels":       map[string]interface{}{"type": "number", "label": "Max Total Channels", "description": "Overall channel limit for this source (0 = no limit)", "order": 14},
 			"epg.enabled":                 map[string]interface{}{"type": "boolean", "label": "Enable EPG", "description": "Enable Electronic Program Guide for this source", "order": 15},
-			"epg.xmltvUrl":                map[string]interface{}{"type": "text", "label": "XMLTV URL", "description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream mode, leave empty to auto-fetch from provider.", "placeholder": "http://example.com/epg.xml.gz", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 16},
+			"epg.xmltvUrl":                map[string]interface{}{"type": "text", "label": "XMLTV URL", "description": "URL to XMLTV EPG data (supports .xml and .xml.gz). For Xtream or HDHomeRun, leave empty to fetch the guide automatically. HDHomeRun provides 2 days free or 14 days with a DVR guide subscription, refreshed every 20-28 hours.", "placeholder": "http://example.com/epg.xml.gz", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 16},
 			"epg.refreshIntervalHours":    map[string]interface{}{"type": "number", "label": "EPG Refresh Interval (hours)", "description": "How often to refresh EPG data (default: 12)", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 17},
 			"epg.retentionDays":           map[string]interface{}{"type": "number", "label": "EPG Retention (days)", "description": "How many days of EPG data to keep (default: 7)", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 18},
 			"epg.timeOffsetMinutes":       map[string]interface{}{"type": "number", "label": "EPG Time Offset (minutes)", "description": "Shift EPG program times by this many minutes. Use positive values to move programs forward, negative to move them backward.", "showWhen": map[string]interface{}{"field": "epg.enabled", "value": true}, "order": 19},
@@ -1551,6 +1555,7 @@ var SettingsSchema = map[string]interface{}{
 
 // AdminUIHandler serves the admin dashboard UI
 type AdminUIHandler struct {
+	GuideChanged          func()
 	settingsTemplate      *template.Template
 	sportsTemplate        *template.Template
 	sportsHandler         *SportsHandler
@@ -4010,9 +4015,13 @@ func (h *AdminUIHandler) SaveUserSettings(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	previous, _ := h.userSettingsService.Get(userID)
 	if err := h.userSettingsService.Update(userID, settings); err != nil {
 		http.Error(w, "Failed to save user settings", http.StatusInternalServerError)
 		return
+	}
+	if h.GuideChanged != nil && (previous == nil || liveGuideSourcesChanged(previous.LiveTV, settings.LiveTV)) {
+		h.GuideChanged()
 	}
 	if h.calendarService != nil {
 		h.calendarService.Refresh()
@@ -9936,6 +9945,7 @@ func (h *AdminUIHandler) DisconnectSimklAccount(w http.ResponseWriter, r *http.R
 type TestLiveTVRequest struct {
 	Mode                string `json:"mode"`
 	PlaylistURL         string `json:"playlistUrl"`
+	HDHomeRunHost       string `json:"hdhomerunHost,omitempty"`
 	ManifestURL         string `json:"manifestUrl"`
 	ProxyURL            string `json:"proxyUrl"`
 	XtreamHost          string `json:"xtreamHost"`
@@ -9969,6 +9979,15 @@ func (h *AdminUIHandler) TestLiveTV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Mode == "hdhomerun" {
+		lineup, err := config.HDHomeRunURL(req.HDHomeRunHost, "/lineup.m3u")
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+			return
+		}
+		req.PlaylistURL = lineup
+		req.Mode = "m3u"
+	}
 	switch req.Mode {
 	case "m3u":
 		if req.PlaylistURL == "" {

@@ -245,6 +245,7 @@ type LiveTVSettings struct {
 	// Per-profile IPTV source override (nil = use global)
 	Mode                *string              `json:"mode,omitempty"`
 	PlaylistURL         *string              `json:"playlistUrl,omitempty"`
+	HDHomeRunHost       *string              `json:"hdhomerunHost,omitempty"`
 	ManifestURL         *string              `json:"manifestUrl,omitempty"`
 	ProxyURL            *string              `json:"proxyUrl,omitempty"`
 	Sources             []LivePlaylistSource `json:"sources,omitempty"`
@@ -279,6 +280,7 @@ type LivePlaylistSource struct {
 	Name                  string                 `json:"name"`
 	Mode                  string                 `json:"mode,omitempty"`
 	PlaylistURL           string                 `json:"playlistUrl"`
+	HDHomeRunHost         string                 `json:"hdhomerunHost,omitempty"`
 	ManifestURL           string                 `json:"manifestUrl,omitempty"` // Stremio addon manifest URL (used when mode is "stremio")
 	ProxyURL              string                 `json:"proxyUrl,omitempty"`
 	XtreamHost            string                 `json:"xtreamHost,omitempty"`
@@ -333,6 +335,7 @@ type EPGOverrides struct {
 type ResolvedLiveSource struct {
 	Mode                    string
 	PlaylistURL             string
+	HDHomeRunHost           string
 	ManifestURL             string
 	ProxyURL                string
 	Sources                 []LivePlaylistSource
@@ -374,6 +377,9 @@ func ResolveLiveSource(profile *LiveTVSettings, global *ResolvedLiveSource) Reso
 	}
 	if profile.PlaylistURL != nil {
 		r.PlaylistURL = *profile.PlaylistURL
+	}
+	if profile.HDHomeRunHost != nil {
+		r.HDHomeRunHost = *profile.HDHomeRunHost
 	}
 	if profile.ManifestURL != nil {
 		r.ManifestURL = *profile.ManifestURL

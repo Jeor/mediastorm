@@ -673,6 +673,7 @@ type LivePlaylistSource struct {
 	Name                  string               `json:"name"`
 	Mode                  string               `json:"mode,omitempty"`
 	PlaylistURL           string               `json:"playlistUrl"`
+	HDHomeRunHost         string               `json:"hdhomerunHost,omitempty"`
 	ManifestURL           string               `json:"manifestUrl,omitempty"` // Stremio addon manifest URL (used when mode is "stremio")
 	ProxyURL              string               `json:"proxyUrl"`
 	XtreamHost            string               `json:"xtreamHost,omitempty"`
@@ -719,8 +720,9 @@ type EPGSettings struct {
 
 // LiveSettings controls Live TV playlist caching behavior.
 type LiveSettings struct {
-	Mode                  string               `json:"mode"`        // "m3u", "xtream", "stremio", or "stalker"
+	Mode                  string               `json:"mode"`        // "m3u", "hdhomerun", "xtream", "stremio", or "stalker"
 	PlaylistURL           string               `json:"playlistUrl"` // M3U playlist URL (used when mode is "m3u")
+	HDHomeRunHost         string               `json:"hdhomerunHost,omitempty"`
 	ManifestURL           string               `json:"manifestUrl,omitempty"`
 	ProxyURL              string               `json:"proxyUrl,omitempty"`
 	Sources               []LivePlaylistSource `json:"sources,omitempty"`
@@ -748,6 +750,10 @@ type LiveSettings struct {
 // GetEffectivePlaylistURL returns the playlist URL based on the configured mode.
 // For Xtream Codes mode, it constructs the M3U URL from the credentials.
 func (ls *LiveSettings) GetEffectivePlaylistURL() string {
+	if strings.EqualFold(strings.TrimSpace(ls.Mode), "hdhomerun") {
+		lineup, _ := HDHomeRunURL(ls.HDHomeRunHost, "/lineup.m3u")
+		return lineup
+	}
 	if ls.Mode == "xtream" && ls.XtreamHost != "" && ls.XtreamUsername != "" && ls.XtreamPassword != "" {
 		host := strings.TrimRight(ls.XtreamHost, "/")
 		return fmt.Sprintf("%s/get.php?username=%s&password=%s&type=m3u&output=ts",

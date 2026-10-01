@@ -38,12 +38,16 @@ type Service struct {
 	storageDir string
 	client     *http.Client
 
-	mu                    sync.RWMutex
-	schedule              *models.EPGSchedule
-	refreshing            bool
-	lastError             string
-	discoveredSourceCount int
-	restoreDone           chan struct{}
+	mu                      sync.RWMutex
+	schedule                *models.EPGSchedule
+	refreshing              bool
+	lastError               string
+	discoveredSourceCount   int
+	restoreDone             chan struct{}
+	hdHomeRunProfileSources func(config.Settings) []config.LivePlaylistSource
+	hdHomeRunMu             sync.Mutex
+	hdHomeRunCache          map[string]hdHomeRunGuideCache
+	hdHomeRunGuideURL       string // test endpoint; production always uses SiliconDust
 
 	// normalizedIDIndex/normalizedNameIndex let findProgramsByChannelMatch resolve most
 	// misses with an O(1) lookup instead of the linear scan it used to always fall back to
@@ -142,6 +146,11 @@ func (s *Service) rebuildScheduleIndexLocked() {
 			continue
 		}
 		nameIndex[normalizeChannelID(ch.Name)] = channelID
+		for _, alias := range ch.Aliases {
+			if strings.TrimSpace(alias) != "" {
+				nameIndex[normalizeChannelID(alias)] = channelID
+			}
+		}
 	}
 	s.normalizedIDIndex = idIndex
 	s.normalizedNameIndex = nameIndex
@@ -334,12 +343,12 @@ func (s *Service) GetStatus() models.EPGStatus {
 	}
 
 	status := models.EPGStatus{
-		Enabled:      settings.Live.EPG.Enabled,
+		Enabled:      isEPGRefreshEnabled(settings) || len(s.hdHomeRunSources(settings)) > 0,
 		ChannelCount: len(s.schedule.Channels),
 		ProgramCount: s.countPrograms(),
 		Refreshing:   s.refreshing,
 		LastError:    s.lastError,
-		SourceCount:  countConfiguredXMLTVSources(settings) + s.discoveredSourceCount,
+		SourceCount:  countConfiguredXMLTVSources(settings) + len(s.hdHomeRunSources(settings)) + s.discoveredSourceCount,
 	}
 
 	if !s.schedule.LastUpdated.IsZero() {
@@ -399,7 +408,7 @@ func (s *Service) Refresh(ctx context.Context) error {
 		len(xtreamSources),
 	)
 
-	if !isEPGRefreshEnabled(settings) {
+	if !isEPGRefreshEnabled(settings) && len(s.hdHomeRunSources(settings)) == 0 {
 		return errors.New("EPG is disabled")
 	}
 
@@ -410,6 +419,17 @@ func (s *Service) Refresh(ctx context.Context) error {
 		LastUpdated: time.Now().UTC(),
 	}
 	var refreshErrors []string
+	hdSources := s.hdHomeRunSources(settings)
+	for _, source := range hdSources {
+		if err := s.fetchHDHomeRunEPG(ctx, source, newSchedule); err != nil {
+			refreshErrors = append(refreshErrors, fmt.Sprintf("HDHomeRun %s: %v", source.Name, err))
+		}
+	}
+
+	hdChannelIDs := make(map[string]bool, len(newSchedule.Programs))
+	for id := range newSchedule.Programs {
+		hdChannelIDs[id] = true
+	}
 
 	for _, source := range xtreamSources {
 		sourceSettings := source.settings
@@ -491,7 +511,12 @@ func (s *Service) Refresh(ctx context.Context) error {
 		retentionDays = 7
 	}
 	cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	futureDays := retentionDays
+	if len(hdSources) > 0 && futureDays < 14 {
+		futureDays = 14
+	}
 	futureLimit := time.Now().Add(time.Duration(retentionDays) * 24 * time.Hour)
+	hdFutureLimit := time.Now().Add(time.Duration(futureDays) * 24 * time.Hour)
 
 	// When a time offset is configured, programs are shifted at display time.
 	// Extend both cutoffs by the absolute offset to avoid premature pruning.
@@ -502,12 +527,17 @@ func (s *Service) Refresh(ctx context.Context) error {
 		}
 		cutoff = cutoff.Add(-abs)
 		futureLimit = futureLimit.Add(abs)
+		hdFutureLimit = hdFutureLimit.Add(abs)
 	}
 
 	for channelID, programs := range newSchedule.Programs {
+		channelFutureLimit := futureLimit
+		if hdChannelIDs[channelID] {
+			channelFutureLimit = hdFutureLimit
+		}
 		var filtered []models.EPGProgram
 		for _, prog := range programs {
-			if prog.Stop.After(cutoff) && prog.Start.Before(futureLimit) {
+			if prog.Stop.After(cutoff) && prog.Start.Before(channelFutureLimit) {
 				filtered = append(filtered, prog)
 			}
 		}
@@ -733,6 +763,11 @@ func (s *Service) parseXMLTV(reader io.Reader, schedule *models.EPGSchedule) err
 				epgChannel := models.EPGChannel{
 					ID:   normalizedID,
 					Name: getFirstLangValue(ch.DisplayName),
+				}
+				for _, name := range ch.DisplayName {
+					if strings.TrimSpace(name.Value) != "" {
+						epgChannel.Aliases = append(epgChannel.Aliases, name.Value)
+					}
 				}
 				if len(ch.Icon) > 0 {
 					epgChannel.Icon = ch.Icon[0].Src
@@ -1198,5 +1233,5 @@ func (s *Service) IsEnabled() bool {
 	if err != nil {
 		return false
 	}
-	return settings.Live.EPG.Enabled
+	return isEPGRefreshEnabled(settings) || len(s.hdHomeRunSources(settings)) > 0
 }

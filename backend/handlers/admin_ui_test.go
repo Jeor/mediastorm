@@ -2991,3 +2991,21 @@ func TestNavigationVisibilitySchemaIncludesCalendarAndRecordings(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminUIHandler_TestLiveTV_HDHomeRun(t *testing.T) {
+	handler, _ := setupAdminUIHandler(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/lineup.m3u" {
+			t.Errorf("unexpected tuner request: %s", r.URL.Path)
+		}
+		fmt.Fprint(w, "#EXTM3U\n#EXTINF:-1,TESTTV\nhttp://192.168.1.100:5004/auto/v5.1\n")
+	}))
+	defer server.Close()
+	body, _ := json.Marshal(map[string]string{"mode": "hdhomerun", "hdhomerunHost": server.URL})
+	rec := httptest.NewRecorder()
+	handler.TestLiveTV(rec, httptest.NewRequest(http.MethodPost, "/admin/api/test/live", bytes.NewReader(body)))
+	var result map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil || result["success"] != true {
+		t.Fatalf("tuner test failed: %s", rec.Body.String())
+	}
+}

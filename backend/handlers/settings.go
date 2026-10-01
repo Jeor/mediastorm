@@ -1354,6 +1354,8 @@ func epgConfigFingerprint(s config.Settings) string {
 	b.WriteString(strconv.FormatBool(s.Live.EPG.Enabled))
 	b.WriteString("|")
 	b.WriteString(strings.TrimSpace(s.Live.EPG.XmltvUrl))
+	b.WriteString(s.Live.Mode)
+	b.WriteString(s.Live.HDHomeRunHost)
 	for _, source := range s.Live.EPG.Sources {
 		b.WriteString("|g:")
 		b.WriteString(source.ID)
@@ -1365,6 +1367,10 @@ func epgConfigFingerprint(s config.Settings) string {
 		b.WriteString(strings.TrimSpace(source.URL))
 	}
 	for _, source := range configuredLivePlaylistSources(&s) {
+		b.WriteString(source.Mode)
+		b.WriteString(":")
+		b.WriteString(source.HDHomeRunHost)
+		b.WriteString(":")
 		b.WriteString("|s:")
 		b.WriteString(source.ID)
 		b.WriteString(":")
@@ -1428,6 +1434,9 @@ func hasEffectiveXtreamEPGConfig(s *config.Settings) bool {
 // auto-created EPG tasks when all guide configuration is absent.
 func (h *SettingsHandler) EnsureEPGTaskForGuide(s *config.Settings, reason string) bool {
 	summary := summarizeEPGGuideConfig(s)
+	if h.EPGService != nil && h.EPGService.HasHDHomeRunGuideForSettings(*s) {
+		summary.sourceEPGEnabled++
+	}
 	logEPGGuideConfig(reason, summary)
 
 	if !summary.hasGuideConfig() {
@@ -1478,6 +1487,9 @@ func (h *SettingsHandler) ensurePlaylistTaskIfConfigured(s *config.Settings) {
 			continue
 		}
 		switch strings.ToLower(strings.TrimSpace(src.Mode)) {
+		case "hdhomerun":
+			_, err := config.HDHomeRunURL(src.HDHomeRunHost, "/lineup.m3u")
+			liveTVConfigured = err == nil
 		case "xtream":
 			liveTVConfigured = strings.TrimSpace(src.XtreamHost) != "" && strings.TrimSpace(src.XtreamUsername) != "" && strings.TrimSpace(src.XtreamPassword) != ""
 		case "stremio":
@@ -1493,6 +1505,9 @@ func (h *SettingsHandler) ensurePlaylistTaskIfConfigured(s *config.Settings) {
 	}
 	if !liveTVConfigured {
 		switch s.Live.Mode {
+		case "hdhomerun":
+			_, err := config.HDHomeRunURL(s.Live.HDHomeRunHost, "/lineup.m3u")
+			liveTVConfigured = err == nil
 		case "m3u":
 			liveTVConfigured = strings.TrimSpace(s.Live.PlaylistURL) != ""
 		case "xtream":

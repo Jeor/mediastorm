@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"novastream/config"
 	"novastream/internal/requestsecurity"
 )
 
@@ -52,12 +53,20 @@ func configuredProviderHostPolicy(configManager ConfigProvider) requestsecurity.
 					addURLOrigin(scraper.URL)
 				}
 			}
+			if strings.EqualFold(settings.Live.Mode, "hdhomerun") {
+				lineup, _ := config.HDHomeRunURL(settings.Live.HDHomeRunHost, "/lineup.m3u")
+				addURLOrigin(lineup)
+			}
 			addURLOrigin(settings.Live.PlaylistURL)
 			addURLOrigin(settings.Live.ManifestURL)
 			addURLOrigin(settings.Live.XtreamHost)
 			addURLOrigin(settings.Live.StalkerPortalURL)
 			for _, source := range append(settings.Live.Sources, settings.Live.PlaylistSources...) {
 				if source.Enabled == nil || *source.Enabled {
+					if strings.EqualFold(source.Mode, "hdhomerun") {
+						lineup, _ := config.HDHomeRunURL(source.HDHomeRunHost, "/lineup.m3u")
+						addURLOrigin(lineup)
+					}
 					addURLOrigin(source.PlaylistURL)
 					addURLOrigin(source.ManifestURL)
 					addURLOrigin(source.XtreamHost)

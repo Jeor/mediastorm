@@ -1,0 +1,241 @@
+package epg
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"math/rand/v2"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"novastream/config"
+	"novastream/models"
+)
+
+const hdHomeRunGuideURL = "https://api.hdhomerun.com/api/xmltv"
+
+type hdHomeRunGuideCache struct {
+	NextRefresh time.Time           `json:"nextRefresh"`
+	Schedule    *models.EPGSchedule `json:"schedule,omitempty"`
+	LastError   string              `json:"lastError,omitempty"`
+}
+
+func hdHomeRunSources(settings config.Settings) []config.LivePlaylistSource {
+	sources := configuredLiveSources(settings)
+	if len(sources) == 0 {
+		sources = []config.LivePlaylistSource{{Mode: settings.Live.Mode, HDHomeRunHost: settings.Live.HDHomeRunHost, EPG: settings.Live.EPG}}
+	}
+	var result []config.LivePlaylistSource
+	seen := map[string]bool{}
+	for _, source := range sources {
+		if !liveSourceEnabled(source) || !strings.EqualFold(strings.TrimSpace(source.Mode), "hdhomerun") ||
+			(!settings.Live.EPG.Enabled && !source.EPG.Enabled) {
+			continue
+		}
+		// A source-specific XMLTV override replaces the built-in guide.
+		if len(appendEPGXMLTVSources(nil, source.EPG, "", "", 0)) > 0 {
+			continue
+		}
+		key, err := config.HDHomeRunURL(source.HDHomeRunHost, "/discover.json")
+		if err != nil {
+			key = source.HDHomeRunHost
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		result = append(result, source)
+	}
+	return result
+}
+
+// SetProfileHDHomeRunSources includes explicit profile tuner overrides in the
+// shared guide cache. The provider is called without holding service locks.
+func (s *Service) SetProfileHDHomeRunSources(provider func(config.Settings) []config.LivePlaylistSource) {
+	s.hdHomeRunMu.Lock()
+	s.hdHomeRunProfileSources = provider
+	s.hdHomeRunMu.Unlock()
+}
+
+func (s *Service) hdHomeRunSources(settings config.Settings) []config.LivePlaylistSource {
+	result := hdHomeRunSources(settings)
+	s.hdHomeRunMu.Lock()
+	provider := s.hdHomeRunProfileSources
+	s.hdHomeRunMu.Unlock()
+	if provider != nil {
+		extra := settings
+		extra.Live.EPG.Enabled = false
+		extra.Live.Sources = provider(settings)
+		extra.Live.PlaylistSources = nil
+		if len(extra.Live.Sources) > 0 {
+			result = append(result, hdHomeRunSources(extra)...)
+		}
+	}
+	seen := map[string]bool{}
+	unique := result[:0]
+	for _, source := range result {
+		key, _ := config.HDHomeRunURL(source.HDHomeRunHost, "/discover.json")
+		if key == "" {
+			key = source.HDHomeRunHost
+		}
+		if !seen[key] {
+			unique = append(unique, source)
+			seen[key] = true
+		}
+	}
+	return unique
+}
+
+func (s *Service) HasHDHomeRunGuideForSettings(settings config.Settings) bool {
+	return len(s.hdHomeRunSources(settings)) > 0
+}
+
+func (s *Service) HasHDHomeRunGuide() bool {
+	settings, err := s.cfgManager.Load()
+	return err == nil && len(s.hdHomeRunSources(settings)) > 0
+}
+
+// HDHomeRunRefreshDue lets the scheduler wake at the tuner's randomized deadline,
+// independently of the ordinary XMLTV task frequency. Refresh still reuses cached
+// tuner data when invoked by another guide source or manually before that deadline.
+func (s *Service) HDHomeRunRefreshDue() bool {
+	settings, err := s.cfgManager.Load()
+	if err != nil {
+		return false
+	}
+	sources := s.hdHomeRunSources(settings)
+	s.hdHomeRunMu.Lock()
+	defer s.hdHomeRunMu.Unlock()
+	for _, source := range sources {
+		key, err := config.HDHomeRunURL(source.HDHomeRunHost, "/discover.json")
+		if err != nil {
+			continue
+		}
+		cache, ok := s.hdHomeRunCache[key]
+		if !ok || !time.Now().Before(cache.NextRefresh) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) hdHomeRunCachePath(key string) string {
+	hash := sha256.Sum256([]byte(key))
+	return filepath.Join(s.storageDir, "epg", "hdhomerun-"+hex.EncodeToString(hash[:16])+".json")
+}
+
+func (s *Service) fetchHDHomeRunEPG(ctx context.Context, source config.LivePlaylistSource, target *models.EPGSchedule) error {
+	key, err := config.HDHomeRunURL(source.HDHomeRunHost, "/discover.json")
+	if err != nil {
+		return err
+	}
+	s.hdHomeRunMu.Lock()
+	if s.hdHomeRunCache == nil {
+		s.hdHomeRunCache = make(map[string]hdHomeRunGuideCache)
+	}
+	cache, loaded := s.hdHomeRunCache[key]
+	s.hdHomeRunMu.Unlock()
+	if !loaded {
+		if data, err := os.ReadFile(s.hdHomeRunCachePath(key)); err == nil {
+			_ = json.Unmarshal(data, &cache)
+		}
+	}
+	if !time.Now().Before(cache.NextRefresh) || (countSchedulePrograms(cache.Schedule) == 0 && cache.LastError == "") {
+		guide := &models.EPGSchedule{Channels: make(map[string]models.EPGChannel), Programs: make(map[string][]models.EPGProgram)}
+		err = s.downloadHDHomeRunGuide(ctx, key, guide)
+		if err == nil && countSchedulePrograms(guide) == 0 {
+			err = errors.New("HDHomeRun guide returned no usable programs")
+		}
+		if err == nil {
+			guide.LastUpdated = time.Now().UTC()
+			cache.Schedule = guide
+			cache.LastError = ""
+			cache.NextRefresh = time.Now().UTC().Add(20*time.Hour + time.Duration(rand.Int64N(int64(8*time.Hour))))
+		} else {
+			// Bound retries while retaining the last working tuner guide, even when
+			// other sources refresh successfully. Errors never contain DeviceAuth.
+			cache.LastError = err.Error()
+			cache.NextRefresh = time.Now().UTC().Add(time.Hour)
+		}
+		if data, marshalErr := json.Marshal(cache); marshalErr == nil {
+			path := s.hdHomeRunCachePath(key)
+			if writeErr := os.WriteFile(path+".tmp", data, 0600); writeErr == nil {
+				if renameErr := os.Rename(path+".tmp", path); renameErr != nil {
+					log.Print("[epg] failed to persist HDHomeRun guide cache")
+				}
+			} else {
+				log.Print("[epg] failed to persist HDHomeRun guide cache")
+			}
+		}
+	}
+	s.hdHomeRunMu.Lock()
+	s.hdHomeRunCache[key] = cache
+	s.hdHomeRunMu.Unlock()
+	if cache.Schedule != nil {
+		for id, channel := range cache.Schedule.Channels {
+			target.Channels[id] = channel
+		}
+		for id, programs := range cache.Schedule.Programs {
+			// Tuners in the same market commonly share station IDs. Import the
+			// first guide once rather than duplicate every program for each tuner.
+			if len(target.Programs[id]) == 0 {
+				target.Programs[id] = append([]models.EPGProgram(nil), programs...)
+			}
+		}
+		target.SourceType = "xmltv"
+	}
+	if cache.LastError != "" {
+		return errors.New(cache.LastError)
+	}
+	return nil
+}
+
+func (s *Service) downloadHDHomeRunGuide(ctx context.Context, discoveryURL string, schedule *models.EPGSchedule) error {
+	// DeviceAuth rotates every 16-24 hours: fetch it immediately before EVERY download.
+	ctx, cancel := context.WithTimeout(ctx, defaultHTTPTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
+	if err != nil {
+		return errors.New("invalid HDHomeRun discovery URL")
+	}
+	client := *s.client
+	client.Timeout = defaultHTTPTimeout
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return errors.New("HDHomeRun discovery redirect rejected")
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.New("could not reach HDHomeRun tuner for DeviceAuth")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HDHomeRun discovery returned HTTP %d", resp.StatusCode)
+	}
+	var device struct {
+		DeviceAuth string `json:"DeviceAuth"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 64*1024)).Decode(&device); err != nil || strings.TrimSpace(device.DeviceAuth) == "" {
+		return errors.New("HDHomeRun discovery did not return a valid DeviceAuth")
+	}
+	guideURL := hdHomeRunGuideURL
+	if s.hdHomeRunGuideURL != "" {
+		guideURL = s.hdHomeRunGuideURL
+	}
+	guideURL += "?" + url.Values{"DeviceAuth": {device.DeviceAuth}}.Encode()
+	// The existing importer explicitly requests and decodes gzip. Do not pass
+	// the rotating token through a configured proxy or include the URL in errors.
+	importer := Service{client: &client}
+	if err := importer.fetchXMLTVWithProxy(ctx, guideURL, "", schedule); err != nil {
+		return fmt.Errorf("HDHomeRun guide: %w", err)
+	}
+	return nil
+}

@@ -11,7 +11,7 @@ backend/mediastorm
 backend/mediastorm.exe
 backend/mediastorm-darwin
 backend/mediastorm-linux
-backend/iroh-host/target/
+backend/iroh-host/target
 archive/**/target/
 *.ipa
 frontend/scripts/build-appstore.sh

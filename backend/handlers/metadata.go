@@ -477,8 +477,8 @@ func (h *MetadataHandler) Search(w http.ResponseWriter, r *http.Request) {
 	// Check kids profile restrictions before searching
 	if userID != "" && h.UsersService != nil {
 		if user, ok := h.UsersService.Get(userID); ok && user.IsKidsProfile {
-			if user.KidsMode == "content_list" {
-				// Search is disabled for curated-list profiles
+			if user.KidsMode == "content_list" || mediaType == "person" {
+				// Curated profiles cannot search; kids cannot open actor filmographies.
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode([]models.SearchResult{})
 				return
@@ -492,6 +492,19 @@ func (h *MetadataHandler) Search(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
+	}
+	// Actor biographies link to unrestricted filmographies, just like the cast
+	// links hidden on details pages for kids profiles.
+	if userID != "" && h.UsersService != nil {
+		if user, ok := h.UsersService.Get(userID); ok && user.IsKidsProfile {
+			filtered := make([]models.SearchResult, 0, len(results))
+			for _, result := range results {
+				if result.Title.MediaType != "person" {
+					filtered = append(filtered, result)
+				}
+			}
+			results = filtered
+		}
 	}
 	policy := resolveUnreleasedVisibilityPolicy(
 		h.CfgManager,

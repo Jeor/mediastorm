@@ -1170,6 +1170,30 @@ func TestMetadataHandler_SearchNormalUserUnfiltered(t *testing.T) {
 	}
 }
 
+func TestMetadataHandler_ActorSearchRespectsKidsProfile(t *testing.T) {
+	for _, kidsProfile := range []bool{false, true} {
+		fake := &fakeMetadataService{searchResp: []models.SearchResult{
+			{Title: models.Title{ID: "tmdb:person:1136406", Name: "Tom Holland", MediaType: "person", TMDBID: 1136406}},
+		}}
+		handler := NewMetadataHandler(fake, testConfigManager(t))
+		handler.SetUsersService(&fakeUsersServiceForSearch{users: map[string]models.User{
+			"profile": {ID: "profile", IsKidsProfile: kidsProfile},
+		}})
+		rec := httptest.NewRecorder()
+		handler.Search(rec, httptest.NewRequest(http.MethodGet, "/api/search?q=Tom+Holland&type=person&userId=profile", nil))
+		var results []models.SearchResult
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &results) != nil {
+			t.Fatalf("invalid actor response: status=%d body=%s", rec.Code, rec.Body.String())
+		}
+		if kidsProfile && len(results) != 0 {
+			t.Fatal("kids profiles must not receive unrestricted biography links")
+		}
+		if !kidsProfile && (len(results) != 1 || results[0].Title.TMDBID != 1136406) {
+			t.Fatalf("expected actor result for regular profile: %+v", results)
+		}
+	}
+}
+
 func TestMetadataHandler_SearchReleasedOnlyUsesHomeReleaseWindows(t *testing.T) {
 	previousYear := time.Now().Year() - 1
 	fake := &fakeMetadataService{

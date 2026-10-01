@@ -65,7 +65,7 @@ type Title struct {
 	TextBackdrop      *Image      `json:"textBackdrop,omitempty"` // Original backdrop with text (preserved when Backdrop is overridden with textless)
 	Backdrops         []Image     `json:"backdrops,omitempty"`    // Additional backdrop options beyond the primary
 	Logo              *Image      `json:"logo,omitempty"`
-	MediaType         string      `json:"mediaType"` // series | movie
+	MediaType         string      `json:"mediaType"` // series | movie | person (search cards only)
 	TVDBID            int64       `json:"tvdbId,omitempty"`
 	IMDBID            string      `json:"imdbId,omitempty"`
 	TMDBID            int64       `json:"tmdbId,omitempty"`

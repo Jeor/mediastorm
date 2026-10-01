@@ -2698,11 +2698,15 @@ func (s *Service) Search(ctx context.Context, query string, mediaType string) ([
 	if s.demo {
 		return s.searchDemo(ctx, q, mediaType), nil
 	}
+	if mediaType == "person" {
+		return s.searchActors(ctx, q)
+	}
 
 	if mediaType == "" || mediaType == "all" {
 		movieResults, movieErr := s.Search(ctx, q, "movie")
 		seriesResults, seriesErr := s.Search(ctx, q, "series")
-		results := mergeSearchResults(append(movieResults, seriesResults...))
+		personResults, _ := s.Search(ctx, q, "person")
+		results := mergeSearchResults(append(append(movieResults, seriesResults...), personResults...))
 		ensureSearchMovieReleaseStatuses(results)
 		if len(results) > 0 || movieErr == nil || seriesErr == nil {
 			return results, nil

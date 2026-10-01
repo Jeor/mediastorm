@@ -2725,7 +2725,26 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 
 	cmd := exec.CommandContext(ctx, m.ffmpegPath, args...)
 	cmd.Dir = session.OutputDir
-	if proxyBody != nil {
+	if session.LiveTuning.HDHomeRunInput {
+		// Own the copier so Cmd.Wait does not join a Read blocked on a silent
+		// tuner after the encoder exits or is killed by the watchdog. Close the
+		// tuner body before joining, releasing it before the supervisor restarts.
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("create HDHomeRun input pipe: %w", err)
+		}
+		inputDone := make(chan struct{})
+		go func() {
+			defer close(inputDone)
+			_, _ = io.Copy(stdin, proxyBody)
+			_ = stdin.Close()
+		}()
+		defer func() {
+			_ = proxyBody.Close()
+			_ = stdin.Close()
+			<-inputDone
+		}()
+	} else if proxyBody != nil {
 		cmd.Stdin = proxyBody
 		defer proxyBody.Close()
 	}

@@ -5296,7 +5296,8 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	}
 
 	forceHLS := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("format")), "hls") ||
-		strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("target")), "web")
+		strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("target")), "web") ||
+		(hdHomeRunInput && strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("target")), "cast"))
 
 	// Determine stream format (default to "hls")
 	streamFormat := target.StreamFormat
@@ -5306,7 +5307,8 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 	// iOS Safari/WebKit cannot play the endless chunked MP4 that direct mode
 	// produces via <video src> (fails with MEDIA_ERR_SRC_NOT_SUPPORTED). Clients
 	// that explicitly request this HLS endpoint also need the managed HLS path
-	// instead of the direct live proxy.
+	// instead of the direct live proxy. HDHomeRun's raw transport stream needs
+	// the compatibility HLS transcode for Cast, even when configured direct.
 	if streamFormat == "direct" && forceHLS {
 		log.Printf("[video] forcing HLS for live client (source configured direct) url=%s", requestsecurity.URLForLog(liveURL))
 		streamFormat = "hls"

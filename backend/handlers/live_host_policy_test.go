@@ -143,17 +143,27 @@ func TestStartLiveHDHomeRunSessionAllowsTunerStreamPort(t *testing.T) {
 		_, _ = w.Write([]byte("transport-stream-fixture"))
 	}))
 	defer proxy.Close()
-	for _, format := range []string{"direct", "hls"} {
-		t.Run(format, func(t *testing.T) {
+	for _, tc := range []struct {
+		format, target string
+		wantHLS        bool
+	}{
+		{"direct", "native", false},
+		{"direct", "web", true},
+		{"direct", "cast", true},
+		{"hls", "native", true},
+		{"hls", "web", true},
+		{"hls", "cast", true},
+	} {
+		t.Run(tc.format+"/"+tc.target, func(t *testing.T) {
 			// Stub FFmpeg: this checks session authorization, not tuner playback.
 			h := NewVideoHandlerWithProvider(true, "/usr/bin/true", "/usr/bin/true", t.TempDir(), nil)
 			t.Cleanup(h.hlsManager.Shutdown)
 			h.SetConfigManager(fakeLiveUsageConfigProvider{settings: config.Settings{
-				Live: config.LiveSettings{Mode: "m3u", PlaylistURL: "http://192.168.1.100/lineup.m3u", StreamFormat: format, ProxyURL: proxy.URL},
+				Live: config.LiveSettings{Mode: "m3u", PlaylistURL: "http://192.168.1.100/lineup.m3u", StreamFormat: tc.format, ProxyURL: proxy.URL},
 			}})
 			streamURL := "http://192.168.1.100:5004/auto/v5.1"
 			h.SetLiveChannelProvider(staticLiveChannelProvider{channels: []LiveChannel{{ID: "channel-5", SourceID: "default", URL: streamURL}}})
-			request := httptest.NewRequest(http.MethodGet, "/live/hls/start?url="+url.QueryEscape(streamURL), nil)
+			request := httptest.NewRequest(http.MethodGet, "/live/hls/start?target="+tc.target+"&url="+url.QueryEscape(streamURL), nil)
 			response := httptest.NewRecorder()
 			h.StartLiveHLSSession(response, request)
 			if response.Code != http.StatusOK {
@@ -166,14 +176,35 @@ func TestStartLiveHDHomeRunSessionAllowsTunerStreamPort(t *testing.T) {
 			if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
-			if format == "hls" {
+			if tc.wantHLS {
 				session, ok := h.hlsManager.GetSession(result.SessionID)
-				if !ok || session.Path != streamURL || !session.LiveTuning.HDHomeRunInput {
+				if !ok || session.Path != streamURL || !session.LiveTuning.HDHomeRunInput || session.PlaybackTarget != tc.target {
 					t.Fatal("HLS session did not retain the tuner stream URL")
 				}
 			} else if !strings.HasPrefix(result.StreamURL, "/live/stream?") {
 				t.Fatalf("direct stream URL=%q", result.StreamURL)
 			}
 		})
+	}
+}
+
+func TestStartLiveOrdinaryDirectCastRetainsDirectMode(t *testing.T) {
+	h := NewVideoHandlerWithProvider(true, "/usr/bin/true", "/usr/bin/true", t.TempDir(), nil)
+	t.Cleanup(h.hlsManager.Shutdown)
+	h.SetConfigManager(fakeLiveUsageConfigProvider{settings: config.Settings{
+		Live: config.LiveSettings{Mode: "m3u", PlaylistURL: "https://93.184.216.34/channels.m3u", StreamFormat: "direct"},
+	}})
+	response := httptest.NewRecorder()
+	h.StartLiveHLSSession(response, httptest.NewRequest(http.MethodGet,
+		"/live/hls/start?target=cast&url="+url.QueryEscape("https://93.184.216.34/channel.ts"), nil))
+	var result struct {
+		IsDirect  bool   `json:"isDirect"`
+		StreamURL string `json:"streamUrl"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != http.StatusOK || !result.IsDirect || !strings.HasPrefix(result.StreamURL, "/live/stream?") {
+		t.Fatalf("ordinary direct Cast response: status=%d body=%s", response.Code, response.Body.String())
 	}
 }

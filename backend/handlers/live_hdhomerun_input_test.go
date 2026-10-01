@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -85,16 +86,28 @@ func TestHDHomeRunDirectHLSAndQualityFromTransportStreamFixture(t *testing.T) {
 		}
 	}
 
-	session := &HLSSession{
-		ID: "tuner-fixture", Path: streamURL, LiveProvider: "m3u", IsLive: true,
-		OutputDir: filepath.Join(dir, "hls"), PlaybackTarget: "native", LastSegmentRequest: time.Now(),
-		LiveTuning: LiveTuningSettings{HDHomeRunInput: true},
-	}
 	m := &HLSManager{ffmpegPath: ffmpeg}
-	if err := m.startLiveTranscoding(ctx, session, 0); err != nil {
-		t.Fatalf("HLS from tuner fixture: %v", err)
+	for _, target := range []string{"native", "web", "cast"} {
+		t.Run("HLS/"+target, func(t *testing.T) {
+			session := &HLSSession{
+				ID: "tuner-fixture-" + target, Path: streamURL, LiveProvider: "m3u", IsLive: true,
+				OutputDir: filepath.Join(dir, "hls-"+target), PlaybackTarget: target, LastSegmentRequest: time.Now(),
+				LiveTuning: LiveTuningSettings{HDHomeRunInput: true},
+			}
+			if err := m.startLiveTranscoding(ctx, session, 0); err != nil {
+				t.Fatalf("HLS from tuner fixture: %v", err)
+			}
+			playlist := filepath.Join(session.OutputDir, "stream.m3u8")
+			assertHDHomeRunFixtureDecodes(t, ctx, ffmpeg, playlist)
+			if target != "native" {
+				probe := exec.CommandContext(ctx, ffprobe, "-v", "error", "-show_entries", "stream=codec_name", "-of", "csv=p=0", playlist)
+				output, err := probe.CombinedOutput()
+				if err != nil || !strings.Contains(string(output), "h264") || !strings.Contains(string(output), "aac") {
+					t.Fatalf("compatibility codecs: %v %s", err, output)
+				}
+			}
+		})
 	}
-	assertHDHomeRunFixtureDecodes(t, ctx, ffmpeg, filepath.Join(session.OutputDir, "stream.m3u8"))
 
 	video := &VideoHandler{ffprobePath: ffprobe, configManager: staticSecurityConfigProvider{settings},
 		liveChannels: staticLiveChannelProvider{channels: []LiveChannel{{ID: "channel-5", SourceID: "tuner", URL: streamURL}}}}
@@ -130,5 +143,45 @@ func assertHDHomeRunFixtureDecodes(t *testing.T, ctx context.Context, ffmpeg, pa
 	}
 	if frames == 0 {
 		t.Fatalf("output decoded no video frames: %s", output)
+	}
+}
+
+func TestHDHomeRunHLSProcessExitReleasesStalledInput(t *testing.T) {
+	failingProcess, err := exec.LookPath("false")
+	if err != nil {
+		t.Skip("false executable unavailable")
+	}
+	reader, writer := io.Pipe()
+	defer reader.Close()
+	defer writer.Close()
+	original := http.DefaultTransport
+	http.DefaultTransport = discoveryTestTransport(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: reader}, nil
+	})
+	defer func() { http.DefaultTransport = original }()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	session := &HLSSession{
+		ID: "stalled-tuner", Path: "http://192.168.1.100:5004/auto/v5.1", LiveProvider: "m3u", IsLive: true,
+		OutputDir: t.TempDir(), PlaybackTarget: "cast", LastSegmentRequest: time.Now(),
+		LiveTuning: LiveTuningSettings{HDHomeRunInput: true},
+	}
+	m := &HLSManager{ffmpegPath: failingProcess}
+	done := make(chan error, 1)
+	go func() { done <- m.startLiveTranscoding(ctx, session, 0) }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("failed encoder reported success")
+		}
+	case <-time.After(5 * time.Second):
+		// Unblock the mocked body and join before restoring the transport.
+		cancel()
+		reader.Close()
+		<-done
+		t.Fatal("encoder exit remained blocked on the stalled tuner input")
+	}
+	if _, err := writer.Write([]byte("late tuner data")); err != io.ErrClosedPipe {
+		t.Fatalf("tuner connection still open after encoder exit: %v", err)
 	}
 }

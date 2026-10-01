@@ -330,6 +330,7 @@ func (h *MetadataHandler) serviceForUser(userID string) metadataService {
 
 // DiscoverNewResponse wraps trending items with total count for pagination
 type DiscoverNewResponse struct {
+	MetadataPending bool                  `json:"metadataPending,omitempty"`
 	Items           []models.TrendingItem `json:"items"`
 	Total           int                   `json:"total"`
 	UnfilteredTotal int                   `json:"unfilteredTotal,omitempty"` // Pre-filter total (only set when hideUnreleased is used)
@@ -1077,6 +1078,8 @@ func (h *MetadataHandler) TrailerPrequeueServe(w http.ResponseWriter, r *http.Re
 
 // CustomListResponse wraps custom list items with total count for pagination
 type CustomListResponse struct {
+	TotalPending    bool                  `json:"totalPending,omitempty"`
+	MetadataPending bool                  `json:"metadataPending,omitempty"`
 	Items           []models.TrendingItem `json:"items"`
 	Total           int                   `json:"total"`
 	UnfilteredTotal int                   `json:"unfilteredTotal,omitempty"` // Pre-filter total (only set when hideUnreleased is used)
@@ -1266,6 +1269,21 @@ func (h *MetadataHandler) CustomList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	service := h.serviceForUser(userID)
+	if svc, ok := service.(shelfCardsService); ok && progressiveShelfRequest(r) {
+		source, err := svc.GetCustomListSource(r.Context(), listURL)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		resp, err := h.progressiveCuratedShelf(r, service, source, opts.Label, userID, hideUnreleased, hideWatched, limit, offset)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
 	items, filteredTotal, unfilteredTotal, err := service.GetCustomList(r.Context(), listURL, opts)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -1437,8 +1455,11 @@ func (h *MetadataHandler) TraktList(w http.ResponseWriter, r *http.Request) {
 
 	curated := make([]metadatapkg.CuratedItem, 0, len(sourceItems))
 	for _, item := range sourceItems {
+		tmdbID, _ := strconv.ParseInt(item.TMDBID, 10, 64)
+		tvdbID, _ := strconv.ParseInt(item.TVDBID, 10, 64)
 		curated = append(curated, metadatapkg.CuratedItem{
-			Title:     item.Title,
+			Title:  item.Title,
+			TMDBID: tmdbID, TVDBID: tvdbID,
 			Year:      item.Year,
 			IMDBID:    item.IMDBID,
 			MediaType: item.MediaType,
@@ -1454,6 +1475,13 @@ func (h *MetadataHandler) TraktList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if _, ok := h.serviceForUser(userID).(shelfCardsService); ok && progressiveShelfRequest(r) {
+		resp := h.buildShelfFromCurated(w, r, curated, label, userID, hideUnreleased, hideWatched, limit, offset)
+		if resp != nil {
+			json.NewEncoder(w).Encode(resp)
+		}
+		return
+	}
 	service := h.serviceForUser(userID)
 	items, err := getCuratedListForRequest(r, service, curated, label)
 	if err != nil {
@@ -1907,6 +1935,15 @@ func (h *MetadataHandler) LetterboxdSources(w http.ResponseWriter, r *http.Reque
 // (after writing an error) on failure.
 func (h *MetadataHandler) buildShelfFromCurated(w http.ResponseWriter, r *http.Request, curated []metadatapkg.CuratedItem, label, userID string, hideUnreleased, hideWatched bool, limit, offset int) *CustomListResponse {
 	service := h.serviceForUser(userID)
+	if _, ok := service.(shelfCardsService); ok && progressiveShelfRequest(r) {
+		resp, err := h.progressiveCuratedShelf(r, service, curated, label, userID, hideUnreleased, hideWatched, limit, offset)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadGateway)
+			return nil
+		}
+		w.Header().Set("Content-Type", "application/json")
+		return resp
+	}
 	items, err := getCuratedListForRequest(r, service, curated, label)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadGateway)
@@ -2067,6 +2104,16 @@ func (h *MetadataHandler) TMDBList(w http.ResponseWriter, r *http.Request) {
 		Offset:        offset,
 		ArtworkLimit:  loadOpts.ArtworkLimit,
 	}
+	if _, ok := service.(shelfCardsService); ok && progressiveShelfRequest(r) {
+		response, err := h.progressiveTMDBShelf(r, service, svc, opts, userID, hideUnreleased, hideWatched, limit, offset)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 	if postFilterPagination {
 		// Visibility filters run after TMDB mapping. Load the bounded source
 		// result from the beginning so filtering cannot leave a short page or
@@ -2115,7 +2162,7 @@ func (h *MetadataHandler) TMDBList(w http.ResponseWriter, r *http.Request) {
 	}
 	enrichTrendingRatings(items, service)
 
-	response := DiscoverNewResponse{Items: items, Total: total}
+	response := DiscoverNewResponse{MetadataPending: r.URL.Query().Get("shelfPhase") == "cards", Items: items, Total: total}
 	if hideUnreleased || hideWatched || total != unfilteredTotal {
 		response.UnfilteredTotal = unfilteredTotal
 	}
@@ -2210,7 +2257,7 @@ func (h *MetadataHandler) DiscoverByGenre(w http.ResponseWriter, r *http.Request
 	)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(DiscoverNewResponse{Items: items, Total: total})
+	json.NewEncoder(w).Encode(DiscoverNewResponse{MetadataPending: r.URL.Query().Get("shelfPhase") == "cards", Items: items, Total: total})
 }
 
 // DiscoverByDecade returns TMDB discover results for a specific decade
@@ -2300,7 +2347,7 @@ func (h *MetadataHandler) DiscoverByDecade(w http.ResponseWriter, r *http.Reques
 	)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(DiscoverNewResponse{Items: items, Total: total})
+	json.NewEncoder(w).Encode(DiscoverNewResponse{MetadataPending: r.URL.Query().Get("shelfPhase") == "cards", Items: items, Total: total})
 }
 
 // GetAIRecommendations returns AI-powered personalized recommendations.

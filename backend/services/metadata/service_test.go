@@ -3332,7 +3332,7 @@ func TestSeriesDetailsParsesTMDBTitleIDBeforeResolvingTVDB(t *testing.T) {
 	}
 }
 
-func TestGetCacheManagerStatusCountsV5CustomListCache(t *testing.T) {
+func TestGetCacheManagerStatusCountsCurrentShelfSourceCache(t *testing.T) {
 	tempDir := t.TempDir()
 	svc := &Service{
 		cache:  newFileCache(tempDir, 24),
@@ -3342,8 +3342,8 @@ func TestGetCacheManagerStatusCountsV5CustomListCache(t *testing.T) {
 		return []CustomListInfo{{URL: "https://mdblist.com/lists/test/list/json", Name: "Test List"}}
 	}
 
-	cacheID := cacheKey("mdblist", "custom", "v5", "https://mdblist.com/lists/test/list/json", "eng")
-	if err := svc.cache.set(cacheID, []models.TrendingItem{{Rank: 1, Title: models.Title{Name: "Cached"}}}); err != nil {
+	cacheID := cacheKey("shelf-source", "v1", "https://mdblist.com/lists/test/list/json")
+	if err := svc.cache.set(cacheID, []mdblistItem{{Rank: 1, Title: "Cached"}}); err != nil {
 		t.Fatalf("set custom list cache: %v", err)
 	}
 

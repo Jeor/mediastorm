@@ -38,7 +38,9 @@ const startupTMDBShelfLimit = 25
 // The startup bundle gates several frontend providers, so keep this short and
 // fail open with partial data instead of stalling the whole home screen.
 const startupTrendingTimeout = 1500 * time.Millisecond
-const startupHomeBundleTimeout = 3500 * time.Millisecond
+
+// Opportunistically include warm shelves; cold providers must not hold startup.
+const startupHomeBundleTimeout = 250 * time.Millisecond
 
 // startupCalendarService is the subset of the calendar service used by the
 // startup handler. It reads only from the pre-built cache (non-blocking).
@@ -136,6 +138,8 @@ type StartupResponse struct {
 }
 
 type StartupHomeShelfResponse struct {
+	TotalPending    bool                  `json:"totalPending,omitempty"`
+	MetadataPending bool                  `json:"metadataPending,omitempty"`
 	Source          string                `json:"source"`
 	ListID          string                `json:"listId,omitempty"`
 	Items           []models.TrendingItem `json:"items"`
@@ -1067,6 +1071,8 @@ func isStartupFetchableCustomShelf(shelf models.ShelfConfig) bool {
 func startupDisplayListQueryForShelf(shelf models.ShelfConfig, homeShelfLimit int, hideWatched bool, clientID string) (url.Values, bool) {
 	limit := startupCustomShelfFetchLimit(shelf, homeShelfLimit)
 	query := url.Values{}
+	query.Set("shelfPhase", "cards")
+	query.Set("deferArtwork", "true")
 	if limit > 0 {
 		query.Set("limit", strconv.Itoa(limit))
 	}

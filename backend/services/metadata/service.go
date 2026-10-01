@@ -244,6 +244,12 @@ func (s *Service) WithLanguage(language string) *Service {
 		topTenInFlight:      sync.Map{},
 		cachedFetchInFlight: sync.Map{},
 	}
+	if s.tmdb != nil {
+		local.tmdb.requestLimiter = s.tmdb
+		if s.tmdb.requestLimiter != nil {
+			local.tmdb.requestLimiter = s.tmdb.requestLimiter
+		}
+	}
 	local.allowAdultSearch.Store(s.allowAdultSearch.Load())
 
 	s.ytdlpProxyMu.RLock()
@@ -483,12 +489,12 @@ func (s *Service) GetCacheManagerStatus() CacheManagerStatus {
 	if s.client != nil {
 		lang = s.client.language
 	}
-	movieKey := cacheKey("mdblist", "trending", "movie", "v7", lang)
+	movieKey := cacheKey("mdblist", "trending", "movie", "v8", "full", lang)
 	var movies []models.TrendingItem
 	if ok, _ := s.cache.get(movieKey, &movies); ok {
 		status.MoviesCached = len(movies)
 	}
-	seriesKey := cacheKey("mdblist", "trending", "series", "v7", lang)
+	seriesKey := cacheKey("mdblist", "trending", "series", "v8", "full", lang)
 	var series []models.TrendingItem
 	if ok, _ := s.cache.get(seriesKey, &series); ok {
 		status.SeriesCached = len(series)
@@ -498,13 +504,10 @@ func (s *Service) GetCacheManagerStatus() CacheManagerStatus {
 		infos := s.customListInfoFn()
 		cached := 0
 		for _, info := range infos {
-			var items []models.TrendingItem
-			for _, version := range []string{"v6", "v5"} {
-				k := cacheKey("mdblist", "custom", version, info.URL, lang)
-				if ok, _ := s.cache.get(k, &items); ok && len(items) > 0 {
-					cached++
-					break
-				}
+			var items []mdblistItem
+			k := cacheKey("shelf-source", "v1", resolveStreamingListURL(info.URL))
+			if ok, _ := s.cache.getWithMaxAge(k, &items, shelfSourceTTL); ok && len(items) > 0 {
+				cached++
 			}
 		}
 		status.CustomListsCached = cached
@@ -529,8 +532,8 @@ func (s *Service) RefreshTrendingCache() {
 		if s.client != nil {
 			lang = s.client.language
 		}
-		_ = s.cache.set(cacheKey("mdblist", "trending", "movie", "v7", lang), []models.TrendingItem{})
-		_ = s.cache.set(cacheKey("mdblist", "trending", "series", "v7", lang), []models.TrendingItem{})
+		_ = s.cache.set(cacheKey("mdblist", "trending", "movie", "v8", "full", lang), []models.TrendingItem{})
+		_ = s.cache.set(cacheKey("mdblist", "trending", "series", "v8", "full", lang), []models.TrendingItem{})
 
 		s.warmTrendingCache()
 		elapsed := time.Since(start)
@@ -864,8 +867,14 @@ func (s *Service) warmTrendingCache() {
 					defer wg.Done()
 					sem <- struct{}{}
 					defer func() { <-sem }()
-					opts := CustomListOptions{Limit: 0, Offset: 0, Label: info.Name}
-					if _, _, _, err := s.GetCustomList(ctx, info.URL, opts); err != nil {
+					source, err := s.GetCustomListSource(ctx, info.URL)
+					if err == nil {
+						if len(source) > 40 {
+							source = source[:40]
+						}
+						_, err = s.GetShelfCards(ctx, source)
+					}
+					if err != nil {
 						log.Printf("[metadata] cache manager: custom list error url=%s: %v", info.URL, err)
 					}
 				}(info)
@@ -9910,6 +9919,9 @@ func parseTVDBSearchYear(year string) (int, bool) {
 // Pre-filters watched/unreleased items before enrichment so only displayed items incur full
 // TVDB lookups. Returns (items, filteredTotal, unfilteredTotal, error).
 func (s *Service) GetCustomList(ctx context.Context, listURL string, opts CustomListOptions) ([]models.TrendingItem, int, int, error) {
+	if opts.DeferArtwork {
+		ctx = withDeferredShelfArtwork(ctx)
+	}
 	listURL = resolveStreamingListURL(listURL)
 	hideMovies := opts.HideUnreleased || opts.HideUnreleasedMovies
 	hideShows := opts.HideUnreleased || opts.HideUnreleasedShows
@@ -9980,7 +9992,7 @@ func (s *Service) GetCustomList(ctx context.Context, listURL string, opts Custom
 	}
 
 	// Fetch raw items from MDBList API
-	rawItems, err := s.client.FetchMDBListCustom(listURL)
+	rawItems, err := s.cachedCustomListSource(ctx, listURL)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch custom MDBList: %w", err)
 	}
@@ -10075,6 +10087,11 @@ type CuratedItem struct {
 	TMDBID    int64  `json:"tmdbId,omitempty"`
 	TVDBID    int64  `json:"tvdbId,omitempty"`
 	MediaType string `json:"mediaType"`
+	// Base metadata supplied by a catalog; optional fields never determine identity.
+	PosterURL   string   `json:"posterUrl,omitempty"`
+	BackdropURL string   `json:"backdropUrl,omitempty"`
+	Overview    string   `json:"overview,omitempty"`
+	Genres      []string `json:"genres,omitempty"`
 }
 
 const tmdbMovieTitleYearFailureTTL = 10 * time.Minute
@@ -10151,7 +10168,7 @@ func (s *Service) GetCuratedListWithOptions(ctx context.Context, items []Curated
 	for i, ci := range items {
 		mediaType := curatedItemMediaType(ci.MediaType)
 		tmdbID := ci.TMDBID
-		if tmdbID <= 0 && mediaType == "movie" && strings.TrimSpace(ci.Title) != "" {
+		if tmdbID <= 0 && ci.IMDBID == "" && ci.TVDBID <= 0 && mediaType == "movie" && strings.TrimSpace(ci.Title) != "" {
 			tmdbID = s.resolveTMDBMovieByTitleYear(ctx, ci.Title, ci.Year)
 		}
 		imdbID := ci.IMDBID

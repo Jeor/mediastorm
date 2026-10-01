@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -487,7 +488,17 @@ func (h *DisplayListHandler) delegateMetadata(
 	query url.Values,
 ) {
 	query = cappedDisplayListQuery(query)
-	delegated := r.Clone(r.Context())
+	filters := &progressiveShelfFilters{}
+	ctx := r.Context()
+	if progressiveShelfRequest(r) && progressiveShelfSource(source) {
+		filters.hidden = h.HiddenItemsService
+		if filters.hidden != nil {
+			items, err := filters.hidden.List(query.Get("userId"))
+			filters.hasHidden = err != nil || len(items) > 0
+		}
+		ctx = context.WithValue(ctx, progressiveShelfFiltersKey{}, filters)
+	}
+	delegated := r.Clone(ctx)
 	delegatedURL := *r.URL
 	delegatedURL.RawQuery = query.Encode()
 	delegated.URL = &delegatedURL
@@ -512,7 +523,7 @@ func (h *DisplayListHandler) delegateMetadata(
 	}
 
 	normalised := normaliseDisplayListPayload(source, payload)
-	if h.HiddenItemsService != nil {
+	if h.HiddenItemsService != nil && !filters.applied {
 		normalised = h.filterHiddenPayload(query.Get("userId"), normalised)
 	}
 	capDisplayListPayload(normalised, query)

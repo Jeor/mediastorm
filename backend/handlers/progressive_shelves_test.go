@@ -1,0 +1,194 @@
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/gorilla/mux"
+	"net/http/httptest"
+	"testing"
+
+	"novastream/models"
+	"novastream/services/metadata"
+)
+
+type progressiveTestService struct {
+	metadataService
+	cards   int
+	full    int
+	hideOdd bool
+}
+
+func (s *progressiveTestService) MDBListIsEnabled() bool { return false }
+func (s *progressiveTestService) GetCustomListSource(context.Context, string) ([]metadata.CuratedItem, error) {
+	return nil, nil
+}
+func (s *progressiveTestService) GetShelfCards(_ context.Context, items []metadata.CuratedItem) ([]models.TrendingItem, error) {
+	s.cards += len(items)
+	out := make([]models.TrendingItem, len(items))
+	for i, item := range items {
+		out[i].Title = models.Title{ID: fmt.Sprint(item.TMDBID), Name: item.Title, TMDBID: item.TMDBID, MediaType: item.MediaType, Certification: "PG"}
+	}
+	return out, nil
+}
+func (s *progressiveTestService) FilterShelfVisibility(_ context.Context, items []models.TrendingItem, movies, shows bool) []models.TrendingItem {
+	result := []models.TrendingItem{}
+	for _, item := range items {
+		if !s.hideOdd || item.Title.TMDBID%2 == 0 {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+func (s *progressiveTestService) GetCuratedList(_ context.Context, items []metadata.CuratedItem, _ string) ([]models.TrendingItem, error) {
+	s.full += len(items)
+	out := make([]models.TrendingItem, len(items))
+	for i, item := range items {
+		out[i].Title = models.Title{ID: "different", TMDBID: item.TMDBID, Name: item.Title, Genres: []string{"Drama"}}
+	}
+	return out, nil
+}
+func (s *progressiveTestService) EnrichTrendingCertifications(_ context.Context, items []models.TrendingItem) {
+	for i := range items {
+		if items[i].Title.TMDBID%2 != 0 {
+			items[i].Title.Certification = "R"
+		}
+	}
+}
+func progressiveSource(n int) []metadata.CuratedItem {
+	out := make([]metadata.CuratedItem, n)
+	for i := range out {
+		out[i] = metadata.CuratedItem{TMDBID: int64(i + 1), Title: fmt.Sprint(i + 1), MediaType: "movie"}
+	}
+	return out
+}
+
+func TestProgressiveShelfReadsOnlyVisiblePageThenCompletes(t *testing.T) {
+	h := &MetadataHandler{}
+	s := &progressiveTestService{hideOdd: true}
+	source := progressiveSource(200)
+	r := httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20", nil)
+	first, err := h.progressiveCuratedShelf(r, s, source, "test", "", true, false, 20, 0)
+	if err != nil || len(first.Items) != 20 || s.cards != 40 || s.full != 0 || !first.TotalPending || !first.MetadataPending {
+		t.Fatalf("first=%+v cards=%d full=%d err=%v", first, s.cards, s.full, err)
+	}
+	if first.Items[0].Title.TMDBID != 2 || first.Items[19].Title.TMDBID != 40 {
+		t.Fatal("filtering/source order changed")
+	}
+	r = httptest.NewRequest("GET", "/?shelfPhase=complete&limit=20", nil)
+	full, err := h.progressiveCuratedShelf(r, s, source, "test", "", true, false, 20, 0)
+	if err != nil || full.Total != 100 || full.TotalPending || full.MetadataPending || s.full != 20 {
+		t.Fatalf("full=%+v hydrate=%d err=%v", full, s.full, err)
+	}
+	for i := range full.Items {
+		if full.Items[i].Title.ID != first.Items[i].Title.ID {
+			t.Fatal("background pass changed identity")
+		}
+	}
+}
+
+func TestProgressiveShelfFiltersHomeViewBeforePagination(t *testing.T) {
+	h := &MetadataHandler{}
+	s := &progressiveTestService{}
+	source := progressiveSource(200)
+	for i := range source {
+		if i%2 == 0 {
+			source[i].MediaType = "series"
+		}
+	}
+	r := httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20&filterMediaType=movie", nil)
+	first, err := h.progressiveCuratedShelf(r, s, source, "test", "", false, false, 20, 20)
+	if err != nil || first.Total != 100 || first.TotalPending || len(first.Items) != 20 || first.Items[0].Title.TMDBID != 42 {
+		t.Fatalf("wrong page: %+v %v", first, err)
+	}
+}
+
+func TestProgressiveShelfAdvancedSortUsesEstablishedPath(t *testing.T) {
+	for _, query := range []string{"shelfPhase=cards&limit=20&sortBy=rating", "shelfPhase=cards&limit=20&genres=Drama", "shelfPhase=cards&limit=0"} {
+		if progressiveShelfRequest(httptest.NewRequest("GET", "/?"+query, nil)) {
+			t.Fatalf("incomplete index used for %s", query)
+		}
+	}
+	if !progressiveShelfRequest(httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20&filterMediaType=movie", nil)) {
+		t.Fatal("media filter should use source index")
+	}
+}
+
+func TestProgressiveShelfKidsFilterBeforePagePublication(t *testing.T) {
+	h := &MetadataHandler{UsersService: &fakeUsersServiceForSearch{users: map[string]models.User{"kid": {ID: "kid", IsKidsProfile: true, KidsMode: "rating", KidsMaxMovieRating: "PG"}}}}
+	s := &progressiveTestService{}
+	r := httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20", nil)
+	resp, err := h.progressiveCuratedShelf(r, s, progressiveSource(100), "test", "kid", false, false, 20, 0)
+	if err != nil || len(resp.Items) != 20 || s.cards != 40 {
+		t.Fatalf("kids page=%+v cards=%d err=%v", resp, s.cards, err)
+	}
+	for _, item := range resp.Items {
+		if item.Title.Certification != "PG" || item.Title.TMDBID%2 != 0 {
+			t.Fatal("disallowed card published")
+		}
+	}
+}
+
+type progressiveHiddenTest struct{ hiddenItemsService }
+
+func (progressiveHiddenTest) IsHidden(_ string, _ string, id string, _ map[string]string) bool {
+	return id == "1" || id == "2"
+}
+func TestProgressiveShelfHiddenItemsBackfillAndExactTotals(t *testing.T) {
+	filters := &progressiveShelfFilters{hidden: progressiveHiddenTest{}, hasHidden: true}
+	r := httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20", nil)
+	r = r.WithContext(context.WithValue(r.Context(), progressiveShelfFiltersKey{}, filters))
+	h := &MetadataHandler{}
+	s := &progressiveTestService{}
+	resp, err := h.progressiveCuratedShelf(r, s, progressiveSource(25), "test", "user", false, false, 20, 0)
+	if err != nil || len(resp.Items) != 20 || resp.Items[0].Title.ID != "3" || resp.Total != 23 || resp.TotalPending || !filters.applied {
+		t.Fatalf("hidden filter/pagination: %+v %v", resp, err)
+	}
+}
+
+type progressiveRouteService struct{ progressiveTestService }
+
+func (s *progressiveRouteService) GetCustomListSource(context.Context, string) ([]metadata.CuratedItem, error) {
+	return progressiveSource(200), nil
+}
+func TestProgressiveShelfDisplayRouteKeepsTotalAndPageSize(t *testing.T) {
+	s := &progressiveRouteService{}
+	h := &DisplayListHandler{MetadataHandler: &MetadataHandler{Service: s}, HiddenItemsService: paginationHiddenItemsService{}}
+	r := httptest.NewRequest("GET", "/users/u/display-list?source=mdblist&url=https://mdblist.com/lists/test/test/json&shelfPhase=cards&limit=20&homeView=movies", nil)
+	r = mux.SetURLVars(r, map[string]string{"userID": "u"})
+	w := httptest.NewRecorder()
+	h.Get(w, r)
+	var result CustomListResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if w.Code != 200 || len(result.Items) != 20 || result.Total != 200 || !result.MetadataPending || s.cards != 20 {
+		t.Fatalf("route lost pagination/flags: code=%d total=%d cards=%d items=%d pending=%v", w.Code, result.Total, s.cards, len(result.Items), result.MetadataPending)
+	}
+}
+
+type progressiveTMDBTest struct {
+	progressiveTestService
+	pages int
+}
+
+func (s *progressiveTMDBTest) GetTMDBList(_ context.Context, opts metadata.TMDBListOptions) ([]models.TrendingItem, int, error) {
+	s.pages++
+	if !opts.DeferArtwork || opts.Limit > 20 {
+		panic("blocking artwork or full index on home path")
+	}
+	out := []models.TrendingItem{}
+	for i := opts.Offset; i < opts.Offset+opts.Limit && i < 200; i++ {
+		out = append(out, models.TrendingItem{Title: models.Title{TMDBID: int64(i + 1), MediaType: "movie", Name: fmt.Sprint(i + 1), Poster: &models.Image{URL: "poster"}}})
+	}
+	return out, 200, nil
+}
+func TestProgressiveTMDBPagesStopWhenVisibleShelfIsFull(t *testing.T) {
+	s := &progressiveTMDBTest{progressiveTestService: progressiveTestService{hideOdd: true}}
+	h := &MetadataHandler{}
+	r := httptest.NewRequest("GET", "/?shelfPhase=cards&limit=20", nil)
+	response, err := h.progressiveTMDBShelf(r, s, s, metadata.TMDBListOptions{}, "", true, false, 20, 0)
+	if err != nil || len(response.Items) != 20 || s.pages != 2 || !response.TotalPending || response.Items[0].Title.TMDBID != 2 {
+		t.Fatalf("TMDB paging: %+v pages=%d err=%v", response, s.pages, err)
+	}
+}

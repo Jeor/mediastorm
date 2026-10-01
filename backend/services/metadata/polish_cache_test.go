@@ -18,7 +18,7 @@ func TestTMDBMovieCachePreservesLocalizedNameAndAliases(t *testing.T) {
 		if strings.HasPrefix(req.URL.Query().Get("language"), "pl") {
 			name = "Vaiana"
 		}
-		if req.URL.Query().Get("append_to_response") != "alternative_titles" {
+		if !strings.Contains(req.URL.Query().Get("append_to_response"), "alternative_titles") {
 			t.Fatal("movie details must request aliases alongside the localized title")
 		}
 		body := fmt.Sprintf(`{"id":277834,"title":%q,"original_title":"Moana","original_language":"en","alternative_titles":{"titles":[{"title":"Vaiana","iso_3166_1":"PL"},{"title":"Oceania","iso_3166_1":"IT"}]}}`, name)

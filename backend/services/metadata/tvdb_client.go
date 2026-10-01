@@ -674,15 +674,21 @@ func (c *tvdbClient) fetchMDBListTVShows() ([]mdblistTVShow, error) {
 // fetchMDBListJSON fetches and decodes JSON from an MDBList URL with a 15-second
 // timeout and one retry on server errors (500+/524 Cloudflare timeouts).
 func (c *tvdbClient) fetchMDBListJSON(url string, dest any) error {
+	return c.fetchMDBListJSONContext(context.Background(), url, dest)
+}
+
+func (c *tvdbClient) fetchMDBListJSONContext(parent context.Context, url string, dest any) error {
 	backoff := 500 * time.Millisecond
 	var lastErr error
 
 	for attempt := 0; attempt < 2; attempt++ {
 		if attempt > 0 {
-			time.Sleep(backoff)
+			if err := sleepWithContext(parent, backoff); err != nil {
+				return err
+			}
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(parent, 15*time.Second)
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			cancel()

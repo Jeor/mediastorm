@@ -44,6 +44,14 @@ func (h *DisplayListHandler) getHomeView(w http.ResponseWriter, r *http.Request,
 	if query.Get("source") == "top-ten" {
 		query.Set("mediaType", homeViewMediaType(view))
 	}
+	if progressiveShelfRequest(r) && progressiveShelfSource(query.Get("source")) {
+		delegated := r.Clone(r.Context())
+		u := *r.URL
+		u.RawQuery = query.Encode()
+		delegated.URL = &u
+		h.get(w, delegated)
+		return
+	}
 	query.Set("offset", "0")
 	query.Set("limit", strconv.Itoa(maxDiscoveryListItems))
 	switch query.Get("source") {

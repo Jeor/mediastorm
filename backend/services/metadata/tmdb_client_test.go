@@ -201,7 +201,7 @@ func TestMovieDetails_AppendsAlternativeTitles(t *testing.T) {
 	if requested == nil {
 		t.Fatal("movie details request was not captured")
 	}
-	if requested.URL.Query().Get("append_to_response") != "alternative_titles" {
+	if !strings.Contains(requested.URL.Query().Get("append_to_response"), "alternative_titles") {
 		t.Fatalf("append_to_response = %q, want alternative_titles", requested.URL.Query().Get("append_to_response"))
 	}
 	if len(title.AlternateTitles) != 1 || title.AlternateTitles[0] != "Batman: Death in the Family" {

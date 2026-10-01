@@ -91,6 +91,14 @@ func (h *MetadataHandler) PublicMetaDBList(w http.ResponseWriter, r *http.Reques
 	if label == "" {
 		label = "PublicMetaDB List"
 	}
+	if _, ok := h.serviceForUser(userID).(shelfCardsService); ok && progressiveShelfRequest(r) {
+		limit, offset := parseLimitOffset(r)
+		resp := h.buildShelfFromCurated(w, r, curated, label, userID, strings.EqualFold(r.URL.Query().Get("hideUnreleased"), "true"), strings.EqualFold(r.URL.Query().Get("hideWatched"), "true"), limit, offset)
+		if resp != nil {
+			json.NewEncoder(w).Encode(resp)
+		}
+		return
+	}
 	items, err := getCuratedListForRequest(r, h.serviceForUser(userID), curated, label)
 	if err != nil {
 		http.Error(w, "List enrichment unavailable", 502)

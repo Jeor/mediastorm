@@ -105,10 +105,11 @@ func isTMDBNotFound(err error) bool {
 }
 
 type tmdbClient struct {
-	apiKey   string
-	language string
-	httpc    *http.Client
-	cache    *fileCache // Optional cache for expensive lookups
+	requestLimiter *tmdbClient // root client owns the budget across metadata languages
+	apiKey         string
+	language       string
+	httpc          *http.Client
+	cache          *fileCache // Optional cache for expensive lookups
 
 	// Rate limiting
 	throttleMu    sync.Mutex
@@ -122,6 +123,9 @@ type tmdbClient struct {
 }
 
 func (c *tmdbClient) waitForRequestSlot(ctx context.Context) error {
+	if c.requestLimiter != nil {
+		return c.requestLimiter.waitForRequestSlot(ctx)
+	}
 	for {
 		now := time.Now()
 		c.throttleMu.Lock()
@@ -170,6 +174,10 @@ func tmdbRetryDelay(resp *http.Response, fallback time.Duration) time.Duration {
 }
 
 func (c *tmdbClient) beginSharedCooldown(delay time.Duration) {
+	if c.requestLimiter != nil {
+		c.requestLimiter.beginSharedCooldown(delay)
+		return
+	}
 	if delay <= 0 {
 		return
 	}
@@ -185,13 +193,18 @@ func newTMDBClient(apiKey, language string, httpc *http.Client, cache *fileCache
 	if httpc == nil {
 		httpc = &http.Client{Timeout: 15 * time.Second}
 	}
+	if httpc.Timeout == 0 {
+		bounded := *httpc
+		bounded.Timeout = 15 * time.Second
+		httpc = &bounded
+	}
 	httpc = apiusage.TrackClient(httpc, "TMDB", "Metadata API")
 	return &tmdbClient{
 		apiKey:      strings.TrimSpace(apiKey),
 		language:    language,
 		httpc:       httpc,
 		cache:       cache,
-		minInterval: 5 * time.Millisecond, // TMDB has generous rate limits; retries back off on 429/5xx.
+		minInterval: 25 * time.Millisecond, // Bound aggregate requests; respect provider 429 cooldowns.
 	}
 }
 
@@ -1287,12 +1300,18 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 	if err != nil {
 		return nil, err
 	}
-	endpoint = endpoint + "?api_key=" + c.apiKey + "&append_to_response=external_ids,alternative_titles"
+	endpoint = endpoint + "?api_key=" + c.apiKey + "&append_to_response=external_ids,alternative_titles,content_ratings"
 	if lang := strings.TrimSpace(c.language); lang != "" {
 		endpoint += "&language=" + normalizeLanguage(lang)
 	}
 
 	var payload struct {
+		ContentRatings struct {
+			Results []struct {
+				Country string `json:"iso_3166_1"`
+				Rating  string `json:"rating"`
+			} `json:"results"`
+		} `json:"content_ratings"`
 		ID               int64    `json:"id"`
 		Name             string   `json:"name"`
 		OriginalName     string   `json:"original_name"`
@@ -1337,6 +1356,12 @@ func (c *tmdbClient) seriesDetails(ctx context.Context, tmdbID int64) (*models.T
 		Status:          models.SeriesReleaseStatusFromDate(payload.FirstAirDate),
 		LifecycleStatus: strings.TrimSpace(payload.Status),
 		Popularity:      scoreFallback(payload.Popularity, payload.VoteAverage),
+	}
+	for _, rating := range payload.ContentRatings.Results {
+		if rating.Country == "US" {
+			title.Certification = strings.TrimSpace(rating.Rating)
+			break
+		}
 	}
 	if title.Name == "" {
 		title.Name = title.OriginalName
@@ -2083,7 +2108,11 @@ func (c *tmdbClient) movieDetails(ctx context.Context, tmdbID int64) (*models.Ti
 	entry := &movieDetailsCacheEntry{done: make(chan struct{})}
 	if existing, loaded := c.movieCache.LoadOrStore(tmdbID, entry); loaded {
 		e := existing.(*movieDetailsCacheEntry)
-		<-e.done
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-e.done:
+		}
 		return e.result, e.err
 	}
 	// We won the race — fetch and populate
@@ -2119,30 +2148,21 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 	}
 	// Alternative titles are needed by release-name filtering. Appending them
 	// to the existing details request avoids a second TMDB request per movie.
-	q.Set("append_to_response", "alternative_titles")
+	q.Set("append_to_response", "alternative_titles,release_dates")
 	req.URL.RawQuery = q.Encode()
 
-	resp, err := c.httpc.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("tmdb movie details failed: %s", resp.Status)
-	}
-
 	var movie struct {
-		ID                  int64  `json:"id"`
-		Title               string `json:"title"`
-		OriginalTitle       string `json:"original_title"`
-		OriginalLanguage    string `json:"original_language"`
-		Overview            string `json:"overview"`
-		PosterPath          string `json:"poster_path"`
-		BackdropPath        string `json:"backdrop_path"`
-		ReleaseDate         string `json:"release_date"`
-		IMDBId              string `json:"imdb_id"`
-		Runtime             int    `json:"runtime"`
+		ReleaseDates        *tmdbReleaseDatesResponse `json:"release_dates"`
+		ID                  int64                     `json:"id"`
+		Title               string                    `json:"title"`
+		OriginalTitle       string                    `json:"original_title"`
+		OriginalLanguage    string                    `json:"original_language"`
+		Overview            string                    `json:"overview"`
+		PosterPath          string                    `json:"poster_path"`
+		BackdropPath        string                    `json:"backdrop_path"`
+		ReleaseDate         string                    `json:"release_date"`
+		IMDBId              string                    `json:"imdb_id"`
+		Runtime             int                       `json:"runtime"`
 		ProductionCountries []struct {
 			Code string `json:"iso_3166_1"`
 		} `json:"production_countries"`
@@ -2162,8 +2182,13 @@ func (c *tmdbClient) movieDetailsFetch(ctx context.Context, tmdbID int64) (*mode
 			} `json:"titles"`
 		} `json:"alternative_titles"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&movie); err != nil {
+	if err := c.doGET(ctx, req.URL.String(), &movie); err != nil {
 		return nil, err
+	}
+
+	if movie.ReleaseDates != nil && c.cache != nil {
+		release := parseTMDBMovieReleases(*movie.ReleaseDates)
+		_ = c.cache.set(cacheKey("tmdb", "movie", "releases", "v2", strconv.FormatInt(tmdbID, 10)), cachedReleasesWithCert{Releases: release.Releases, Certification: release.Certification})
 	}
 
 	title := &models.Title{
@@ -2511,21 +2536,14 @@ func (c *tmdbClient) movieReleaseDatesWithCert(ctx context.Context, tmdbID int64
 	q.Set("api_key", c.apiKey)
 	req.URL.RawQuery = q.Encode()
 
-	resp, err := c.httpc.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("tmdb movie release dates failed: %s", resp.Status)
-	}
-
 	var payload tmdbReleaseDatesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := c.doGET(ctx, req.URL.String(), &payload); err != nil {
 		return nil, err
 	}
+	return parseTMDBMovieReleases(payload), nil
+}
 
+func parseTMDBMovieReleases(payload tmdbReleaseDatesResponse) *movieReleaseDatesResult {
 	now := time.Now()
 	releases := make([]models.Release, 0, 8)
 	var usCertification string
@@ -2576,7 +2594,7 @@ func (c *tmdbClient) movieReleaseDatesWithCert(ctx context.Context, tmdbID int64
 	return &movieReleaseDatesResult{
 		Releases:      releases,
 		Certification: usCertification,
-	}, nil
+	}
 }
 
 // fetchTVContentRating fetches the US TV content rating for a TV show

@@ -428,6 +428,7 @@ func curatedItemFromStremioMeta(meta stremioMeta, fallbackType string) metadatap
 	}
 	item := metadatapkg.CuratedItem{
 		Title:     strings.TrimSpace(meta.Name),
+		PosterURL: meta.Poster, BackdropURL: meta.Background, Overview: meta.Description, Genres: meta.Genres,
 		Year:      stremioReleaseYear(meta.ReleaseInfo),
 		MediaType: mediaType,
 	}

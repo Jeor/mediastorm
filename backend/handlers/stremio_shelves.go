@@ -25,11 +25,6 @@ const (
 	stremioShelfMaxResponseSize = 4 << 20
 )
 
-type stremioShelfCatalogCacheEntry struct {
-	metas   []stremioMeta
-	fetched time.Time
-}
-
 type stremioManifestCatalogResponse struct {
 	Type     string `json:"type"`
 	ID       string `json:"id"`
@@ -265,6 +260,20 @@ func (h *MetadataHandler) StremioList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Progressive home requests read only enough catalog pages to fill the row.
+	// Full discovery and background completion retain the complete catalog path.
+	if _, ok := h.serviceForUser(strings.TrimSpace(r.URL.Query().Get("userId"))).(shelfCardsService); ok &&
+		r.URL.Query().Get("shelfPhase") == "cards" && progressiveShelfRequest(r) {
+		response, err := h.progressiveStremioShelf(r, manifestURL, catalogType, catalogID)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	metas, err := h.loadStremioShelfCatalog(r.Context(), manifestURL, catalogType, catalogID)
 	if err != nil {
 		writeJSONError(w, err.Error(), http.StatusBadGateway)
@@ -297,115 +306,6 @@ func (h *MetadataHandler) StremioList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(response)
-}
-
-func (h *MetadataHandler) loadStremioShelfCatalog(ctx context.Context, rawManifestURL, catalogType, catalogID string) ([]stremioMeta, error) {
-	manifestURL, _, err := normalizeStremioManifestInput(rawManifestURL)
-	if err != nil {
-		return nil, err
-	}
-	cacheKey := manifestURL + "|" + catalogType + "|" + catalogID
-	h.stremioCatalogMu.Lock()
-	if entry, ok := h.stremioCatalogCache[cacheKey]; ok && time.Since(entry.fetched) < stremioShelfCatalogTTL {
-		metas := append([]stremioMeta(nil), entry.metas...)
-		h.stremioCatalogMu.Unlock()
-		return metas, nil
-	}
-	h.stremioCatalogMu.Unlock()
-
-	manifest, _, baseURL, err := h.loadStremioManifest(ctx, manifestURL)
-	if err != nil {
-		return nil, err
-	}
-	var selected *stremioCatalogDef
-	for i := range manifest.Catalogs {
-		catalog := &manifest.Catalogs[i]
-		if normalizeStremioCatalogType(catalog.Type) == catalogType && strings.TrimSpace(catalog.ID) == catalogID {
-			selected = catalog
-			break
-		}
-	}
-	if selected == nil {
-		return nil, fmt.Errorf("Stremio catalog is not advertised by the manifest")
-	}
-	metas, err := fetchStremioShelfCatalog(ctx, h.stremioShelfClient(), baseURL, *selected)
-	if err != nil {
-		return nil, fmt.Errorf("fetch Stremio catalog: %w", err)
-	}
-	h.stremioCatalogMu.Lock()
-	h.stremioCatalogCache[cacheKey] = stremioShelfCatalogCacheEntry{
-		metas:   append([]stremioMeta(nil), metas...),
-		fetched: time.Now(),
-	}
-	h.stremioCatalogMu.Unlock()
-	return metas, nil
-}
-
-func fetchStremioShelfCatalog(ctx context.Context, client *http.Client, baseURL string, catalog stremioCatalogDef) ([]stremioMeta, error) {
-	supportsSkip := false
-	for _, extra := range catalog.Extra {
-		if strings.EqualFold(strings.TrimSpace(extra.Name), "skip") {
-			supportsSkip = true
-			break
-		}
-	}
-	pageSize := catalog.PageSize
-	if pageSize <= 0 || pageSize > stremioShelfMaxCatalogItems {
-		pageSize = 0
-	}
-	var all []stremioMeta
-	seen := make(map[string]bool)
-	for page := 0; len(all) < stremioShelfMaxCatalogItems; page++ {
-		endpoint := fmt.Sprintf("%s/catalog/%s/%s.json", baseURL, url.PathEscape(catalog.Type), url.PathEscape(catalog.ID))
-		if page > 0 {
-			endpoint = fmt.Sprintf("%s/catalog/%s/%s/skip=%d.json", baseURL, url.PathEscape(catalog.Type), url.PathEscape(catalog.ID), page*pageSize)
-		}
-		var response stremioCatalogResponse
-		if err := getStremioShelfJSON(ctx, client, endpoint, &response); err != nil {
-			if page == 0 {
-				return nil, err
-			}
-			break
-		}
-		if len(response.Metas) == 0 {
-			break
-		}
-		if pageSize == 0 {
-			// Addons such as Nuvio omit pageSize and return fewer than 100 items.
-			// Keep the first page's stride even when later pages omit some titles.
-			pageSize = len(response.Metas)
-		}
-		newItems := 0
-		for _, meta := range response.Metas {
-			identity := strings.TrimSpace(meta.ID)
-			if identity == "" {
-				// Preserve title-only metadata while still detecting repeated pages.
-				data, _ := json.Marshal(meta)
-				identity = string(data)
-			}
-			key := meta.Type + "\x00" + identity
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			all = append(all, meta)
-			newItems++
-			if len(all) == stremioShelfMaxCatalogItems {
-				break
-			}
-		}
-		// A short page can be followed by more results. Empty or repeated pages
-		// terminate pagination, including addons that advertise but ignore skip.
-		if !supportsSkip || newItems == 0 {
-			break
-		}
-	}
-	// The startup bundle has a short deadline. Do not cache an incomplete
-	// catalog when that request is canceled between pages.
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	return all, nil
 }
 
 func getStremioShelfJSON(ctx context.Context, client *http.Client, endpoint string, out interface{}) error {

@@ -2941,14 +2941,16 @@ func TestSettingsPageVersionsHomeEditorByContent(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("settings status: %d", rec.Code)
 	}
-	script, err := os.ReadFile("static/admin-home-views-v1.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(script)
-	version := fmt.Sprintf("%x", sum)[:12]
-	if !strings.Contains(rec.Body.String(), "admin-home-views-v1.js?v="+version) {
-		t.Fatal("Home editor URL must change with script content, independent of BuildID")
+	for _, asset := range []string{"admin-home-views-v1.js", "admin-shelf-info-v1.js"} {
+		script, err := os.ReadFile("static/" + asset)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(script)
+		version := fmt.Sprintf("%x", sum)[:12]
+		if !strings.Contains(rec.Body.String(), asset+"?v="+version) {
+			t.Fatalf("%s URL must change with script content, independent of BuildID", asset)
+		}
 	}
 }
 

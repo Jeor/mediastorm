@@ -104,17 +104,17 @@ func TestLivePlaylistRedirectUsesUpdatedPrivateSources(t *testing.T) {
 	}
 }
 
-func TestHDHomeRunConfiguredStreamOrigin(t *testing.T) {
+func TestHDHomeRunDoesNotGrantGenericStreamOrigin(t *testing.T) {
 	disabled := false
 	for _, tc := range []struct {
 		name string
 		live config.LiveSettings
 		want bool
 	}{
-		{"global playlist", config.LiveSettings{PlaylistURL: "http://192.168.1.100/lineup.m3u"}, true},
-		{"explicit HTTP port", config.LiveSettings{PlaylistURL: "http://192.168.1.100:80/lineup.m3u?favorites"}, true},
-		{"source playlist", config.LiveSettings{Sources: []config.LivePlaylistSource{{PlaylistURL: "http://192.168.1.100/lineup.m3u"}}}, true},
-		{"legacy source playlist", config.LiveSettings{PlaylistSources: []config.LivePlaylistSource{{PlaylistURL: "http://192.168.1.100/lineup.m3u"}}}, true},
+		{"global playlist", config.LiveSettings{PlaylistURL: "http://192.168.1.100/lineup.m3u"}, false},
+		{"explicit HTTP port", config.LiveSettings{PlaylistURL: "http://192.168.1.100:80/lineup.m3u?favorites"}, false},
+		{"source playlist", config.LiveSettings{Sources: []config.LivePlaylistSource{{PlaylistURL: "http://192.168.1.100/lineup.m3u"}}}, false},
+		{"legacy source playlist", config.LiveSettings{PlaylistSources: []config.LivePlaylistSource{{PlaylistURL: "http://192.168.1.100/lineup.m3u"}}}, false},
 		{"disabled source", config.LiveSettings{Sources: []config.LivePlaylistSource{{PlaylistURL: "http://192.168.1.100/lineup.m3u", Enabled: &disabled}}}, false},
 		{"ordinary playlist", config.LiveSettings{PlaylistURL: "http://192.168.1.100/channels.m3u"}, false},
 		{"nested playlist", config.LiveSettings{PlaylistURL: "http://192.168.1.100/provider/lineup.m3u"}, false},
@@ -139,15 +139,20 @@ func TestHDHomeRunConfiguredStreamOrigin(t *testing.T) {
 }
 
 func TestStartLiveHDHomeRunSessionAllowsTunerStreamPort(t *testing.T) {
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("transport-stream-fixture"))
+	}))
+	defer proxy.Close()
 	for _, format := range []string{"direct", "hls"} {
 		t.Run(format, func(t *testing.T) {
 			// Stub FFmpeg: this checks session authorization, not tuner playback.
 			h := NewVideoHandlerWithProvider(true, "/usr/bin/true", "/usr/bin/true", t.TempDir(), nil)
 			t.Cleanup(h.hlsManager.Shutdown)
 			h.SetConfigManager(fakeLiveUsageConfigProvider{settings: config.Settings{
-				Live: config.LiveSettings{Mode: "m3u", PlaylistURL: "http://192.168.1.100/lineup.m3u", StreamFormat: format},
+				Live: config.LiveSettings{Mode: "m3u", PlaylistURL: "http://192.168.1.100/lineup.m3u", StreamFormat: format, ProxyURL: proxy.URL},
 			}})
 			streamURL := "http://192.168.1.100:5004/auto/v5.1"
+			h.SetLiveChannelProvider(staticLiveChannelProvider{channels: []LiveChannel{{ID: "channel-5", SourceID: "default", URL: streamURL}}})
 			request := httptest.NewRequest(http.MethodGet, "/live/hls/start?url="+url.QueryEscape(streamURL), nil)
 			response := httptest.NewRecorder()
 			h.StartLiveHLSSession(response, request)
@@ -163,7 +168,7 @@ func TestStartLiveHDHomeRunSessionAllowsTunerStreamPort(t *testing.T) {
 			}
 			if format == "hls" {
 				session, ok := h.hlsManager.GetSession(result.SessionID)
-				if !ok || session.Path != streamURL {
+				if !ok || session.Path != streamURL || !session.LiveTuning.HDHomeRunInput {
 					t.Fatal("HLS session did not retain the tuner stream URL")
 				}
 			} else if !strings.HasPrefix(result.StreamURL, "/live/stream?") {

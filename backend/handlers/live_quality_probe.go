@@ -107,7 +107,16 @@ func (h *VideoHandler) ProbeLiveQuality(w http.ResponseWriter, r *http.Request) 
 	if !h.requireKnownLiveQualityChannel(w, r, req) {
 		return
 	}
-	if !h.requireAllowedExternalPath(w, r, req.URL) {
+	authorizationRequest := r.Clone(r.Context())
+	authorizationRequest.URL = cloneURL(r.URL)
+	query := authorizationRequest.URL.Query()
+	query.Set("profileId", req.ProfileID)
+	query.Set("sourceId", req.SourceID)
+	query.Set("channelId", req.ChannelID)
+	authorizationRequest.URL.RawQuery = query.Encode()
+	hdHomeRunInput, authorizeErr := authorizeLiveStreamURL(authorizationRequest, req.URL, h.configManager, h.liveChannels)
+	if authorizeErr != nil {
+		http.Error(w, "external media URL is not allowed", http.StatusBadRequest)
 		return
 	}
 	select {
@@ -148,10 +157,15 @@ func (h *VideoHandler) ProbeLiveQuality(w http.ResponseWriter, r *http.Request) 
 	if len(resolved.RequestHeaders) > 0 {
 		headers = resolved.RequestHeaders
 	}
-	if !h.requireAllowedExternalPath(w, r, streamURL) {
+	if (!hdHomeRunInput || streamURL != req.URL) && !h.requireAllowedExternalPath(w, r, streamURL) {
 		return
 	}
-	result, err := h.probeLiveQuality(ctx, streamURL, target.ProxyURL, headers, resolved.IsHLS || inputLooksLikeHLS(streamURL))
+	var result liveQualityResult
+	if hdHomeRunInput && streamURL == req.URL {
+		result, err = h.probeHDHomeRunQuality(ctx, streamURL, target.ProxyURL)
+	} else {
+		result, err = h.probeLiveQuality(ctx, streamURL, target.ProxyURL, headers, resolved.IsHLS || inputLooksLikeHLS(streamURL))
+	}
 	if err != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return
@@ -204,7 +218,12 @@ func (h *VideoHandler) probeLiveQuality(ctx context.Context, streamURL, proxy st
 		args = append(args, "-headers", value)
 	}
 	args = append(args, "-i", streamURL)
+	return h.runLiveQualityProbe(ctx, args, nil)
+}
+
+func (h *VideoHandler) runLiveQualityProbe(ctx context.Context, args []string, input io.Reader) (liveQualityResult, error) {
 	cmd := exec.CommandContext(ctx, h.ffprobePath, args...)
+	cmd.Stdin = input
 	cmd.Stderr = io.Discard
 	output, err := cmd.Output()
 	if err != nil {

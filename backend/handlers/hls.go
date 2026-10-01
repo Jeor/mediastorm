@@ -542,6 +542,9 @@ type LiveTuningSettings struct {
 	// extensionless URL as HLS. URL-only detection cannot recognize every signed
 	// Stremio sports playlist.
 	ForceHLSInput bool
+	// HDHomeRunInput is set only after catalog authorization. The tuner stream
+	// is fetched in Go with redirects denied and decoded as MPEG-TS from stdin.
+	HDHomeRunInput bool
 	// ProxyURL, when set, routes the upstream live fetch through this proxy.
 	// SOCKS5 proxies (which ffmpeg cannot use natively) are honored by fetching
 	// the stream with the Go HTTP client and piping it into ffmpeg's stdin.
@@ -2599,6 +2602,15 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 	var proxyBody io.ReadCloser
 	inputArg := session.Path
 	inputHeaders := session.LiveTuning.RequestHeaders
+	if session.LiveTuning.HDHomeRunInput {
+		var err error
+		proxyBody, err = openHDHomeRunStream(ctx, session.Path, session.LiveTuning.ProxyURL)
+		if err != nil {
+			return fmt.Errorf("open HDHomeRun stream: %w", err)
+		}
+		defer proxyBody.Close()
+		inputArg = "pipe:0"
+	}
 	if session.LiveProvider == "stremio" && (session.LiveTuning.ForceHLSInput || inputLooksLikeHLS(session.Path)) {
 		relay, err := startLiveHLSInputRelay(ctx, session.Path, session.LiveTuning.ProxyURL, inputHeaders)
 		if err != nil {
@@ -2639,10 +2651,14 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		// -nostdin only matters when not feeding the input over stdin.
 		args = append(args, "-nostdin")
 	}
+	protocols := "file,http,https,pipe,tcp,tls,crypto,udp,rtp,rtmp"
+	if session.LiveTuning.HDHomeRunInput {
+		protocols = "pipe"
+	}
 	args = append(args,
 		"-y",
 		"-loglevel", "warning",
-		"-protocol_whitelist", "file,http,https,pipe,tcp,tls,crypto,udp,rtp,rtmp",
+		"-protocol_whitelist", protocols,
 	)
 
 	// Apply probe/analyze settings (these mirror StreamChannel in live.go)
@@ -2690,6 +2706,9 @@ func (m *HLSManager) startLiveTranscoding(ctx context.Context, session *HLSSessi
 		}
 	}
 
+	if session.LiveTuning.HDHomeRunInput {
+		args = append(args, "-f", "mpegts")
+	}
 	args = append(args, "-i", inputArg)
 	session.mu.Lock()
 	if isNativeLivePlaybackTarget(session.PlaybackTarget) {

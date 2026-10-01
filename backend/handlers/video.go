@@ -5241,18 +5241,14 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "invalid url scheme", http.StatusBadRequest)
 		return
 	}
-	if !h.requireAllowedExternalPath(w, r, liveURL) {
+	profileID := strings.TrimSpace(r.URL.Query().Get("profileId"))
+	if !requireLiveStreamProfile(w, r, h.usersSvc) {
 		return
 	}
-
-	profileID := strings.TrimSpace(r.URL.Query().Get("profileId"))
-	if profileID != "" && h.usersSvc != nil && !auth.IsMaster(r) {
-		accountID := auth.GetAccountID(r)
-		profile, ok := h.usersSvc.Get(profileID)
-		if !ok || accountID == "" || profile.AccountID != accountID {
-			http.Error(w, "profile not found", http.StatusNotFound)
-			return
-		}
+	hdHomeRunInput, authorizeErr := authorizeLiveStreamURL(r, liveURL, h.configManager, h.liveChannels)
+	if authorizeErr != nil {
+		http.Error(w, "external media URL is not allowed", http.StatusBadRequest)
+		return
 	}
 	profileName := strings.TrimSpace(r.URL.Query().Get("profileName"))
 	if profileName == "" && profileID != "" && h.usersSvc != nil {
@@ -5292,6 +5288,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		liveURL = resolvedURL
+		hdHomeRunInput = false
 		providerRequestHeaders = headers
 		if !h.requireAllowedExternalPath(w, r, liveURL) {
 			return
@@ -5326,6 +5323,11 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		}
 		if profileName != "" {
 			proxyParams.Set("profileName", profileName)
+		}
+		for _, key := range []string{"sourceId", "channelId"} {
+			if value := strings.TrimSpace(r.URL.Query().Get(key)); value != "" {
+				proxyParams.Set(key, value)
+			}
 		}
 		if clientID := requestClientID(r); clientID != "" {
 			proxyParams.Set("clientId", clientID)
@@ -5388,9 +5390,10 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		if resolved.URL != liveURL {
 			log.Printf("[video] resolved stremio live HLS stream resource: %s -> %s", requestsecurity.URLForLog(liveURL), requestsecurity.URLForLog(resolved.URL))
 			liveURL = resolved.URL
+			hdHomeRunInput = false
 		}
 	}
-	if !h.requireAllowedExternalPath(w, r, liveURL) {
+	if !hdHomeRunInput && !h.requireAllowedExternalPath(w, r, liveURL) {
 		return
 	}
 
@@ -5403,6 +5406,7 @@ func (h *VideoHandler) StartLiveHLSSession(w http.ResponseWriter, r *http.Reques
 		ProxyURL:           target.ProxyURL,
 		RequestHeaders:     stremioRequestHeaders,
 		ForceHLSInput:      stremioHLSInput,
+		HDHomeRunInput:     hdHomeRunInput,
 	}
 	playbackTarget := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("target")))
 	clientID := requestClientID(r)
@@ -7187,9 +7191,8 @@ func (h *VideoHandler) proxyExternalURL(w http.ResponseWriter, r *http.Request, 
 	return true, nil
 }
 
-// configuredExternalHostPolicy permits configured private provider endpoints,
-// including the native HDHomeRun stream port, and the server's advanced
-// private-media origin allowlist.
+// configuredExternalHostPolicy permits explicitly configured private provider
+// origins and the server's advanced private-media origin allowlist.
 func (h *VideoHandler) configuredExternalHostPolicy() requestsecurity.RestrictedHostPolicy {
 	return configuredProviderHostPolicy(h.configManager)
 }

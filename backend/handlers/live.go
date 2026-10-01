@@ -357,6 +357,7 @@ type LiveHandler struct {
 	lowLatency         bool // Enable low-latency mode
 	cfgManager         *config.Manager
 	userSettingsSvc    LiveUserSettingsProvider
+	usersSvc           UsersProvider
 	epgService         LiveEPGNowPlayingProvider
 
 	stremioMu    sync.Mutex
@@ -371,6 +372,10 @@ type LiveHandler struct {
 // programme title in addition to channel name.
 func (h *LiveHandler) SetEPGService(service LiveEPGNowPlayingProvider) {
 	h.epgService = service
+}
+
+func (h *LiveHandler) SetUsersService(service UsersProvider) {
+	h.usersSvc = service
 }
 
 // NewLiveHandler creates a handler capable of fetching remote playlists.
@@ -506,12 +511,16 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetURL, err := h.parseRemoteURL(r.Context(), r.URL.Query().Get("url"))
+	if !requireLiveStreamProfile(w, r, h.usersSvc) {
+		return
+	}
+	hdHomeRunInput, err := authorizeLiveStreamURL(r, r.URL.Query().Get("url"), h.cfgManager, h)
 	if err != nil {
 		log.Printf("[live-request] id=%d reject reason=invalid-url elapsed=%s", requestID, time.Since(requestStartedAt).Round(time.Millisecond))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	targetURL, _ := url.Parse(strings.TrimSpace(r.URL.Query().Get("url")))
 	log.Printf("[live-request] id=%d resolved upstream=%s", requestID, requestsecurity.URLForLog(targetURL.String()))
 
 	ctx, cancel := context.WithTimeout(r.Context(), liveStreamTimeout)
@@ -541,8 +550,8 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !isWebLiveStreamRequest(r) && !stremioHLS {
-		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL, requestID, requestStartedAt)
+	if proxyURL := h.resolveProxyURLForStream(r, targetURL); (proxyURL != "" || hdHomeRunInput) && !isWebLiveStreamRequest(r) && !stremioHLS {
+		h.proxyStreamWithHTTPClient(w, r, ctx, targetURL, proxyURL, requestID, requestStartedAt, hdHomeRunInput)
 		return
 	}
 
@@ -567,7 +576,15 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		inputArg = relay.URL
 		stremioRequestHeaders = nil
 	}
-	if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !stremioHLS {
+	if hdHomeRunInput {
+		proxyBody, err = openHDHomeRunStream(ctx, targetURL.String(), h.resolveProxyURLForStream(r, targetURL))
+		if err != nil {
+			http.Error(w, "failed to open live stream", http.StatusBadGateway)
+			return
+		}
+		defer proxyBody.Close()
+		inputArg = "pipe:0"
+	} else if proxyURL := h.resolveProxyURLForStream(r, targetURL); proxyURL != "" && !stremioHLS {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 		if err != nil {
 			http.Error(w, "failed to prepare live stream", http.StatusInternalServerError)
@@ -593,10 +610,14 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build FFmpeg args with optional buffering settings
+	protocols := "file,http,https,pipe,tcp,tls,crypto,udp,rtp,rtmp"
+	if hdHomeRunInput {
+		protocols = "pipe"
+	}
 	args := []string{
 		"-hide_banner",
 		"-loglevel", "warning",
-		"-protocol_whitelist", "file,http,https,pipe,tcp,tls,crypto,udp,rtp,rtmp",
+		"-protocol_whitelist", protocols,
 	}
 
 	// Add probesize if configured (value in MB, convert to bytes)
@@ -638,6 +659,9 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if hdHomeRunInput {
+		args = append(args, "-f", "mpegts")
+	}
 	args = append(args,
 		"-i", inputArg,
 		"-c:v", "copy",
@@ -754,7 +778,7 @@ func (h *LiveHandler) StreamChannel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.Request, ctx context.Context, targetURL *url.URL, proxyURL string, requestID uint64, requestStartedAt time.Time) {
+func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.Request, ctx context.Context, targetURL *url.URL, proxyURL string, requestID uint64, requestStartedAt time.Time, hdHomeRunInput bool) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 	if err != nil {
 		http.Error(w, "failed to prepare live stream", http.StatusInternalServerError)
@@ -762,7 +786,18 @@ func (h *LiveHandler) proxyStreamWithHTTPClient(w http.ResponseWriter, r *http.R
 	}
 	req.Header.Set("User-Agent", liveStreamUserAgent)
 
-	resp, err := h.liveStreamHTTPClient(proxyURL).Do(req)
+	var client *http.Client
+	if hdHomeRunInput {
+		client, err = newHDHomeRunStreamClient(targetURL.String(), proxyURL)
+		if err != nil {
+			http.Error(w, "failed to prepare live stream", http.StatusInternalServerError)
+			return
+		}
+		defer client.CloseIdleConnections()
+	} else {
+		client = h.liveStreamHTTPClient(proxyURL)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("[live-request] id=%d proxy-open-failed error=%v elapsed=%s", requestID, err, time.Since(requestStartedAt).Round(time.Millisecond))
 		log.Printf("[live] proxied stream request failed for %q via %q: %v", targetURL.String(), proxyURL, err)

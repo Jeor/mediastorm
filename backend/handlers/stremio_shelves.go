@@ -351,9 +351,10 @@ func fetchStremioShelfCatalog(ctx context.Context, client *http.Client, baseURL 
 	}
 	pageSize := catalog.PageSize
 	if pageSize <= 0 || pageSize > stremioShelfMaxCatalogItems {
-		pageSize = stremioCatalogPageSize
+		pageSize = 0
 	}
 	var all []stremioMeta
+	seen := make(map[string]bool)
 	for page := 0; len(all) < stremioShelfMaxCatalogItems; page++ {
 		endpoint := fmt.Sprintf("%s/catalog/%s/%s.json", baseURL, url.PathEscape(catalog.Type), url.PathEscape(catalog.ID))
 		if page > 0 {
@@ -369,14 +370,40 @@ func fetchStremioShelfCatalog(ctx context.Context, client *http.Client, baseURL 
 		if len(response.Metas) == 0 {
 			break
 		}
-		remaining := stremioShelfMaxCatalogItems - len(all)
-		if len(response.Metas) > remaining {
-			response.Metas = response.Metas[:remaining]
+		if pageSize == 0 {
+			// Addons such as Nuvio omit pageSize and return fewer than 100 items.
+			// Keep the first page's stride even when later pages omit some titles.
+			pageSize = len(response.Metas)
 		}
-		all = append(all, response.Metas...)
-		if !supportsSkip || len(response.Metas) < pageSize {
+		newItems := 0
+		for _, meta := range response.Metas {
+			identity := strings.TrimSpace(meta.ID)
+			if identity == "" {
+				// Preserve title-only metadata while still detecting repeated pages.
+				data, _ := json.Marshal(meta)
+				identity = string(data)
+			}
+			key := meta.Type + "\x00" + identity
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			all = append(all, meta)
+			newItems++
+			if len(all) == stremioShelfMaxCatalogItems {
+				break
+			}
+		}
+		// A short page can be followed by more results. Empty or repeated pages
+		// terminate pagination, including addons that advertise but ignore skip.
+		if !supportsSkip || newItems == 0 {
 			break
 		}
+	}
+	// The startup bundle has a short deadline. Do not cache an incomplete
+	// catalog when that request is canceled between pages.
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	return all, nil
 }

@@ -222,12 +222,7 @@ func (s *Service) checkAndRunTasks() {
 		}
 
 		if s.shouldRun(task) {
-			// Run task in goroutine to not block other tasks
-			s.wg.Add(1)
-			go func(t config.ScheduledTask) {
-				defer s.wg.Done()
-				s.executeTask(t)
-			}(task)
+			s.startTask(task)
 		}
 	}
 }
@@ -305,13 +300,25 @@ func (s *Service) SetLivePlaylistWarmer(warmer livePlaylistWarmer) {
 	s.livePlaylistWarmer = warmer
 }
 
-// executeTask runs a task and updates its status
-func (s *Service) executeTask(task config.ScheduledTask) {
-	// Mark as running
+// Reserve the task before launching its goroutine. Manual and scheduled starts
+// can race; only one may own the running slot and publish its final result.
+func (s *Service) startTask(task config.ScheduledTask) bool {
 	s.taskMu.Lock()
+	defer s.taskMu.Unlock()
+	if s.taskRunning[task.ID] {
+		return false
+	}
 	s.taskRunning[task.ID] = true
-	s.taskMu.Unlock()
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.executeTask(task)
+	}()
+	return true
+}
 
+// executeTask runs an already reserved task and updates its status.
+func (s *Service) executeTask(task config.ScheduledTask) {
 	defer func() {
 		s.taskMu.Lock()
 		delete(s.taskRunning, task.ID)
@@ -536,19 +543,9 @@ func (s *Service) RunTaskNow(taskID string, fullSync ...bool) error {
 					return err
 				}
 			}
-			// Check if already running
-			s.taskMu.RLock()
-			if s.taskRunning[taskID] {
-				s.taskMu.RUnlock()
+			if !s.startTask(task) {
 				return errors.New("task is already running")
 			}
-			s.taskMu.RUnlock()
-
-			s.wg.Add(1)
-			go func(t config.ScheduledTask) {
-				defer s.wg.Done()
-				s.executeTask(t)
-			}(task)
 			return nil
 		}
 	}
@@ -572,6 +569,7 @@ func (s *Service) GetTaskStatus() []config.ScheduledTask {
 		tasks[i] = task
 		if s.taskRunning[task.ID] {
 			tasks[i].LastStatus = config.ScheduledTaskStatusRunning
+			tasks[i].LastError = ""
 		}
 	}
 
@@ -3668,6 +3666,12 @@ func (s *Service) canonicalizeTraktEpisode(showIDs map[string]string, episodeIDs
 }
 
 func (s *Service) canonicalizeProviderEpisode(provider string, showIDs map[string]string, episodeIDs map[string]string, seasonNumber, episodeNumber, absoluteEpisode int, episodeTitle string) (int, int, int, string) {
+	return s.canonicalizeProviderEpisodeCached(context.Background(), nil, provider, showIDs, episodeIDs, seasonNumber, episodeNumber, absoluteEpisode, episodeTitle)
+}
+
+// The cache belongs to one import, including failed lookups, so a large history
+// never repeats metadata requests for every episode of the same show.
+func (s *Service) canonicalizeProviderEpisodeCached(parent context.Context, cache map[string]*models.SeriesDetails, provider string, showIDs map[string]string, episodeIDs map[string]string, seasonNumber, episodeNumber, absoluteEpisode int, episodeTitle string) (int, int, int, string) {
 	originalSeason := seasonNumber
 	originalEpisode := episodeNumber
 
@@ -3697,9 +3701,17 @@ func (s *Service) canonicalizeProviderEpisode(provider string, showIDs map[strin
 		return seasonNumber, episodeNumber, absoluteEpisode, episodeTitle
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 20*time.Second)
 	defer cancel()
-	details, err := metadataSvc.SeriesDetailsLite(ctx, query)
+	cacheKey := fmt.Sprintf("%d:%d:%s", query.TVDBID, query.TMDBID, query.IMDBID)
+	details, cached := cache[cacheKey]
+	var err error
+	if !cached {
+		details, err = metadataSvc.SeriesDetailsLite(ctx, query)
+		if cache != nil {
+			cache[cacheKey] = details
+		}
+	}
 	if err != nil || details == nil {
 		if err != nil {
 			log.Printf("[scheduler] %s import: unable to resolve canonical episode for %s S%02dE%02d: %v",

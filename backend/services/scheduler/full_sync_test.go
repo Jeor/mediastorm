@@ -45,7 +45,9 @@ func TestMDBListHistoryRejectsHTTPFailures(t *testing.T) {
 	t.Cleanup(func() { http.DefaultTransport = old })
 	for _, status := range []int{401, 429, 500} {
 		t.Run(strconv.Itoa(status), func(t *testing.T) {
-			http.DefaultTransport = roundTripFunc(func(*http.Request) (*http.Response, error) { return jsonResponse(status, `{"error":"failure"}`), nil })
+			http.DefaultTransport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return jsonResponse(status, `{"error":"Daily API limit exceeded!"}`), nil
+			})
 			_, err := (&Service{}).syncMDBListHistoryToLocal(config.ScheduledTask{}, &config.MDBListAccount{APIKey: "secret"}, "profile", false)
 			if err == nil || !strings.Contains(err.Error(), strconv.Itoa(status)) || strings.Contains(err.Error(), "secret") {
 				t.Fatalf("error=%v", err)

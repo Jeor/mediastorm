@@ -253,19 +253,19 @@ func TestSimklImportFailureDoesNotWritePartialHistoryOrCursor(t *testing.T) {
 	}
 }
 
-func TestMDBListImportLaterPageFailureDoesNotWritePartialHistory(t *testing.T) {
+func TestMDBListImportLaterPageFailurePreservesCompletedPages(t *testing.T) {
 	old := http.DefaultTransport
 	t.Cleanup(func() { http.DefaultTransport = old })
 	http.DefaultTransport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Query().Get("offset") == "0" {
 			return jsonResponse(200, `{"movies":[{"movie":{"ids":{"tmdb":1}},"last_watched_at":"2000-01-01T00:00:00Z"}],"pagination":{"has_more":true}}`), nil
 		}
-		return jsonResponse(429, `{"error":"limited"}`), nil
+		return jsonResponse(429, `{"error":"Daily API limit exceeded!"}`), nil
 	})
 	h := auditHistoryService(t, 0, true)
-	_, err := (&Service{historyService: h}).syncMDBListHistoryToLocal(config.ScheduledTask{}, &config.MDBListAccount{APIKey: "test"}, "profile", false)
+	result, err := (&Service{historyService: h}).syncMDBListHistoryToLocal(config.ScheduledTask{}, &config.MDBListAccount{APIKey: "test"}, "profile", false)
 	items, _ := h.ListWatchHistory("profile")
-	if err == nil || len(items) != 0 {
+	if err == nil || len(items) != 1 || result.Count != 1 {
 		t.Fatalf("items=%v err=%v", items, err)
 	}
 }

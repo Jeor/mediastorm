@@ -69,7 +69,9 @@ func TestMDBListHistoryLogsConfigurationFiltersAndParsingWithoutCredentials(t *t
 				`task="task-1"`, `account="account-1"`, `accountName="MDBList account"`, `profile="profile-1"`,
 				`direction="mdblist_to_local"`, "dryRun=true", "mode=" + mode, since,
 				"page=1 offset=0", "page=2 offset=500", "apiTotalMovies=4 apiTotalEpisodes=3", "shows=1 seasons=1",
-				"movies=1 episodes=1 skippedMalformed=1 skippedUnwatched=2 skippedIdentity=1 skippedCoordinates=1 invalidTimestamps=0",
+				"movies=1 episodes=0 skippedMalformed=1 skippedUnwatched=1 skippedIdentity=1 skippedCoordinates=0 invalidTimestamps=0",
+				"movies=0 episodes=1 skippedMalformed=0 skippedUnwatched=1 skippedIdentity=0 skippedCoordinates=1 invalidTimestamps=0",
+				"pages=2 movies=4 episodes=3 imported=2 dryRun=true",
 			} {
 				if !strings.Contains(got, want) {
 					t.Errorf("missing diagnostic %q in %s", want, got)

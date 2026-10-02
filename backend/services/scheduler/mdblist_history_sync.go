@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,10 +85,6 @@ func (s *Service) executeMDBListHistorySync(task config.ScheduledTask) (SyncResu
 func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *config.MDBListAccount, profileID string, dryRun bool) (SyncResult, error) {
 	result := SyncResult{DryRun: dryRun}
 
-	s.mu.RLock()
-	historySvc := s.historyService
-	s.mu.RUnlock()
-
 	// Determine incremental cursor
 	var since string
 	if historySyncLastRun(task) != nil {
@@ -104,33 +101,34 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 	log.Printf("[scheduler] MDBList history import start task=%q account=%q profile=%q mode=%s since=%q previousRun=%q previousStatus=%q dryRun=%v",
 		task.ID, account.ID, profileID, mode, since, lastRun, task.LastStatus, dryRun)
 
-	// Fetch watched history from MDBList API with pagination
-	apiKey := account.APIKey
-	var allMovies []json.RawMessage
-	var allEpisodes []json.RawMessage
-	offset := 0
-	limit := 500
-	pages := 0
-
+	// Keep both pagination and retries bounded, and stop promptly on shutdown.
+	s.mu.RLock()
+	parent := s.ctx
+	s.mu.RUnlock()
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
+	defer cancel()
+	metadataCache := make(map[string]*models.SeriesDetails)
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	offset, limit, pages := 0, 500, 0
+	totalMovies, totalEpisodes := 0, 0
 	for {
-		url := fmt.Sprintf("https://api.mdblist.com/sync/watched?apikey=%s&limit=%d&offset=%d", apiKey, limit, offset)
+		if err := ctx.Err(); err != nil {
+			return result, fmt.Errorf("MDBList history import stopped after %d imported items: %w", result.Count, err)
+		}
+		values := url.Values{"apikey": {account.APIKey}, "limit": {strconv.Itoa(limit)}, "offset": {strconv.Itoa(offset)}}
 		if since != "" {
-			url += "&since=" + since
+			values.Set("since", since)
 		}
-
-		req, _ := http.NewRequest(http.MethodGet, url, nil)
-		req.Header.Set("User-Agent", "mediastorm/1.0")
-		httpClient := &http.Client{Timeout: 30 * time.Second}
-		resp, err := httpClient.Do(req)
+		resp, err := fetchMDBListHistoryPage(ctx, httpClient, "https://api.mdblist.com/sync/watched?"+values.Encode(), task.ID, offset, waitMDBListRetry)
 		if err != nil {
-			return result, fmt.Errorf("fetch MDBList history: %w", mdblistRequestError(err))
+			if dryRun {
+				return result, err
+			}
+			return result, fmt.Errorf("%w; %d items imported from completed pages", err, result.Count)
 		}
-
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			return result, fmt.Errorf("MDBList history request failed (HTTP %d, offset %d)", resp.StatusCode, offset)
-		}
-
 		var page *struct {
 			Movies     []json.RawMessage `json:"movies"`
 			Episodes   []json.RawMessage `json:"episodes"`
@@ -143,11 +141,11 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 				Limit         int  `json:"limit"`
 			} `json:"pagination"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
-			resp.Body.Close()
-			return result, fmt.Errorf("decode MDBList history: %w", err)
-		}
+		decodeErr := json.NewDecoder(resp.Body).Decode(&page)
 		resp.Body.Close()
+		if decodeErr != nil {
+			return result, fmt.Errorf("decode MDBList history: %w", decodeErr)
+		}
 		if page == nil {
 			return result, errors.New("MDBList returned null instead of history")
 		}
@@ -155,22 +153,41 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 		log.Printf("[scheduler] MDBList history page task=%q page=%d offset=%d requestedLimit=%d responseLimit=%d movies=%d episodes=%d shows=%d seasons=%d hasMore=%v apiTotalMovies=%s apiTotalEpisodes=%s",
 			task.ID, pages, offset, limit, page.Pagination.Limit, len(page.Movies), len(page.Episodes), len(page.Shows), len(page.Seasons),
 			page.Pagination.HasMore, mdblistReportedTotal(page.Pagination.TotalMovies), mdblistReportedTotal(page.Pagination.TotalEpisodes))
-
-		allMovies = append(allMovies, page.Movies...)
-		allEpisodes = append(allEpisodes, page.Episodes...)
-
+		pageResult, importErr := s.importMDBListHistoryPage(ctx, task, profileID, dryRun, page.Movies, page.Episodes, metadataCache)
+		result = combineHistorySyncResults(result, pageResult)
+		if importErr != nil {
+			return result, importErr
+		}
+		totalMovies += len(page.Movies)
+		totalEpisodes += len(page.Episodes)
+		log.Printf("[scheduler] MDBList history progress task=%q pages=%d movies=%d episodes=%d imported=%d dryRun=%v", task.ID, pages, totalMovies, totalEpisodes, result.Count, dryRun)
 		if !page.Pagination.HasMore {
 			break
 		}
-		offset += limit
+		// MDBList paginates all four buckets together; use the server's limit,
+		// not just the number of movie/episode entries we import.
+		step := page.Pagination.Limit
+		if step <= 0 {
+			step = limit
+		}
+		if len(page.Movies)+len(page.Episodes)+len(page.Shows)+len(page.Seasons) == 0 {
+			return result, fmt.Errorf("MDBList history returned an empty page with has_more=true (offset %d)", offset)
+		}
+		offset += step
 	}
-
-	log.Printf("[scheduler] Fetched %d movies + %d episodes from MDBList watch history (task=%q profile=%q mode=%s pages=%d)",
-		len(allMovies), len(allEpisodes), task.ID, profileID, mode, pages)
-	if len(allMovies) == 0 && since != "" {
+	log.Printf("[scheduler] Fetched %d movies + %d episodes from MDBList watch history (task=%q profile=%q mode=%s pages=%d)", totalMovies, totalEpisodes, task.ID, profileID, mode, pages)
+	if totalMovies == 0 && since != "" {
 		log.Printf("[scheduler] MDBList history import task=%q: zero movies returned with since=%q; Full sync requests older history without this filter", task.ID, since)
 	}
+	return result, nil
+}
 
+// importMDBListHistoryPage persists each page before requesting the next one.
+func (s *Service) importMDBListHistoryPage(ctx context.Context, task config.ScheduledTask, profileID string, dryRun bool, allMovies, allEpisodes []json.RawMessage, metadataCache map[string]*models.SeriesDetails) (SyncResult, error) {
+	result := SyncResult{DryRun: dryRun}
+	s.mu.RLock()
+	historySvc := s.historyService
+	s.mu.RUnlock()
 	// Convert to WatchHistoryUpdate items
 	watched := true
 	var updates []models.WatchHistoryUpdate
@@ -245,6 +262,9 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 
 	// Parse episodes
 	for _, raw := range allEpisodes {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		var e struct {
 			LastWatchedAt string `json:"last_watched_at"`
 			Episode       struct {
@@ -306,7 +326,7 @@ func (s *Service) syncMDBListHistoryToLocal(task config.ScheduledTask, account *
 		if e.Episode.Number >= 1000 {
 			absoluteEpisode = e.Episode.Number
 		}
-		localSeason, localEpisode, localAbsolute, episodeTitle := s.canonicalizeProviderEpisode(
+		localSeason, localEpisode, localAbsolute, episodeTitle := s.canonicalizeProviderEpisodeCached(ctx, metadataCache,
 			"mdblist", extIDs, nil, e.Episode.Season, e.Episode.Number, absoluteEpisode, e.Episode.Name,
 		)
 		if localAbsolute > 0 {

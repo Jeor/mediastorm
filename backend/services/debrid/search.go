@@ -123,6 +123,7 @@ func buildScrapersFromSettings(settings config.Settings) []Scraper {
 		if !scraperCfg.Enabled {
 			continue
 		}
+		previousCount := len(scrapers)
 		switch strings.ToLower(scraperCfg.Type) {
 		case "torrentio":
 			log.Printf("[debrid] Initializing Torrentio scraper: %s (custom URL=%v)", scraperCfg.Name, strings.TrimSpace(scraperCfg.URL) != "")
@@ -197,6 +198,9 @@ func buildScrapersFromSettings(settings config.Settings) []Scraper {
 			scrapers = append(scrapers, NewInternetArchiveScraper(httpClient, scraperCfg.URL, scraperCfg.Name, scraperCfg.Config))
 		default:
 			log.Printf("[debrid] Unknown scraper type: %s", scraperCfg.Type)
+		}
+		if scraperCfg.SkipNameFiltering && len(scrapers) > previousCount {
+			scrapers[len(scrapers)-1] = &nameFilteringScraper{Scraper: scrapers[len(scrapers)-1]}
 		}
 	}
 	return scrapers
@@ -566,7 +570,11 @@ func (s *SearchService) Search(ctx context.Context, opts SearchOptions) ([]model
 			continue
 		}
 		imdbBased := false
-		switch scraper.(type) {
+		identityScraper := scraper
+		if configured, ok := scraper.(*nameFilteringScraper); ok {
+			identityScraper = configured.Scraper
+		}
+		switch identityScraper.(type) {
 		case *AIOStreamsScraper, *TorrentioScraper, *DirectStremioScraper:
 			imdbBased = true
 		}

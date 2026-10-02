@@ -756,6 +756,7 @@ var SettingsSchema = map[string]interface{}{
 			"config.category":          map[string]interface{}{"type": "select", "label": "Category", "options": []string{"1_0", "1_2", "1_3", "1_4"}, "description": "Nyaa category (1_0=All Anime, 1_2=English-translated, 1_3=Non-English, 1_4=Raw)", "showWhen": map[string]interface{}{"field": "type", "value": "nyaa"}, "order": 6},
 			"config.filter":            map[string]interface{}{"type": "select", "label": "Filter", "options": []string{"0", "1", "2"}, "description": "Nyaa filter (0=All, 1=No remakes, 2=Trusted only)", "showWhen": map[string]interface{}{"field": "type", "value": "nyaa"}, "order": 7},
 			"enabled":                  map[string]interface{}{"type": "boolean", "label": "Enabled", "description": "Enable this scraper", "order": 8},
+			"skipNameFiltering":        map[string]interface{}{"type": "boolean", "label": "Skip Name Matching", "description": "Trust this source's results instead of matching filenames to the requested title, year, or episode. Useful for addons with numeric filenames. Size, resolution, HDR, and required/excluded term filters still apply.", "order": 10},
 			"allowedProfiles": map[string]interface{}{
 				"type":        "multiselect",
 				"label":       "Allowed Profiles",
@@ -5088,11 +5089,13 @@ func (h *AdminUIHandler) SaveSearchTimeout(w http.ResponseWriter, r *http.Reques
 
 // TestScraperRequest represents a request to test the torrentio scraper
 type TestScraperRequest struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	URL     string `json:"url"`
-	APIKey  string `json:"apiKey"`
-	Options string `json:"options"` // Torrentio URL options
+	Name              string            `json:"name"`
+	Type              string            `json:"type"`
+	URL               string            `json:"url"`
+	APIKey            string            `json:"apiKey"`
+	Options           string            `json:"options"` // Torrentio URL options
+	SkipNameFiltering bool              `json:"skipNameFiltering"`
+	Config            map[string]string `json:"config"`
 }
 
 // addBrowserHeaders adds browser-like headers to avoid being blocked
@@ -5127,7 +5130,7 @@ func (h *AdminUIHandler) TestScraper(w http.ResponseWriter, r *http.Request) {
 	case "stremio-direct":
 		h.testDirectStremioScraper(w, req)
 	case "nyaa":
-		h.testNyaaScraper(w)
+		h.testNyaaScraper(w, req)
 	case "comet":
 		h.testCometScraper(w, req)
 	case "mediafusion":
@@ -5137,7 +5140,7 @@ func (h *AdminUIHandler) TestScraper(w http.ResponseWriter, r *http.Request) {
 	case "torrentio":
 		fallthrough
 	default:
-		h.testTorrentioScraper(w, req.Options, req.URL)
+		h.testTorrentioScraper(w, req.Options, req.URL, req.SkipNameFiltering)
 	}
 }
 
@@ -5162,9 +5165,10 @@ func (h *AdminUIHandler) testDirectStremioScraper(w http.ResponseWriter, req Tes
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": fmt.Sprintf("Direct Stremio source is working (%d playable streams)", len(results)),
-		"count":   len(results),
+		"success":                true,
+		"message":                fmt.Sprintf("Direct Stremio source is working (%d playable streams)", len(results)),
+		"count":                  len(results),
+		"nameMatchingSuggestion": sourceTestNameMatchingSuggestion(results, req.SkipNameFiltering),
 	})
 }
 
@@ -5199,13 +5203,14 @@ func (h *AdminUIHandler) testInternetArchiveScraper(w http.ResponseWriter, req T
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": fmt.Sprintf("Internet Archive is working (%d playable test videos found)", len(results)),
+		"success":                true,
+		"message":                fmt.Sprintf("Internet Archive is working (%d playable test videos found)", len(results)),
+		"nameMatchingSuggestion": sourceTestNameMatchingSuggestion(results, req.SkipNameFiltering),
 	})
 }
 
 // testTorrentioScraper tests torrentio by checking cinemeta and then torrentio endpoints
-func (h *AdminUIHandler) testTorrentioScraper(w http.ResponseWriter, options, customURL string) {
+func (h *AdminUIHandler) testTorrentioScraper(w http.ResponseWriter, options, customURL string, skipNameFiltering bool) {
 	client := &http.Client{Timeout: 15 * time.Second}
 
 	// First test cinemeta (used by torrentio)
@@ -5281,7 +5286,7 @@ func (h *AdminUIHandler) testTorrentioScraper(w http.ResponseWriter, options, cu
 
 	// Parse response to count streams
 	var result struct {
-		Streams []interface{} `json:"streams"`
+		Streams []sourceTestStream `json:"streams"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -5292,8 +5297,9 @@ func (h *AdminUIHandler) testTorrentioScraper(w http.ResponseWriter, options, cu
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": fmt.Sprintf("Torrentio is working (%d streams found)", len(result.Streams)),
+		"success":                true,
+		"message":                fmt.Sprintf("Torrentio is working (%d streams found)", len(result.Streams)),
+		"nameMatchingSuggestion": sourceTestNameMatchingSuggestion(sourceTestStreamResults(result.Streams, "torrentio"), skipNameFiltering),
 	})
 }
 
@@ -5347,10 +5353,8 @@ func (h *AdminUIHandler) testJackettScraper(w http.ResponseWriter, req TestScrap
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Jackett is working",
-	})
+	json.NewEncoder(w).Encode(sourceTestSearchResponse("Jackett is working", req,
+		debrid.NewJackettScraper(req.URL, req.APIKey, req.Name, client)))
 }
 
 func (h *AdminUIHandler) testProwlarrTorrentSource(w http.ResponseWriter, req TestScraperRequest) {
@@ -5379,10 +5383,13 @@ func (h *AdminUIHandler) testProwlarrTorrentSource(w http.ResponseWriter, req Te
 			})
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"message": fmt.Sprintf("Prowlarr is reachable and %d torrent indexer(s) can be added on save", count),
-		})
+		var scrapers []debrid.Scraper
+		for _, idx := range indexers {
+			if shouldUseProwlarrIndexer(idx, "torrent") {
+				scrapers = append(scrapers, debrid.NewProwlarrScraper(joinProwlarrIndexerURL(req.URL, idx.ID), req.APIKey, req.Name, &http.Client{Timeout: 10 * time.Second}))
+			}
+		}
+		json.NewEncoder(w).Encode(sourceTestSearchResponse(fmt.Sprintf("Prowlarr is reachable and %d torrent indexer(s) can be added on save", count), req, scrapers...))
 		return
 	}
 
@@ -5395,10 +5402,7 @@ func (h *AdminUIHandler) testProwlarrTorrentSource(w http.ResponseWriter, req Te
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Prowlarr torrent source is working",
-	})
+	json.NewEncoder(w).Encode(sourceTestSearchResponse("Prowlarr torrent source is working", req, scraper))
 }
 
 func countProwlarrIndexers(indexers []prowlarrIndexerInfo, protocol string) int {
@@ -5454,10 +5458,8 @@ func (h *AdminUIHandler) testZileanScraper(w http.ResponseWriter, req TestScrape
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Zilean is working",
-	})
+	json.NewEncoder(w).Encode(sourceTestSearchResponse("Zilean is working", req,
+		debrid.NewZileanScraper(req.URL, req.Name, client)))
 }
 
 // testAIOStreamsScraper tests an AIOStreams instance by fetching its manifest and a test stream
@@ -5550,7 +5552,7 @@ func (h *AdminUIHandler) testAIOStreamsScraper(w http.ResponseWriter, req TestSc
 
 	// Parse stream response to count results
 	var streamResult struct {
-		Streams []interface{} `json:"streams"`
+		Streams []sourceTestStream `json:"streams"`
 	}
 	if err := json.NewDecoder(streamResp.Body).Decode(&streamResult); err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -5561,17 +5563,22 @@ func (h *AdminUIHandler) testAIOStreamsScraper(w http.ResponseWriter, req TestSc
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": fmt.Sprintf("AIOStreams is working (%s v%s, %d streams found)", manifest.Name, manifest.Version, len(streamResult.Streams)),
+		"success":                true,
+		"message":                fmt.Sprintf("AIOStreams is working (%s v%s, %d streams found)", manifest.Name, manifest.Version, len(streamResult.Streams)),
+		"nameMatchingSuggestion": sourceTestNameMatchingSuggestion(sourceTestStreamResults(streamResult.Streams, "aiostreams"), req.SkipNameFiltering),
 	})
 }
 
 // testNyaaScraper tests Nyaa by querying its RSS feed
-func (h *AdminUIHandler) testNyaaScraper(w http.ResponseWriter) {
+func (h *AdminUIHandler) testNyaaScraper(w http.ResponseWriter, req TestScraperRequest) {
 	client := &http.Client{Timeout: 15 * time.Second}
 
 	// Test by making a simple RSS query to Nyaa
-	testURL := "https://nyaa.si/?page=rss&f=0&c=1_0&q=test"
+	baseURL := strings.TrimRight(strings.TrimSpace(req.URL), "/")
+	if baseURL == "" {
+		baseURL = "https://nyaa.si"
+	}
+	testURL := baseURL + "/?page=rss&f=0&c=1_0&q=test"
 	testReq, err := http.NewRequest(http.MethodGet, testURL, nil)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -5601,10 +5608,8 @@ func (h *AdminUIHandler) testNyaaScraper(w http.ResponseWriter) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Nyaa is reachable",
-	})
+	json.NewEncoder(w).Encode(sourceTestSearchResponse("Nyaa is reachable", req,
+		debrid.NewNyaaScraper(baseURL, req.Name, req.Config["category"], req.Config["filter"], client)))
 }
 
 // testCometScraper tests a Comet instance by fetching its manifest and a test stream
@@ -5709,7 +5714,7 @@ func (h *AdminUIHandler) testCometScraper(w http.ResponseWriter, req TestScraper
 	}
 
 	var streamResult struct {
-		Streams []interface{} `json:"streams"`
+		Streams []sourceTestStream `json:"streams"`
 	}
 	if err := json.NewDecoder(streamResp.Body).Decode(&streamResult); err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -5720,8 +5725,9 @@ func (h *AdminUIHandler) testCometScraper(w http.ResponseWriter, req TestScraper
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": fmt.Sprintf("Comet is working (%s v%s, %d streams found)", manifest.Name, manifest.Version, len(streamResult.Streams)),
+		"success":                true,
+		"message":                fmt.Sprintf("Comet is working (%s v%s, %d streams found)", manifest.Name, manifest.Version, len(streamResult.Streams)),
+		"nameMatchingSuggestion": sourceTestNameMatchingSuggestion(sourceTestStreamResults(streamResult.Streams, "comet"), req.SkipNameFiltering),
 	})
 }
 
@@ -5800,7 +5806,7 @@ func (h *AdminUIHandler) testMediaFusionScraper(w http.ResponseWriter, req TestS
 		}
 
 		var streamResult struct {
-			Streams []interface{} `json:"streams"`
+			Streams []sourceTestStream `json:"streams"`
 		}
 		if err := json.NewDecoder(streamResp.Body).Decode(&streamResult); err != nil {
 			streamResp.Body.Close()
@@ -5813,8 +5819,9 @@ func (h *AdminUIHandler) testMediaFusionScraper(w http.ResponseWriter, req TestS
 		streamResp.Body.Close()
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"message": fmt.Sprintf("MediaFusion is working (%s v%s, %d streams found)", manifest.Name, manifest.Version, len(streamResult.Streams)),
+			"success":                true,
+			"message":                fmt.Sprintf("MediaFusion is working (%s v%s, %d streams found)", manifest.Name, manifest.Version, len(streamResult.Streams)),
+			"nameMatchingSuggestion": sourceTestNameMatchingSuggestion(sourceTestStreamResults(streamResult.Streams, "mediafusion"), req.SkipNameFiltering),
 		})
 		return
 	}

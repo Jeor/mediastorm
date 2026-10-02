@@ -34,7 +34,7 @@ func TestExpandProwlarrSourcesDiscoversUsenetAndTorrentIndexers(t *testing.T) {
 			{Name: "Prowlarr", URL: server.URL, APIKey: "prowlarr-key", Type: "prowlarr", Categories: "2000,5000", Enabled: true},
 		},
 		TorrentScrapers: []config.TorrentScraperConfig{
-			{Name: "Prowlarr", Type: "prowlarr", URL: server.URL, APIKey: "prowlarr-key", Enabled: true},
+			{Name: "Prowlarr", Type: "prowlarr", URL: server.URL, APIKey: "prowlarr-key", Enabled: true, SkipNameFiltering: true},
 		},
 	}
 
@@ -57,7 +57,7 @@ func TestExpandProwlarrSourcesDiscoversUsenetAndTorrentIndexers(t *testing.T) {
 		t.Fatalf("expected 1 torrent scraper, got %d", len(settings.TorrentScrapers))
 	}
 	scraper := settings.TorrentScrapers[0]
-	if scraper.Name != "Prowlarr - The Pirate Bay" || scraper.Type != "prowlarr" || scraper.URL != server.URL+"/3" || scraper.APIKey != "prowlarr-key" || !scraper.Enabled {
+	if scraper.Name != "Prowlarr - The Pirate Bay" || scraper.Type != "prowlarr" || scraper.URL != server.URL+"/3" || scraper.APIKey != "prowlarr-key" || !scraper.Enabled || !scraper.SkipNameFiltering {
 		t.Fatalf("unexpected expanded torrent scraper: %#v", scraper)
 	}
 }

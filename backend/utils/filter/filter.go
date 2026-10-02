@@ -23,6 +23,9 @@ import (
 var polishAudioReleasePattern = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(?:pldub|dubbing[ ._-]+pl|lektor[ ._-]+pl)(?:$|[^a-z0-9])`)
 
 const (
+	// SkipNameFilteringAttribute carries the configured debrid source preference.
+	SkipNameFilteringAttribute = "skipNameFiltering"
+
 	// MinTitleSimilarity is the minimum similarity score (0.0-1.0) required
 	// for a result's title to match the expected title (90%)
 	MinTitleSimilarity = 0.90
@@ -333,6 +336,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 	}
 
 	for i, result := range results {
+		skipNameFiltering := result.ServiceType == models.ServiceTypeDebrid && result.Attributes[SkipNameFilteringAttribute] == "true"
 		if len(compiledRequiredTerms) > 0 && !MatchesAnyTerm(result.Title, compiledRequiredTerms) {
 			reason := "missing required terms"
 			log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
@@ -352,7 +356,7 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 		// authoritative. Never let a matching episode code rescue a release that
 		// names a different broadcast date.
 		hasDailyDate := false
-		if opts.IsDaily && opts.TargetAirDate != "" {
+		if !skipNameFiltering && opts.IsDaily && opts.TargetAirDate != "" {
 			if year, month, day, hasExplicitDate := mediaresolve.ParseDailyDate(result.Title); hasExplicitDate {
 				candidateDate := fmt.Sprintf("%04d-%02d-%02d", year, month, day)
 				if !mediaresolve.CandidateMatchesDailyDate(result.Title, opts.TargetAirDate, 0) {
@@ -405,219 +409,227 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 				i, result.Title, parsed.Title, parsed.Year, parsed.Seasons, parsed.Episodes, parsed.Complete)
 		}
 
-		// A provider title alias is valid only within its verified season.
-		mapped, mappedRelease := releaseMappingForResult(opts, parsed)
-		if mapped.ReleaseTitle == "" {
-			mapped.ReleaseTitle = opts.ExpectedTitle
-		}
-		releaseTitles := candidateTitles
-		if mappedRelease {
-			releaseTitles = append(append([]string(nil), candidateTitles...), mapped.ReleaseTitle)
-		}
-		// Check title similarity
-		titleSim, matchedTitle := bestTitleSimilarityForMedia(releaseTitles, parsed.Title, opts.IsMovie, result.Title)
-		if i < 5 {
-			ref := opts.ExpectedTitle
-			if matchedTitle != "" {
-				ref = matchedTitle
-			}
-			log.Printf("[filter] Title similarity: %q vs %q = %.2f%%",
-				ref, parsed.Title, titleSim*100)
-		}
-
-		if titleSim < MinTitleSimilarity {
-			reason := fmt.Sprintf("title similarity %.0f%% < %.0f%% (parsed: '%s')", titleSim*100, MinTitleSimilarity*100, parsed.Title)
-			log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
-			reject(result, reason)
-			continue
-		}
-		titleIdentityStrong := isStrongTitleIdentity(parsed.Title, matchedTitle, titleSim)
-		if !titleIdentityStrong && rawTitleHasStrongIdentity(result.Title, matchedTitle) {
-			titleIdentityStrong = true
-		}
-		if titleIdentityStrong {
-			result.Attributes["titleMatch"] = "strong"
-		} else {
-			result.Attributes["titleMatch"] = "loose"
-		}
-
-		expectedCountry := NormalizeCountryCode(opts.ExpectedCountry)
-		releaseCountry := NormalizeCountryCode(parsed.Country)
-		if expectedCountry != "" {
-			result.Attributes["expectedCountry"] = expectedCountry
-		}
-		if expectedCountry != "" && releaseCountry != "" {
-			result.Attributes["releaseCountry"] = releaseCountry
-			if releaseCountry != expectedCountry {
-				reason := fmt.Sprintf("explicit country %s does not match expected %s", strings.ToUpper(parsed.Country), expectedCountry)
-				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
-				reject(result, reason)
-				continue
-			}
-			result.Attributes["countryMatch"] = "true"
-		}
-
-		// ptt-go does not recognize some common anime absolute formats, such as
-		// "Title-01" and "Title 01". Recover a lone numeric suffix after the
-		// matched series title before applying title-extension and episode checks.
-		inferredAbsoluteEpisode := false
-		if !opts.IsMovie && opts.TargetAbsoluteEpisode > 0 && len(parsed.Episodes) == 0 {
-			if episode, ok := trailingAbsoluteEpisode(parsed.Title, matchedTitle); ok {
-				parsedCopy := *parsed
-				parsedCopy.Episodes = []int{episode}
-				parsed = &parsedCopy
-				inferredAbsoluteEpisode = true
-			}
-		}
-
-		if !opts.IsMovie && opts.TargetSeason > 0 && (opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && hasEpisodeSideContentMarker(result.Title, matchedTitle) {
-			reason := "result is side content, not a regular series episode"
-			log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
-			reject(result, reason)
-			continue
-		}
-		if !opts.IsMovie && !inferredAbsoluteEpisode && isSeriesPrefixExtensionMismatch(parsed.Title, matchedTitle, opts.IsAnime) {
-			reason := fmt.Sprintf("parsed title %q extends expected title %q", parsed.Title, matchedTitle)
-			log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
-			reject(result, reason)
-			continue
-		}
-		if len(expectedFormulaOneTerms) > 0 && !formulaOneEventTermsMatch(result.Title, expectedFormulaOneTerms) {
-			reason := fmt.Sprintf("missing Formula 1 event terms %v", expectedFormulaOneTerms)
-			log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
-			reject(result, reason)
-			continue
-		}
-
-		// Filter by media type using season/episode/volume detection
-		// TV shows have seasons/episodes/volumes or are marked as complete packs, movies don't
-		// Volumes are common in anime DVD/BD releases (e.g., "Vol 01", "Vol.1-6")
-		hasTVPattern := len(parsed.Seasons) > 0 || len(parsed.Episodes) > 0 || len(parsed.Volumes) > 0
 		isCompletePack := parsed.Complete
-		hasEpisodeResolver := opts.EpisodeResolver != nil
-
-		if opts.IsMovie && hasTVPattern {
-			reason := fmt.Sprintf("movie result has TV pattern (S%v E%v)", parsed.Seasons, parsed.Episodes)
-			log.Printf("[filter] Rejecting %q: searching for movie but result has TV pattern (seasons=%v, episodes=%v, volumes=%v)",
-				result.Title, parsed.Seasons, parsed.Episodes, parsed.Volumes)
-			reject(result, reason)
-			continue
-		}
-
-		formulaOneEventYear, formulaOneEventNumbers, hasFormulaOneEventInfo := parseFormulaOneEvents(result.Title)
-		hasFormulaOneEvent := !opts.IsMovie && hasFormulaOneEventInfo && formulaOneEventYear == opts.TargetSeason && intSliceContains(formulaOneEventNumbers, opts.TargetEpisode)
-
-		if !opts.IsMovie && hasFormulaOneEventInfo && formulaOneEventYear == opts.TargetSeason && opts.TargetEpisode > 0 && !intSliceContains(formulaOneEventNumbers, opts.TargetEpisode) {
-			reason := fmt.Sprintf("Formula 1 event %v does not match target S%04dE%02d", formulaOneEventNumbers, opts.TargetSeason, opts.TargetEpisode)
-			log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
-			reject(result, reason)
-			continue
-		}
-
-		if !opts.IsMovie && !hasTVPattern && !isCompletePack && !hasDailyDate && !hasFormulaOneEvent &&
-			(!hasEpisodeResolver || !isPlausibleEpisodeLessPack(result.Title, parsed.Title, matchedTitle)) {
-			reason := "no episode info or credible series-pack marker for TV show"
-			log.Printf("[filter] Rejecting %q: searching for TV show but result has no season/episode info",
-				result.Title)
-			reject(result, reason)
-			continue
-		}
-
-		// Target episode filtering for TV shows
-		// This rejects season packs and episodes that obviously can't contain the target episode
-		// Skip this check for daily shows with matching dates - they use date-based matching instead
 		episodeOpts := opts
-		if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
-			// Episodes and packs of the known anthology season use provider
-			// numbering. Other seasons and multi-season packs stay unchanged.
-			if mappedRelease {
-				episodeOpts.TargetSeason = mapped.Season
-				episodeOpts.TargetEpisode = mapped.Episode
-				episodeOpts.TargetAbsoluteEpisode = mapped.AbsoluteEpisode
-				episodeOpts.EpisodeResolver = NewSeriesEpisodeResolver(map[int]int{mapped.Season: mapped.SeasonEpisodeCount})
+		if skipNameFiltering {
+			// Do not present filename-derived identity as verified metadata.
+			for _, key := range []string{"titleMatch", "yearMatch", "episodeReleaseYear", "episodeYearMatch", "episodeAirYearMatch"} {
+				delete(result.Attributes, key)
 			}
-			if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, episodeOpts); rejected {
+		} else {
+			// A provider title alias is valid only within its verified season.
+			mapped, mappedRelease := releaseMappingForResult(opts, parsed)
+			if mapped.ReleaseTitle == "" {
+				mapped.ReleaseTitle = opts.ExpectedTitle
+			}
+			releaseTitles := candidateTitles
+			if mappedRelease {
+				releaseTitles = append(append([]string(nil), candidateTitles...), mapped.ReleaseTitle)
+			}
+			// Check title similarity
+			titleSim, matchedTitle := bestTitleSimilarityForMedia(releaseTitles, parsed.Title, opts.IsMovie, result.Title)
+			if i < 5 {
+				ref := opts.ExpectedTitle
+				if matchedTitle != "" {
+					ref = matchedTitle
+				}
+				log.Printf("[filter] Title similarity: %q vs %q = %.2f%%",
+					ref, parsed.Title, titleSim*100)
+			}
+
+			if titleSim < MinTitleSimilarity {
+				reason := fmt.Sprintf("title similarity %.0f%% < %.0f%% (parsed: '%s')", titleSim*100, MinTitleSimilarity*100, parsed.Title)
 				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
 				reject(result, reason)
 				continue
 			}
-			if mappedRelease {
-				// File-selection hints follow the release's numbering; the
-				// selected title and history episode remain in TMDB order.
-				result.Attributes["targetSeason"] = strconv.Itoa(mapped.Season)
-				result.Attributes["targetEpisode"] = strconv.Itoa(mapped.Episode)
-				result.Attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", mapped.Season, mapped.Episode)
-				delete(result.Attributes, "absoluteEpisodeNumber")
-				delete(result.Attributes, "targetAbsoluteEpisode")
-				result.Attributes["mappedCatalogNumbering"] = models.EpisodeNumberingKey(opts.Numbering)
-				result.Attributes["mappedCatalogEpisode"] = fmt.Sprintf("S%02dE%02d", opts.TargetSeason, opts.TargetEpisode)
-				result.Attributes["episodeMappingSource"] = mapped.Source
-				if mapped.AbsoluteEpisode > 0 {
-					result.Attributes["absoluteEpisodeNumber"] = strconv.Itoa(mapped.AbsoluteEpisode)
-				}
+			titleIdentityStrong := isStrongTitleIdentity(parsed.Title, matchedTitle, titleSim)
+			if !titleIdentityStrong && rawTitleHasStrongIdentity(result.Title, matchedTitle) {
+				titleIdentityStrong = true
 			}
-		}
+			if titleIdentityStrong {
+				result.Attributes["titleMatch"] = "strong"
+			} else {
+				result.Attributes["titleMatch"] = "loose"
+			}
 
-		// Check year for all media types (movies and series)
-		if opts.ExpectedYear > 0 {
-			parsedYear := parsed.Year
-			if parsedYear == 0 {
-				parsedYear = matchingYearFromRange(result.Title, opts.ExpectedYear)
+			expectedCountry := NormalizeCountryCode(opts.ExpectedCountry)
+			releaseCountry := NormalizeCountryCode(parsed.Country)
+			if expectedCountry != "" {
+				result.Attributes["expectedCountry"] = expectedCountry
 			}
-			if parsedYear > 0 {
-				yearDiff := abs(opts.ExpectedYear - parsedYear)
-				seriesYearMatch := yearDiff <= MaxYearDifference
-				// Also accept if the parsed year matches the episode's air year (±1)
-				// This handles shows where S02 airs years after the series premiere
-				episodeYearMatch := opts.EpisodeAirYear > 0 && abs(opts.EpisodeAirYear-parsedYear) <= MaxYearDifference
-				seasonYearMatch := !opts.IsMovie && opts.TargetSeason > 0 && opts.SeasonPremiereYear > 0 && abs(opts.SeasonPremiereYear-parsedYear) <= MaxYearDifference
-				formulaOneSeasonYearMatch := hasFormulaOneEvent && opts.TargetSeason > 1900 && parsedYear == opts.TargetSeason
-				mappedYearMatch := mappedRelease && mapped.Year > 0 && parsedYear == mapped.Year
-				if yearDiff > MaxYearDifference && !episodeYearMatch && !seasonYearMatch && !formulaOneSeasonYearMatch && !mappedYearMatch {
-					reason := fmt.Sprintf("year difference %d > %d (expected: %d, got: %d)", yearDiff, MaxYearDifference, opts.ExpectedYear, parsedYear)
-					log.Printf("[filter] Rejecting %q: %s, episodeAirYear: %d",
-						result.Title, reason, opts.EpisodeAirYear)
-					reject(result, reason)
-					continue
-				}
-				if !titleIdentityStrong {
-					reason := fmt.Sprintf("matched year %d but title identity is loose (parsed: '%s', expected: '%s')", parsedYear, parsed.Title, matchedTitle)
+			if expectedCountry != "" && releaseCountry != "" {
+				result.Attributes["releaseCountry"] = releaseCountry
+				if releaseCountry != expectedCountry {
+					reason := fmt.Sprintf("explicit country %s does not match expected %s", strings.ToUpper(parsed.Country), expectedCountry)
 					log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
 					reject(result, reason)
 					continue
 				}
-				if seriesYearMatch {
-					result.Attributes["yearMatch"] = "true"
+				result.Attributes["countryMatch"] = "true"
+			}
+
+			// ptt-go does not recognize some common anime absolute formats, such as
+			// "Title-01" and "Title 01". Recover a lone numeric suffix after the
+			// matched series title before applying title-extension and episode checks.
+			inferredAbsoluteEpisode := false
+			if !opts.IsMovie && opts.TargetAbsoluteEpisode > 0 && len(parsed.Episodes) == 0 {
+				if episode, ok := trailingAbsoluteEpisode(parsed.Title, matchedTitle); ok {
+					parsedCopy := *parsed
+					parsedCopy.Episodes = []int{episode}
+					parsed = &parsedCopy
+					inferredAbsoluteEpisode = true
 				}
-				// A confirmed year is especially valuable for a targeted episode
-				// search when a different series year also survives filtering. Preserve
-				// the parsed year so ranking can make that decision over the complete
-				// passed result set. Preserve accepted season and mapped years as
-				// valid alternatives so ranking does not mistake them for reboots.
-				if !opts.IsMovie && (opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0 || opts.TargetAirDate != "") {
-					result.Attributes["episodeReleaseYear"] = strconv.Itoa(parsedYear)
-					if seasonYearMatch {
-						result.Attributes["episodeSeasonYearMatch"] = "true"
+			}
+
+			if !opts.IsMovie && opts.TargetSeason > 0 && (opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && hasEpisodeSideContentMarker(result.Title, matchedTitle) {
+				reason := "result is side content, not a regular series episode"
+				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+				reject(result, reason)
+				continue
+			}
+			if !opts.IsMovie && !inferredAbsoluteEpisode && isSeriesPrefixExtensionMismatch(parsed.Title, matchedTitle, opts.IsAnime) {
+				reason := fmt.Sprintf("parsed title %q extends expected title %q", parsed.Title, matchedTitle)
+				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+				reject(result, reason)
+				continue
+			}
+			if len(expectedFormulaOneTerms) > 0 && !formulaOneEventTermsMatch(result.Title, expectedFormulaOneTerms) {
+				reason := fmt.Sprintf("missing Formula 1 event terms %v", expectedFormulaOneTerms)
+				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+				reject(result, reason)
+				continue
+			}
+
+			// Filter by media type using season/episode/volume detection
+			// TV shows have seasons/episodes/volumes or are marked as complete packs, movies don't
+			// Volumes are common in anime DVD/BD releases (e.g., "Vol 01", "Vol.1-6")
+			hasTVPattern := len(parsed.Seasons) > 0 || len(parsed.Episodes) > 0 || len(parsed.Volumes) > 0
+			hasEpisodeResolver := opts.EpisodeResolver != nil
+
+			if opts.IsMovie && hasTVPattern {
+				reason := fmt.Sprintf("movie result has TV pattern (S%v E%v)", parsed.Seasons, parsed.Episodes)
+				log.Printf("[filter] Rejecting %q: searching for movie but result has TV pattern (seasons=%v, episodes=%v, volumes=%v)",
+					result.Title, parsed.Seasons, parsed.Episodes, parsed.Volumes)
+				reject(result, reason)
+				continue
+			}
+
+			formulaOneEventYear, formulaOneEventNumbers, hasFormulaOneEventInfo := parseFormulaOneEvents(result.Title)
+			hasFormulaOneEvent := !opts.IsMovie && hasFormulaOneEventInfo && formulaOneEventYear == opts.TargetSeason && intSliceContains(formulaOneEventNumbers, opts.TargetEpisode)
+
+			if !opts.IsMovie && hasFormulaOneEventInfo && formulaOneEventYear == opts.TargetSeason && opts.TargetEpisode > 0 && !intSliceContains(formulaOneEventNumbers, opts.TargetEpisode) {
+				reason := fmt.Sprintf("Formula 1 event %v does not match target S%04dE%02d", formulaOneEventNumbers, opts.TargetSeason, opts.TargetEpisode)
+				log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+				reject(result, reason)
+				continue
+			}
+
+			if !opts.IsMovie && !hasTVPattern && !isCompletePack && !hasDailyDate && !hasFormulaOneEvent &&
+				(!hasEpisodeResolver || !isPlausibleEpisodeLessPack(result.Title, parsed.Title, matchedTitle)) {
+				reason := "no episode info or credible series-pack marker for TV show"
+				log.Printf("[filter] Rejecting %q: searching for TV show but result has no season/episode info",
+					result.Title)
+				reject(result, reason)
+				continue
+			}
+
+			// Target episode filtering for TV shows
+			// This rejects season packs and episodes that obviously can't contain the target episode
+			// Skip this check for daily shows with matching dates - they use date-based matching instead
+			if !opts.IsMovie && (opts.TargetSeason > 0 || opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0) && !hasDailyDate && !hasFormulaOneEvent {
+				// Episodes and packs of the known anthology season use provider
+				// numbering. Other seasons and multi-season packs stay unchanged.
+				if mappedRelease {
+					episodeOpts.TargetSeason = mapped.Season
+					episodeOpts.TargetEpisode = mapped.Episode
+					episodeOpts.TargetAbsoluteEpisode = mapped.AbsoluteEpisode
+					episodeOpts.EpisodeResolver = NewSeriesEpisodeResolver(map[int]int{mapped.Season: mapped.SeasonEpisodeCount})
+				}
+				if rejected, reason := shouldRejectByTargetEpisode(result.Title, parsed, episodeOpts); rejected {
+					log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+					reject(result, reason)
+					continue
+				}
+				if mappedRelease {
+					// File-selection hints follow the release's numbering; the
+					// selected title and history episode remain in TMDB order.
+					result.Attributes["targetSeason"] = strconv.Itoa(mapped.Season)
+					result.Attributes["targetEpisode"] = strconv.Itoa(mapped.Episode)
+					result.Attributes["targetEpisodeCode"] = fmt.Sprintf("S%02dE%02d", mapped.Season, mapped.Episode)
+					delete(result.Attributes, "absoluteEpisodeNumber")
+					delete(result.Attributes, "targetAbsoluteEpisode")
+					result.Attributes["mappedCatalogNumbering"] = models.EpisodeNumberingKey(opts.Numbering)
+					result.Attributes["mappedCatalogEpisode"] = fmt.Sprintf("S%02dE%02d", opts.TargetSeason, opts.TargetEpisode)
+					result.Attributes["episodeMappingSource"] = mapped.Source
+					if mapped.AbsoluteEpisode > 0 {
+						result.Attributes["absoluteEpisodeNumber"] = strconv.Itoa(mapped.AbsoluteEpisode)
 					}
-					if mappedYearMatch {
-						result.Attributes["episodeMappedYearMatch"] = "true"
+				}
+			}
+
+			// Check year for all media types (movies and series)
+			if opts.ExpectedYear > 0 {
+				parsedYear := parsed.Year
+				if parsedYear == 0 {
+					parsedYear = matchingYearFromRange(result.Title, opts.ExpectedYear)
+				}
+				if parsedYear > 0 {
+					yearDiff := abs(opts.ExpectedYear - parsedYear)
+					seriesYearMatch := yearDiff <= MaxYearDifference
+					// Also accept if the parsed year matches the episode's air year (±1)
+					// This handles shows where S02 airs years after the series premiere
+					episodeYearMatch := opts.EpisodeAirYear > 0 && abs(opts.EpisodeAirYear-parsedYear) <= MaxYearDifference
+					seasonYearMatch := !opts.IsMovie && opts.TargetSeason > 0 && opts.SeasonPremiereYear > 0 && abs(opts.SeasonPremiereYear-parsedYear) <= MaxYearDifference
+					formulaOneSeasonYearMatch := hasFormulaOneEvent && opts.TargetSeason > 1900 && parsedYear == opts.TargetSeason
+					mappedYearMatch := mappedRelease && mapped.Year > 0 && parsedYear == mapped.Year
+					if yearDiff > MaxYearDifference && !episodeYearMatch && !seasonYearMatch && !formulaOneSeasonYearMatch && !mappedYearMatch {
+						reason := fmt.Sprintf("year difference %d > %d (expected: %d, got: %d)", yearDiff, MaxYearDifference, opts.ExpectedYear, parsedYear)
+						log.Printf("[filter] Rejecting %q: %s, episodeAirYear: %d",
+							result.Title, reason, opts.EpisodeAirYear)
+						reject(result, reason)
+						continue
+					}
+					if !titleIdentityStrong {
+						reason := fmt.Sprintf("matched year %d but title identity is loose (parsed: '%s', expected: '%s')", parsedYear, parsed.Title, matchedTitle)
+						log.Printf("[filter] Rejecting %q: %s", result.Title, reason)
+						reject(result, reason)
+						continue
 					}
 					if seriesYearMatch {
-						result.Attributes["episodeYearMatch"] = "true"
-					} else if episodeYearMatch {
-						result.Attributes["episodeAirYearMatch"] = "true"
+						result.Attributes["yearMatch"] = "true"
 					}
+					// A confirmed year is especially valuable for a targeted episode
+					// search when a different series year also survives filtering. Preserve
+					// the parsed year so ranking can make that decision over the complete
+					// passed result set. Preserve accepted season and mapped years as
+					// valid alternatives so ranking does not mistake them for reboots.
+					if !opts.IsMovie && (opts.TargetEpisode > 0 || opts.TargetAbsoluteEpisode > 0 || opts.TargetAirDate != "") {
+						result.Attributes["episodeReleaseYear"] = strconv.Itoa(parsedYear)
+						if seasonYearMatch {
+							result.Attributes["episodeSeasonYearMatch"] = "true"
+						}
+						if mappedYearMatch {
+							result.Attributes["episodeMappedYearMatch"] = "true"
+						}
+						if seriesYearMatch {
+							result.Attributes["episodeYearMatch"] = "true"
+						} else if episodeYearMatch {
+							result.Attributes["episodeAirYearMatch"] = "true"
+						}
+					}
+					if episodeYearMatch && yearDiff > MaxYearDifference {
+						log.Printf("[filter] Accepted %q: year %d matches episode air year %d (series year: %d)",
+							result.Title, parsedYear, opts.EpisodeAirYear, opts.ExpectedYear)
+					}
+				} else {
+					// Missing years are normal in release names, especially for TV
+					// episodes. Keep them neutral; only an explicitly wrong parsed year
+					// is rejected above.
+					log.Printf("[filter] Could not parse year from title %q, keeping without year preference", result.Title)
 				}
-				if episodeYearMatch && yearDiff > MaxYearDifference {
-					log.Printf("[filter] Accepted %q: year %d matches episode air year %d (series year: %d)",
-						result.Title, parsedYear, opts.EpisodeAirYear, opts.ExpectedYear)
-				}
-			} else {
-				// Missing years are normal in release names, especially for TV
-				// episodes. Keep them neutral; only an explicitly wrong parsed year
-				// is rejected above.
-				log.Printf("[filter] Could not parse year from title %q, keeping without year preference", result.Title)
 			}
+
 		}
 
 		// Normalize series pack metadata regardless of whether a size limit is
@@ -671,6 +683,10 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 					resSource = resolutionToString(parsedRes)
 				}
 			}
+			if parsedRes == 0 && skipNameFiltering {
+				resSource = result.Attributes["resolution"]
+				parsedRes = resolutionToNumeric(resSource)
+			}
 			// Only filter if we can parse both resolutions
 			if maxRes > 0 && parsedRes > 0 && parsedRes > maxRes {
 				reason := fmt.Sprintf("resolution %s > %s limit", resSource, opts.MaxResolution)
@@ -680,6 +696,12 @@ func ResultsWithDetails(results []models.NZBResult, opts Options) []FilteredResu
 			}
 		}
 
+		// Opaque filenames can still carry structured quality metadata.
+		if skipNameFiltering && len(parsed.HDR) == 0 && result.Attributes["hdr"] != "" {
+			parsedCopy := *parsed
+			parsedCopy.HDR = strings.FieldsFunc(result.Attributes["hdr"], func(r rune) bool { return r == ',' || r == '|' })
+			parsed = &parsedCopy
+		}
 		// Check HDR/DV status
 		hasHDR := len(parsed.HDR) > 0
 		hasDV := hasDolbyVision(parsed.HDR)

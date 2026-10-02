@@ -2570,9 +2570,11 @@
         <div class="test-modal-body">
             <div id="testModalProvider" class="test-modal-provider"></div>
             <div id="testModalMessage" class="test-modal-message"></div>
+            <div id="testModalSuggestion" class="test-modal-message" style="display: none; margin-top: 16px;" role="status"></div>
         </div>
         <div class="test-modal-footer">
             <button id="testModalCleanupButton" class="btn btn-primary" style="display: none;" onclick="attemptTestArtifactDelete()">Attempt Delete</button>
+            <button id="testModalSuggestionButton" class="btn btn-primary" style="display: none;" onclick="applyTestSuggestion()">Enable Skip Name Matching</button>
             <button class="btn btn-secondary" onclick="closeTestModal()">Close</button>
         </div>
     </div>
@@ -7679,7 +7681,7 @@
                 break;
             case 'torrentScrapers':
                 endpoint = basePath + '/api/test/scraper';
-                payload = { name: item.name, type: item.type, url: item.url, apiKey: item.apiKey };
+                payload = { name: item.name, type: item.type, url: item.url, apiKey: item.apiKey, options: item.options, config: item.config, skipNameFiltering: !!item.skipNameFiltering };
                 break;
             case 'usenet':
                 endpoint = basePath + '/api/test/usenet-provider';
@@ -7756,6 +7758,12 @@
                 return;
         }
 
+        const sourceTestContext = sectionKey === 'torrentScrapers' ? {
+            item, userId: selectedUserId, clientId: selectedClientId,
+            type: item.type, url: item.url, options: item.options, apiKey: item.apiKey,
+            config: JSON.stringify(item.config || {})
+        } : null;
+
         try {
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -7772,7 +7780,9 @@
                     label: result.cleanup.buttonLabel || 'Attempt Delete',
                     payload: { ...payload, artifactUrl: result.cleanup.artifactUrl }
                 } : null;
-                showTestResultModal(item.name || 'Provider', true, result.message || 'Test successful', cleanup);
+                const suggestion = sourceTestContext && result.nameMatchingSuggestion
+                    ? { ...result.nameMatchingSuggestion, context: sourceTestContext } : null;
+                showTestResultModal(item.name || 'Provider', true, result.message || 'Test successful', cleanup, suggestion);
             } else {
                 showTestResultModal(item.name || 'Provider', false, result.error || 'Test failed', null);
             }
@@ -7785,8 +7795,9 @@
 
     // Test result modal functions
     let currentTestCleanup = null;
+    let currentTestSuggestion = null;
 
-    function showTestResultModal(providerName, isSuccess, message, cleanup) {
+    function showTestResultModal(providerName, isSuccess, message, cleanup, suggestion) {
         const modal = document.getElementById('testModal');
         const titleEl = document.getElementById('testModalTitle');
         const titleText = document.getElementById('testModalTitleText');
@@ -7795,6 +7806,8 @@
         const providerEl = document.getElementById('testModalProvider');
         const messageEl = document.getElementById('testModalMessage');
         const cleanupButton = document.getElementById('testModalCleanupButton');
+        const suggestionEl = document.getElementById('testModalSuggestion');
+        const suggestionButton = document.getElementById('testModalSuggestionButton');
 
         // Set title and icon based on success/error
         if (isSuccess) {
@@ -7813,6 +7826,10 @@
         providerEl.innerHTML = '<strong>' + escapeHtml(providerName) + '</strong>';
         messageEl.textContent = message;
         currentTestCleanup = cleanup || null;
+        currentTestSuggestion = isSuccess && suggestion?.setting === 'skipNameFiltering' ? suggestion : null;
+        suggestionEl.textContent = currentTestSuggestion?.message || '';
+        suggestionEl.style.display = currentTestSuggestion ? 'block' : 'none';
+        suggestionButton.style.display = currentTestSuggestion && !currentTestSuggestion.alreadyEnabled ? 'inline-flex' : 'none';
         if (cleanupButton) {
             cleanupButton.style.display = currentTestCleanup ? 'inline-flex' : 'none';
             cleanupButton.disabled = false;
@@ -7822,6 +7839,28 @@
         // Show modal
         modal.classList.add('visible');
         document.body.style.overflow = 'hidden';
+    }
+
+    function applyTestSuggestion() {
+        if (!currentTestSuggestion) return;
+        const context = currentTestSuggestion.context;
+        const items = getValue('torrentScrapers') || [];
+        const index = context ? items.indexOf(context.item) : -1;
+        const messageEl = document.getElementById('testModalSuggestion');
+        const button = document.getElementById('testModalSuggestionButton');
+        if (index < 0 || selectedUserId !== context.userId || selectedClientId !== context.clientId ||
+            context.item.type !== context.type || context.item.url !== context.url || context.item.options !== context.options ||
+            context.item.apiKey !== context.apiKey || JSON.stringify(context.item.config || {}) !== context.config) {
+            messageEl.textContent = 'This source or settings context changed. Test the source again before applying the suggestion.';
+            button.style.display = 'none';
+            currentTestSuggestion = null;
+            return;
+        }
+        setValue('torrentScrapers.' + index + '.skipNameFiltering', true);
+        renderSettings();
+        messageEl.textContent = 'Skip Name Matching is enabled for this source. Save changes to apply it.';
+        button.style.display = 'none';
+        currentTestSuggestion = null;
     }
 
     async function attemptTestArtifactDelete() {
@@ -7867,6 +7906,7 @@
         modal.classList.remove('visible');
         document.body.style.overflow = '';
         currentTestCleanup = null;
+        currentTestSuggestion = null;
     }
 
     // Close modal on Escape key

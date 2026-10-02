@@ -1101,13 +1101,14 @@ func expandProwlarrSources(ctx context.Context, s *config.Settings) error {
 				continue
 			}
 			expandedScrapers = append(expandedScrapers, config.TorrentScraperConfig{
-				Name:    prowlarrGeneratedName(scraper.Name, pi.Name),
-				Type:    "prowlarr",
-				URL:     joinProwlarrIndexerURL(scraper.URL, pi.ID),
-				APIKey:  scraper.APIKey,
-				Options: scraper.Options,
-				Enabled: scraper.Enabled,
-				Config:  scraper.Config,
+				Name:              prowlarrGeneratedName(scraper.Name, pi.Name),
+				Type:              "prowlarr",
+				URL:               joinProwlarrIndexerURL(scraper.URL, pi.ID),
+				APIKey:            scraper.APIKey,
+				Options:           scraper.Options,
+				Enabled:           scraper.Enabled,
+				SkipNameFiltering: scraper.SkipNameFiltering,
+				Config:            scraper.Config,
 			})
 			added++
 		}
